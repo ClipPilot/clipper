@@ -3,6 +3,7 @@ import { adDeconstructorSchema } from "../../outputSchemas/adDeconstructorAgent.
 import { VIDEO_TYPES } from "../../outputSchemas/initAgent.js";
 import { Memory } from "@mastra/memory";
 import { webSearchTool } from "../tools/web-search-tool.js";
+import { analyzeVideoTool } from "../tools/ad-clone/index.js";
 
 const videoTypeDescriptions = Object.entries(VIDEO_TYPES)
   .map(
@@ -14,9 +15,9 @@ const videoTypeDescriptions = Object.entries(VIDEO_TYPES)
 export const adDeconstructorAgent = new Agent({
   id: "ad-deconstructor-agent",
   name: "Ad Deconstructor Agent",
-  model: "openai/gpt-5.2",
+  model: "google/gemini-3.1-pro-preview",
   memory: new Memory(),
-  tools: { webSearchTool },
+  tools: { webSearchTool, analyzeVideoTool },
   defaultOptions: {
     structuredOutput: {
       schema: adDeconstructorSchema,
@@ -26,8 +27,15 @@ export const adDeconstructorAgent = new Agent({
 
 ===== RESPONSE TYPE DECISION =====
 
+**Mode 0: Video Analysis + Script (geminiFileUri provided)**
+When the user's message contains a JSON object with a "geminiFileUri" field:
+1. IMMEDIATELY call the analyzeVideoTool with the fileUri and mimeType from the message
+2. Include the tool result in the videoAnalysis field of your response
+3. If "analyzeOnly" is true: set responseType to "conversation", scenes to [], and return just the analysis
+4. Otherwise: use the analysis to generate the FULL script (following Mode 2 rules below), set responseType to "script"
+
 **Mode 1: Conversation (no analysis data)**
-When the user's message does NOT include a "=== VIDEO ANALYSIS ===" section:
+When the user's message does NOT include a "=== VIDEO ANALYSIS ===" section AND no geminiFileUri:
 - Set responseType to "conversation"
 - Guide the user to provide a reference ad
 - Set scenes to [], title to "", totalDuration to 0
@@ -48,6 +56,7 @@ The user wants to CLONE this ad. That means:
 - Preserve the hook strategy, CTA approach, and narrative structure
 - Adapt the CONTENT (product name, features, benefits) but keep the STYLE identical
 - If the reference has a specific camera angle or shot type, replicate it
+- ACTIONS MUST FAITHFULLY DESCRIBE THE ORIGINAL VIDEO'S VISUALS — copy the physical actions, props, setting, body language, visual gags from the analysis scene-by-scene. The action field tells the actor what to DO on camera, and it must match the original's visual style exactly (adapted for the new product only where necessary)
 
 ===== VIDEO TYPE SELECTION =====
 
@@ -87,7 +96,7 @@ For each scene from the analysis, generate a corresponding scene in the script:
 - duration should closely match the reference scene's duration
 - imageGenPrompt: self-contained first-frame description with composition, lighting, subject, environment
 - cinematicPrompt: camera movement, visual progression, timing for video generation
-- action: physical description of what happens — no text/caption mentions
+- action: CRITICAL — this must be a FAITHFUL reproduction of what physically happens in the ORIGINAL reference video's corresponding scene. Describe the exact physical actions, body language, props, setting, and visual gags from the analysis. The action is what the actor will be DOING on camera — it must match the original video's visual style as closely as possible. For example, if the original shows someone sarcastically applying peanut butter to toast while talking about makeup, write EXACTLY that — do NOT replace it with a generic "person speaks to camera" description
 
 ===== DIALOGUE RULES =====
 

@@ -4,13 +4,7 @@ import { atom } from "jotai";
 import type { Voice } from "@/config/voicesConfig";
 import type { UGCScript } from "@/components/ugc-studio/script/types";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
-import { videoStateAtom } from "./videoState";
-
-// ---------------------------------------------------------------------------
-// Proxy atoms — read/write through videoStateAtom
-// These keep downstream consumers (ScriptStep, SceneBuilderStep,
-// GenerateVideoStep) working unchanged.
-// ---------------------------------------------------------------------------
+import { videoStateAtom, DEFAULT_VIDEO_STATE } from "./videoState";
 
 export const selectedVoiceAtom = atom(
   (get) => get(videoStateAtom).voice,
@@ -60,21 +54,13 @@ export const freshStartAtom = atom(
     set(videoStateAtom, { ...get(videoStateAtom), freshStart: value }),
 );
 
-// ---------------------------------------------------------------------------
-// Scripts atom — derived from VideoState for agentic flow,
-// writable for existing-script flow
-// ---------------------------------------------------------------------------
-
-// Internal backing atom for existing-script multi-variant data
 const _existingScriptsAtom = atom<UGCScript[] | null>(null);
 
 export const scriptsAtom = atom(
   (get) => {
-    // If existing scripts were loaded, use those
     const existing = get(_existingScriptsAtom);
     if (existing) return existing;
 
-    // Otherwise, derive from VideoState scenes (single-variant)
     const vs = get(videoStateAtom);
     if (vs.scenes.length === 0) return [];
     return [
@@ -102,10 +88,6 @@ export const scriptsAtom = atom(
 
 export const selectedVariantIndexAtom = atom(0);
 
-// ---------------------------------------------------------------------------
-// Scene images — standalone (fast-changing polling state)
-// ---------------------------------------------------------------------------
-
 export interface SceneImageState {
   status: "idle" | "generating" | "regenerating" | "completed" | "failed";
   jobId?: string;
@@ -120,7 +102,7 @@ export interface SceneImageState {
   customEndImageKey?: string;
   customEndImageUrl?: string;
   customBRollImages?: Record<number, { key: string; url: string }>;
-  regeneratingShotIndex?: number; // which specific shot is being regenerated (undefined = all)
+  regeneratingShotIndex?: number;
 }
 
 export const sceneImagesAtom = atom<Record<string, SceneImageState>>({});
@@ -138,9 +120,20 @@ export const allScenesCompleteAtom = atom((get) => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// Video generation lifecycle — standalone
-// ---------------------------------------------------------------------------
-
 export const videoJobIdAtom = atom<string | null>(null);
 export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);
+
+export const sceneRefAtom = atom<string | null>(null);
+
+export const resetUGCAtom = atom(null, (_get, set) => {
+  set(videoStateAtom, {
+    ...DEFAULT_VIDEO_STATE,
+    threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  set(_existingScriptsAtom, null);
+  set(selectedVariantIndexAtom, 0);
+  set(sceneImagesAtom, {});
+  set(videoJobIdAtom, null);
+  set(videoStatusAtom, null);
+  set(sceneRefAtom, null);
+});

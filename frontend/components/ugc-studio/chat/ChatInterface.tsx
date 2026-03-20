@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { motion } from "framer-motion";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom } from "@/store/ugc";
+import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom, resetUGCAtom } from "@/store/ugc";
+import { resetAdCloneAtom } from "@/store/adClone";
 import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
+import { ugcVideoAPI } from "@/api/ugc/video";
 import { useTeams } from "@/hooks/useTeams";
 import { useChatAgent } from "./useChatAgent";
 import { MessageList } from "./MessageList";
@@ -22,7 +24,7 @@ import type { Character } from "@/components/ugc-studio/actors/types";
 const MIN_CHAT_PCT = 25;
 const MAX_CHAT_PCT = 75;
 
-export function ChatInterface() {
+export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | null }) {
   const router = useRouter();
   const { selectedTeam } = useTeams();
   const teamId = selectedTeam?.id ?? null;
@@ -38,6 +40,7 @@ export function ChatInterface() {
     updateScene,
     loadExistingScript,
     confirmCharacter,
+    regenerateAllImages,
     selectedCharacterRef,
     teamIdRef,
   } = useChatAgent();
@@ -45,6 +48,47 @@ export function ChatInterface() {
   const step = useAtomValue(currentStepAtom);
   const setVideoState = useSetAtom(videoStateAtom);
   const sceneImages = useAtomValue(sceneImagesAtom);
+  const resetUGC = useSetAtom(resetUGCAtom);
+  const resetAdClone = useSetAtom(resetAdCloneAtom);
+  const setScripts = useSetAtom(scriptsAtom);
+  const setSelectedVariantIndex = useSetAtom(selectedVariantIndexAtom);
+
+  useEffect(() => {
+    resetAdClone();
+    if (resumeScriptId) {
+      ugcScriptAPI.getFullScript(resumeScriptId).then((response) => {
+        if (!response.success) return;
+        setScripts(response.scripts);
+        setSelectedVariantIndex(response.selectedVariantIndex);
+        const script = response.scripts[response.selectedVariantIndex];
+        setVideoState((prev) => ({
+          ...prev,
+          scriptId: resumeScriptId,
+          scenes: script?.scenes ?? [],
+          isSilent: response.isSilent,
+          hasCharacter: response.hasCharacter,
+          videoType: response.videoType,
+          targetAudience: script?.targetAudience ?? "",
+        }));
+        loadExistingScript({
+          isSilent: response.isSilent,
+          hasCharacter: response.hasCharacter,
+          videoType: response.videoType,
+        });
+      }).catch((err) => {
+        console.error("Failed to resume script:", err);
+        resetUGC();
+      });
+    } else {
+      resetUGC();
+    }
+  }, [resumeScriptId]);
+
+  useEffect(() => {
+    if (videoState.scriptId && videoState.scriptId !== resumeScriptId) {
+      router.replace(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${videoState.scriptId}`, { scroll: false });
+    }
+  }, [videoState.scriptId]);
 
   // Check if any scene images are currently generating
   const isImagesGenerating = Object.values(sceneImages).some(
@@ -63,12 +107,27 @@ export function ChatInterface() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  // Sync refs so useChatAgent can access character/teamId during script generation
   selectedCharacterRef.current = selectedCharacter;
   teamIdRef.current = teamId;
 
-  const setScripts = useSetAtom(scriptsAtom);
-  const setSelectedVariantIndex = useSetAtom(selectedVariantIndexAtom);
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false);
+
+  const handleContinueToGenerate = useCallback(async () => {
+    if (!teamId || !videoState.scriptId) return;
+    setIsStartingGeneration(true);
+    try {
+      const result = await ugcVideoAPI.generateVideo({
+        teamId,
+        scriptId: videoState.scriptId,
+        voiceId: videoState.voice?.id,
+        isSilent: videoState.isSilent,
+      });
+      router.push(`/dashboard/ugc-studio/ai-video-creator/${result.jobId}`);
+    } catch (err) {
+      console.error("Failed to start video generation:", err);
+      setIsStartingGeneration(false);
+    }
+  }, [teamId, videoState.scriptId, videoState.voice, videoState.isSilent, router]);
 
   const isPanelMode = step !== null;
 
@@ -246,6 +305,9 @@ export function ChatInterface() {
               teamId={teamId ?? undefined}
               onGenerateScript={generateScript}
               onSceneUpdate={updateScene}
+              onGenerateImages={regenerateAllImages}
+              onContinue={handleContinueToGenerate}
+              isContinueLoading={isStartingGeneration}
             />
           </motion.div>
         )}

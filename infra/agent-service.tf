@@ -84,6 +84,10 @@ resource "aws_ecs_task_definition" "agent_service" {
       {
         name  = "SUPABASE_URL"
         value = var.supabase_url
+      },
+      {
+        name  = "BACKEND_URL"
+        value = var.api_domain != "" ? "https://${var.api_domain}" : "http://${aws_lb.backend.dns_name}"
       }
     ]
 
@@ -107,6 +111,14 @@ resource "aws_ecs_task_definition" "agent_service" {
       {
         name      = "GOOGLE_GENERATIVE_AI_API_KEY"
         valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
+      },
+      {
+        name      = "INTERNAL_API_KEY"
+        valueFrom = aws_secretsmanager_secret.internal_api_key.arn
+      },
+      {
+        name      = "TAVILY_API_KEY"
+        valueFrom = aws_secretsmanager_secret.tavily_api_key.arn
       }
     ]
 

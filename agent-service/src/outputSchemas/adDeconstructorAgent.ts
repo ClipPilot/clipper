@@ -12,4 +12,5 @@ export const adDeconstructorSchema = z.object({
   title: z.string(),
   totalDuration: z.number(),
   scenes: z.array(scriptAgentSceneSchema),
+  videoAnalysis: z.any().nullable().optional(),
 });

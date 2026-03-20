@@ -29,7 +29,7 @@ export const EMOTIONS = [
   "determined",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll"] as const;
+export const SHOT_TYPES = ["a-roll", "b-roll", "visual"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",

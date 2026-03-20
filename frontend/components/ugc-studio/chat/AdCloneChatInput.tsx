@@ -6,11 +6,17 @@ import {
   useCallback,
   useImperativeHandle,
   forwardRef,
+  useEffect,
   type KeyboardEvent,
 } from "react";
 import { Textarea, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAtom } from "jotai";
+import { sceneRefAtom } from "@/store/ugc";
+import { videoStateAtom } from "@/store/videoState";
+import { useAtomValue } from "jotai";
+import { SceneMentionDropdown } from "./SceneMentionDropdown";
 import { ugcScriptAPI } from "@/api/ugc";
 import { videoAPI } from "@/api/video";
 import { useTeams } from "@/hooks/useTeams";
@@ -68,12 +74,25 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
     const [isFetchingLink, setIsFetchingLink] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { selectedTeam } = useTeams();
+    const [sceneRef, setSceneRef] = useAtom(sceneRefAtom);
+
+    useEffect(() => {
+      if (sceneRef) {
+        setText((prev) => sceneRef + prev);
+        setSceneRef(null);
+        setTimeout(() => textareaRef.current?.focus(), 0);
+      }
+    }, [sceneRef, setSceneRef]);
 
     const hasContent = text.trim().length > 0;
     const hasAttachments = attachments.length > 0;
     const hasVideo = videoAttachment !== null;
     const canSend = hasContent && hasVideo && !isDisabled;
+    const videoState = useAtomValue(videoStateAtom);
+    const showMentions = videoState.scriptId && text.includes("@");
+    const mentionQuery = showMentions ? (text.match(/@(\S*)$/)?.[1] ?? "") : "";
 
     const handleImageFiles = useCallback(
       async (files: FileList | File[]) => {
@@ -205,7 +224,18 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
 
     return (
       <div className="px-4 pb-4 pt-2 space-y-3">
-        <div className="max-w-2xl mx-auto space-y-3">
+        <div className="max-w-2xl mx-auto space-y-3 relative">
+          <AnimatePresence>
+            {showMentions && (
+              <SceneMentionDropdown
+                query={mentionQuery}
+                onSelect={(mention) => {
+                  setText((prev) => prev.replace(/@\S*$/, mention));
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                }}
+              />
+            )}
+          </AnimatePresence>
           {/* === Video Upload Section (always visible, required) === */}
           <AnimatePresence mode="wait">
             {!hasVideo ? (

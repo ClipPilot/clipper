@@ -152,6 +152,13 @@ variable "internal_api_key" {
   default     = "a95f431eadf06dc59cbd188a72a797cc71396fdb2a92dc44721f704844cc725e"
 }
 
+variable "tavily_api_key" {
+  description = "Tavily API key for web search in agent service"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Stripe Configuration
 variable "stripe_secret_key" {
   description = "Stripe Secret API Key"

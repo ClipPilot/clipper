@@ -1,8 +1,16 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Spinner } from "@heroui/react";
 import { ChatInterface } from "@/components/ugc-studio/chat";
+
+function CreateAdContent() {
+  const searchParams = useSearchParams();
+  const scriptId = searchParams.get("scriptId");
+
+  return <ChatInterface resumeScriptId={scriptId} />;
+}
 
 export default function CreateAdPage() {
   return (
@@ -13,7 +21,7 @@ export default function CreateAdPage() {
         </div>
       }
     >
-      <ChatInterface />
+      <CreateAdContent />
     </Suspense>
   );
 }

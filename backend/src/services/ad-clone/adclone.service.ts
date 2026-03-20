@@ -8,7 +8,7 @@ import {
   GeminiVideoUploadResult,
   GeminiUploadedFile,
 } from "./gemini.service";
-import { analyzeVideoWithGemini } from "./videoAnalysis.service";
+import { VideoAnalysisSchema } from "../../types/adClone.types";
 import {
   AdCloneProject,
   AdCloneProjectStatus,
@@ -223,7 +223,36 @@ class AdCloneService {
         "Analyzing video structure with AI..."
       );
 
-      const analysis = await analyzeVideoWithGemini(uploadResult.file);
+      const agentServiceUrl = config.agentService.url;
+      const agentResponse = await fetch(
+        `${agentServiceUrl}/api/agents/ad-deconstructor-agent/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{
+              role: "user",
+              content: JSON.stringify({
+                geminiFileUri: uploadResult.file.uri,
+                mimeType: uploadResult.file.mimeType,
+                analyzeOnly: true,
+              }),
+            }],
+          }),
+          signal: AbortSignal.timeout(180_000),
+        },
+      );
+
+      if (!agentResponse.ok) {
+        const errorBody = await agentResponse.text();
+        console.error("[AD_CLONE] Agent analysis error:", errorBody);
+        throw new Error("Video analysis failed via agent");
+      }
+
+      const agentResult = (await agentResponse.json()) as Record<string, unknown>;
+      const rawAnalysis = (agentResult as any).object?.videoAnalysis ?? (agentResult as any).videoAnalysis;
+      if (!rawAnalysis) throw new Error("Agent returned no video analysis");
+      const analysis = VideoAnalysisSchema.parse(rawAnalysis);
 
       await db
         .update(adCloneProjects)

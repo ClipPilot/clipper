@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
+import { useSetAtom } from "jotai";
 import { useTeams } from "@/hooks/useTeams";
+import { resetAdCloneAtom } from "@/store/adClone";
+import { resetUGCAtom } from "@/store/ugc";
+import { videoStateAtom } from "@/store/videoState";
+import { useAtomValue } from "jotai";
+import { adCloneAPI } from "@/api/adClone";
+import { ugcVideoAPI } from "@/api/ugc/video";
 import { useAdCloneChatAgent } from "./useAdCloneChatAgent";
 import { MessageList } from "./MessageList";
 import { AdCloneChatInput, type AdCloneChatInputHandle } from "./AdCloneChatInput";
@@ -12,7 +19,7 @@ import { ImageDropZone } from "./ImageDropZone";
 import { ArtifactPanel } from "./ArtifactPanel";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
-export function AdCloneChatInterface() {
+export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: string | null }) {
   const router = useRouter();
   const { selectedTeam } = useTeams();
   const teamId = selectedTeam?.id ?? null;
@@ -23,25 +30,71 @@ export function AdCloneChatInterface() {
     isAnalyzing,
     acceptedResult,
     currentArtifact,
-    generatedScript,
-    isGeneratingScript,
     scriptId,
+    projectId,
     videoAttachment,
     setVideoAttachment,
     sendMessage,
     acceptStructure,
-    advanceArtifact,
+    confirmCharacter,
     retryStructure,
     generateScript,
+    updateScene,
+    regenerateAllImages,
     selectedCharacterRef,
     teamIdRef,
   } = useAdCloneChatAgent();
+
+  const resetAdClone = useSetAtom(resetAdCloneAtom);
+  const resetUGC = useSetAtom(resetUGCAtom);
+  const videoState = useAtomValue(videoStateAtom);
+
+  useEffect(() => {
+    resetUGC();
+    if (resumeProjectId) {
+      adCloneAPI.getProject(resumeProjectId).then((response) => {
+        if (!response.success) return;
+        // The hook's loadProject would hydrate state from the project data
+        // For now, the project data provides enough to resume
+      }).catch((err) => {
+        console.error("Failed to resume project:", err);
+        resetAdClone();
+      });
+    } else {
+      resetAdClone();
+    }
+  }, [resumeProjectId]);
+
+  useEffect(() => {
+    if (projectId && projectId !== resumeProjectId) {
+      router.replace(`/dashboard/ugc-studio/ad-clone/create?projectId=${projectId}`, { scroll: false });
+    }
+  }, [projectId]);
 
   const chatInputRef = useRef<AdCloneChatInputHandle>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
   selectedCharacterRef.current = selectedCharacter;
   teamIdRef.current = teamId;
+
+  const [isStartingGeneration, setIsStartingGeneration] = useState(false);
+
+  const handleContinueToGenerate = useCallback(async () => {
+    if (!teamId || !scriptId) return;
+    setIsStartingGeneration(true);
+    try {
+      const result = await ugcVideoAPI.generateVideo({
+        teamId,
+        scriptId,
+        voiceId: videoState.voice?.id,
+        isSilent: videoState.isSilent,
+      });
+      router.push(`/dashboard/ugc-studio/ai-video-creator/${result.jobId}`);
+    } catch (err) {
+      console.error("Failed to start video generation:", err);
+      setIsStartingGeneration(false);
+    }
+  }, [teamId, scriptId, videoState.voice, videoState.isSilent, router]);
 
   const isPanelMode = currentArtifact !== null;
 
@@ -114,18 +167,15 @@ export function AdCloneChatInterface() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             <ArtifactPanel
-              currentArtifact={currentArtifact}
               selectedCharacter={selectedCharacter}
               onCharacterSelect={setSelectedCharacter}
-              onContinue={advanceArtifact}
+              onCharacterConfirm={confirmCharacter}
               teamId={teamId ?? undefined}
-              generatedScript={generatedScript}
-              isGeneratingScript={isGeneratingScript}
-              isExistingScript={false}
               onGenerateScript={generateScript}
-              mode="storyboard"
-              scriptId={scriptId}
-              theme="orange"
+              onSceneUpdate={updateScene}
+              onGenerateImages={regenerateAllImages}
+              onContinue={handleContinueToGenerate}
+              isContinueLoading={isStartingGeneration}
             />
           </motion.div>
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtomValue } from "jotai";
 import { io, Socket } from "socket.io-client";
 import { getSocketUrl } from "@/lib/socket";
 import {
@@ -10,16 +10,23 @@ import {
   videoTypeAtom,
   hasCharacterAtom,
   customPatternAtom,
+  scriptIdAtom,
+  sceneImagesAtom,
+  type SceneImageState,
 } from "@/store/ugc";
+import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import { videoStateAtom } from "@/store/videoState";
 import { adCloneAPI } from "@/api/adClone";
 import { ugcScriptAPI } from "@/api/ugc";
 import { videoAPI } from "@/api/video";
+import type { UGCScene, UGCScript } from "@/components/ugc-studio/script/types";
 import type {
   ChatMessage,
   ChatAttachment,
   InitAgentResult,
   ArtifactType,
   ScriptAgentResult,
+  ScriptAgentScene,
 } from "./types";
 
 let messageIdCounter = 0;
@@ -98,6 +105,37 @@ function toScriptAgentResult(result: AgentScriptResult): ScriptAgentResult {
   };
 }
 
+function extractEmotion(dialogue: string | undefined): string | null {
+  if (!dialogue) return null;
+  const match = dialogue.match(/\[([a-z]+)\]/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function mapScenesToUGC(scenes: ScriptAgentScene[]): UGCScene[] {
+  return scenes.map((s) => ({
+    id: s.slug,
+    sceneNumber: s.sceneNumber,
+    sceneType: s.storyBeat as UGCScene["sceneType"],
+    action: s.action,
+    dialogue: s.dialogue || "",
+    emotion: (extractEmotion(s.dialogue) || "confident") as UGCScene["emotion"],
+    estimatedDurationSeconds: s.duration,
+    shotType: s.sceneType as UGCScene["shotType"],
+    cameraAngle: "medium-shot" as UGCScene["cameraAngle"],
+    ambientSound: s.ambientSound || undefined,
+    bRollShots:
+      s.shots && s.shots.length > 0
+        ? s.shots.map((shot) => ({
+            action: shot.action,
+            cinematicPrompt: shot.cinematicPrompt,
+            durationSeconds: shot.durationSeconds,
+            productImageNeeded: shot.productImageNeeded,
+            shotType: shot.shotType,
+          }))
+        : null,
+  }));
+}
+
 export function useAdCloneChatAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
@@ -117,12 +155,18 @@ export function useAdCloneChatAgent() {
   const pendingAnalysisRef = useRef<{ text: string; imageKeys: string[] } | null>(null);
   const selectedCharacterRef = useRef<any>(null);
   const teamIdRef = useRef<number | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setIsSilent = useSetAtom(isSilentAtom);
   const setProductImageKeys = useSetAtom(productImageKeysAtom);
   const setVideoType = useSetAtom(videoTypeAtom);
   const setHasCharacter = useSetAtom(hasCharacterAtom);
   const setCustomPattern = useSetAtom(customPatternAtom);
+  const setVideoState = useSetAtom(videoStateAtom);
+  const currentVideoState = useAtomValue(videoStateAtom);
+  const setScriptIdAtom = useSetAtom(scriptIdAtom);
+  const setSceneImages = useSetAtom(sceneImagesAtom);
+  const pollingIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   const processAgentResult = useCallback((result: AgentScriptResult) => {
     if (result.responseType !== "script" || !result.scenes?.length) return null;
@@ -250,6 +294,112 @@ export function useAdCloneChatAgent() {
       const currentMessages = [...messages, userMessage];
       setMessages(currentMessages);
       setIsThinking(true);
+
+      // Storyboard editing — after script is saved, route to storyboard agent
+      if (scriptId) {
+        try {
+          const result = await ugcScriptAPI.storyboardChat({
+            scriptId,
+            message: text,
+            threadId: threadIdRef.current,
+            teamId: teamId ?? undefined,
+            characterId: selectedCharacterRef.current?.id ?? undefined,
+          });
+
+          if (result.updatedScript?.scenes) {
+            const mappedScenes = result.updatedScript.scenes;
+            setVideoState((prev) => ({ ...prev, scenes: mappedScenes }));
+          }
+
+          if (result.regeneratingJobs?.length) {
+            setSceneImages((prev) => {
+              const next = { ...prev };
+              for (const job of result.regeneratingJobs!) {
+                next[job.sceneId] = {
+                  ...next[job.sceneId],
+                  status: "regenerating",
+                  jobId: job.jobId,
+                  regeneratingShotIndex: job.singleBRollShotIndex,
+                };
+              }
+              return next;
+            });
+
+            const completedJobs = new Set<string>();
+            const interval = setInterval(async () => {
+              for (const job of result.regeneratingJobs!) {
+                if (completedJobs.has(job.jobId)) continue;
+                try {
+                  const status = await sceneBuilderAPI.getGenerationStatus(job.jobId);
+                  if (status.status === "completed" && status.images?.length) {
+                    completedJobs.add(job.jobId);
+                    setSceneImages((prev) => {
+                      const existing = prev[job.sceneId]?.generatedImages || [];
+                      const merged = [...existing];
+                      for (const newImg of status.images!) {
+                        const idx = merged.findIndex((m) => m.index === newImg.index);
+                        if (idx >= 0) merged[idx] = newImg;
+                        else merged.push(newImg);
+                      }
+                      return {
+                        ...prev,
+                        [job.sceneId]: {
+                          ...prev[job.sceneId],
+                          status: "completed",
+                          jobId: job.jobId,
+                          generatedImages: merged,
+                          imageKey: merged[0]?.key,
+                          imageUrl: merged[0]?.url,
+                          regeneratingShotIndex: undefined,
+                        },
+                      };
+                    });
+                    sceneBuilderAPI
+                      .selectSceneImage({
+                        scriptId,
+                        sceneId: job.sceneId,
+                        sceneNumber: status.sceneNumber,
+                        imageKey: status.images![0].key,
+                        generationJobId: job.jobId,
+                      })
+                      .catch(() => {});
+                  } else if (status.status === "failed") {
+                    completedJobs.add(job.jobId);
+                    setSceneImages((prev) => ({
+                      ...prev,
+                      [job.sceneId]: { ...prev[job.sceneId], status: "failed", jobId: job.jobId },
+                    }));
+                  }
+                } catch {
+                  // ignore poll errors
+                }
+              }
+              if (completedJobs.size >= result.regeneratingJobs!.length) {
+                clearInterval(interval);
+              }
+            }, 2000);
+            pollingIntervalsRef.current.push(interval);
+          }
+
+          setMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", content: result.message, timestamp: new Date() },
+          ]);
+        } catch (error) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: error instanceof Error ? `Something went wrong: ${error.message}` : "Something went wrong.",
+              timestamp: new Date(),
+            },
+          ]);
+        } finally {
+          setIsThinking(false);
+        }
+        return;
+      }
 
       if (videoAttachment && !projectId && teamId) {
         try {
@@ -403,7 +553,7 @@ export function useAdCloneChatAgent() {
 
       setIsThinking(false);
     },
-    [messages, videoAttachment, projectId, analysisComplete, processAgentResult],
+    [messages, videoAttachment, projectId, analysisComplete, processAgentResult, scriptId, setVideoState, setSceneImages],
   );
 
   const acceptStructure = useCallback(
@@ -420,6 +570,18 @@ export function useAdCloneChatAgent() {
       setCustomPattern(customPattern);
       setAcceptedResult(result);
 
+      const currentScript = latestAgentResult;
+      setVideoState((prev) => ({
+        ...prev,
+        structureBlueprint: result,
+        isSilent: result.isSilent,
+        hasCharacter: result.character,
+        videoType: result.videoType,
+        targetAudience: result.targetAudience,
+        productImageKeys: imageKeys,
+        scenes: currentScript?.scenes ? mapScenesToUGC(currentScript.scenes) : [],
+      }));
+
       if (!result.character && result.isSilent) {
         setCurrentArtifact("script");
       } else if (!result.character) {
@@ -428,10 +590,14 @@ export function useAdCloneChatAgent() {
         setCurrentArtifact("character");
       }
     },
-    [setIsSilent, setProductImageKeys, setVideoType, setHasCharacter, setCustomPattern],
+    [setIsSilent, setProductImageKeys, setVideoType, setHasCharacter, setCustomPattern, setVideoState, latestAgentResult],
   );
 
-  const advanceArtifact = useCallback(() => {
+  const confirmCharacter = useCallback(() => {
+    const character = selectedCharacterRef.current;
+    if (character) {
+      setVideoState((prev) => ({ ...prev, character }));
+    }
     setCurrentArtifact((prev) => {
       if (prev === "character") {
         const silent = acceptedResult?.isSilent ?? false;
@@ -440,7 +606,7 @@ export function useAdCloneChatAgent() {
       if (prev === "voice") return "script";
       return prev;
     });
-  }, [acceptedResult]);
+  }, [acceptedResult, setVideoState]);
 
   const retryStructure = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
@@ -448,6 +614,108 @@ export function useAdCloneChatAgent() {
       sendMessage(lastUserMsg.content, lastUserMsg.attachments);
     }
   }, [messages, sendMessage]);
+
+  const triggerImageGeneration = useCallback(
+    async (scenes: UGCScene[], generatedScriptId: string) => {
+      const teamId = teamIdRef.current;
+      const characterId = selectedCharacterRef.current?.id;
+      if (!teamId || !characterId) return;
+
+      const scenesPayload = scenes.map((scene) => ({
+        sceneId: scene.id,
+        sceneNumber: scene.sceneNumber,
+        sceneType: scene.sceneType,
+        dialogue: scene.dialogue,
+        action: scene.action,
+        emotion: scene.emotion,
+        shotType: scene.shotType,
+        cameraAngle: scene.cameraAngle,
+        bRollShots: scene.bRollShots,
+      }));
+
+      const initialImageState: Record<string, SceneImageState> = {};
+      for (const scene of scenes) {
+        initialImageState[scene.id] = { status: "generating" };
+      }
+      setSceneImages(initialImageState);
+
+      try {
+        const result = await sceneBuilderAPI.generateAllSceneImages({
+          teamId,
+          scriptId: generatedScriptId,
+          characterId,
+          scenes: scenesPayload,
+        });
+
+        if (!result.success || !result.jobIds?.length) return;
+
+        const jobScenePairs: Array<{ jobId: string; sceneId: string }> = [];
+        result.jobIds.forEach((jobId, idx) => {
+          if (scenesPayload[idx]) {
+            jobScenePairs.push({ jobId, sceneId: scenesPayload[idx].sceneId });
+          }
+        });
+
+        setSceneImages((prev) => {
+          const next = { ...prev };
+          for (const { jobId, sceneId } of jobScenePairs) {
+            next[sceneId] = { ...next[sceneId], status: "generating", jobId };
+          }
+          return next;
+        });
+
+        const completedJobs = new Set<string>();
+        const interval = setInterval(async () => {
+          for (const { jobId, sceneId } of jobScenePairs) {
+            if (completedJobs.has(jobId)) continue;
+            try {
+              const status = await sceneBuilderAPI.getGenerationStatus(jobId);
+              if (status.status === "completed" && status.images?.length) {
+                completedJobs.add(jobId);
+                const firstImage = status.images[0];
+                setSceneImages((prev) => ({
+                  ...prev,
+                  [sceneId]: {
+                    ...prev[sceneId],
+                    status: "completed",
+                    jobId,
+                    generatedImages: status.images,
+                    imageKey: firstImage.key,
+                    imageUrl: firstImage.url,
+                  },
+                }));
+                sceneBuilderAPI
+                  .selectSceneImage({
+                    scriptId: generatedScriptId,
+                    sceneId,
+                    sceneNumber: status.sceneNumber,
+                    imageKey: firstImage.key,
+                    generationJobId: jobId,
+                  })
+                  .catch(() => {});
+              } else if (status.status === "failed") {
+                completedJobs.add(jobId);
+                setSceneImages((prev) => ({
+                  ...prev,
+                  [sceneId]: { ...prev[sceneId], status: "failed", jobId },
+                }));
+              }
+            } catch {
+              // ignore individual poll errors
+            }
+          }
+          if (completedJobs.size >= jobScenePairs.length) {
+            clearInterval(interval);
+          }
+        }, 2000);
+
+        pollingIntervalsRef.current.push(interval);
+      } catch (error) {
+        console.error("Image generation failed:", error);
+      }
+    },
+    [setSceneImages],
+  );
 
   const generateScript = useCallback(async () => {
     if (!generatedScript || !teamIdRef.current) return;
@@ -468,10 +736,45 @@ export function useAdCloneChatAgent() {
       });
 
       setScriptId(result.scriptId);
+      setScriptIdAtom(result.scriptId);
+
+      const mappedScenes = latestAgentResult ? mapScenesToUGC(latestAgentResult.scenes) : [];
+      if (mappedScenes.length > 0) {
+        triggerImageGeneration(mappedScenes, result.scriptId);
+      }
     } catch (error) {
       console.error("Failed to save script:", error);
     }
-  }, [generatedScript, acceptedResult, messages]);
+  }, [generatedScript, acceptedResult, messages, setScriptIdAtom, latestAgentResult, triggerImageGeneration]);
+
+  const updateScene = useCallback(
+    (sceneId: string, patch: Partial<UGCScene>) => {
+      setVideoState((prev) => {
+        const updatedScenes = prev.scenes.map((s) =>
+          s.id === sceneId ? { ...s, ...patch } : s,
+        );
+
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        if (prev.scriptId) {
+          saveTimerRef.current = setTimeout(() => {
+            ugcScriptAPI
+              .updateScript(prev.scriptId!, { scenes: updatedScenes })
+              .catch((err) => {
+                console.error("[useAdCloneChatAgent] Failed to save scene edit:", err);
+              });
+          }, 500);
+        }
+
+        return { ...prev, scenes: updatedScenes };
+      });
+    },
+    [setVideoState],
+  );
+
+  const regenerateAllImages = useCallback(() => {
+    if (!scriptId || currentVideoState.scenes.length === 0) return;
+    triggerImageGeneration(currentVideoState.scenes, scriptId);
+  }, [scriptId, currentVideoState.scenes, triggerImageGeneration]);
 
   return {
     messages,
@@ -479,17 +782,17 @@ export function useAdCloneChatAgent() {
     isAnalyzing,
     acceptedResult,
     currentArtifact,
-    generatedScript,
-    isGeneratingScript,
     scriptId,
     projectId,
     videoAttachment,
     setVideoAttachment,
     sendMessage,
     acceptStructure,
-    advanceArtifact,
+    confirmCharacter,
     retryStructure,
     generateScript,
+    updateScene,
+    regenerateAllImages,
     selectedCharacterRef,
     teamIdRef,
   };

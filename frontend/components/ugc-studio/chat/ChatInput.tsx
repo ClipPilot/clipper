@@ -6,11 +6,17 @@ import {
   useCallback,
   useImperativeHandle,
   forwardRef,
+  useEffect,
   type KeyboardEvent,
 } from "react";
 import { Textarea } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAtom } from "jotai";
+import { sceneRefAtom } from "@/store/ugc";
+import { videoStateAtom } from "@/store/videoState";
+import { useAtomValue } from "jotai";
+import { SceneMentionDropdown } from "./SceneMentionDropdown";
 import { ugcScriptAPI } from "@/api/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import type { ChatAttachment } from "./types";
@@ -31,10 +37,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const { selectedTeam } = useTeams();
+    const [sceneRef, setSceneRef] = useAtom(sceneRefAtom);
+
+    useEffect(() => {
+      if (sceneRef) {
+        setText((prev) => sceneRef + prev);
+        setSceneRef(null);
+        setTimeout(() => textareaRef.current?.focus(), 0);
+      }
+    }, [sceneRef, setSceneRef]);
 
     const hasContent = text.trim().length > 0;
     const hasAttachments = attachments.length > 0;
+    const videoState = useAtomValue(videoStateAtom);
+    const showMentions = videoState.scriptId && text.includes("@");
+    const mentionQuery = showMentions ? (text.match(/@(\S*)$/)?.[1] ?? "") : "";
 
     const handleFiles = useCallback(
       async (files: FileList | File[]) => {
@@ -105,7 +124,18 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     return (
       <div className="px-4 pb-4 pt-2">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto relative">
+          <AnimatePresence>
+            {showMentions && (
+              <SceneMentionDropdown
+                query={mentionQuery}
+                onSelect={(mention) => {
+                  setText((prev) => prev.replace(/@\S*$/, mention));
+                  setTimeout(() => textareaRef.current?.focus(), 0);
+                }}
+              />
+            )}
+          </AnimatePresence>
           <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm overflow-hidden shadow-xl shadow-black/10 transition-all duration-300 focus-within:border-accent-400/30 focus-within:shadow-accent-400/5 focus-within:shadow-2xl">
             {/* Attached images row */}
             <AnimatePresence>

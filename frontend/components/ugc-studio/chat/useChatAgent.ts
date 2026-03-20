@@ -613,6 +613,21 @@ export function useChatAgent() {
     }
   }, [setVideoState]);
 
+  const regenerateAllImages = useCallback(() => {
+    if (!videoState.scriptId || videoState.scenes.length === 0) return;
+    const script: UGCScript = {
+      title: "",
+      hook: "",
+      targetAudience: "",
+      totalEstimatedDuration: 0,
+      scenes: videoState.scenes,
+      viralScore: 0,
+      viralReasoning: "",
+      productMentions: [],
+    };
+    triggerImageGeneration(script, videoState.scriptId);
+  }, [videoState.scriptId, videoState.scenes, triggerImageGeneration]);
+
   return {
     messages,
     isThinking,
@@ -624,6 +639,7 @@ export function useChatAgent() {
     updateScene,
     loadExistingScript,
     confirmCharacter,
+    regenerateAllImages,
     selectedCharacterRef,
     teamIdRef,
   };

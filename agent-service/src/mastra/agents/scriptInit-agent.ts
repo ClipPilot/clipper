@@ -184,10 +184,13 @@ When isSilent is FALSE (default):
 
 ===== WHEN TO USE "visual" vs "b-roll" =====
 
-- Use "b-roll" when the scene has voiceover/narration playing over product shots
-- Use "visual" when the scene is purely visual — no voiceover, no dialogue, just music/ambient
-- Montage-type videos often use "visual" for aesthetic, ASMR, or music-driven scenes
-- A video can MIX all three: a-roll (talking), b-roll (narrated product shots), visual (silent cinematic shots)
+CRITICAL: "visual" MUST ONLY be used for scenes that will have NO dialogue and NO voiceover. If a scene will have ANY dialogue or voiceover narration, it MUST use "b-roll", NEVER "visual".
+
+- Use "b-roll" when the scene has voiceover/narration playing over product shots — the actor's voice is heard even though the actor is not on screen
+- Use "visual" ONLY when the scene is purely visual — NO voiceover, NO dialogue, just music/ambient/text overlays
+- Montage-type videos use "visual" because they are entirely silent — no spoken words at all
+- A video can MIX all three: a-roll (talking to camera), b-roll (narrated product shots with voiceover), visual (SILENT cinematic shots — zero dialogue)
+- When in doubt, use "b-roll" over "visual" — only use "visual" when you are certain the scene will have absolutely no spoken audio
 
 ===== CHARACTER DETECTION =====
 

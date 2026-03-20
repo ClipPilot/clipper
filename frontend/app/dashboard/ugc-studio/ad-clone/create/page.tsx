@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Spinner } from "@heroui/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -8,6 +9,8 @@ import { AdCloneChatInterface } from "@/components/ugc-studio/chat/AdCloneChatIn
 
 function AdCloneCreateContent() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
 
   if (!selectedTeam) {
     return (
@@ -17,7 +20,7 @@ function AdCloneCreateContent() {
     );
   }
 
-  return <AdCloneChatInterface />;
+  return <AdCloneChatInterface resumeProjectId={projectId} />;
 }
 
 export default function AdCloneCreatePage() {

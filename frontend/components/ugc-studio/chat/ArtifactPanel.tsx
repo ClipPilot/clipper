@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
@@ -8,12 +8,10 @@ import { AudioStep } from "@/components/ugc-studio/voice";
 import { ScriptPreview } from "./ScriptPreview";
 import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
-import { StoryboardPreview } from "./StoryboardPreview";
 import { scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
 import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
-import type { ChatColorTheme } from "./MessageCard";
 
 interface ArtifactPanelProps {
   selectedCharacter: Character | null;
@@ -22,9 +20,9 @@ interface ArtifactPanelProps {
   teamId?: number;
   onGenerateScript: () => void;
   onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
-  mode?: "script" | "storyboard";
-  scriptId?: string | null;
-  theme?: ChatColorTheme;
+  onGenerateImages?: () => void;
+  onContinue?: () => void;
+  isContinueLoading?: boolean;
 }
 
 export function ArtifactPanel({
@@ -34,36 +32,31 @@ export function ArtifactPanel({
   teamId,
   onGenerateScript,
   onSceneUpdate,
-  mode = "script",
-  scriptId,
-  theme = "default",
+  onGenerateImages,
+  onContinue,
+  isContinueLoading,
 }: ArtifactPanelProps) {
   const step = useAtomValue(currentStepAtom);
   const videoState = useAtomValue(videoStateAtom);
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
-  const hasCalledGenerate = useRef(false);
 
-  // Derive states from VideoState
   const isExistingScript = !!videoState.scriptId && !videoState.structureBlueprint && videoState.scenes.length === 0;
   const hasGeneratedScript = videoState.scenes.length > 0;
 
-  // Auto-trigger script generation when we reach the script step
+  const shouldGenerate =
+    step === "script" &&
+    !isExistingScript &&
+    !videoState.isGeneratingScript &&
+    ((!hasGeneratedScript && videoState.structureBlueprint) ||
+      (hasGeneratedScript && !videoState.scriptId));
+
   useEffect(() => {
-    if (
-      step === "script" &&
-      !isExistingScript &&
-      !hasGeneratedScript &&
-      !videoState.isGeneratingScript &&
-      videoState.structureBlueprint
-    ) {
-      onGenerateScript();
-    }
-  }, [step, isExistingScript, hasGeneratedScript, videoState.isGeneratingScript, videoState.structureBlueprint, onGenerateScript]);
+    if (shouldGenerate) onGenerateScript();
+  }, [shouldGenerate, onGenerateScript]);
 
   const existingScript = scripts[selectedVariantIndex];
 
-  // Build a UGCScript from VideoState scenes for ScriptPreview
   const generatedScript =
     hasGeneratedScript
       ? {
@@ -135,20 +128,13 @@ export function ArtifactPanel({
             ) : videoState.isGeneratingScript ? (
               <ScriptLoadingState />
             ) : generatedScript ? (
-              mode === "storyboard" ? (
-                <StoryboardPreview
-                  script={generatedScript}
-                  scriptId={scriptId ?? null}
-                  teamId={teamId}
-                  characterId={selectedCharacter?.id}
-                  theme={theme}
-                />
-              ) : (
-                <ScriptPreview
-                  script={generatedScript}
-                  onSceneUpdate={onSceneUpdate}
-                />
-              )
+              <ScriptPreview
+                script={generatedScript}
+                onSceneUpdate={onSceneUpdate}
+                onGenerateImages={onGenerateImages}
+                onContinue={onContinue}
+                isContinueLoading={isContinueLoading}
+              />
             ) : null}
           </motion.div>
         )}

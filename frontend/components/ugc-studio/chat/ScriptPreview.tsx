@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button, Chip, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { useAtomValue } from "jotai";
-import { sceneImagesAtom, type SceneImageState } from "@/store/ugc";
+import { useAtomValue, useSetAtom } from "jotai";
+import { sceneImagesAtom, sceneRefAtom, type SceneImageState } from "@/store/ugc";
 import {
   SCENE_TYPE_CONFIG,
   EMOTION_CONFIG,
@@ -15,9 +15,52 @@ import {
   type UGCScene,
   type BRollShot,
 } from "@/components/ugc-studio/script/types";
+import { calculateCreditCost } from "@/lib/creditCost";
 
-/* -- helpers -------------------------------------------------------- */
+/* -- emotion tag highlighting ---------------------------------------- */
 
+const EMOTION_TAG_STYLES: Record<string, string> = {
+  excited: "text-yellow-400 bg-yellow-400/10",
+  curious: "text-blue-400 bg-blue-400/10",
+  surprised: "text-purple-400 bg-purple-400/10",
+  frustrated: "text-red-400 bg-red-400/10",
+  relieved: "text-green-400 bg-green-400/10",
+  confident: "text-indigo-400 bg-indigo-400/10",
+  friendly: "text-pink-400 bg-pink-400/10",
+  urgent: "text-orange-400 bg-orange-400/10",
+  sincere: "text-rose-400 bg-rose-400/10",
+  playful: "text-fuchsia-400 bg-fuchsia-400/10",
+  vulnerable: "text-rose-300 bg-rose-300/10",
+  skeptical: "text-slate-400 bg-slate-400/10",
+  amazed: "text-violet-400 bg-violet-400/10",
+  conspiratorial: "text-amber-400 bg-amber-400/10",
+  empathetic: "text-pink-300 bg-pink-300/10",
+  determined: "text-cyan-400 bg-cyan-400/10",
+  whispering: "text-purple-300 bg-purple-300/10",
+  dramatic: "text-red-500 bg-red-500/10",
+  satisfied: "text-green-300 bg-green-300/10",
+  laughing: "text-amber-300 bg-amber-300/10",
+};
+
+function highlightEmotionTags(dialogue: string) {
+  if (!dialogue) return null;
+  const parts = dialogue.split(/(\[[a-zA-Z]+\])/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^\[([a-zA-Z]+)\]$/);
+    if (match) {
+      const tag = match[1].toLowerCase();
+      const style = EMOTION_TAG_STYLES[tag] || "text-orange-400 bg-orange-400/10";
+      return (
+        <span key={i} className={`${style} font-semibold px-1 py-0.5 rounded text-[10px]`}>
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+/* -- helpers --------------------------------------------------------- */
 
 const EMOTION_EMOJIS: Record<string, string> = {
   excited: "🤩", curious: "🤔", surprised: "😮", frustrated: "😤",
@@ -39,21 +82,21 @@ function EditableText({
   value,
   onChange,
   className,
+  renderValue,
 }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
+  renderValue?: (v: string) => React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync draft when value changes externally (e.g. storyboard agent update)
   useEffect(() => {
     if (!editing) setDraft(value);
   }, [value, editing]);
 
-  // Auto-resize + focus on edit start
   useEffect(() => {
     if (editing && textareaRef.current) {
       const ta = textareaRef.current;
@@ -80,7 +123,9 @@ function EditableText({
         className="group/edit flex items-start gap-2 cursor-pointer"
         onClick={() => setEditing(true)}
       >
-        <p className={`flex-1 ${className ?? ""}`}>{value}</p>
+        <div className={`flex-1 ${className ?? ""}`}>
+          {renderValue ? renderValue(value) : value}
+        </div>
         <button className="text-text-muted opacity-0 group-hover/edit:opacity-100 hover:text-text-secondary shrink-0 transition-opacity">
           <Icon icon="solar:pen-bold" width={14} />
         </button>
@@ -114,114 +159,95 @@ function EditableText({
   );
 }
 
-/* -- sub-components ------------------------------------------------- */
+/* -- lightbox ------------------------------------------------------- */
 
-function SceneThumbnail({
-  scene,
-  isSelected,
-  onClick,
-  imageUrl,
-  imageStatus,
+const LightboxContext = createContext<(url: string) => void>(() => {});
+
+function ClickableImage({
+  src,
+  alt,
+  className,
 }: {
-  scene: UGCScene;
-  isSelected: boolean;
-  onClick: () => void;
-  imageUrl?: string;
-  imageStatus?: string;
+  src: string;
+  alt: string;
+  className?: string;
 }) {
-  const config = SCENE_TYPE_CONFIG[scene.sceneType as SceneType];
-
+  const openLightbox = useContext(LightboxContext);
   return (
-    <button
-      onClick={onClick}
-      className={`
-        group flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200 shrink-0
-        ${isSelected
-          ? "bg-accent-400/10 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated"
-          : "bg-surface-base hover:bg-surface-elevated hover:ring-1 hover:ring-border-base"
-        }
-      `}
-    >
-      {/* Thumbnail */}
-      <div
-        className={`
-          relative w-[100px] h-[132px] rounded-lg overflow-hidden
-          ${isSelected ? "ring-2 ring-accent-400" : "ring-1 ring-border-base"}
-        `}
-      >
-        {imageUrl ? (
-          <img src={imageUrl} alt={`Scene ${scene.sceneNumber}`} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-surface-elevated flex items-center justify-center">
-            {imageStatus === "generating" || imageStatus === "regenerating" ? (
-              <Spinner size="sm" color="primary" />
-            ) : (
-              <Icon
-                icon="solar:gallery-add-bold-duotone"
-                className="text-text-muted"
-                width={24}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Scene number badge */}
-        <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
-          <span className="text-[10px] font-bold text-white">{scene.sceneNumber}</span>
-        </div>
-
-        {/* Shot type badge */}
-        <div
-          className={`absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-            scene.shotType === "a-roll"
-              ? "bg-blue-500/80 text-white"
-              : "bg-amber-500/80 text-white"
-          }`}
-        >
-          {scene.shotType === "a-roll" ? "A" : "B"}
-        </div>
-
-        {/* Status badge */}
-        <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400/50 flex items-center justify-center">
-          <Icon
-            icon={imageUrl ? "solar:check-circle-bold" : "solar:clock-circle-bold"}
-            className="text-white"
-            width={12}
-          />
-        </div>
-      </div>
-
-      {/* Scene type label */}
-      <div className="flex flex-col items-center gap-0.5">
-        <div
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-            config?.color ?? "bg-default-500/10 text-default-400"
-          }`}
-        >
-          <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={10} />
-          <span className="capitalize">{config?.label ?? scene.sceneType}</span>
-        </div>
-        <span className="text-[10px] text-text-muted">{scene.estimatedDurationSeconds}s</span>
-      </div>
-    </button>
+    <img
+      src={src}
+      alt={alt}
+      className={`${className ?? ""} cursor-zoom-in`}
+      onClick={(e) => {
+        e.stopPropagation();
+        openLightbox(src);
+      }}
+    />
   );
 }
 
-function SceneDetailPanel({
+function Lightbox({
+  src,
+  onClose,
+}: {
+  src: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {src && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm cursor-zoom-out"
+          onClick={onClose}
+        >
+          <motion.img
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            src={src}
+            alt="Zoomed shot"
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+          >
+            <Icon icon="solar:close-circle-bold" width={24} className="text-white" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* -- scene card ----------------------------------------------------- */
+
+function SceneCard({
   scene,
   imageState,
   onSceneUpdate,
+  index,
 }: {
   scene: UGCScene;
   imageState?: SceneImageState;
   onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
+  index: number;
 }) {
+  const setSceneRef = useSetAtom(sceneRefAtom);
   const config = SCENE_TYPE_CONFIG[scene.sceneType as SceneType];
   const emotion = scene.emotion;
   const emotionConfig = EMOTION_CONFIG[emotion as Emotion];
   const emotionEmoji = EMOTION_EMOJIS[emotion];
   const hasShots = scene.bRollShots && scene.bRollShots.length > 0;
-  const isSilent = !scene.dialogue;
+  const isBRoll = scene.shotType === "b-roll" || scene.shotType === "visual";
+  const isGenerating = imageState?.status === "generating" || imageState?.status === "regenerating";
+  const hasImage = !!imageState?.imageUrl;
 
   const handleBRollShotActionChange = useCallback(
     (shotIdx: number, newAction: string) => {
@@ -236,188 +262,228 @@ function SceneDetailPanel({
 
   return (
     <motion.div
-      key={scene.sceneNumber}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="bg-surface-base border border-border-base rounded-xl p-4 space-y-4"
+      transition={{ delay: index * 0.04, duration: 0.2 }}
+      className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden"
     >
-      {/* Scene header row */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-bold text-text-primary">
-          Scene {scene.sceneNumber}
-        </span>
-
-        {/* Scene type badge */}
+      {/* Scene header */}
+      <div className="flex items-center gap-2 flex-wrap px-4 pt-3 pb-2 group/header">
         <div
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+          className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
             config?.color ?? "bg-default-500/10 text-default-400"
           }`}
         >
-          <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={11} />
-          <span className="capitalize">{config?.label ?? scene.sceneType}</span>
+          <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={13} />
         </div>
+        <span className="text-sm font-semibold text-text-primary">
+          {scene.sceneNumber}. {config?.label ?? scene.sceneType}
+        </span>
+        <button
+          onClick={() => setSceneRef(`@Scene ${scene.sceneNumber} `)}
+          className="opacity-0 group-hover/header:opacity-100 transition-opacity text-[10px] px-1.5 py-0.5 rounded-md bg-accent-400/10 text-accent-400 hover:bg-accent-400/20 flex items-center gap-1"
+          title="Reference this scene in chat"
+        >
+          <Icon icon="solar:mention-circle-bold" width={11} />
+          @
+        </button>
 
-        {/* Shot type */}
-        <Chip size="sm" variant="flat" className="text-[11px] h-5 bg-white/[0.05] text-text-secondary">
+        {/* Shot type badge */}
+        <span
+          className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+            isBRoll
+              ? "bg-amber-500/10 text-amber-400"
+              : "bg-blue-500/10 text-blue-400"
+          }`}
+        >
           {scene.shotType}
-        </Chip>
+        </span>
 
         {/* Shot count */}
         {hasShots && (
-          <Chip
-            size="sm"
-            variant="flat"
-            className="text-[11px] h-5 bg-white/[0.05] text-text-secondary"
-            startContent={<Icon icon="solar:camera-bold" width={11} />}
-          >
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-white/[0.05] text-text-secondary">
             {scene.bRollShots!.length} shots
-          </Chip>
+          </span>
         )}
 
         {/* Duration */}
-        <span className="text-xs font-semibold text-accent-400">
-          {scene.estimatedDurationSeconds} seconds
+        <span className="text-xs text-text-muted ml-auto">
+          {scene.estimatedDurationSeconds}s
         </span>
       </div>
 
-      {/* Shot type + duration info */}
-      <div className="bg-surface-elevated rounded-lg p-3">
-        <div className="flex items-center gap-2">
-          <Icon
-            icon={isSilent ? "solar:camera-bold-duotone" : "solar:microphone-bold-duotone"}
-            width={16}
-            className="text-accent-400"
-          />
-          <span className="text-xs font-medium text-text-secondary">
-            {isSilent ? "Silent" : ""} {scene.shotType === "b-roll" ? "B-roll" : "A-roll"}
-          </span>
-          <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
-          <Icon
-            icon={isSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"}
-            width={14}
-            className="text-text-muted ml-auto"
-          />
-        </div>
-      </div>
-
-      {/* Action / direction text (editable) */}
-      <div className="flex items-start gap-2">
-        <Icon icon="solar:pen-new-square-bold-duotone" width={14} className="text-text-muted mt-0.5 shrink-0" />
-        <EditableText
-          value={scene.action}
-          onChange={(v) => onSceneUpdate(scene.id, { action: v })}
-          className="text-xs text-text-secondary leading-relaxed"
-        />
-      </div>
-
-      {/* Emotion badge */}
-      {emotion && (
-        <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-            emotionConfig?.color ?? "bg-white/[0.05]"
-          } ${emotionConfig ? "" : "text-text-secondary"}`}
-        >
-          {emotionEmoji && <span>{emotionEmoji}</span>}
-          <span className="capitalize">{emotion}</span>
-        </div>
-      )}
-
-      {/* Dialogue (editable) */}
-      {scene.dialogue && !isSilent && (
-        <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Icon icon="solar:chat-round-bold-duotone" width={12} className="text-text-muted" />
-            <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Dialogue</span>
+      {/* Content area */}
+      <div className="px-4 pb-3 space-y-2.5">
+        {/* A-roll scene thumbnail */}
+        {!isBRoll && (
+          <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-elevated relative shrink-0">
+            {hasImage ? (
+              <ClickableImage
+                src={imageState!.imageUrl!}
+                alt={`Scene ${scene.sceneNumber}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                {isGenerating ? (
+                  <Spinner size="sm" color="primary" />
+                ) : (
+                  <Icon
+                    icon="solar:gallery-add-bold-duotone"
+                    width={16}
+                    className="text-text-muted/30"
+                  />
+                )}
+              </div>
+            )}
+            {hasImage && !isGenerating && (
+              <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
+              </div>
+            )}
           </div>
-          <EditableText
-            value={scene.dialogue}
-            onChange={(v) => onSceneUpdate(scene.id, { dialogue: v })}
-            className="text-xs text-text-secondary leading-relaxed"
-          />
-        </div>
-      )}
+        )}
+        {/* Emotion badge */}
+        {emotion && (
+          <div
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+              emotionConfig?.color ?? "bg-white/[0.05]"
+            } ${emotionConfig ? "" : "text-text-secondary"}`}
+          >
+            {emotionEmoji && <span className="text-xs">{emotionEmoji}</span>}
+            <span className="capitalize">{emotion}</span>
+          </div>
+        )}
 
-      {/* B-Roll shots */}
-      {hasShots && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Icon icon="solar:camera-bold-duotone" width={14} className="text-amber-400" />
-              <span className="text-xs font-semibold text-text-primary">
-                B-Roll Shots ({scene.bRollShots!.length})
+        {/* Dialogue with colored emotion tags */}
+        {scene.dialogue && (
+          <div className="bg-white/[0.03] rounded-lg p-3 border border-white/[0.04]">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Icon icon="solar:chat-round-bold-duotone" width={12} className="text-accent-400" />
+              <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">
+                Dialogue
               </span>
             </div>
+            <EditableText
+              value={scene.dialogue}
+              onChange={(v) => onSceneUpdate(scene.id, { dialogue: v })}
+              className="text-xs text-text-secondary leading-relaxed"
+              renderValue={highlightEmotionTags}
+            />
           </div>
+        )}
 
-          <div className="space-y-2">
-            {scene.bRollShots!.map((shot, idx) => {
-              const shotImage =
-                imageState?.customBRollImages?.[idx] ||
-                imageState?.generatedImages?.find((img) => img.index === idx);
-              const isSceneGenerating = imageState?.status === "generating" || imageState?.status === "regenerating";
-              // Show spinner only for the specific shot being regenerated, or all shots if full scene regen
-              const shotGenerating = isSceneGenerating && (
-                imageState?.regeneratingShotIndex === undefined || imageState?.regeneratingShotIndex === idx
-              );
+        {/* Action / direction */}
+        {scene.action && (
+          <div className="flex items-start gap-2">
+            <Icon
+              icon="solar:clapperboard-text-bold-duotone"
+              width={14}
+              className="text-text-muted mt-0.5 shrink-0"
+            />
+            <EditableText
+              value={scene.action}
+              onChange={(v) => onSceneUpdate(scene.id, { action: v })}
+              className="text-[11px] text-text-muted leading-relaxed italic"
+            />
+          </div>
+        )}
 
-              return (
-              <div
-                key={idx}
-                className="flex items-start gap-3 bg-surface-elevated rounded-lg p-3"
-              >
-                {/* Shot thumbnail */}
-                <div className="w-14 h-14 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden relative">
-                  {shotImage?.url ? (
-                    <>
-                      <img src={shotImage.url} alt={`Shot ${idx + 1}`} className="w-full h-full object-cover" />
-                      {shotGenerating && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <Spinner size="sm" color="primary" />
-                        </div>
+        {/* Ambient sound */}
+        {scene.ambientSound && (
+          <div className="flex items-center gap-1.5 text-[10px] text-text-muted/60">
+            <Icon icon="solar:soundwave-bold" width={10} className="shrink-0" />
+            <span>{scene.ambientSound}</span>
+          </div>
+        )}
+
+        {/* B-Roll shots */}
+        {hasShots && (
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-1.5">
+              <Icon icon="solar:camera-bold-duotone" width={13} className="text-amber-400" />
+              <span className="text-[11px] font-semibold text-text-primary">
+                B-Roll Shots
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {scene.bRollShots!.map((shot, idx) => {
+                const shotImage =
+                  imageState?.customBRollImages?.[idx] ||
+                  imageState?.generatedImages?.find((img) => img.index === idx);
+                const shotGenerating =
+                  isGenerating &&
+                  (imageState?.regeneratingShotIndex === undefined ||
+                    imageState?.regeneratingShotIndex === idx);
+
+                return (
+                  <div
+                    key={idx}
+                    className="group/shot flex items-start gap-2.5 bg-surface-elevated/50 rounded-lg p-2.5 relative"
+                  >
+                    {/* Shot thumbnail */}
+                    <div className="w-12 h-12 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden relative">
+                      {shotImage?.url ? (
+                        <>
+                          <ClickableImage
+                            src={shotImage.url}
+                            alt={`Shot ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {shotGenerating && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <Spinner size="sm" color="primary" />
+                            </div>
+                          )}
+                        </>
+                      ) : shotGenerating ? (
+                        <Spinner size="sm" color="primary" />
+                      ) : (
+                        <Icon
+                          icon={SHOT_TYPE_ICONS[shot.shotType || "PRODUCT"] || "solar:gallery-bold-duotone"}
+                          width={16}
+                          className="text-text-muted/40"
+                        />
                       )}
-                    </>
-                  ) : shotGenerating ? (
-                    <Spinner size="sm" color="primary" />
-                  ) : (
-                    <Icon
-                      icon={SHOT_TYPE_ICONS[shot.shotType || "PRODUCT"] || "solar:gallery-bold-duotone"}
-                      width={20}
-                      className="text-text-muted"
-                    />
-                  )}
-                </div>
+                    </div>
 
-                {/* Shot details (action is editable) */}
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-text-primary">
-                      Shot {idx + 1}
-                    </span>
-                    <span className="text-[10px] text-text-muted">
-                      {shot.durationSeconds}s
-                    </span>
+                    {/* Shot details */}
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold text-text-primary">
+                          Shot {idx + 1}
+                        </span>
+                        {shot.shotType && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-white/[0.05] text-text-muted font-medium">
+                            {shot.shotType.replace(/_/g, " ")}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-text-muted ml-auto">
+                          {shot.durationSeconds}s
+                        </span>
+                        <button
+                          onClick={() => setSceneRef(`@Scene ${scene.sceneNumber} Shot ${idx + 1} `)}
+                          className="opacity-0 group-hover/shot:opacity-100 transition-opacity text-[9px] px-1 py-0.5 rounded bg-accent-400/10 text-accent-400 hover:bg-accent-400/20 flex items-center gap-0.5"
+                          title="Reference this shot in chat"
+                        >
+                          <Icon icon="solar:mention-circle-bold" width={9} />
+                          @
+                        </button>
+                      </div>
+                      <EditableText
+                        value={shot.action}
+                        onChange={(v) => handleBRollShotActionChange(idx, v)}
+                        className="text-[10px] text-text-secondary leading-relaxed"
+                      />
+                    </div>
                   </div>
-                  <EditableText
-                    value={shot.action}
-                    onChange={(v) => handleBRollShotActionChange(idx, v)}
-                    className="text-[11px] text-text-secondary leading-relaxed"
-                  />
-                </div>
-              </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-
-          {/* Shots ready count */}
-          <div className="flex items-center gap-1.5">
-            <Icon icon="solar:check-circle-bold" width={14} className="text-accent-400" />
-            <span className="text-xs text-text-muted">
-              {scene.bRollShots!.length} shots ready
-            </span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -427,38 +493,47 @@ function SceneDetailPanel({
 interface ScriptPreviewProps {
   script: UGCScript;
   onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
+  onGenerateImages?: () => void;
+  onContinue?: () => void;
+  isContinueLoading?: boolean;
 }
 
-export function ScriptPreview({ script, onSceneUpdate }: ScriptPreviewProps) {
-  const [selectedSceneIndex, setSelectedSceneIndex] = useState(0);
-  const selectedScene = script.scenes[selectedSceneIndex];
-  const totalScenes = script.scenes.length;
+export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onContinue, isContinueLoading }: ScriptPreviewProps) {
   const sceneImages = useAtomValue(sceneImagesAtom);
+  const totalScenes = script.scenes.length;
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const completedCount = script.scenes.filter(
     (s) => sceneImages[s.id]?.status === "completed",
   ).length;
-  const allComplete = completedCount === totalScenes;
+  const allComplete = completedCount === totalScenes && totalScenes > 0;
   const anyGenerating = script.scenes.some(
-    (s) => sceneImages[s.id]?.status === "generating" || sceneImages[s.id]?.status === "regenerating",
+    (s) =>
+      sceneImages[s.id]?.status === "generating" ||
+      sceneImages[s.id]?.status === "regenerating",
   );
 
   return (
+    <LightboxContext.Provider value={setLightboxSrc}>
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-6 h-full pb-8"
+      className="flex flex-col gap-4 h-full overflow-y-auto pb-8"
     >
       {/* Progress header */}
       <div className="bg-surface-base border border-border-base rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent-400/20 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-accent-400/20 flex items-center justify-center">
               {anyGenerating ? (
                 <Spinner size="sm" color="primary" />
               ) : (
-                <Icon icon="solar:check-circle-bold-duotone" width={20} className="text-accent-400" />
+                <Icon
+                  icon="solar:check-circle-bold-duotone"
+                  width={18}
+                  className="text-accent-400"
+                />
               )}
             </div>
             <div>
@@ -470,19 +545,39 @@ export function ScriptPreview({ script, onSceneUpdate }: ScriptPreviewProps) {
                 {allComplete
                   ? "All scenes have images ready!"
                   : anyGenerating
-                    ? "Images are being generated in the background"
+                    ? "Images generating in the background"
                     : "Image generation pending"}
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            color="primary"
-            isDisabled={!allComplete}
-            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
-          >
-            Continue
-          </Button>
+          <div className="flex items-center gap-2">
+            {onGenerateImages && !allComplete && !anyGenerating && (
+              <Button
+                size="sm"
+                variant="flat"
+                className="bg-accent-400/10 text-accent-400 font-medium"
+                startContent={<Icon icon="solar:gallery-add-bold" width={14} />}
+                onPress={onGenerateImages}
+              >
+                Generate Images
+              </Button>
+            )}
+            {allComplete && (
+              <span className="text-[11px] text-text-muted">
+                {calculateCreditCost(script.scenes)} credits
+              </span>
+            )}
+            <Button
+              size="sm"
+              color="primary"
+              isDisabled={!allComplete || !onContinue || isContinueLoading}
+              isLoading={isContinueLoading}
+              onPress={onContinue}
+              endContent={!isContinueLoading ? <Icon icon="solar:arrow-right-linear" width={14} /> : undefined}
+            >
+              {isContinueLoading ? "Starting..." : "Generate Video"}
+            </Button>
+          </div>
         </div>
         <Progress
           value={totalScenes > 0 ? (completedCount / totalScenes) * 100 : 0}
@@ -492,45 +587,46 @@ export function ScriptPreview({ script, onSceneUpdate }: ScriptPreviewProps) {
         />
       </div>
 
-      {/* Timeline / Scenes row */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-base font-bold text-text-primary">Scenes</span>
-          {/* <span className="text-xs text-text-muted">Click a scene to edit</span> */}
-        </div>
+      {/* Reference hint */}
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-accent-400/5 border border-accent-400/10">
+        <Icon icon="solar:mention-circle-bold" width={14} className="text-accent-400 shrink-0" />
+        <p className="text-[10px] text-text-muted">
+          Hover a scene or shot and click <span className="text-accent-400 font-medium">@</span> to reference it in chat, or type <span className="text-accent-400 font-medium">@</span> in the input
+        </p>
+      </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-3 pt-1 px-1">
-          {script.scenes.map((scene, index) => {
-            const imgState = sceneImages[scene.id];
-            return (
-              <div key={scene.id} className="flex items-center">
-                <SceneThumbnail
-                  scene={scene}
-                  isSelected={index === selectedSceneIndex}
-                  onClick={() => setSelectedSceneIndex(index)}
-                  imageUrl={imgState?.imageUrl}
-                  imageStatus={imgState?.status}
-                />
-                {/* Connector between thumbnails */}
-                {index < totalScenes - 1 && (
-                  <div className="flex items-center px-1.5">
-                    <div className="w-5 border-t border-dashed border-white/[0.1]" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* Title + meta */}
+      <div className="space-y-1.5 px-1">
+        <h2 className="text-base font-bold text-text-primary">{script.title}</h2>
+        {script.targetAudience && (
+          <p className="text-[11px] text-text-muted leading-relaxed">
+            {script.targetAudience}
+          </p>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <Chip size="sm" variant="flat" className="text-[11px] bg-accent-400/10 text-accent-400">
+            {Math.round(script.totalEstimatedDuration)}s
+          </Chip>
+          <Chip size="sm" variant="flat" color="default" className="text-[11px]">
+            {totalScenes} scenes
+          </Chip>
         </div>
       </div>
 
-      {/* Selected scene detail panel */}
-      {selectedScene && (
-        <SceneDetailPanel
-          scene={selectedScene}
-          imageState={sceneImages[selectedScene.id]}
-          onSceneUpdate={onSceneUpdate}
-        />
-      )}
+      {/* Vertical scene list */}
+      <div className="space-y-3">
+        {script.scenes.map((scene, index) => (
+          <SceneCard
+            key={scene.id}
+            scene={scene}
+            imageState={sceneImages[scene.id]}
+            onSceneUpdate={onSceneUpdate}
+            index={index}
+          />
+        ))}
+      </div>
     </motion.div>
+    <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+    </LightboxContext.Provider>
   );
 }
