@@ -156,7 +156,6 @@ variable "tavily_api_key" {
   description = "Tavily API key for web search in agent service"
   type        = string
   sensitive   = true
-  default     = ""
 }
 
 # Stripe Configuration

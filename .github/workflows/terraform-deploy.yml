@@ -107,6 +107,10 @@ jobs:
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
           socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
 
+          # Agent Service
+          tavily_api_key     = "${{ secrets.TAVILY_API_KEY }}"
+          internal_api_key   = "${{ secrets.INTERNAL_API_KEY }}"
+
           # Google Drive (Mass Posting)
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
           google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
@@ -251,6 +255,10 @@ jobs:
           wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
           socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
+
+          # Agent Service
+          tavily_api_key     = "${{ secrets.TAVILY_API_KEY }}"
+          internal_api_key   = "${{ secrets.INTERNAL_API_KEY }}"
 
           # Google Drive (Mass Posting)
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
