@@ -228,6 +228,12 @@ variable "fal_key" {
   sensitive   = true
 }
 
+variable "wavespeed_key" {
+  description = "WaveSpeed API Key for face swap video generation"
+  type        = string
+  sensitive   = true
+}
+
 # Ad Posting Webhook
 variable "ad_posting_webhook_secret" {
   description = "Shared secret for botfarm ad posting webhook"

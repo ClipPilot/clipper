@@ -136,8 +136,12 @@ export const createClipJobController = async (
       conversionMode = mapped;
     }
 
-    // Clip length (seconds) — default 40, range 10–180
-    const clipLength = Math.min(Math.max(parseInt(req.body.length) || 40, 10), 180);
+    // Clip length (seconds) — omit to let the AI decide (defaults to ~40s internally)
+    const rawLength = parseInt(req.body.length);
+    let clipLength: number | undefined;
+    if (!isNaN(rawLength)) {
+      clipLength = Math.min(Math.max(rawLength, 10), 180);
+    }
 
     // Custom prompt — additional AI instructions for clip selection
     const prompt: string | undefined = req.body.prompt || undefined;
@@ -414,7 +418,7 @@ async function uploadAndDispatch(params: {
   captionColor: string;
   captionFont?: string;
   conversionMode: ConversionMode;
-  clipLength: number;
+  clipLength?: number;
   prompt?: string;
   autoHeading: boolean;
   headingInstructions?: string;
@@ -480,7 +484,7 @@ function processInBackground(params: {
   captionColor: string;
   captionFont?: string;
   conversionMode: ConversionMode;
-  clipLength: number;
+  clipLength?: number;
   prompt?: string;
   autoHeading: boolean;
   headingInstructions?: string;

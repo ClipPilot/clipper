@@ -75,7 +75,7 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [swapType, setSwapType] = useState<"face" | "fullbody">("face");
+  const [swapType, setSwapType] = useState<"face" | "fullbody">("fullbody");
   const [isTourOpen, setIsTourOpen] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
@@ -148,6 +148,7 @@ function FaceSwapContent({
         spliceWithOriginal: true,
         folderId: selectedFolderId,
         voiceIds,
+        swapType,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -157,8 +158,8 @@ function FaceSwapContent({
       });
 
       addToast({
-        title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take 20-40 minutes each. (${totalCredits} credits)`,
+        title: `${characterCount} ${swapType === "face" ? "face swap" : "swap"}${characterCount > 1 ? "s" : ""} started!`,
+        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take ${swapType === "face" ? "5-10" : "20-40"} minutes each. (${totalCredits} credits)`,
         color: "success",
       });
 
@@ -258,6 +259,7 @@ function FaceSwapContent({
     const videoToRevoke = video.preview;
     const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
+    const voiceIds = selectedCharacters.map((c) => c.voiceId || null);
     const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId) => {
@@ -270,13 +272,14 @@ function FaceSwapContent({
     setSegments([]);
 
     try {
-      const result = await faceSwapAPI.createMultipleJobs({
+      const result = await faceSwapAPI.createMultipleJobsAutoDetect({
         video: videoFile,
         images: characterImages,
         teamId,
         videoDuration: duration,
-        spliceWithOriginal: false,
+        spliceWithOriginal: true,
         folderId: selectedFolderId,
+        voiceIds,
         swapType: "face",
       });
 
@@ -340,8 +343,8 @@ function FaceSwapContent({
                 segments={segments}
                 onVideoChange={handleVideoChange}
                 onSegmentsChange={setSegments}
-                showEditor={showEditor && swapType === "fullbody"}
-                onToggleEditor={swapType === "fullbody" ? () => setShowEditor((v) => !v) : undefined}
+                showEditor={showEditor}
+                onToggleEditor={() => setShowEditor((v) => !v)}
                 teamId={selectedTeam?.id}
               />
             </div>

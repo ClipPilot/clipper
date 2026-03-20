@@ -203,6 +203,20 @@ resource "aws_secretsmanager_secret_version" "fal_key" {
   secret_string = var.fal_key
 }
 
+# WaveSpeed API Key
+resource "aws_secretsmanager_secret" "wavespeed_key" {
+  name                    = "${var.project_name}-${var.environment}/wavespeed-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-wavespeed-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "wavespeed_key" {
+  secret_id     = aws_secretsmanager_secret.wavespeed_key.id
+  secret_string = var.wavespeed_key
+}
+
 # Ad Posting Webhook Secret
 resource "aws_secretsmanager_secret" "ad_posting_webhook_secret" {
   name                    = "${var.project_name}-${var.environment}/ad-posting-webhook-secret"

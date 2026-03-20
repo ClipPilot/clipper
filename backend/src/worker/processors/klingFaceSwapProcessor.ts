@@ -15,6 +15,8 @@ import {
   klingProMotionWithRetry,
   PRO_MOTION_PROMPT,
 } from "../../services/ai-ugc/kling.service";
+import { waveSpeedService } from "../../services/face-swap/wavespeed.service";
+import { syncService } from "../../services/sync.service";
 import {
   cutClip,
   mergeClipsFaceSwap,
@@ -36,39 +38,41 @@ import {
 } from "../../services/clips/captions.service";
 import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const UGC_CREDIT_COST = 5;
-const MAX_CHUNK_DURATION = 25;
+const KLING_MAX_CHUNK_DURATION = 25;
+const WAVESPEED_MAX_CHUNK_DURATION = 120;
 const MIN_CHUNK_DURATION = 3;
 
 /**
  * Calculate chunk durations ensuring each chunk is between MIN and MAX duration.
  * For a 32s segment: returns [10, 10, 9, 3] instead of [10, 10, 10, 2]
  */
-function calculateChunkDurations(totalDuration: number): number[] {
+function calculateChunkDurations(totalDuration: number, maxChunkDuration: number = KLING_MAX_CHUNK_DURATION, enforceMinDuration: boolean = true): number[] {
   // If segment fits in one chunk, return as-is
-  if (totalDuration <= MAX_CHUNK_DURATION) {
+  if (totalDuration <= maxChunkDuration) {
     return [totalDuration];
   }
 
-  const numFullChunks = Math.floor(totalDuration / MAX_CHUNK_DURATION);
-  const remainder = totalDuration - numFullChunks * MAX_CHUNK_DURATION;
+  const numFullChunks = Math.floor(totalDuration / maxChunkDuration);
+  const remainder = totalDuration - numFullChunks * maxChunkDuration;
 
   // Perfect division - no remainder
   if (remainder === 0) {
-    return Array(numFullChunks).fill(MAX_CHUNK_DURATION);
+    return Array(numFullChunks).fill(maxChunkDuration);
   }
 
-  // Remainder is large enough to be its own chunk (>= 3s)
-  if (remainder >= MIN_CHUNK_DURATION) {
-    return [...Array(numFullChunks).fill(MAX_CHUNK_DURATION), remainder];
+  // Skip minimum chunk enforcement for face swap (WaveSpeed handles short chunks fine)
+  if (!enforceMinDuration || remainder >= MIN_CHUNK_DURATION) {
+    return [...Array(numFullChunks).fill(maxChunkDuration), remainder];
   }
 
   const needed = MIN_CHUNK_DURATION - remainder;
-  const lastFullChunkDuration = MAX_CHUNK_DURATION - needed;
+  const lastFullChunkDuration = maxChunkDuration - needed;
   const finalChunkDuration = remainder + needed; // = MIN_CHUNK_DURATION
 
   if (numFullChunks === 1) {
@@ -76,7 +80,7 @@ function calculateChunkDurations(totalDuration: number): number[] {
   }
 
   return [
-    ...Array(numFullChunks - 1).fill(MAX_CHUNK_DURATION),
+    ...Array(numFullChunks - 1).fill(maxChunkDuration),
     lastFullChunkDuration,
     finalChunkDuration,
   ];
@@ -131,13 +135,20 @@ async function updateProgress(
   progress: number,
   message?: string,
 ): Promise<void> {
-  await db
-    .update(comfyJobs)
-    .set({
-      progress,
-      progressMessage: message || null,
-    })
-    .where(eq(comfyJobs.id, jobId));
+  try {
+    await db
+      .update(comfyJobs)
+      .set({
+        progress,
+        progressMessage: message || null,
+      })
+      .where(eq(comfyJobs.id, jobId));
+  } catch (err) {
+    console.error(
+      `[kling-face-swap] Non-fatal: failed to update progress for job ${jobId}:`,
+      (err as Error).message,
+    );
+  }
 
   emitJobUpdate(teamId, {
     id: jobId,
@@ -201,6 +212,7 @@ export async function processKlingFaceSwapJob(
     spliceMode,
     spliceMetadata,
     voiceId,
+    swapType = "fullbody",
   } = job;
 
   const outDir = path.join(process.cwd(), "output", `kling-swap-${Date.now()}`);
@@ -261,12 +273,18 @@ export async function processKlingFaceSwapJob(
       const seg = segments[segIdx];
       const segmentDuration = seg.end - seg.start;
       const timestamp = Date.now() + segIdx;
+      const isFaceMode = swapType === "face";
+      const logPrefix = isFaceMode ? "[wavespeed-face-swap]" : "[kling-face-swap]";
 
-      console.log(`[kling-face-swap] Segment ${segIdx + 1}/${segments.length}: ${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s`);
+      console.log(`${logPrefix} Segment ${segIdx + 1}/${segments.length}: ${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s`);
 
       const segmentPath = path.join(outDir, `segment_${segIdx}_${timestamp}.mp4`);
       await cutClip(fullVideoPath, segmentPath, seg.start, seg.end);
 
+      let sourceVideoPath: string;
+      let referenceUrl: string;
+
+      // Generate pose reference image for each segment (both modes)
       const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
       await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
 
@@ -296,18 +314,29 @@ export async function processKlingFaceSwapJob(
         firstPoseUrl = poseUrl;
       }
 
-      const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
-      await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
+      if (isFaceMode) {
+        // Face mode (WaveSpeed): use pose reference but no prepended frame
+        sourceVideoPath = segmentPath;
+        referenceUrl = poseUrl;
+      } else {
+        // Fullbody mode (Kling): also prepend pose frame to video
+        const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
+        await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
 
-      const prependedDuration = await getVideoDuration(prependedSegmentPath);
-      const chunkDurations = calculateChunkDurations(prependedDuration);
+        sourceVideoPath = prependedSegmentPath;
+        referenceUrl = poseUrl;
+      }
+
+      const sourceDuration = await getVideoDuration(sourceVideoPath);
+      const maxChunk = isFaceMode ? WAVESPEED_MAX_CHUNK_DURATION : KLING_MAX_CHUNK_DURATION;
+      const chunkDurations = calculateChunkDurations(sourceDuration, maxChunk, !isFaceMode);
 
       const chunkPaths: string[] = [];
       let currentTime = 0;
       for (let chunkIdx = 0; chunkIdx < chunkDurations.length; chunkIdx++) {
         const chunkDuration = chunkDurations[chunkIdx];
         const chunkPath = path.join(outDir, `seg${segIdx}_chunk${chunkIdx}_${timestamp}.mp4`);
-        await cutClip(prependedSegmentPath, chunkPath, currentTime, currentTime + chunkDuration);
+        await cutClip(sourceVideoPath, chunkPath, currentTime, currentTime + chunkDuration);
         chunkPaths.push(chunkPath);
         currentTime += chunkDuration;
       }
@@ -321,18 +350,30 @@ export async function processKlingFaceSwapJob(
         await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
         const chunkUrl = await s3Service.getPresignedUrl(tempChunkKey, 3600);
 
-        const result = await klingProMotionWithRetry({
-          imageUrl: poseUrl,
-          videoUrl: chunkUrl,
-          keepOriginalSound: true,
-          characterOrientation: "video",
-        });
+        let outputVideoUrl: string;
+
+        if (isFaceMode) {
+          const result = await waveSpeedService.wanAnimateWithRetry({
+            imageUrl: referenceUrl,
+            videoUrl: chunkUrl,
+            mode: "replace",
+          });
+          outputVideoUrl = result.outputUrl;
+        } else {
+          const result = await klingProMotionWithRetry({
+            imageUrl: referenceUrl,
+            videoUrl: chunkUrl,
+            keepOriginalSound: true,
+            characterOrientation: "video",
+          });
+          outputVideoUrl = result.videoUrl;
+        }
 
         const processedPath = path.join(outDir, `processed_seg${segIdx}_chunk${chunkIdx}_${timestamp}.mp4`);
-        await s3Service.downloadVideoFromUrl(result.videoUrl, processedPath);
+        await s3Service.downloadVideoFromUrl(outputVideoUrl, processedPath);
         processedChunks[chunkIdx] = processedPath;
 
-        console.log(`[kling-face-swap] Segment ${segIdx + 1} chunk ${chunkIdx + 1}/${chunkPaths.length}: Complete`);
+        console.log(`${logPrefix} Segment ${segIdx + 1} chunk ${chunkIdx + 1}/${chunkPaths.length}: Complete`);
         await s3Service.deleteObject(tempChunkKey).catch(() => {});
       }
 
@@ -349,7 +390,7 @@ export async function processKlingFaceSwapJob(
         await mergeClipsFaceSwap(processedChunks, processedSegmentPath);
       }
 
-      console.log(`[kling-face-swap] Segment ${segIdx + 1}/${segments.length} complete`);
+      console.log(`${logPrefix} Segment ${segIdx + 1}/${segments.length} complete`);
       return processedSegmentPath;
     }
 
@@ -374,6 +415,56 @@ export async function processKlingFaceSwapJob(
     }
 
     console.log(`[kling-face-swap] All ${processedSegmentPaths.length} segments processed`);
+
+    // Lip sync each processed segment individually before merging (face mode only)
+    if (swapType === "face" && syncService.isConfigured()) {
+      console.log(`[wavespeed-face-swap] Applying lip sync to ${processedSegmentPaths.length} segments`);
+      await updateProgress(jobId, teamId, 82, "Applying lip sync");
+
+      for (let segIdx = 0; segIdx < processedSegmentPaths.length; segIdx++) {
+        try {
+          const segPath = processedSegmentPaths[segIdx];
+          const lipsyncTempDir = path.join(outDir, `lipsync-seg${segIdx}-${Date.now()}`);
+          fs.mkdirSync(lipsyncTempDir, { recursive: true });
+
+          const tempVideoPath = path.join(lipsyncTempDir, "faceswap.mp4");
+          const tempAudioPath = path.join(lipsyncTempDir, "audio.wav");
+          fs.copyFileSync(segPath, tempVideoPath);
+          await extractAudio(tempVideoPath, tempAudioPath);
+
+          const lsVideoKey = `comfy-outputs/${teamId}/${jobId}/seg${segIdx}_pre_lipsync.mp4`;
+          const lsAudioKey = `comfy-outputs/${teamId}/${jobId}/seg${segIdx}_audio_lipsync.wav`;
+          const videoBuffer = fs.readFileSync(tempVideoPath);
+          const audioBuffer = fs.readFileSync(tempAudioPath);
+          await Promise.all([
+            s3Service.uploadBuffer(videoBuffer, lsVideoKey, "video/mp4"),
+            s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
+          ]);
+          const [videoPresignedUrl, audioPresignedUrl] = await Promise.all([
+            s3Service.getPresignedUrl(lsVideoKey, 3600),
+            s3Service.getPresignedUrl(lsAudioKey, 3600),
+          ]);
+
+          const lipsyncOutputUrl = await syncService.applyLipSync(
+            videoPresignedUrl,
+            audioPresignedUrl,
+          );
+
+          const lipsyncVideoPath = path.join(lipsyncTempDir, "lipsynced.mp4");
+          await s3Service.downloadVideoFromUrl(lipsyncOutputUrl, lipsyncVideoPath);
+          processedSegmentPaths[segIdx] = lipsyncVideoPath;
+          console.log(`[wavespeed-face-swap] Lip sync applied to segment ${segIdx + 1}/${processedSegmentPaths.length}`);
+
+          s3Service.deleteObject(lsVideoKey).catch(() => {});
+          s3Service.deleteObject(lsAudioKey).catch(() => {});
+        } catch (lipsyncError) {
+          console.error(
+            `[wavespeed-face-swap] Lip sync failed for segment ${segIdx + 1}, using face-swapped segment:`,
+            (lipsyncError as Error).message,
+          );
+        }
+      }
+    }
 
     let finalOutputPath: string;
 
@@ -667,7 +758,7 @@ export async function processKlingFaceSwapJob(
       false,
       undefined,
       undefined,
-      (err as Error).message,
+      sanitizeErrorForFrontend(err, "Face swap processing failed"),
     );
 
     try {

@@ -33,7 +33,7 @@ export function GeneratePanel({
   onFaceSwapGenerate,
   showEditor = false,
   onToggleEditor,
-  swapType = "face",
+  swapType = "fullbody",
   onSwapTypeChange,
   teamId,
   selectedFolderId,
@@ -95,7 +95,7 @@ export function GeneratePanel({
                   : "Select character faces"}
               </span>
             </div>
-            {swapType === "fullbody" && showEditor && (
+            {showEditor && (
               <div className="flex items-center gap-3">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
@@ -111,10 +111,10 @@ export function GeneratePanel({
                 </span>
               </div>
             )}
-            {swapType === "fullbody" && !showEditor && (
+            {!showEditor && (
               <div className="flex items-center gap-3">
-                <div className={`w-2.5 h-2.5 rounded-full ${hasVideo && hasCharacter ? "bg-purple-500" : "bg-surface-elevated"}`} />
-                <span className={`text-sm ${hasVideo && hasCharacter ? "text-purple-400" : "text-text-tertiary"}`}>
+                <div className={`w-2.5 h-2.5 rounded-full ${hasVideo && hasCharacter ? (swapType === "face" ? "bg-accent-400" : "bg-purple-500") : "bg-surface-elevated"}`} />
+                <span className={`text-sm ${hasVideo && hasCharacter ? (swapType === "face" ? "text-accent-400" : "text-purple-400") : "text-text-tertiary"}`}>
                   Auto-detect faces on generate
                 </span>
               </div>
@@ -145,7 +145,7 @@ export function GeneratePanel({
             />
           )}
 
-          {swapType === "fullbody" && segmentCount >= 2 && (
+          {showEditor && segmentCount >= 2 && (
             <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-1">
               <div className="flex items-center gap-2">
                 <Icon icon="solar:layers-bold" className="text-blue-400" width={16} />
@@ -157,8 +157,8 @@ export function GeneratePanel({
             </div>
           )}
 
-          {/* Face Swap mode — single generate button */}
-          {swapType === "face" && onFaceSwapGenerate && (
+          {/* Face Swap mode — auto-detect button (no editor) */}
+          {swapType === "face" && !showEditor && onFaceSwapGenerate && (
             <Button
               className="w-full bg-accent-400 text-white font-semibold"
               size="lg"
@@ -175,7 +175,7 @@ export function GeneratePanel({
             </Button>
           )}
 
-          {/* Full Body mode — auto-detect button */}
+          {/* Full Body mode — auto-detect button (no editor) */}
           {swapType === "fullbody" && !showEditor && onAutoDetectAndGenerate && (
             <Button
               className="w-full bg-purple-500 text-white font-semibold"
@@ -193,9 +193,10 @@ export function GeneratePanel({
             </Button>
           )}
 
-          {swapType === "fullbody" && showEditor && onToggleEditor && (
+          {/* Both modes — back to auto-detect (editor open) */}
+          {showEditor && onToggleEditor && (
             <Button
-              className="w-full bg-purple-500/20 text-purple-400 font-medium"
+              className={`w-full ${swapType === "face" ? "bg-accent-400/20 text-accent-400" : "bg-purple-500/20 text-purple-400"} font-medium`}
               size="lg"
               variant="flat"
               onPress={onToggleEditor}
@@ -205,7 +206,8 @@ export function GeneratePanel({
             </Button>
           )}
 
-          {swapType === "fullbody" && showEditor && (
+          {/* Both modes — manual generate (editor open) */}
+          {showEditor && (
             <Button
               className="w-full bg-accent-400 text-white font-semibold"
               size="lg"
@@ -218,7 +220,7 @@ export function GeneratePanel({
                 </span>
               }
             >
-              Generate
+              {swapType === "face" ? "Generate Face Swap" : "Generate"}
             </Button>
           )}
         </div>

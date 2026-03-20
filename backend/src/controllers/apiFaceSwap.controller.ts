@@ -9,7 +9,6 @@ import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { apiBillingService } from "../services/apiBilling.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
-import { faceSwapService } from "../services/ai-ugc/faceSwap.service";
 import { detectFaceSegmentsWithPadding } from "../services/face-swap/faceDetection.service";
 import {
   getVideoDuration,
@@ -350,16 +349,11 @@ function processBackgroundFaceSwap(params: {
         .set({ videoFile: videoS3Key, imageFile: imageS3Key })
         .where(eq(comfyJobs.id, jobId));
 
-      if (mode === "face") {
-        await processFaceMode({
-          jobId, teamId, userId, videoS3Key, imageS3Key,
-        });
-      } else {
-        await processFullbodyMode({
-          jobId, teamId, userId, videoS3Key, imageS3Key,
-          localVideoPath, duration, additionalTempFiles,
-        });
-      }
+      await processFullbodyMode({
+        jobId, teamId, userId, videoS3Key, imageS3Key,
+        localVideoPath, duration, additionalTempFiles,
+        swapType: mode,
+      });
     } catch (err) {
       console.error(`[api-face-swap] Background processing failed for job ${jobId}:`, err);
       Sentry.captureException(err);
@@ -390,76 +384,8 @@ function processBackgroundFaceSwap(params: {
 // -------------------------------------------------------------------
 // Face mode (FAL AI — in-process)
 // -------------------------------------------------------------------
-async function processFaceMode(params: {
-  jobId: string;
-  teamId: number;
-  userId: number;
-  videoS3Key: string;
-  imageS3Key: string;
-}) {
-  const { jobId, teamId, userId, videoS3Key, imageS3Key } = params;
-
-  await db
-    .update(comfyJobs)
-    .set({ status: "running", progress: 10, progressMessage: "Swapping face" })
-    .where(eq(comfyJobs.id, jobId));
-
-  const [sourceFaceUrl, targetVideoUrl] = await Promise.all([
-    s3Service.getPresignedUrl(imageS3Key, 3600),
-    s3Service.getPresignedUrl(videoS3Key, 3600),
-  ]);
-
-  const result = await faceSwapService.faceSwapVideoWithRetry({
-    sourceFaceUrl,
-    targetVideoUrl,
-  });
-
-  if (!result?.videoUrl) {
-    throw new Error("Face swap service did not return a video URL");
-  }
-
-  // Download result
-  const videoResponse = await fetch(result.videoUrl);
-  if (!videoResponse.ok) {
-    throw new Error(`Failed to download result video: ${videoResponse.status}`);
-  }
-  const finalBuffer = Buffer.from(await videoResponse.arrayBuffer());
-
-  // Upload final to S3
-  const outputS3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;
-  await s3Service.uploadBuffer(finalBuffer, outputS3Key, "video/mp4");
-
-  // Create clip record
-  await db.insert(clips).values({
-    team_id: teamId,
-    generated_by_user_id: userId,
-    folder_id: null,
-    clip_path: outputS3Key,
-    blank_video_path: outputS3Key,
-    source_video_path: videoS3Key,
-    status: "completed",
-    saved: true,
-    clip_metadata: { type: "api-face-swap", comfyJobId: jobId },
-    title: "API Face Swap",
-  });
-
-  // Mark job completed
-  await db
-    .update(comfyJobs)
-    .set({
-      status: "completed",
-      outputFile: outputS3Key,
-      progress: 100,
-      progressMessage: "Complete",
-      finishedAt: new Date(),
-    })
-    .where(eq(comfyJobs.id, jobId));
-
-  console.log(`[api-face-swap] Face mode completed for job ${jobId}`);
-}
-
 // -------------------------------------------------------------------
-// Fullbody mode (Kling AI — SQS worker)
+// Process mode (SQS worker — Kling for fullbody, WaveSpeed for face)
 // -------------------------------------------------------------------
 async function processFullbodyMode(params: {
   jobId: string;
@@ -470,10 +396,12 @@ async function processFullbodyMode(params: {
   localVideoPath: string;
   duration: number;
   additionalTempFiles: string[];
+  swapType?: "face" | "fullbody";
 }) {
   const {
     jobId, teamId, userId, videoS3Key, imageS3Key,
     localVideoPath, duration, additionalTempFiles,
+    swapType = "fullbody",
   } = params;
 
   await db
@@ -482,7 +410,7 @@ async function processFullbodyMode(params: {
     .where(eq(comfyJobs.id, jobId));
 
   // Detect face segments
-  const detectedSegments = await detectFaceSegmentsWithPadding(localVideoPath, duration);
+  const detectedSegments = await detectFaceSegmentsWithPadding(localVideoPath, duration, swapType);
   if (detectedSegments.length === 0) {
     throw new Error("No faces detected in video");
   }
@@ -511,11 +439,14 @@ async function processFullbodyMode(params: {
     throw new Error("No usable face segments found");
   }
 
-  const shortSegments = selectedSegments.filter(
-    (seg) => seg.end - seg.start < MIN_SEGMENT_DURATION,
-  );
-  if (shortSegments.length > 0) {
-    throw new Error(`Detected segments are too short. All face segments must be at least ${MIN_SEGMENT_DURATION} seconds long.`);
+  // 3-second minimum only applies to fullbody (Kling/fal), not face swap (WaveSpeed)
+  if (swapType !== "face") {
+    const shortSegments = selectedSegments.filter(
+      (seg) => seg.end - seg.start < MIN_SEGMENT_DURATION,
+    );
+    if (shortSegments.length > 0) {
+      throw new Error(`Detected segments are too short. All face segments must be at least ${MIN_SEGMENT_DURATION} seconds long.`);
+    }
   }
 
   const segments = selectedSegments.sort((a, b) => a.start - b.start);
@@ -605,9 +536,10 @@ async function processFullbodyMode(params: {
     videoDuration: duration,
     spliceMode: isSpliceMode,
     spliceMetadata: spliceMetadata || undefined,
+    swapType,
   });
 
-  console.log(`[api-face-swap] Fullbody mode: job ${jobId} sent to Kling worker queue (${chunkS3Keys.length} chunks)`);
+  console.log(`[api-face-swap] Job ${jobId} sent to worker queue (${swapType}, ${chunkS3Keys.length} chunks)`);
 }
 
 // -------------------------------------------------------------------

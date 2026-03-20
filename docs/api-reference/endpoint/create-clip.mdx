@@ -22,7 +22,6 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
     "video_url": "https://example.com/video.mp4",
     "num_clips": 3,
     "style": "viral",
-    "length": 45,
     "prompt": "focus on the product demo moments",
     "camera_mode": "speaker-zoom",
     "auto_heading": true,
@@ -39,7 +38,6 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   -F "video=@/path/to/video.mp4" \
   -F "num_clips=3" \
   -F "style=viral" \
-  -F "length=45" \
   -F "camera_mode=speaker-zoom" \
   -F "auto_heading=true" \
   -F "heading_style=instagram" \
@@ -70,8 +68,8 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   Clipping style. One of `viral`, `business`, `general`, or `gaming`.
 </ParamField>
 
-<ParamField body="length" type="integer" default="40">
-  Target clip duration in seconds (10-180).
+<ParamField body="length" type="integer">
+  Target clip duration in seconds (10-180). Omit to let the AI decide.
 </ParamField>
 
 <ParamField body="prompt" type="string">
@@ -87,7 +85,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   - `active-speaker` — tracks and zooms into the active speaker (multi-person)
 </ParamField>
 
-<ParamField body="hook_length" type="integer" default="6">
+<ParamField body="hook_length" type="integer">
   Hook duration in seconds (2-15). The hook is the attention-grabbing opening of each clip. Omit to let the AI decide.
 </ParamField>
 
@@ -157,8 +155,8 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   Clipping style. One of `viral`, `business`, `general`, or `gaming`.
 </ParamField>
 
-<ParamField body="length" type="string" default="40">
-  Target clip duration in seconds (10-180).
+<ParamField body="length" type="string">
+  Target clip duration in seconds (10-180). Omit to let the AI decide.
 </ParamField>
 
 <ParamField body="prompt" type="string">
@@ -169,8 +167,8 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   How the video is framed. One of `standard`, `facecam`, `speaker-zoom`, `center-crop`, `active-speaker`.
 </ParamField>
 
-<ParamField body="hook_length" type="string" default="6">
-  Hook duration in seconds (2-15).
+<ParamField body="hook_length" type="string">
+  Hook duration in seconds (2-15). Omit to let the AI decide.
 </ParamField>
 
 <ParamField body="music" type="file">

@@ -66,6 +66,7 @@
     "stripe": "^20.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "wavespeed": "^0.2.3",
     "ws": "^8.18.3",
     "zod": "^4.1.13",
     "zod-to-json-schema": "^3.25.1"

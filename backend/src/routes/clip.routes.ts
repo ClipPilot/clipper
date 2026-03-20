@@ -1830,4 +1830,52 @@ router.get(
   clipManagerController.downloadFolderAsZip.bind(clipManagerController)
 );
 
+/**
+ * @openapi
+ * /api/clip-video/teams/{teamId}/folders/{folderId}/download-urls:
+ *   get:
+ *     summary: Get presigned download URLs for all clips in a folder
+ *     description: Returns presigned S3 URLs for all completed clips, enabling parallel client-side downloads.
+ *     tags: [Clips]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: folderId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Array of presigned download URLs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 urls:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       url:
+ *                         type: string
+ *                       filename:
+ *                         type: string
+ *                 folderName:
+ *                   type: string
+ *       404:
+ *         description: No completed clips in folder
+ */
+router.get(
+  "/teams/:teamId/folders/:folderId/download-urls",
+  requireAuth,
+  clipManagerController.downloadFolderUrls.bind(clipManagerController)
+);
+
 export default router;
