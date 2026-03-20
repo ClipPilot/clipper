@@ -105,15 +105,15 @@ export const analyzeVideoTool = createTool({
       .describe("MIME type of the video file"),
   }),
   outputSchema: VideoAnalysisSchema,
-  execute: async ({ context: { fileUri, mimeType } }) => {
+  execute: async ({ fileUri, mimeType }) => {
     try {
-      return await callGeminiForAnalysis(PRIMARY_MODEL, fileUri, mimeType);
+      return await callGeminiForAnalysis(PRIMARY_MODEL, fileUri, mimeType ?? "video/mp4");
     } catch (primaryError) {
       console.warn(
         `[analyzeVideoTool] ${PRIMARY_MODEL} failed, falling back to ${FALLBACK_MODEL}:`,
         primaryError,
       );
-      return await callGeminiForAnalysis(FALLBACK_MODEL, fileUri, mimeType);
+      return await callGeminiForAnalysis(FALLBACK_MODEL, fileUri, mimeType ?? "video/mp4");
     }
   },
 });
