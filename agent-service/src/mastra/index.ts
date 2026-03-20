@@ -12,13 +12,14 @@ import { weatherAgent } from "./agents/weather-agent.js";
 import { scriptInitAgent } from "./agents/scriptInit-agent.js";
 import { scriptAgent } from "./agents/script-agent.js";
 import { adDeconstructorAgent } from "./agents/adDeconstructor-agent.js";
+import { storyboardAgent } from "./agents/storyboard-agent.js";
 
 export const mastra = new Mastra({
   server: {
     port: parseInt(process.env.PORT || "4111"),
     host: "0.0.0.0",
   },
-  agents: { scriptInitAgent, scriptAgent, adDeconstructorAgent },
+  agents: { scriptInitAgent, scriptAgent, adDeconstructorAgent, storyboardAgent },
   storage: new PostgresStore({
     id: "postgres-store",
     connectionString: process.env.DATABASE_URL!,

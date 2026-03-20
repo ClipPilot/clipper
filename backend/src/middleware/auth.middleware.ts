@@ -38,6 +38,20 @@ export async function requireAuth(
   next: NextFunction,
 ) {
   try {
+    // Allow internal service-to-service calls (agent-service → backend)
+    const internalKey = req.headers["x-internal-api-key"];
+    const expectedKey = process.env.INTERNAL_API_KEY;
+    if (internalKey && expectedKey && internalKey === expectedKey) {
+      // Set a synthetic user so controller-level auth checks pass
+      (req as AuthRequest).user = {
+        id: "internal-service",
+        email: "internal@cuttr.com",
+        dbUserId: -1,
+      };
+      (req as any).isInternalRequest = true;
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
