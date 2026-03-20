@@ -5,6 +5,7 @@ import { Button, Chip, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type SceneType } from "@/components/ugc-studio/script/types";
 import type { InitAgentResult } from "./types";
+import type { ChatColorTheme } from "./MessageCard";
 
 const VIDEO_TYPE_LABELS: Record<string, string> = {
   ugc: "UGC Ad",
@@ -24,9 +25,10 @@ interface StructurePreviewProps {
   isAccepted?: boolean;
   onAccept?: () => void;
   onRetry?: () => void;
+  theme?: ChatColorTheme;
 }
 
-export function StructurePreview({ result, isAccepted, onAccept, onRetry }: StructurePreviewProps) {
+export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme = "default" }: StructurePreviewProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97, y: 6 }}
@@ -58,7 +60,7 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
       {/* Target audience */}
       {result.targetAudience && (
         <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.04]">
-          <Icon icon="solar:users-group-rounded-bold-duotone" width={14} className="text-accent-400/70 shrink-0 mt-0.5" />
+          <Icon icon="solar:users-group-rounded-bold-duotone" width={14} className={`shrink-0 mt-0.5 ${theme === "orange" ? "text-orange-500/70" : "text-accent-400/70"}`} />
           <span className="text-[11px] leading-relaxed text-text-secondary">{result.targetAudience}</span>
         </div>
       )}
@@ -145,7 +147,7 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="bg-accent-400 text-white font-semibold flex-1 h-9"
+              className={`${theme === "orange" ? "bg-orange-500" : "bg-accent-400"} text-white font-semibold flex-1 h-9`}
               onPress={onAccept}
               startContent={<Icon icon="solar:check-circle-bold" width={16} />}
             >

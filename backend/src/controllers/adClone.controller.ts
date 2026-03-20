@@ -20,6 +20,34 @@ interface AuthRequest extends Request {
 }
 
 export class AdCloneController {
+  async initStructure(req: AuthRequest, res: Response) {
+    try {
+      const { projectId, message, productImageKeys, threadId, conversationHistory } = req.body;
+
+      if (!projectId || !message) {
+        return res.status(400).json({ error: "projectId and message are required" });
+      }
+
+      const result = await adCloneService.initStructureFromAnalysis({
+        projectId,
+        message,
+        productImageKeys,
+        threadId,
+        conversationHistory,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[AD_CLONE] Init structure error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate structure"),
+      });
+    }
+  }
+
   async createProject(req: AuthRequest, res: Response) {
     try {
       const { teamId, productName, productDescription, adDirection } = req.body;

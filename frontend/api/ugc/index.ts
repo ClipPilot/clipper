@@ -117,6 +117,29 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async saveScript(data: {
+    teamId: number;
+    script: any;
+    characterId?: number;
+    productImageKeys?: string[];
+    isSilent?: boolean;
+    videoType?: string;
+  }): Promise<{ success: boolean; scriptId: string }> {
+    const response = await apiFetch(`${API_URL}/ugc/save-script`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save script");
+    }
+
+    return response.json();
+  }
+
   async initStructure(data: {
     message: string;
     productImageKeys?: string[];

@@ -230,6 +230,54 @@ export class UGCScriptController {
     }
   }
 
+  async saveScript(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, script, characterId, productImageKeys, isSilent, videoType } = req.body;
+
+      if (!teamId || !script) {
+        return res.status(400).json({ error: "teamId and script are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      const insertValues: Record<string, unknown> = {
+        team_id: teamId,
+        product_image_keys: productImageKeys || [],
+        scripts_data: [script],
+        selected_variant_index: 0,
+        status: "completed",
+        is_silent: !!isSilent,
+        has_character: !!characterId,
+        video_type: videoType || "ugc",
+      };
+      if (characterId) {
+        insertValues.character_id = characterId;
+      }
+
+      const [inserted] = await db
+        .insert(ugcScripts)
+        .values(insertValues as any)
+        .returning({ id: ugcScripts.id });
+
+      return res.status(200).json({
+        success: true,
+        scriptId: inserted.id,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Save script error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to save script"),
+      });
+    }
+  }
+
   async initStructure(req: AuthRequest, res: Response) {
     try {
       const { message, productImageKeys, threadId, conversationHistory } = req.body;

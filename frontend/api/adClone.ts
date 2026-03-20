@@ -45,6 +45,39 @@ export interface ProjectResponse {
 }
 
 class AdCloneAPI {
+  async initStructure(data: {
+    projectId: string;
+    message: string;
+    productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+  }): Promise<{
+    success: boolean;
+    responseType: "conversation" | "script";
+    message: string;
+    videoType: string;
+    isSilent: boolean;
+    character: boolean;
+    targetAudience: string;
+    title: string;
+    totalDuration: number;
+    scenes: any[];
+  }> {
+    const response = await apiFetch(`${API_URL}/ad-clone/init-structure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate structure");
+    }
+
+    return response.json();
+  }
+
   async createProject(data: {
     teamId: number;
     productName?: string;

@@ -6,6 +6,48 @@ const router = Router();
 
 /**
  * @openapi
+ * /ad-clone/init-structure:
+ *   post:
+ *     summary: Generate UGC-compatible structure from ad analysis via agent
+ *     description: Calls the adDeconstructorAgent with the project's video analysis to generate a UGC-compatible scene structure. If analysis is not yet complete, the agent will respond conversationally.
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - projectId
+ *               - message
+ *             properties:
+ *               projectId:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               threadId:
+ *                 type: string
+ *               conversationHistory:
+ *                 type: array
+ *     responses:
+ *       200:
+ *         description: Structure or conversation response from agent
+ */
+router.post(
+  "/init-structure",
+  requireAuth,
+  adCloneController.initStructure.bind(adCloneController)
+);
+
+/**
+ * @openapi
  * /ad-clone/create:
  *   post:
  *     summary: Create a new Ad Clone project

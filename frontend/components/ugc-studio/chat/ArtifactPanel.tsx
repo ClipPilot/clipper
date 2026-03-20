@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
@@ -8,9 +8,11 @@ import { AudioStep } from "@/components/ugc-studio/voice";
 import { ScriptPreview } from "./ScriptPreview";
 import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
+import { StoryboardPreview } from "./StoryboardPreview";
 import { scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
 import type { ArtifactType, ScriptAgentResult } from "./types";
 import type { Character } from "@/components/ugc-studio/actors/types";
+import type { ChatColorTheme } from "./MessageCard";
 
 interface ArtifactPanelProps {
   currentArtifact: ArtifactType;
@@ -22,6 +24,9 @@ interface ArtifactPanelProps {
   isGeneratingScript: boolean;
   isExistingScript?: boolean;
   onGenerateScript: () => void;
+  mode?: "script" | "storyboard";
+  scriptId?: string | null;
+  theme?: ChatColorTheme;
 }
 
 export function ArtifactPanel({
@@ -34,17 +39,50 @@ export function ArtifactPanel({
   isGeneratingScript,
   isExistingScript,
   onGenerateScript,
+  mode = "script",
+  scriptId,
+  theme = "default",
 }: ArtifactPanelProps) {
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
+  const hasCalledGenerate = useRef(false);
 
-  useEffect(() => {
-    if (currentArtifact === "script" && !isExistingScript && !generatedScript && !isGeneratingScript) {
-      onGenerateScript();
-    }
-  }, [currentArtifact, isExistingScript, generatedScript, isGeneratingScript, onGenerateScript]);
+  const shouldTriggerGenerate = mode === "storyboard"
+    ? currentArtifact === "script" && !scriptId && !hasCalledGenerate.current
+    : currentArtifact === "script" && !isExistingScript && !generatedScript && !isGeneratingScript && !hasCalledGenerate.current;
+
+  if (shouldTriggerGenerate) {
+    hasCalledGenerate.current = true;
+    onGenerateScript();
+  }
 
   const existingScript = scripts[selectedVariantIndex];
+
+  const renderScriptContent = () => {
+    if (isExistingScript && existingScript) {
+      return <ExistingScriptPreview script={existingScript} />;
+    }
+
+    if (isGeneratingScript) {
+      return <ScriptLoadingState />;
+    }
+
+    if (!generatedScript) return null;
+
+    if (mode === "storyboard") {
+      return (
+        <StoryboardPreview
+          script={generatedScript}
+          scriptId={scriptId ?? null}
+          teamId={teamId}
+          characterId={selectedCharacter?.id}
+          theme={theme}
+        />
+      );
+    }
+
+    return <ScriptPreview script={generatedScript} />;
+  };
 
   return (
     <motion.div
@@ -93,13 +131,7 @@ export function ArtifactPanel({
             transition={{ duration: 0.2 }}
             className="flex-1 p-4 overflow-y-auto"
           >
-            {isExistingScript && existingScript ? (
-              <ExistingScriptPreview script={existingScript} />
-            ) : isGeneratingScript ? (
-              <ScriptLoadingState />
-            ) : generatedScript ? (
-              <ScriptPreview script={generatedScript} />
-            ) : null}
+            {renderScriptContent()}
           </motion.div>
         )}
       </AnimatePresence>

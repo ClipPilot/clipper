@@ -255,6 +255,50 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/save-script:
+ *   post:
+ *     summary: Save a pre-generated script to the database
+ *     description: Stores an already-generated script (e.g. from ad clone deconstructor) without calling any agent.
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - script
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *               script:
+ *                 type: object
+ *               characterId:
+ *                 type: number
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               isSilent:
+ *                 type: boolean
+ *               videoType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Script saved
+ */
+router.post(
+  "/save-script",
+  requireAuth,
+  ugcScriptController.saveScript.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/init-structure:
  *   post:
  *     summary: Generate an AI video structure from a chat message
