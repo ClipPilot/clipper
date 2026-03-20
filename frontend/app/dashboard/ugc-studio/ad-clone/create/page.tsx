@@ -1,53 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Spinner } from "@heroui/react";
-import { Icon } from "@iconify/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
-import { resetAdCloneAtom } from "@/store/adClone";
-import { AdCloneWizard } from "@/components/ugc-studio/ad-clone/AdCloneWizard";
-import { useAdClone } from "@/hooks/useAdClone";
+import { AdCloneChatInterface } from "@/components/ugc-studio/chat/AdCloneChatInterface";
 
 function AdCloneCreateContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const resetAdClone = useSetAtom(resetAdCloneAtom);
-  const { loadProject, setCharacterId, setStep } = useAdClone(selectedTeam?.id);
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
 
-  const [isLoading, setIsLoading] = useState(true);
-
-  const projectIdToResume = searchParams.get("projectId");
-  const newCharacterId = searchParams.get("newCharacterId");
-
-  useEffect(() => {
-    setIsLoading(true);
-    resetAdClone();
-
-    const init = async () => {
-      if (projectIdToResume) {
-        try {
-          await loadProject(projectIdToResume);
-        } catch (err) {
-          console.error("Failed to load project:", err);
-          resetAdClone();
-        }
-      }
-
-      if (newCharacterId) {
-        setCharacterId(parseInt(newCharacterId, 10));
-        setStep("character");
-      }
-
-      setIsLoading(false);
-    };
-
-    init();
-  }, [projectIdToResume, newCharacterId, loadProject, resetAdClone, setCharacterId, setStep]);
-
-  if (!selectedTeam || isLoading) {
+  if (!selectedTeam) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
         <Spinner size="lg" color="warning" />
@@ -55,34 +20,7 @@ function AdCloneCreateContent() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-surface-dark">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <button
-              onClick={() => router.push("/dashboard/ugc-studio/ad-clone")}
-              className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
-            >
-              <Icon
-                icon="solar:arrow-left-linear"
-                className="text-text-secondary"
-                width={20}
-              />
-            </button>
-            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">
-              Clone New Ad
-            </h1>
-          </div>
-          <p className="text-text-secondary ml-10">
-            Upload a reference ad and create your own version with AI
-          </p>
-        </div>
-
-        <AdCloneWizard teamId={selectedTeam.id} />
-      </div>
-    </div>
-  );
+  return <AdCloneChatInterface resumeProjectId={projectId} />;
 }
 
 export default function AdCloneCreatePage() {

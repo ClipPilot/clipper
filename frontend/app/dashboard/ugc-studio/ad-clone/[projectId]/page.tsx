@@ -88,7 +88,7 @@ export default function AdCloneProjectPage() {
               </p>
               <Button
                 className="bg-orange-500 text-white font-semibold"
-                onPress={() => router.push("/dashboard/ugc-studio/ad-clone/create")}
+                onPress={() => router.push(`/dashboard/ugc-studio/ad-clone/create?projectId=${projectId}`)}
               >
                 Continue in Wizard
               </Button>

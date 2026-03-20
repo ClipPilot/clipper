@@ -1,9 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import type {
-  GenerateScriptRequest,
-  GenerateScriptResponse,
-  ScriptStatusResponse,
   RegenerateSceneRequest,
   RegenerateSceneResponse,
   UploadUrlResponse,
@@ -14,37 +11,6 @@ import type {
 } from "@/components/ugc-studio/script/types";
 
 class UGCScriptAPI {
-  async generateScript(data: GenerateScriptRequest): Promise<GenerateScriptResponse> {
-    const response = await apiFetch(`${API_URL}/ugc/generate-script`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to generate script");
-    }
-
-    return response.json();
-  }
-
-  async getScriptStatus(scriptId: string): Promise<ScriptStatusResponse> {
-    const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/status`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to get script status");
-    }
-
-    return response.json();
-  }
-
   async regenerateScene(data: RegenerateSceneRequest): Promise<RegenerateSceneResponse> {
     const response = await apiFetch(`${API_URL}/ugc/regenerate-scene`, {
       method: "POST",
@@ -124,6 +90,119 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async generateScriptAgent(data: {
+    teamId: number;
+    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    characterId?: number;
+    character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
+    voice?: { name: string; style?: string } | null;
+    targetAudience: string;
+    productImageKeys?: string[];
+    userDirection?: string;
+    isSilent: boolean;
+    videoType: string;
+  }): Promise<{ success: boolean; scriptId: string; script: any }> {
+    const response = await apiFetch(`${API_URL}/ugc/generate-script-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate script via agent");
+    }
+
+    return response.json();
+  }
+
+  async saveScript(data: {
+    teamId: number;
+    script: any;
+    characterId?: number;
+    productImageKeys?: string[];
+    isSilent?: boolean;
+    videoType?: string;
+  }): Promise<{ success: boolean; scriptId: string }> {
+    const response = await apiFetch(`${API_URL}/ugc/save-script`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save script");
+    }
+
+    return response.json();
+  }
+
+  async initStructure(data: {
+    message: string;
+    productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+  }): Promise<{
+    success: boolean;
+    responseType: "conversation" | "structure";
+    message: string;
+    videoType: string;
+    isSilent: boolean;
+    character: boolean;
+    structure: Array<{ sceneType: string; slug: string; description: string }>;
+  }> {
+    const response = await apiFetch(`${API_URL}/ugc/init-structure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate init structure");
+    }
+
+    return response.json();
+  }
+
+
+  async storyboardChat(data: {
+    scriptId: string;
+    message: string;
+    threadId?: string;
+    teamId?: number;
+    characterId?: number;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    updatedScript: UGCScript;
+    regeneratingJobs?: Array<{
+      jobId: string;
+      sceneId: string;
+      sceneNumber: number;
+      status: string;
+      singleBRollShotIndex?: number;
+    }>;
+  }> {
+    const response = await apiFetch(`${API_URL}/ugc/storyboard-chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to process storyboard edit");
+    }
+
+    return response.json();
+  }
+
   async getUploadUrl(
     teamId: number,
     fileName: string,
@@ -191,7 +270,15 @@ class UGCScriptAPI {
 
   async getFullScript(
     scriptId: string
-  ): Promise<{ success: boolean; scripts: UGCScript[]; selectedVariantIndex: number; characterId?: number }> {
+  ): Promise<{
+    success: boolean;
+    scripts: UGCScript[];
+    selectedVariantIndex: number;
+    characterId?: number;
+    isSilent: boolean;
+    hasCharacter: boolean;
+    videoType: string;
+  }> {
     const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/full`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },

@@ -47,6 +47,25 @@ variable "backend_desired_count" {
   default     = 2
 }
 
+# Agent Service Configuration
+variable "agent_service_cpu" {
+  description = "CPU units for agent service container (1024 = 1 vCPU)"
+  type        = number
+  default     = 512 # 0.5 vCPU - lightweight HTTP server
+}
+
+variable "agent_service_memory" {
+  description = "Memory for agent service container in MB"
+  type        = number
+  default     = 1024 # 1 GB
+}
+
+variable "agent_service_desired_count" {
+  description = "Desired number of agent service tasks"
+  type        = number
+  default     = 3
+}
+
 # Environment Variables
 variable "openai_api_key" {
   description = "OpenAI API Key"
@@ -131,6 +150,13 @@ variable "internal_api_key" {
   type        = string
   sensitive   = true
   default     = "a95f431eadf06dc59cbd188a72a797cc71396fdb2a92dc44721f704844cc725e"
+}
+
+variable "tavily_api_key" {
+  description = "Tavily API key for web search in agent service"
+  type        = string
+  sensitive   = true
+  default     = ""
 }
 
 # Stripe Configuration

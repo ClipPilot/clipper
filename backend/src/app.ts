@@ -34,24 +34,36 @@ import { swaggerSpec } from "./config/swagger";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "https://platform.cuttr.com",
+  "https://www.platform.cuttr.com",
+  "https://beta.cuttr.com",
+  "https://www.beta.cuttr.com",
+  "https://cuttr.com",
+  "https://www.cuttr.com",
+  "https://admin.cuttr.com",
+  "https://status.cuttr.com",
+  "https://status-staging.cuttr.com",
+  "https://va.cuttr.com",
+  "https://va-staging.cuttr.com",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3002",
-      "http://localhost:3003",
-      "https://platform.cuttr.com",
-      "https://www.platform.cuttr.com",
-      "https://beta.cuttr.com",
-      "https://www.beta.cuttr.com",
-      "https://cuttr.com",
-      "https://www.cuttr.com",
-      "https://admin.cuttr.com",
-      "https://status.cuttr.com",
-      "https://status-staging.cuttr.com",
-      "https://va.cuttr.com",
-      "https://va-staging.cuttr.com",
-    ],
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        /\.amplifyapp\.com$/.test(origin)
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );

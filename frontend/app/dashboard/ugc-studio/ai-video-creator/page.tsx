@@ -1,12 +1,15 @@
 "use client";
 
-import { Card, CardBody, Button } from "@heroui/react";
+import { useState, useEffect } from "react";
+import { Card, CardBody, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { MyVideoJobsSection } from "@/components/ugc-studio/video-jobs";
+import { ugcScriptAPI } from "@/api/ugc";
+import type { ScriptSummary } from "@/components/ugc-studio/script/types";
 
 
 export default function AIVideoCreatorPage() {
@@ -76,6 +79,9 @@ export default function AIVideoCreatorPage() {
           </Button>
         </div>
 
+        {/* Drafts Section */}
+        <DraftScriptsSection teamId={selectedTeam.id} />
+
         {/* My Videos Section - Full Width */}
         <div>
           <div className="flex items-center gap-2 mb-6">
@@ -84,6 +90,53 @@ export default function AIVideoCreatorPage() {
           </div>
           <MyVideoJobsSection teamId={selectedTeam.id} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DraftScriptsSection({ teamId }: { teamId: number }) {
+  const router = useRouter();
+  const [drafts, setDrafts] = useState<ScriptSummary[]>([]);
+
+  useEffect(() => {
+    ugcScriptAPI.listScripts(teamId, { limit: 10 }).then((res) => {
+      if (res.success) setDrafts(res.scripts);
+    }).catch(() => {});
+  }, [teamId]);
+
+  if (drafts.length === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon icon="solar:document-text-bold-duotone" className="text-amber-400" width={20} />
+        <h2 className="text-lg font-semibold text-text-primary">Drafts</h2>
+        <Chip size="sm" variant="flat" className="text-[11px]">{drafts.length}</Chip>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {drafts.map((script) => (
+          <button
+            key={script.id}
+            onClick={() => router.push(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${script.id}`)}
+            className="text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-accent-400/20 transition-all group"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-sm font-semibold text-text-primary line-clamp-1 group-hover:text-accent-400 transition-colors">
+                {script.title || "Untitled Script"}
+              </h3>
+              <Chip size="sm" variant="flat" className="text-[9px] bg-amber-500/10 text-amber-400 shrink-0 ml-2">
+                Draft
+              </Chip>
+            </div>
+            <p className="text-[11px] text-text-muted line-clamp-2 mb-2">{script.hook || script.scriptDirection || "No description"}</p>
+            <div className="flex items-center gap-3 text-[10px] text-text-muted">
+              <span>{script.sceneCount} scenes</span>
+              <span>{Math.round(script.totalDuration)}s</span>
+              <span>{new Date(script.createdAt).toLocaleDateString()}</span>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );

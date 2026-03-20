@@ -24,9 +24,11 @@ import {
   AutoStructureResponse,
 } from "../../types/ugcScript.types";
 import { db } from "../../db";
-import { characters, ugcScripts } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { characters, ugcScripts, sceneImageGenerationJobs } from "@clipper/shared-db";
+import { eq, and, sql } from "drizzle-orm";
 import { openaiClient } from "../openai.service";
+import { s3Service } from "../s3.service";
+import { config } from "../../config/env";
 
 const client = openaiClient;
 const MAX_AROLL_MERGE_COUNT = 2;
@@ -109,6 +111,45 @@ export function buildDynamicResponseSchema(
   return z.object({
     scripts: z.array(scriptSchema).min(1).max(3).describe("Array of script variations"),
   });
+}
+
+/**
+ * Merges consecutive a-roll scenes in the lightweight init structure format.
+ * When 2 a-roll scenes are back-to-back, they become one smooth a-roll scene —
+ * the actor delivers both beats in a single take for better flow.
+ */
+export function mergeConsecutiveArollStructure(
+  structure: Array<{ sceneType: string; slug: string; description: string }>,
+): Array<{ sceneType: string; slug: string; description: string }> {
+  if (structure.length === 0) return structure;
+
+  const merged: Array<{ sceneType: string; slug: string; description: string }> = [];
+  let i = 0;
+
+  while (i < structure.length) {
+    const current = structure[i];
+
+    if (current.sceneType === "a-roll" && i + 1 < structure.length && structure[i + 1].sceneType === "a-roll") {
+      const group = [current];
+      let j = i + 1;
+      while (j < structure.length && structure[j].sceneType === "a-roll" && group.length < MAX_AROLL_MERGE_COUNT) {
+        group.push(structure[j]);
+        j++;
+      }
+
+      merged.push({
+        sceneType: "a-roll",
+        slug: group.map((s) => s.slug).join(" + "),
+        description: group[0].description,
+      });
+      i = j;
+    } else {
+      merged.push(current);
+      i++;
+    }
+  }
+
+  return merged;
 }
 
 export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
@@ -342,6 +383,12 @@ Return a JSON object with a "descriptions" array of strings, one description per
     }
   }
 
+  private extractEmotionFromDialogue(dialogue: string | undefined): string | null {
+    if (!dialogue) return null;
+    const match = dialogue.match(/\[([a-z]+)\]/i);
+    return match ? match[1].toLowerCase() : null;
+  }
+
   private formatAppearanceConfig(config: any): string {
     if (!config) return "No specific appearance details";
 
@@ -358,38 +405,13 @@ Return a JSON object with a "descriptions" array of strings, one description per
       : "No specific appearance details";
   }
 
-  async storeFullScripts(
-    teamId: number,
-    characterId: number,
-    productImageKeys: string[],
-    productName: string | undefined,
-    scriptDirection: string | undefined,
-    scripts: UGCScript[]
-  ): Promise<string> {
-    const [inserted] = await db
-      .insert(ugcScripts)
-      .values({
-        team_id: teamId,
-        character_id: characterId,
-        product_image_keys: productImageKeys,
-        product_name: productName || null,
-        script_direction: scriptDirection || null,
-        scripts_data: scripts,
-        selected_variant_index: 0,
-        status: "completed",
-      })
-      .returning({ id: ugcScripts.id });
-
-    console.log(
-      `[UGC_SCRIPT] Stored scripts for team ${teamId}, scriptId: ${inserted.id}`
-    );
-    return inserted.id;
-  }
-
   async getFullScript(scriptId: string): Promise<{
     scripts: UGCScript[];
     selectedVariantIndex: number;
     characterId: number | null;
+    isSilent: boolean;
+    hasCharacter: boolean;
+    videoType: string;
   } | null> {
     const [script] = await db
       .select()
@@ -403,6 +425,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
       scripts: script.scripts_data as UGCScript[],
       selectedVariantIndex: script.selected_variant_index || 0,
       characterId: script.character_id,
+      isSilent: script.is_silent,
+      hasCharacter: script.has_character,
+      videoType: script.video_type,
     };
   }
 
@@ -435,6 +460,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
 
     return { scripts, selectedVariantIndex: newSelectedIndex };
   }
+
 
   async regenerateScene(params: RegenerateSceneParams): Promise<UGCScene> {
     const { scriptId, sceneId, currentDialogue, currentEmotion } = params;
@@ -490,24 +516,6 @@ Return a JSON object with a "descriptions" array of strings, one description per
       .where(eq(ugcScripts.id, scriptId));
 
     return newScene;
-  }
-
-  async regenerateCinematicPrompt(action: string): Promise<string> {
-    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
-
-The cinematicPrompt should be 2-3 paragraphs describing:
-1. Visual composition, lighting, and framing
-2. Camera movement and timing
-3. Technical style and what to avoid
-
-Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
-
-    const response = await client.responses.create({
-      model: "gpt-5-mini",
-      input: [{ role: "user", content: prompt }],
-    });
-
-    return response.output_text?.trim() || action;
   }
 
   async regenerateBRollPrompt(params: RegenerateBRollPromptParams): Promise<string> {
@@ -617,10 +625,8 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     const parsed = JSON.parse(response.output_text);
     const newShots: BRollShot[] = ShotsResponseSchema.parse(parsed).shots;
 
-    // Update scene in-memory
     scene.bRollShots = newShots;
 
-    // Persist to database
     await db
       .update(ugcScripts)
       .set({
@@ -650,6 +656,418 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     });
 
     return AutoStructureResponseSchema.parse(JSON.parse(response.output_text));
+  }
+
+  async regenerateCinematicPrompt(action: string): Promise<string> {
+    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
+
+The cinematicPrompt should be 2-3 paragraphs describing:
+1. Visual composition, lighting, and framing
+2. Camera movement and timing
+3. Technical style and what to avoid
+
+Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+    });
+
+    return response.output_text?.trim() || action;
+  }
+
+
+  async initStructure(params: {
+    message: string;
+    productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+  }) {
+    const { message, productImageKeys, threadId, conversationHistory } = params;
+
+    // Build multimodal message content parts for the current message
+    const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [
+      { type: "text", text: message },
+    ];
+
+    if (productImageKeys?.length) {
+      const presignedUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key)),
+      );
+      for (const url of presignedUrls) {
+        content.push({ type: "image", image: url, mediaType: "image/jpeg" });
+      }
+    }
+
+    // Build full messages array: conversation history + current message
+    const messages: Array<{ role: string; content: unknown }> = [];
+    if (conversationHistory?.length) {
+      // Add all previous messages (text-only) for context
+      for (const msg of conversationHistory.slice(0, -1)) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+    // Current message with multimodal content (images)
+    messages.push({ role: "user", content });
+
+    const agentServiceUrl = config.agentService.url;
+    const requestBody: Record<string, unknown> = { messages };
+
+    // Pass threadId for Mastra memory persistence
+    if (threadId) {
+      requestBody.memory = {
+        thread: threadId,
+        resource: "ugc-chat",
+      };
+    }
+
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/script-init-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Agent service error:", errorBody);
+      throw new Error("Failed to generate init structure from agent service");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentResult = (result.object ?? result) as {
+      responseType: "conversation" | "structure";
+      message: string;
+      isSilent: boolean;
+      character: boolean;
+      videoType: string;
+      structure: Array<{ sceneType: string; slug: string; description: string }>;
+    };
+
+    // If it's a structure response with scenes, merge consecutive a-roll scenes
+    if (agentResult.responseType === "structure" && agentResult.structure?.length) {
+      agentResult.structure = mergeConsecutiveArollStructure(agentResult.structure);
+    }
+
+    return agentResult;
+  }
+
+  async generateScriptViaAgent(params: {
+    teamId: number;
+    characterId?: number;
+    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
+    voice?: { name: string; style?: string } | null;
+    targetAudience: string;
+    productImageKeys?: string[];
+    userDirection?: string;
+    isSilent: boolean;
+    videoType: string;
+  }): Promise<{ scriptId: string; script: any }> {
+    const {
+      teamId,
+      characterId,
+      structure,
+      character,
+      voice,
+      targetAudience,
+      productImageKeys,
+      userDirection,
+      isSilent,
+      videoType,
+    } = params;
+
+    // Build multimodal content parts for product images
+    const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [];
+
+    if (productImageKeys?.length) {
+      const presignedUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key)),
+      );
+      for (const url of presignedUrls) {
+        content.push({ type: "image", image: url, mediaType: "image/jpeg" });
+      }
+    }
+
+    // Build structured text summary for the agent
+    const structureSummary = structure
+      .map((s, i) => {
+        const shots = s.shots?.length
+          ? ` | Shots: ${s.shots.map((sh) => `${sh.label} (${sh.shotType})`).join(", ")}`
+          : "";
+        return `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}${shots}`;
+      })
+      .join("\n");
+
+    const characterSummary = character
+      ? `Character: ${character.name}, ${character.gender || "unspecified"}, ${character.age_range || "25-35"}, ${this.formatAppearanceConfig(character.appearance_config)}`
+      : "No character (product-only video)";
+
+    const voiceSummary = voice
+      ? `Voice: ${voice.name}${voice.style ? ` (${voice.style})` : ""}`
+      : "No voice (silent video)";
+
+    const messageText = [
+      `=== VIDEO SCRIPT GENERATION ===`,
+      `Video Type: ${videoType}`,
+      `Silent: ${isSilent}`,
+      `Target Audience: ${targetAudience}`,
+      ``,
+      `${characterSummary}`,
+      `${voiceSummary}`,
+      ``,
+      `Structure Blueprint:`,
+      structureSummary,
+      ``,
+      userDirection ? `User Direction: ${userDirection}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    content.push({ type: "text", text: messageText });
+
+    const messages = [{ role: "user", content }];
+
+    const agentServiceUrl = config.agentService.url;
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/script-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Script agent error:", errorBody);
+      throw new Error("Failed to generate script from agent service");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentResult = (result.object ?? result) as any;
+
+    // Normalize agent output to the backend UGCScript schema.
+    // The agent returns fields like: slug, storyBeat, duration, shots[], sceneType (a-roll/b-roll/visual)
+    // The backend expects:         id, sceneType (story beat), estimatedDurationSeconds, bRollShots[], shotType (a-roll/b-roll)
+    const normalizedScript = {
+      title: agentResult.title,
+      hook: agentResult.scenes?.[0]?.dialogue || "",
+      targetAudience: agentResult.targetAudience,
+      totalEstimatedDuration: agentResult.totalDuration,
+      scenes: (agentResult.scenes || []).map((scene: any) => ({
+        id: scene.id || scene.slug || `scene-${scene.sceneNumber}`,
+        sceneNumber: scene.sceneNumber,
+        // Agent's storyBeat → backend's sceneType (hook, problem, demo, etc.)
+        sceneType: scene.storyBeat || scene.sceneType || "demo",
+        action: scene.action,
+        dialogue: scene.dialogue || "",
+        emotion: this.extractEmotionFromDialogue(scene.dialogue) || "confident",
+        // Agent's duration → backend's estimatedDurationSeconds
+        estimatedDurationSeconds: scene.duration || scene.estimatedDurationSeconds || 5,
+        // Agent's sceneType (a-roll/b-roll/visual) → backend's shotType (a-roll/b-roll)
+        shotType: scene.sceneType === "a-roll" ? "a-roll" : "b-roll",
+        cameraAngle: scene.cameraAngle || "medium-shot",
+        cinematicPrompt: scene.cinematicPrompt || "",
+        ambientSound: scene.ambientSound || null,
+        // Agent's shots[] → backend's bRollShots[]
+        bRollShots: scene.shots && scene.shots.length > 0
+          ? scene.shots.map((shot: any) => ({
+              action: shot.action,
+              cinematicPrompt: shot.cinematicPrompt,
+              durationSeconds: shot.durationSeconds,
+              productImageNeeded: shot.productImageNeeded ?? false,
+              shotType: shot.shotType || "PRODUCT",
+            }))
+          : null,
+      })),
+      viralScore: 0,
+      viralReasoning: "",
+      productMentions: [],
+    };
+
+    const scriptsData = [normalizedScript];
+    const insertValues: Record<string, unknown> = {
+      team_id: teamId,
+      product_image_keys: productImageKeys || [],
+      script_direction: userDirection || null,
+      scripts_data: scriptsData,
+      selected_variant_index: 0,
+      status: "completed",
+      is_silent: isSilent,
+      has_character: !!characterId,
+      video_type: videoType || "ugc",
+    };
+    if (characterId) {
+      insertValues.character_id = characterId;
+    }
+    const [inserted] = await db
+      .insert(ugcScripts)
+      .values(insertValues as any)
+      .returning({ id: ugcScripts.id });
+
+    console.log(
+      `[UGC_SCRIPT] Agent script stored for team ${teamId}, scriptId: ${inserted.id}`,
+    );
+
+    return { scriptId: inserted.id, script: normalizedScript };
+  }
+
+  async storyboardChat(params: {
+    scriptId: string;
+    message: string;
+    threadId?: string;
+    teamId?: number;
+    characterId?: number;
+  }): Promise<{
+    message: string;
+    updatedScript: any;
+    regeneratingJobs: Array<{
+      jobId: string;
+      sceneId: string;
+      sceneNumber: number;
+      status: string;
+      singleBRollShotIndex?: number;
+    }>;
+  }> {
+    const { scriptId, message, threadId, teamId, characterId } = params;
+
+    // Load current script to inject as context
+    const existing = await this.getFullScript(scriptId);
+    if (!existing) {
+      throw new Error("Script not found");
+    }
+
+    const { scripts, selectedVariantIndex } = existing;
+    const currentScript = scripts[selectedVariantIndex];
+
+    // Build detailed script summary for the agent (includes b-roll shot details)
+    const sceneSummary = currentScript.scenes
+      .map((s) => {
+        const dialoguePreview = s.dialogue
+          ? `\n    Dialogue: "${s.dialogue.slice(0, 120)}${s.dialogue.length > 120 ? "..." : ""}"`
+          : "";
+        const actionPreview = s.action
+          ? `\n    Action: ${s.action.slice(0, 120)}${s.action.length > 120 ? "..." : ""}`
+          : "";
+        let shotDetails = "";
+        if (s.bRollShots?.length) {
+          shotDetails = `\n    B-Roll Shots (${s.bRollShots.length}):` +
+            s.bRollShots
+              .map(
+                (shot, i) =>
+                  `\n      Shot ${i + 1}: ${shot.action.slice(0, 80)}${shot.action.length > 80 ? "..." : ""} (${shot.durationSeconds}s)`,
+              )
+              .join("");
+        }
+        return `  ${s.sceneNumber}. [id:${s.id}] ${s.sceneType} (${s.shotType}, ${s.estimatedDurationSeconds}s, emotion: ${s.emotion})${actionPreview}${dialoguePreview}${shotDetails}`;
+      })
+      .join("\n");
+
+    const contextMessage = `=== CURRENT SCRIPT CONTEXT ===
+scriptId: ${scriptId}
+variantIndex: ${selectedVariantIndex}
+teamId: ${teamId || "unknown"}
+characterId: ${characterId || existing.characterId || "unknown"}
+Title: ${currentScript.title}
+Target Audience: ${currentScript.targetAudience}
+Total Duration: ${currentScript.totalEstimatedDuration}s
+Scenes (${currentScript.scenes.length}):
+${sceneSummary}
+
+=== USER REQUEST ===
+${message}`;
+
+    const messages = [{ role: "user", content: contextMessage }];
+
+    const agentServiceUrl = config.agentService.url;
+    const requestBody: Record<string, unknown> = { messages };
+
+    // Use a storyboard-scoped thread ID to avoid collision with init-agent threads.
+    // Prefix the provided threadId (or scriptId) so Mastra creates a separate thread.
+    const storyboardThreadId = threadId
+      ? `storyboard-${threadId}`
+      : `storyboard-${scriptId}`;
+    requestBody.memory = {
+      thread: storyboardThreadId,
+      resource: "storyboard-chat",
+    };
+
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/storyboard-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Storyboard agent error:", errorBody);
+      throw new Error("Failed to process storyboard edit");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentMessage =
+      typeof result.text === "string"
+        ? result.text
+        : typeof result.message === "string"
+          ? result.message
+          : "Changes applied.";
+
+    // Re-read script from DB (tools already saved mutations)
+    const updated = await this.getFullScript(scriptId);
+    const updatedScript = updated
+      ? updated.scripts[updated.selectedVariantIndex]
+      : currentScript;
+
+    // Check for any image generation jobs queued during this agent call
+    // (created in the last 30 seconds for this script)
+    const recentJobs = await db
+      .select({
+        id: sceneImageGenerationJobs.id,
+        scene_id: sceneImageGenerationJobs.scene_id,
+        scene_number: sceneImageGenerationJobs.scene_number,
+        status: sceneImageGenerationJobs.status,
+        progress_message: sceneImageGenerationJobs.progress_message,
+      })
+      .from(sceneImageGenerationJobs)
+      .where(
+        and(
+          eq(sceneImageGenerationJobs.script_id, scriptId),
+          sql`${sceneImageGenerationJobs.created_at} > NOW() - INTERVAL '30 seconds'`,
+        ),
+      );
+
+    const regeneratingJobs = recentJobs.map((job) => {
+      // Parse shot index from progress message (e.g., "Regenerating shot 2. Poll for status.")
+      const shotMatch = job.progress_message?.match(/shot (\d+)/i);
+      const shotIndex = shotMatch ? parseInt(shotMatch[1], 10) - 1 : undefined;
+      return {
+        jobId: job.id,
+        sceneId: job.scene_id,
+        sceneNumber: job.scene_number,
+        status: job.status,
+        singleBRollShotIndex: shotIndex,
+      };
+    });
+
+    // Clean the agent message — remove job IDs and technical details
+    const cleanMessage = agentMessage
+      .replace(/\bjob\s*[Ii][Dd]:?\s*[a-f0-9-]{36}/g, "")
+      .replace(/\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/g, "")
+      .replace(/\(index \d+\)/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    return {
+      message: cleanMessage,
+      updatedScript,
+      regeneratingJobs,
+    };
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

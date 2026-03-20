@@ -1,0 +1,35 @@
+{
+  "name": "agent-service",
+  "version": "1.0.0",
+  "description": "Mastra AI agents for Cuttr",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "tsc && mastra build",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@clipper/shared-db": "workspace:*",
+    "@mastra/core": "^1.10.0",
+    "@mastra/loggers": "^1.0.2",
+    "@mastra/memory": "^1.6.1",
+    "@mastra/observability": "^1.3.1",
+    "@mastra/pg": "^1.6.1",
+    "ai": "^4.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "openai": "^5.0.0",
+    "pg": "^8.16.3",
+    "mastra": "^1.3.7",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.6",
+    "typescript": "^5.7.0"
+  }
+}

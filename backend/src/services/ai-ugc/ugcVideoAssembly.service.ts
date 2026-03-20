@@ -185,10 +185,7 @@ export interface AssemblyResult {
 }
 
 const OUTPUT_DIR = path.join(process.cwd(), "output", "ugc-videos");
-
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 function getMediaDuration(filePath: string): number {
   try {

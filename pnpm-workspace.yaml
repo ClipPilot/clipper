@@ -5,6 +5,7 @@ packages:
   - lambda-virality-sync
   - lambda-cpm-billing
   - va-tools
+  - agent-service
 
 ignoredBuiltDependencies:
   - puppeteer

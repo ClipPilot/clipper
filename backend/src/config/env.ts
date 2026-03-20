@@ -54,6 +54,9 @@ export const config = {
     driveParentFolderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || "",
     delegateEmail: "contact@cuttr.com",
   },
+  agentService: {
+    url: getEnv("AGENT_SERVICE_URL", "http://localhost:4111"),
+  },
   port: getEnv("PORT", "3001"),
 };
 
