@@ -45,7 +45,83 @@ resource "aws_cloudwatch_log_group" "agent_service" {
   }
 }
 
-# ECS Task Definition
+# --- Internal ALB for Agent Service ---
+
+resource "aws_security_group" "agent_service_alb" {
+  name        = "${var.project_name}-agent-service-alb-sg-${var.environment}"
+  description = "Security group for internal agent service ALB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Allow traffic from ECS tasks"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_tasks.id]
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-agent-service-alb-sg-${var.environment}"
+  }
+}
+
+resource "aws_lb" "agent_service" {
+  name               = "${var.project_name}-agent-svc-${var.environment}"
+  internal           = true
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.agent_service_alb.id]
+  subnets            = aws_subnet.private[*].id
+
+  tags = {
+    Name = "${var.project_name}-agent-service-alb-${var.environment}"
+  }
+}
+
+resource "aws_lb_target_group" "agent_service" {
+  name        = "${var.project_name}-agent-svc-tg-${var.environment}"
+  port        = 4111
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
+  }
+
+  tags = {
+    Name = "${var.project_name}-agent-service-tg-${var.environment}"
+  }
+}
+
+resource "aws_lb_listener" "agent_service" {
+  load_balancer_arn = aws_lb.agent_service.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.agent_service.arn
+  }
+}
+
+# --- ECS Task Definition ---
+
 resource "aws_ecs_task_definition" "agent_service" {
   family                   = "${var.project_name}-agent-service-${var.environment}"
   network_mode             = "awsvpc"
@@ -132,7 +208,7 @@ resource "aws_ecs_task_definition" "agent_service" {
     }
 
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:4111/api/health || exit 1"]
+      command     = ["CMD-SHELL", "curl -f http://localhost:4111/health || exit 1"]
       interval    = 30
       timeout     = 5
       retries     = 3
@@ -147,7 +223,8 @@ resource "aws_ecs_task_definition" "agent_service" {
   }
 }
 
-# ECS Service (no ALB for now - internal service accessed via backend)
+# --- ECS Service ---
+
 resource "aws_ecs_service" "agent_service" {
   name            = "${var.project_name}-agent-service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
@@ -161,17 +238,27 @@ resource "aws_ecs_service" "agent_service" {
     assign_public_ip = false
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.agent_service.arn
+    container_name   = "agent-service"
+    container_port   = 4111
+  }
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
   }
+
+  depends_on = [aws_lb_listener.agent_service]
 
   tags = {
     Name = "${var.project_name}-agent-service-${var.environment}"
   }
 }
 
-# Service Discovery (so backend can reach agent-service by name within the VPC)
+# --- Cloud Map (retained temporarily until registered instances drain) ---
+# TODO: Remove these resources once no instances are registered in Cloud Map
+
 resource "aws_service_discovery_private_dns_namespace" "agent" {
   count = var.agent_service_desired_count > 0 ? 1 : 0
 

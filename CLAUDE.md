@@ -390,6 +390,13 @@ pnpm build          # TypeScript compile
 - Tailwind CSS for styling (tailwind-variants for variant composition)
 - Jotai for lightweight state; Redux for legacy state
 - ESLint + Prettier for code quality
+- **Minimize useEffect usage** — follow [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect):
+  - Don't use useEffect to transform data for rendering — compute during render instead
+  - Don't use useEffect to handle user events — call handlers directly from event callbacks
+  - Don't use useEffect to reset state when props change — use a `key` prop or compute from props
+  - Don't use useEffect to sync with parent state — lift state up or pass callbacks
+  - Don't use useEffect to fetch data triggered by user actions — fetch in the event handler
+  - Only use useEffect for things that genuinely need to synchronize with an external system (subscriptions, timers, DOM APIs, third-party widgets)
 
 ### Database
 - All schema changes go through `packages/shared-db/src/schema.ts`

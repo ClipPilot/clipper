@@ -37,6 +37,6 @@ ENV NODE_ENV=production \
 EXPOSE 4111
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:4111/api/health || exit 1
+    CMD curl -f http://localhost:4111/health || exit 1
 
 CMD ["node", "index.mjs"]

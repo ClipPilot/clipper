@@ -6,11 +6,12 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { motion } from "framer-motion";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom, resetUGCAtom } from "@/store/ugc";
+import { sceneImagesAtom, resetUGCAtom } from "@/store/ugc";
 import { resetAdCloneAtom } from "@/store/adClone";
 import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
+import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { useTeams } from "@/hooks/useTeams";
 import { useChatAgent } from "./useChatAgent";
 import { MessageList } from "./MessageList";
@@ -38,7 +39,6 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     retryStructure,
     generateScript,
     updateScene,
-    loadExistingScript,
     confirmCharacter,
     regenerateAllImages,
     selectedCharacterRef,
@@ -48,41 +48,64 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
   const step = useAtomValue(currentStepAtom);
   const setVideoState = useSetAtom(videoStateAtom);
   const sceneImages = useAtomValue(sceneImagesAtom);
+  const setSceneImages = useSetAtom(sceneImagesAtom);
   const resetUGC = useSetAtom(resetUGCAtom);
   const resetAdClone = useSetAtom(resetAdCloneAtom);
-  const setScripts = useSetAtom(scriptsAtom);
-  const setSelectedVariantIndex = useSetAtom(selectedVariantIndexAtom);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
+    resetUGC();
     resetAdClone();
-    if (resumeScriptId) {
-      ugcScriptAPI.getFullScript(resumeScriptId).then((response) => {
-        if (!response.success) return;
-        setScripts(response.scripts);
-        setSelectedVariantIndex(response.selectedVariantIndex);
-        const script = response.scripts[response.selectedVariantIndex];
-        setVideoState((prev) => ({
-          ...prev,
-          scriptId: resumeScriptId,
-          scenes: script?.scenes ?? [],
-          isSilent: response.isSilent,
-          hasCharacter: response.hasCharacter,
-          videoType: response.videoType,
-          targetAudience: script?.targetAudience ?? "",
-        }));
-        loadExistingScript({
-          isSilent: response.isSilent,
-          hasCharacter: response.hasCharacter,
-          videoType: response.videoType,
-        });
-      }).catch((err) => {
-        console.error("Failed to resume script:", err);
-        resetUGC();
+
+    if (!resumeScriptId) return;
+
+    ugcScriptAPI.getFullScript(resumeScriptId).then(async (response) => {
+      if (!response.success) return;
+      const script = response.scripts[response.selectedVariantIndex];
+      savedCharacterIdRef.current = response.characterId ?? null;
+
+      setVideoState({
+        scriptId: resumeScriptId,
+        teamId: teamId,
+        scenes: script?.scenes ?? [],
+        character: null,
+        voice: null,
+        videoType: response.videoType,
+        isSilent: response.isSilent,
+        hasCharacter: response.hasCharacter,
+        targetAudience: script?.targetAudience ?? "",
+        productImageKeys: [],
+        userDirection: "",
+        structureBlueprint: null,
+        customPattern: null,
+        freshStart: true,
+        isGeneratingScript: false,
+        threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       });
-    } else {
+
+      try {
+        const imgRes = await sceneBuilderAPI.getSceneImages(resumeScriptId);
+        if (imgRes.success) {
+          const restored: Record<string, import("@/store/ugc").SceneImageState> = {};
+          for (const [sceneId, img] of Object.entries(imgRes.sceneImages)) {
+            const imgAny = img as any;
+            restored[sceneId] = {
+              status: "completed",
+              imageKey: img.image_key,
+              imageUrl: img.imageUrl,
+              generatedImages: imgAny.generatedImages,
+            };
+          }
+          setSceneImages(restored);
+        }
+      } catch {}
+    }).catch(() => {
       resetUGC();
-    }
-  }, [resumeScriptId]);
+    });
+  }, []);
 
   useEffect(() => {
     if (videoState.scriptId && videoState.scriptId !== resumeScriptId) {
@@ -90,19 +113,18 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     }
   }, [videoState.scriptId]);
 
-  // Check if any scene images are currently generating
   const isImagesGenerating = Object.values(sceneImages).some(
     (img) => img.status === "generating" || img.status === "regenerating",
   );
-  const isChatDisabled = isThinking || isImagesGenerating;
+  const isChatDisabled = isThinking;
 
   const chatInputRef = useRef<ChatInputHandle>(null);
+  const savedCharacterIdRef = useRef<number | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
     null,
   );
   const [showExistingScripts, setShowExistingScripts] = useState(false);
 
-  // Resizable split state (percentage for chat panel)
   const [chatWidthPct, setChatWidthPct] = useState(40);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -146,7 +168,11 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
 
   const handleCharacterConfirm = useCallback(() => {
     confirmCharacter();
-  }, [confirmCharacter]);
+
+    if (resumeScriptId && selectedCharacter && savedCharacterIdRef.current !== selectedCharacter.id) {
+      setSceneImages({});
+    }
+  }, [confirmCharacter, resumeScriptId, selectedCharacter, setSceneImages]);
 
   const handleDropFiles = useCallback((files: File[]) => {
     chatInputRef.current?.addFiles(files);
@@ -156,30 +182,48 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     async (existingScriptId: string) => {
       try {
         const response = await ugcScriptAPI.getFullScript(existingScriptId);
-        if (response.success) {
-          setScripts(response.scripts);
-          setSelectedVariantIndex(response.selectedVariantIndex);
-          setVideoState((prev) => ({
-            ...prev,
-            scriptId: existingScriptId,
-          }));
-          loadExistingScript({
-            isSilent: response.isSilent,
-            hasCharacter: response.hasCharacter,
-            videoType: response.videoType,
-          });
-          setShowExistingScripts(false);
-        }
+        if (!response.success) return;
+        const script = response.scripts[response.selectedVariantIndex];
+        setVideoState({
+          scriptId: existingScriptId,
+          teamId: teamId,
+          scenes: script?.scenes ?? [],
+          character: null,
+          voice: null,
+          videoType: response.videoType,
+          isSilent: response.isSilent,
+          hasCharacter: response.hasCharacter,
+          targetAudience: script?.targetAudience ?? "",
+          productImageKeys: [],
+          userDirection: "",
+          structureBlueprint: null,
+          customPattern: null,
+          freshStart: true,
+          isGeneratingScript: false,
+          threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        });
+        savedCharacterIdRef.current = response.characterId ?? null;
+        setShowExistingScripts(false);
+
+        sceneBuilderAPI.getSceneImages(existingScriptId).then((imgRes) => {
+          if (!imgRes.success) return;
+          const restored: Record<string, import("@/store/ugc").SceneImageState> = {};
+          for (const [sceneId, img] of Object.entries(imgRes.sceneImages)) {
+            const imgAny = img as any;
+            restored[sceneId] = {
+              status: "completed",
+              imageKey: img.image_key,
+              imageUrl: img.imageUrl,
+              generatedImages: imgAny.generatedImages,
+            };
+          }
+          setSceneImages(restored);
+        }).catch(() => {});
       } catch (err) {
         console.error("Failed to load existing script:", err);
       }
     },
-    [
-      setScripts,
-      setSelectedVariantIndex,
-      setVideoState,
-      loadExistingScript,
-    ],
+    [setVideoState, setSceneImages, teamId],
   );
 
   /* -- Drag-to-resize handlers ---------------------------------------- */

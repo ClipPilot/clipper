@@ -91,8 +91,9 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
     const hasVideo = videoAttachment !== null;
     const canSend = hasContent && hasVideo && !isDisabled;
     const videoState = useAtomValue(videoStateAtom);
-    const showMentions = videoState.scriptId && text.includes("@");
-    const mentionQuery = showMentions ? (text.match(/@(\S*)$/)?.[1] ?? "") : "";
+    const mentionMatch = videoState.scriptId ? text.match(/@(\S*)$/) : null;
+    const showMentions = !!mentionMatch;
+    const mentionQuery = mentionMatch?.[1] ?? "";
 
     const handleImageFiles = useCallback(
       async (files: FileList | File[]) => {
@@ -441,25 +442,41 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
                 <Icon icon="solar:gallery-minimalistic-bold-duotone" width={20} />
               </button>
 
-              <Textarea
-                value={text}
-                onValueChange={setText}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  hasVideo
-                    ? "Describe your product and any creative direction..."
-                    : "Add a reference ad above first, then describe your product here..."
-                }
-                minRows={1}
-                maxRows={4}
-                isDisabled={isDisabled || !hasVideo}
-                classNames={{
-                  inputWrapper:
-                    "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent !ring-0 !ring-offset-0 min-h-[36px]",
-                  input: "text-sm text-text-primary placeholder:text-text-muted/50",
-                  innerWrapper: "pb-0",
-                }}
-              />
+              <div className="flex-1 relative">
+                {text && /@scene \d/i.test(text) && (
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none text-sm leading-relaxed whitespace-pre-wrap break-words px-3 py-2 text-transparent"
+                  >
+                    {text.split(/(@[Ss]cene \d+(?: [Ss]hot \d+)?)/g).map((part, i) =>
+                      /@scene \d/i.test(part) ? (
+                        <span key={i} className="bg-accent-400/40 border border-accent-400/50 rounded px-0.5">{part}</span>
+                      ) : (
+                        <span key={i}>{part}</span>
+                      ),
+                    )}
+                  </div>
+                )}
+                <Textarea
+                  value={text}
+                  onValueChange={setText}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    hasVideo
+                      ? "Describe your product and any creative direction..."
+                      : "Add a reference ad above first, then describe your product here..."
+                  }
+                  minRows={1}
+                  maxRows={4}
+                  isDisabled={isDisabled || !hasVideo}
+                  classNames={{
+                    inputWrapper:
+                      "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent !ring-0 !ring-offset-0 min-h-[36px]",
+                    input: "text-sm text-text-primary placeholder:text-text-muted/50",
+                    innerWrapper: "pb-0",
+                  }}
+                />
+              </div>
 
               {/* Send button */}
               <motion.div
