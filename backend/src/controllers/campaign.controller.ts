@@ -200,13 +200,15 @@ export async function listVideos(req: AuthRequest, res: Response) {
     const pageSize = parseInt(req.query.pageSize as string) || 20;
     const sortBy = req.query.sortBy as string | undefined;
     const sortOrder = req.query.sortOrder as string | undefined;
+    const filter = req.query.filter as string | undefined;
     const validSortBy = ["created_at", "title", "publish_status", "post_count"].includes(sortBy ?? "")
       ? (sortBy as "created_at" | "title" | "publish_status" | "post_count")
       : undefined;
     const validSortOrder = sortOrder === "asc" || sortOrder === "desc" ? sortOrder : undefined;
+    const validFilter = filter === "published" || filter === "unpublished" ? filter : undefined;
 
     const result = await campaignVideoService.listVideos(campaignId, {
-      page, pageSize, sortBy: validSortBy, sortOrder: validSortOrder,
+      page, pageSize, sortBy: validSortBy, sortOrder: validSortOrder, filter: validFilter,
     });
     return res.json(result);
   } catch (error) {

@@ -106,13 +106,39 @@ function formatEta(file: UploadFile): string {
   return `${Math.floor(seconds / 3600)}h${Math.ceil((seconds % 3600) / 60)}m`;
 }
 
+const STORAGE_KEY = "clip-factory-batch";
+
+interface PersistedBatch {
+  team: Team;
+  jobs: JobInfo[];
+  publicIds: string[];
+}
+
+function saveBatch(team: Team, jobs: JobInfo[]) {
+  const data: PersistedBatch = { team, jobs, publicIds: jobs.flatMap((j) => j.rawVideoPublicIds) };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function loadBatch(): PersistedBatch | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function clearBatch() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export default function ClipFactoryPage() {
-  const [pageState, setPageState] = useState<PageState>("setup");
+  const restored = useRef(loadBatch());
+
+  const [pageState, setPageState] = useState<PageState>(() => restored.current ? "processing" : "setup");
 
   // Team selection
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamSearch, setTeamSearch] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(() => restored.current?.team ?? null);
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [teamsLoading, setTeamsLoading] = useState(false);
 
@@ -145,7 +171,7 @@ export default function ClipFactoryPage() {
   });
 
   // Processing
-  const [jobs, setJobs] = useState<JobInfo[]>([]);
+  const [jobs, setJobs] = useState<JobInfo[]>(() => restored.current?.jobs ?? []);
   const [statusData, setStatusData] = useState<Awaited<ReturnType<typeof adminAPI.getClipFactoryStatus>> | null>(null);
   const [error, setError] = useState("");
   const [startLoading, setStartLoading] = useState(false);
@@ -382,7 +408,8 @@ export default function ClipFactoryPage() {
       const result = await adminAPI.startClipFactory(selectedTeam.id, videos, apiOptions);
       setJobs(result.jobs);
       setPageState("processing");
-      startPolling(result.jobs.flatMap((j) => j.rawVideoPublicIds));
+      saveBatch(selectedTeam, result.jobs);
+      startPolling(result.jobs.flatMap((j) => j.rawVideoPublicIds), selectedTeam.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start");
     } finally {
@@ -390,16 +417,16 @@ export default function ClipFactoryPage() {
     }
   }
 
-  function startPolling(publicIds: string[]) {
+  function startPolling(publicIds: string[], teamId: number) {
     if (pollRef.current) clearInterval(pollRef.current);
 
     const poll = async () => {
-      if (!selectedTeam) return;
       try {
-        const data = await adminAPI.getClipFactoryStatus(publicIds, selectedTeam.id);
+        const data = await adminAPI.getClipFactoryStatus(publicIds, teamId);
         setStatusData(data);
         if (data.status === "completed" || data.status === "failed" || data.status === "partial") {
           if (pollRef.current) clearInterval(pollRef.current);
+          clearBatch();
           setPageState("complete");
         }
       } catch {
@@ -411,14 +438,20 @@ export default function ClipFactoryPage() {
     pollRef.current = setInterval(poll, 5000);
   }
 
+  // Resume polling on mount if there's a persisted batch
   useEffect(() => {
+    if (restored.current) {
+      startPolling(restored.current.publicIds, restored.current.team.id);
+    }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleReset() {
     if (pollRef.current) clearInterval(pollRef.current);
+    clearBatch();
     setPageState("setup");
     setFiles([]);
     setJobs([]);
