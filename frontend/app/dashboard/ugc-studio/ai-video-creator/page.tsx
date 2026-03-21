@@ -101,7 +101,7 @@ function DraftScriptsSection({ teamId }: { teamId: number }) {
 
   useEffect(() => {
     ugcScriptAPI.listScripts(teamId, { limit: 10 }).then((res) => {
-      if (res.success) setDrafts(res.scripts);
+      if (res.success) setDrafts(res.scripts.filter((s: any) => !s.hasVideo));
     }).catch(() => {});
   }, [teamId]);
 

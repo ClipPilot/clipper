@@ -12,6 +12,8 @@ import { videoStateAtom } from "@/store/videoState";
 import { useAtomValue } from "jotai";
 import { adCloneAPI } from "@/api/adClone";
 import { ugcVideoAPI } from "@/api/ugc/video";
+import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import { sceneImagesAtom, type SceneImageState } from "@/store/ugc";
 import { useAdCloneChatAgent } from "./useAdCloneChatAgent";
 import { MessageList } from "./MessageList";
 import { AdCloneChatInput, type AdCloneChatInputHandle } from "./AdCloneChatInput";
@@ -47,23 +49,65 @@ export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: st
 
   const resetAdClone = useSetAtom(resetAdCloneAtom);
   const resetUGC = useSetAtom(resetUGCAtom);
+  const setVideoState = useSetAtom(videoStateAtom);
   const videoState = useAtomValue(videoStateAtom);
+  const setSceneImages = useSetAtom(sceneImagesAtom);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+
     resetUGC();
-    if (resumeProjectId) {
-      adCloneAPI.getProject(resumeProjectId).then((response) => {
-        if (!response.success) return;
-        // The hook's loadProject would hydrate state from the project data
-        // For now, the project data provides enough to resume
-      }).catch((err) => {
-        console.error("Failed to resume project:", err);
-        resetAdClone();
+    resetAdClone();
+
+    if (!resumeProjectId) return;
+
+    adCloneAPI.getProject(resumeProjectId).then(async (response) => {
+      if (!response.success) return;
+      const { project, scripts } = response;
+      const script = scripts?.[project.selectedVariantIndex ?? 0];
+      if (!script?.scenes) return;
+
+      setVideoState({
+        scriptId: resumeProjectId,
+        teamId: teamId,
+        scenes: script.scenes,
+        character: null,
+        voice: null,
+        videoType: "ugc",
+        isSilent: !script.scenes.some((s: any) => s.dialogue?.trim()),
+        hasCharacter: true,
+        targetAudience: script.targetAudience ?? "",
+        productImageKeys: [],
+        userDirection: "",
+        structureBlueprint: null,
+        customPattern: null,
+        freshStart: true,
+        isGeneratingScript: false,
+        threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       });
-    } else {
+
+      try {
+        const imgRes = await sceneBuilderAPI.getSceneImages(resumeProjectId);
+        if (imgRes.success) {
+          const restored: Record<string, SceneImageState> = {};
+          for (const [sceneId, img] of Object.entries(imgRes.sceneImages)) {
+            const imgAny = img as any;
+            restored[sceneId] = {
+              status: "completed",
+              imageKey: img.image_key,
+              imageUrl: img.imageUrl,
+              generatedImages: imgAny.generatedImages,
+            };
+          }
+          setSceneImages(restored);
+        }
+      } catch {}
+    }).catch(() => {
       resetAdClone();
-    }
-  }, [resumeProjectId]);
+    });
+  }, []);
 
   useEffect(() => {
     if (projectId && projectId !== resumeProjectId) {

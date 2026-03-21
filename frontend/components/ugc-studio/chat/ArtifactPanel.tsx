@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAtomValue } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
@@ -8,7 +8,7 @@ import { AudioStep } from "@/components/ugc-studio/voice";
 import { ScriptPreview } from "./ScriptPreview";
 import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
-import { scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
+import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom } from "@/store/ugc";
 import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
@@ -44,6 +44,9 @@ export function ArtifactPanel({
   const isExistingScript = !!videoState.scriptId && !videoState.structureBlueprint && videoState.scenes.length === 0;
   const hasGeneratedScript = videoState.scenes.length > 0;
 
+  const sceneImages = useAtomValue(sceneImagesAtom);
+  const hasTriggeredImageGen = useRef(false);
+
   const shouldGenerate =
     step === "script" &&
     !isExistingScript &&
@@ -54,6 +57,24 @@ export function ArtifactPanel({
   useEffect(() => {
     if (shouldGenerate) onGenerateScript();
   }, [shouldGenerate, onGenerateScript]);
+
+  const noImages = hasGeneratedScript && Object.keys(sceneImages).length === 0;
+  const anyGenerating = Object.values(sceneImages).some(
+    (s) => s.status === "generating" || s.status === "regenerating",
+  );
+
+  useEffect(() => {
+    if (
+      step === "script" &&
+      noImages &&
+      !anyGenerating &&
+      !hasTriggeredImageGen.current &&
+      onGenerateImages
+    ) {
+      hasTriggeredImageGen.current = true;
+      onGenerateImages();
+    }
+  }, [step, noImages, anyGenerating, onGenerateImages]);
 
   const existingScript = scripts[selectedVariantIndex];
 

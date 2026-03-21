@@ -7,6 +7,21 @@ import Markdown from "react-markdown";
 import type { ChatMessage } from "./types";
 import { StructurePreview } from "./StructurePreview";
 
+function highlightMentions(text: string): React.ReactNode {
+  const parts = text.split(/(@[Ss]cene \d+(?: [Ss]hot \d+)?)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (/@[Ss]cene \d+/i.test(part)) {
+      return (
+        <span key={i} className="bg-white/30 text-white px-1 py-0.5 rounded font-medium">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export type ChatColorTheme = "default" | "orange";
 
 interface MessageCardProps {
@@ -77,18 +92,22 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry, theme = "d
               : "bg-white/[0.03] text-text-primary/90 rounded-bl-sm border border-white/[0.06] backdrop-blur-sm"
           }`}
         >
-          <Markdown
-            components={{
-              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-              em: ({ children }) => <em>{children}</em>,
-              ul: ({ children }) => <ul className="list-disc pl-4 mb-1">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal pl-4 mb-1">{children}</ol>,
-              li: ({ children }) => <li className="mb-0.5">{children}</li>,
-            }}
-          >
-            {message.content}
-          </Markdown>
+          {isUser && /@scene \d/i.test(message.content) ? (
+            <p>{highlightMentions(message.content)}</p>
+          ) : (
+            <Markdown
+              components={{
+                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em>{children}</em>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-1">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-1">{children}</ol>,
+                li: ({ children }) => <li className="mb-0.5">{children}</li>,
+              }}
+            >
+              {message.content}
+            </Markdown>
+          )}
         </div>
 
         {/* Structure result */}

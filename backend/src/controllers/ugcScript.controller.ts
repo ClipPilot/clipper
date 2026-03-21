@@ -4,8 +4,8 @@ import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { ugcScripts, characters } from "@clipper/shared-db/src/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
+import { eq, desc, and, isNotNull } from "drizzle-orm";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
@@ -426,9 +426,11 @@ export class UGCScriptController {
           createdAt: ugcScripts.created_at,
           characterId: ugcScripts.character_id,
           characterName: characters.name,
+          videoJobId: ugcVideoGenerationJobs.id,
         })
         .from(ugcScripts)
         .leftJoin(characters, eq(ugcScripts.character_id, characters.id))
+        .leftJoin(ugcVideoGenerationJobs, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
         .where(
           and(
             eq(ugcScripts.team_id, parseInt(teamId)),
@@ -462,6 +464,7 @@ export class UGCScriptController {
           hook: selectedScript?.hook || "",
           viralScore: selectedScript?.viralScore || 0,
           createdAt: script.createdAt,
+          hasVideo: !!script.videoJobId,
         };
       });
 
