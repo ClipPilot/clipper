@@ -72,11 +72,13 @@ The goal: someone reading your analysis could recreate this EXACT video — stru
 const PRIMARY_MODEL = "gemini-3-pro-preview";
 const FALLBACK_MODEL = "gemini-3-flash-preview";
 
+type VideoAnalysis = z.infer<typeof VideoAnalysisSchema>;
+
 async function callGeminiForAnalysis(
   modelId: string,
   fileUri: string,
   mimeType: string,
-) {
+): Promise<VideoAnalysis> {
   const result = await generateObject({
     model: google(modelId),
     messages: [
@@ -90,7 +92,7 @@ async function callGeminiForAnalysis(
     ],
     schema: VideoAnalysisSchema,
   });
-  return result.object;
+  return result.object as VideoAnalysis;
 }
 
 export const analyzeVideoTool = createTool({
