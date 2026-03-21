@@ -240,6 +240,7 @@ function SceneCard({
   index: number;
 }) {
   const setSceneRef = useSetAtom(sceneRefAtom);
+  const sceneImages = useAtomValue(sceneImagesAtom);
   const config = SCENE_TYPE_CONFIG[scene.sceneType as SceneType];
   const emotion = scene.emotion;
   const emotionConfig = EMOTION_CONFIG[emotion as Emotion];
@@ -247,6 +248,9 @@ function SceneCard({
   const hasShots = scene.bRollShots && scene.bRollShots.length > 0;
   const isBRoll = scene.shotType === "b-roll" || scene.shotType === "visual";
   const isGenerating = imageState?.status === "generating" || imageState?.status === "regenerating";
+  const isAnyImageGenerating = Object.values(sceneImages).some(
+    (img) => img.status === "generating" || img.status === "regenerating",
+  );
   const hasImage = !!imageState?.imageUrl;
 
   const handleBRollShotActionChange = useCallback(
@@ -281,8 +285,13 @@ function SceneCard({
         </span>
         <button
           onClick={() => setSceneRef(`@Scene ${scene.sceneNumber} `)}
-          className="opacity-0 group-hover/header:opacity-100 transition-opacity text-[10px] px-1.5 py-0.5 rounded-md bg-accent-400/10 text-accent-400 hover:bg-accent-400/20 flex items-center gap-1"
-          title="Reference this scene in chat"
+          disabled={isAnyImageGenerating}
+          className={`opacity-0 group-hover/header:opacity-100 transition-opacity text-[10px] px-1.5 py-0.5 rounded-md flex items-center gap-1 ${
+            isAnyImageGenerating
+              ? "bg-white/[0.04] text-text-muted/40 cursor-not-allowed"
+              : "bg-accent-400/10 text-accent-400 hover:bg-accent-400/20"
+          }`}
+          title={isAnyImageGenerating ? "Editing unavailable while images are generating" : "Reference this scene in chat"}
         >
           <Icon icon="solar:mention-circle-bold" width={11} />
           @
@@ -464,8 +473,13 @@ function SceneCard({
                         </span>
                         <button
                           onClick={() => setSceneRef(`@Scene ${scene.sceneNumber} Shot ${idx + 1} `)}
-                          className="opacity-0 group-hover/shot:opacity-100 transition-opacity text-[9px] px-1 py-0.5 rounded bg-accent-400/10 text-accent-400 hover:bg-accent-400/20 flex items-center gap-0.5"
-                          title="Reference this shot in chat"
+                          disabled={isAnyImageGenerating}
+                          className={`opacity-0 group-hover/shot:opacity-100 transition-opacity text-[9px] px-1 py-0.5 rounded flex items-center gap-0.5 ${
+                            isAnyImageGenerating
+                              ? "bg-white/[0.04] text-text-muted/40 cursor-not-allowed"
+                              : "bg-accent-400/10 text-accent-400 hover:bg-accent-400/20"
+                          }`}
+                          title={isAnyImageGenerating ? "Editing unavailable while images are generating" : "Reference this shot in chat"}
                         >
                           <Icon icon="solar:mention-circle-bold" width={9} />
                           @
