@@ -1070,6 +1070,22 @@ ${message}`;
     };
   }
 
+  async deleteScript(scriptId: string, teamId: number): Promise<void> {
+    const existing = await db
+      .select({ id: ugcScripts.id })
+      .from(ugcScripts)
+      .where(
+        and(eq(ugcScripts.id, scriptId), eq(ugcScripts.team_id, teamId))
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      throw new Error("Script not found or does not belong to this team");
+    }
+
+    await db.delete(ugcScripts).where(eq(ugcScripts.id, scriptId));
+  }
+
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {
     return {
       ...script,

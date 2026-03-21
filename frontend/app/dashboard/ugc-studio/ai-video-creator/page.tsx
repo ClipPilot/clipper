@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardBody, Button, Chip } from "@heroui/react";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardBody, Button, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
@@ -95,39 +95,84 @@ export default function AIVideoCreatorPage() {
   );
 }
 
+const DRAFTS_PER_PAGE = 9;
+
 function DraftScriptsSection({ teamId }: { teamId: number }) {
   const router = useRouter();
-  const [drafts, setDrafts] = useState<ScriptSummary[]>([]);
+  const [allDrafts, setAllDrafts] = useState<ScriptSummary[]>([]);
+  const [page, setPage] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<ScriptSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    ugcScriptAPI.listScripts(teamId, { limit: 10 }).then((res) => {
-      if (res.success) setDrafts(res.scripts.filter((s: any) => !s.hasVideo));
+  const fetchDrafts = useCallback(() => {
+    ugcScriptAPI.listScripts(teamId, { limit: 100 }).then((res) => {
+      if (res.success) setAllDrafts(res.scripts.filter((s: any) => !s.hasVideo));
     }).catch(() => {});
   }, [teamId]);
 
-  if (drafts.length === 0) return null;
+  useEffect(() => {
+    fetchDrafts();
+  }, [fetchDrafts]);
+
+  const totalPages = Math.ceil(allDrafts.length / DRAFTS_PER_PAGE);
+  const paginatedDrafts = allDrafts.slice(
+    page * DRAFTS_PER_PAGE,
+    (page + 1) * DRAFTS_PER_PAGE
+  );
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await ugcScriptAPI.deleteScript(deleteTarget.id, teamId);
+      setAllDrafts((prev) => prev.filter((d) => d.id !== deleteTarget.id));
+      // If current page is now empty and not the first page, go back
+      const remaining = allDrafts.length - 1;
+      const newTotalPages = Math.ceil(remaining / DRAFTS_PER_PAGE);
+      if (page >= newTotalPages && page > 0) setPage(page - 1);
+    } catch {
+      // silently fail
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  if (allDrafts.length === 0) return null;
 
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-4">
         <Icon icon="solar:document-text-bold-duotone" className="text-amber-400" width={20} />
         <h2 className="text-lg font-semibold text-text-primary">Drafts</h2>
-        <Chip size="sm" variant="flat" className="text-[11px]">{drafts.length}</Chip>
+        <Chip size="sm" variant="flat" className="text-[11px]">{allDrafts.length}</Chip>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {drafts.map((script) => (
-          <button
+        {paginatedDrafts.map((script) => (
+          <div
             key={script.id}
+            className="relative text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-accent-400/20 transition-all group cursor-pointer"
             onClick={() => router.push(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${script.id}`)}
-            className="text-left p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-accent-400/20 transition-all group"
           >
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-sm font-semibold text-text-primary line-clamp-1 group-hover:text-accent-400 transition-colors">
                 {script.title || "Untitled Script"}
               </h3>
-              <Chip size="sm" variant="flat" className="text-[9px] bg-amber-500/10 text-amber-400 shrink-0 ml-2">
-                Draft
-              </Chip>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <Chip size="sm" variant="flat" className="text-[9px] bg-amber-500/10 text-amber-400">
+                  Draft
+                </Chip>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(script);
+                  }}
+                  className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/10 transition-all"
+                  aria-label="Delete draft"
+                >
+                  <Icon icon="solar:trash-bin-trash-bold" className="text-red-400" width={14} />
+                </button>
+              </div>
             </div>
             <p className="text-[11px] text-text-muted line-clamp-2 mb-2">{script.hook || script.scriptDirection || "No description"}</p>
             <div className="flex items-center gap-3 text-[10px] text-text-muted">
@@ -135,9 +180,60 @@ function DraftScriptsSection({ teamId }: { teamId: number }) {
               <span>{Math.round(script.totalDuration)}s</span>
               <span>{new Date(script.createdAt).toLocaleDateString()}</span>
             </div>
-          </button>
+          </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Button
+            size="sm"
+            variant="flat"
+            isDisabled={page === 0}
+            onPress={() => setPage(page - 1)}
+            startContent={<Icon icon="solar:arrow-left-linear" width={14} />}
+          >
+            Prev
+          </Button>
+          <span className="text-xs text-text-secondary px-2">
+            {page + 1} / {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="flat"
+            isDisabled={page >= totalPages - 1}
+            onPress={() => setPage(page + 1)}
+            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} size="sm">
+        <ModalContent>
+          <ModalHeader className="text-text-primary">Delete Draft</ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-text-secondary">
+              Are you sure you want to delete &quot;{deleteTarget?.title || "Untitled Script"}&quot;? This action cannot be undone.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              isLoading={isDeleting}
+              onPress={handleDelete}
+            >
+              Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
