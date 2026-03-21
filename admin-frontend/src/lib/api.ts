@@ -828,4 +828,108 @@ export const adminAPI = {
     );
     return handleResponse(response);
   },
+
+  // Clip Factory
+  async getClipFactoryPresignedUrl(
+    teamId: number,
+    fileName: string,
+    contentType: string,
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/presigned-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ teamId, fileName, contentType }),
+    });
+    return handleResponse(response);
+  },
+
+  async initiateClipFactoryMultipart(
+    teamId: number,
+    fileName: string,
+    contentType: string,
+    fileSize: number,
+  ): Promise<{
+    uploadId: string;
+    s3Key: string;
+    chunkSize: number;
+    totalParts: number;
+    partUrls: Array<{ partNumber: number; uploadUrl: string }>;
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/multipart/initiate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ teamId, fileName, contentType, fileSize }),
+    });
+    return handleResponse(response);
+  },
+
+  async completeClipFactoryMultipart(
+    s3Key: string,
+    uploadId: string,
+    parts: Array<{ partNumber: number; etag: string }>,
+  ): Promise<{ success: boolean; s3Key: string }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/multipart/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ s3Key, uploadId, parts }),
+    });
+    return handleResponse(response);
+  },
+
+  async startClipFactory(
+    teamId: number,
+    videos: Array<{ s3Key: string; originalFileName: string; fileSize?: number }>,
+    options: Record<string, unknown>,
+  ): Promise<{
+    jobs: Array<{ rawVideoPublicIds: string[]; fileName: string; clipIds: number[] }>;
+    totalClipsQueued: number;
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ teamId, videos, options }),
+    });
+    return handleResponse(response);
+  },
+
+  async getClipFactoryStatus(
+    rawVideoPublicIds: string[],
+    teamId: number,
+  ): Promise<{
+    status: string;
+    videos: Array<{
+      rawVideoPublicId: string;
+      status: string;
+      clips: Array<{
+        clipId: number;
+        status: string;
+        title: string | null;
+        downloadUrl: string | null;
+        errorMessage: string | null;
+      }>;
+    }>;
+    progress: { total: number; completed: number; failed: number; pending: number };
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ rawVideoPublicIds, teamId }),
+    });
+    return handleResponse(response);
+  },
+
+  async getClipFactoryActiveJobs(
+    teamId: number,
+  ): Promise<{
+    jobs: Array<{
+      rawVideoPublicId: string;
+      fileName: string;
+      clips: Array<{ clipId: number; status: string; title: string | null }>;
+    }>;
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/active-jobs?teamId=${teamId}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
 };
