@@ -205,7 +205,7 @@ export async function listVideos(req: AuthRequest, res: Response) {
       ? (sortBy as "created_at" | "title" | "publish_status" | "post_count")
       : undefined;
     const validSortOrder = sortOrder === "asc" || sortOrder === "desc" ? sortOrder : undefined;
-    const validFilter = filter === "published" || filter === "unpublished" ? filter : undefined;
+    const validFilter = filter === "published" || filter === "unpublished" || filter === "queued" ? filter : undefined;
 
     const result = await campaignVideoService.listVideos(campaignId, {
       page, pageSize, sortBy: validSortBy, sortOrder: validSortOrder, filter: validFilter,

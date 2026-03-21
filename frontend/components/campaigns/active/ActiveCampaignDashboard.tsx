@@ -142,7 +142,7 @@ export function ActiveCampaignDashboard({
         pageSize: PAGE_SIZE,
         sortBy,
         sortOrder,
-        filter: "unpublished",
+        filter: "queued",
       });
       setPaginatedVideos(result.videos);
       setVideoTotalPages(result.pagination.totalPages);

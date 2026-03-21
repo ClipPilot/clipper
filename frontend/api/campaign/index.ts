@@ -313,7 +313,7 @@ class CampaignAPI {
   async listVideos(
     teamId: number,
     campaignId: number,
-    options?: { sortBy?: string; sortOrder?: string; page?: number; pageSize?: number; filter?: "published" | "unpublished" },
+    options?: { sortBy?: string; sortOrder?: string; page?: number; pageSize?: number; filter?: "published" | "unpublished" | "queued" },
   ): Promise<{ videos: CampaignVideo[]; pagination: { page: number; pageSize: number; totalVideos: number; totalPages: number } }> {
     const params = new URLSearchParams();
     if (options?.sortBy) params.set("sortBy", options.sortBy);
