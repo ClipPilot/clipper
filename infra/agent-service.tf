@@ -255,3 +255,39 @@ resource "aws_ecs_service" "agent_service" {
     Name = "${var.project_name}-agent-service-${var.environment}"
   }
 }
+
+# --- Cloud Map (retained temporarily until registered instances drain) ---
+# TODO: Remove these resources once no instances are registered in Cloud Map
+
+resource "aws_service_discovery_private_dns_namespace" "agent" {
+  count = var.agent_service_desired_count > 0 ? 1 : 0
+
+  name        = "${var.project_name}-${var.environment}.local"
+  description = "Service discovery for internal services"
+  vpc         = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.project_name}-service-discovery-${var.environment}"
+  }
+}
+
+resource "aws_service_discovery_service" "agent_service" {
+  count = var.agent_service_desired_count > 0 ? 1 : 0
+
+  name = "agent-service"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.agent[0].id
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+}
