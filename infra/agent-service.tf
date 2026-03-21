@@ -94,7 +94,7 @@ resource "aws_lb_target_group" "agent_service" {
 
   health_check {
     enabled             = true
-    path                = "/api/health"
+    path                = "/health"
     port                = "traffic-port"
     protocol            = "HTTP"
     healthy_threshold   = 2
@@ -208,7 +208,7 @@ resource "aws_ecs_task_definition" "agent_service" {
     }
 
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:4111/api/health || exit 1"]
+      command     = ["CMD-SHELL", "curl -f http://localhost:4111/health || exit 1"]
       interval    = 30
       timeout     = 5
       retries     = 3

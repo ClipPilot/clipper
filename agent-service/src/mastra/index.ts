@@ -1,4 +1,5 @@
 import { Mastra } from "@mastra/core/mastra";
+import { registerApiRoute } from "@mastra/core/server";
 import { PinoLogger } from "@mastra/loggers";
 import { PostgresStore } from "@mastra/pg";
 import {
@@ -18,6 +19,14 @@ export const mastra = new Mastra({
   server: {
     port: parseInt(process.env.PORT || "4111"),
     host: "0.0.0.0",
+    apiRoutes: [
+      registerApiRoute("/health", {
+        method: "GET",
+        handler: async (c) => {
+          return c.json({ status: "ok" });
+        },
+      }),
+    ],
   },
   agents: { scriptInitAgent, scriptAgent, adDeconstructorAgent, storyboardAgent },
   storage: new PostgresStore({
