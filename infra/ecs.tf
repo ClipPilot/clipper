@@ -134,7 +134,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "AGENT_SERVICE_URL"
-        value = "http://agent-service.${var.project_name}-${var.environment}.local:4111"
+        value = "http://${aws_lb.agent_service.dns_name}"
       }
     ]
 
