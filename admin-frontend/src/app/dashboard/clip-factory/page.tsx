@@ -106,7 +106,8 @@ function formatEta(file: UploadFile): string {
   return `${Math.floor(seconds / 3600)}h${Math.ceil((seconds % 3600) / 60)}m`;
 }
 
-const STORAGE_KEY = "clip-factory-batch";
+const BATCH_KEY = "clip-factory-batch";
+const TEAM_KEY = "clip-factory-team";
 
 interface PersistedBatch {
   team: Team;
@@ -116,18 +117,29 @@ interface PersistedBatch {
 
 function saveBatch(team: Team, jobs: JobInfo[]) {
   const data: PersistedBatch = { team, jobs, publicIds: jobs.flatMap((j) => j.rawVideoPublicIds) };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(BATCH_KEY, JSON.stringify(data));
 }
 
 function loadBatch(): PersistedBatch | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(BATCH_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
 
 function clearBatch() {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(BATCH_KEY);
+}
+
+function saveTeam(team: Team) {
+  localStorage.setItem(TEAM_KEY, JSON.stringify(team));
+}
+
+function loadTeam(): Team | null {
+  try {
+    const raw = localStorage.getItem(TEAM_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
 export default function ClipFactoryPage() {
@@ -138,7 +150,7 @@ export default function ClipFactoryPage() {
   // Team selection
   const [teams, setTeams] = useState<Team[]>([]);
   const [teamSearch, setTeamSearch] = useState("");
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(() => restored.current?.team ?? null);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(() => restored.current?.team ?? loadTeam());
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [teamsLoading, setTeamsLoading] = useState(false);
 
@@ -438,10 +450,12 @@ export default function ClipFactoryPage() {
     pollRef.current = setInterval(poll, 5000);
   }
 
-  // Resume polling on mount if there's a persisted batch
   useEffect(() => {
     if (restored.current) {
       startPolling(restored.current.publicIds, restored.current.team.id);
+    } else {
+      const persistedTeam = loadTeam();
+      if (persistedTeam) fetchActiveJobs(persistedTeam.id);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -582,6 +596,7 @@ export default function ClipFactoryPage() {
                   key={t.id}
                   onClick={() => {
                     setSelectedTeam(t);
+                    saveTeam(t);
                     setTeamDropdownOpen(false);
                     setTeamSearch("");
                     fetchActiveJobs(t.id);
