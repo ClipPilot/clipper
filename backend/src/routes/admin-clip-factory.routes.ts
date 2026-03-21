@@ -6,6 +6,7 @@ import {
   completeMultipart,
   startClipFactory,
   getClipFactoryStatus,
+  getActiveJobs,
 } from "../controllers/admin-clip-factory.controller";
 
 const router = Router();
@@ -182,5 +183,25 @@ router.post("/start", requireAdminAuth, startClipFactory);
  *         description: Job statuses
  */
 router.post("/status", requireAdminAuth, getClipFactoryStatus);
+
+/**
+ * @openapi
+ * /api/admin/clip-factory/active-jobs:
+ *   get:
+ *     summary: Get currently active/pending clip jobs for a team
+ *     tags: [Admin - Clip Factory]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Active jobs
+ */
+router.get("/active-jobs", requireAdminAuth, getActiveJobs);
 
 export default router;

@@ -147,3 +147,19 @@ export async function getClipFactoryStatus(req: AdminRequest, res: Response) {
     return res.status(500).json({ error: "Failed to get job status" });
   }
 }
+
+export async function getActiveJobs(req: AdminRequest, res: Response) {
+  try {
+    const teamId = req.query.teamId as string;
+    if (!teamId) {
+      return res.status(400).json({ error: "Missing teamId" });
+    }
+
+    const jobs = await adminClipFactoryService.getActiveJobs(parseInt(teamId));
+    return res.json({ jobs });
+  } catch (err) {
+    console.error("Error getting active jobs:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to get active jobs" });
+  }
+}

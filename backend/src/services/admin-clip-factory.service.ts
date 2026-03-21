@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { teamMembers, uploadedRawVideos } from "@clipper/shared-db/src/schema";
-import { eq, and } from "drizzle-orm";
+import { teamMembers, uploadedRawVideos, clips } from "@clipper/shared-db/src/schema";
+import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import { clipManagerService } from "./clips/clipManager.service";
 import { s3Service } from "./s3.service";
 import { sqsService } from "./sqs.service";
@@ -151,6 +151,56 @@ class AdminClipFactoryService {
       videos,
       progress: { total, completed: totalCompleted, failed: totalFailed, pending: totalPending },
     };
+  }
+
+  async getActiveJobs(teamId: number) {
+    const pendingClipRows = await db
+      .select({
+        clipId: clips.id,
+        clipStatus: clips.status,
+        clipTitle: clips.title,
+        clipPath: clips.clip_path,
+        errorMessage: clips.error_message,
+        rawVideoId: uploadedRawVideos.id,
+        rawVideoPublicId: uploadedRawVideos.public_id,
+        rawVideoPath: uploadedRawVideos.video_path,
+        createdAt: clips.created_at,
+      })
+      .from(clips)
+      .innerJoin(uploadedRawVideos, eq(clips.raw_video_id, uploadedRawVideos.id))
+      .where(
+        and(
+          eq(clips.team_id, teamId),
+          inArray(clips.status, ["pending"]),
+          eq(clips.saved, true)
+        )
+      )
+      .orderBy(desc(clips.created_at))
+      .limit(500);
+
+    const grouped = new Map<string, {
+      rawVideoPublicId: string;
+      fileName: string;
+      clips: { clipId: number; status: string; title: string | null }[];
+    }>();
+
+    for (const row of pendingClipRows) {
+      const fileName = row.rawVideoPath.split("/").pop() || row.rawVideoPath;
+      const existing = grouped.get(fileName);
+      const clipData = { clipId: row.clipId, status: row.clipStatus, title: row.clipTitle };
+
+      if (existing) {
+        existing.clips.push(clipData);
+      } else {
+        grouped.set(fileName, {
+          rawVideoPublicId: row.rawVideoPublicId,
+          fileName,
+          clips: [clipData],
+        });
+      }
+    }
+
+    return Array.from(grouped.values());
   }
 }
 

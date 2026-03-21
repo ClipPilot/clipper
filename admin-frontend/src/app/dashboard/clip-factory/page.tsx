@@ -151,6 +151,10 @@ export default function ClipFactoryPage() {
   const [startLoading, setStartLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Active jobs
+  const [activeJobs, setActiveJobs] = useState<{ rawVideoPublicId: string; fileName: string; clips: { clipId: number; status: string; title: string | null }[] }[]>([]);
+  const [activeJobsLoading, setActiveJobsLoading] = useState(false);
+
   // Team search
   const fetchTeams = useCallback(async (search: string) => {
     setTeamsLoading(true);
@@ -168,6 +172,18 @@ export default function ClipFactoryPage() {
     const timer = setTimeout(() => fetchTeams(teamSearch), 300);
     return () => clearTimeout(timer);
   }, [teamSearch, fetchTeams]);
+
+  async function fetchActiveJobs(teamId: number) {
+    setActiveJobsLoading(true);
+    try {
+      const res = await adminAPI.getClipFactoryActiveJobs(teamId);
+      setActiveJobs(res.jobs);
+    } catch {
+      setActiveJobs([]);
+    } finally {
+      setActiveJobsLoading(false);
+    }
+  }
 
   // File handling
   function addFiles(fileList: FileList | File[]) {
@@ -535,6 +551,7 @@ export default function ClipFactoryPage() {
                     setSelectedTeam(t);
                     setTeamDropdownOpen(false);
                     setTeamSearch("");
+                    fetchActiveJobs(t.id);
                   }}
                   className="w-full text-left px-3 py-2.5 hover:bg-surface-hover transition-colors flex justify-between items-center"
                 >
@@ -547,6 +564,32 @@ export default function ClipFactoryPage() {
           )}
         </div>
       </div>
+
+      {/* Active Jobs */}
+      {selectedTeam && activeJobs.length > 0 && (
+        <div className="p-4 rounded-xl bg-surface border border-border">
+          <label className="block text-sm font-semibold text-text-primary mb-3">
+            Active Jobs
+            <span className="text-text-tertiary font-normal ml-2">{activeJobs.reduce((n, j) => n + j.clips.length, 0)} clips pending</span>
+          </label>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {activeJobs.map((job) => (
+              <div key={job.rawVideoPublicId} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-elevated">
+                <span className="text-text-primary text-sm truncate flex-1 mr-3">{job.fileName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-yellow-400 text-xs">{job.clips.length} pending</span>
+                  <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {selectedTeam && activeJobsLoading && (
+        <div className="flex justify-center py-3">
+          <div className="animate-spin w-5 h-5 border-2 border-emerald border-t-transparent rounded-full" />
+        </div>
+      )}
 
       {/* Video Upload */}
       <div className="p-4 rounded-xl bg-surface border border-border">

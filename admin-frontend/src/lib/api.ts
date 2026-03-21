@@ -917,4 +917,19 @@ export const adminAPI = {
     });
     return handleResponse(response);
   },
+
+  async getClipFactoryActiveJobs(
+    teamId: number,
+  ): Promise<{
+    jobs: Array<{
+      rawVideoPublicId: string;
+      fileName: string;
+      clips: Array<{ clipId: number; status: string; title: string | null }>;
+    }>;
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/active-jobs?teamId=${teamId}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
 };
