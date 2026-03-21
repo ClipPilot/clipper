@@ -60,7 +60,7 @@ const COLORS = [
 const FONTS = ["Proxima Nova", "Montserrat", "Luckiest Guy", "Everlasting", "Komika", "Burbank", "Bebas Neue", "Anton"];
 
 const MAX_CONCURRENT = 5;
-const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
+const MULTIPART_THRESHOLD = 15 * 1024 * 1024;
 
 const MIME_MAP: Record<string, string> = {
   "video/mp4": "video/mp4",
@@ -254,26 +254,43 @@ export default function ClipFactoryPage() {
     const parts: { partNumber: number; etag: string }[] = [];
     let uploadedBytes = 0;
     const mpStart = Date.now();
+    const PARALLEL_CHUNKS = 4;
 
-    for (const { partNumber, uploadUrl } of partUrls) {
-      if (abortRef.current) return null;
-      const start = (partNumber - 1) * chunkSize;
-      const end = Math.min(start + chunkSize, uploadFile.file.size);
-      const chunk = uploadFile.file.slice(start, end);
+    const queue = [...partUrls];
+    let cursor = 0;
 
-      const response = await fetch(uploadUrl, { method: "PUT", body: chunk });
-      if (!response.ok) throw new Error(`Part ${partNumber} failed`);
+    async function chunkWorker() {
+      while (cursor < queue.length) {
+        if (abortRef.current) return;
+        const idx = cursor++;
+        const part = queue[idx];
+        if (!part) break;
 
-      const etag = response.headers.get("ETag") || "";
-      parts.push({ partNumber, etag });
-      uploadedBytes += end - start;
+        const { partNumber, uploadUrl } = part;
+        const start = (partNumber - 1) * chunkSize;
+        const end = Math.min(start + chunkSize, uploadFile.file.size);
+        const chunk = uploadFile.file.slice(start, end);
 
-      const pct = Math.round((uploadedBytes / uploadFile.file.size) * 100);
-      const elapsed = (Date.now() - mpStart) / 1000;
-      const speed = elapsed > 0 ? uploadedBytes / elapsed : 0;
-      setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? { ...f, progress: pct, speed } : f)));
+        const response = await fetch(uploadUrl, { method: "PUT", body: chunk });
+        if (!response.ok) throw new Error(`Part ${partNumber} failed`);
+
+        const etag = response.headers.get("ETag") || "";
+        parts.push({ partNumber, etag });
+        uploadedBytes += end - start;
+
+        const pct = Math.round((uploadedBytes / uploadFile.file.size) * 100);
+        const elapsed = (Date.now() - mpStart) / 1000;
+        const speed = elapsed > 0 ? uploadedBytes / elapsed : 0;
+        setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? { ...f, progress: pct, speed } : f)));
+      }
     }
 
+    const workers = Array.from({ length: Math.min(PARALLEL_CHUNKS, queue.length) }, () => chunkWorker());
+    await Promise.all(workers);
+
+    if (abortRef.current) return null;
+
+    parts.sort((a, b) => a.partNumber - b.partNumber);
     await adminAPI.completeClipFactoryMultipart(s3Key, uploadId, parts);
     setFiles((prev) => prev.map((f) => (f.id === uploadFile.id ? { ...f, status: "done" as FileStatus, progress: 100, s3Key } : f)));
     return { s3Key };
