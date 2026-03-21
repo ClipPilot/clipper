@@ -147,7 +147,7 @@ resource "aws_ecs_task_definition" "agent_service" {
   }
 }
 
-# ECS Service (no ALB for now - internal service accessed via backend)
+# ECS Service (internal service accessed via Cloud Map service discovery)
 resource "aws_ecs_service" "agent_service" {
   name            = "${var.project_name}-agent-service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
@@ -159,6 +159,13 @@ resource "aws_ecs_service" "agent_service" {
     subnets          = aws_subnet.private[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
+  }
+
+  dynamic "service_registries" {
+    for_each = var.agent_service_desired_count > 0 ? [1] : []
+    content {
+      registry_arn = aws_service_discovery_service.agent_service[0].arn
+    }
   }
 
   deployment_circuit_breaker {
