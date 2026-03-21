@@ -30,6 +30,7 @@ import voiceCloneRoutes from "./routes/voiceClone.routes";
 import apiPlatformRoutes from "./routes/api-platform/main.routes";
 import campaignRoutes from "./routes/campaign.routes";
 import incidentRoutes from "./routes/incident.routes";
+import adminClipFactoryRoutes from "./routes/admin-clip-factory.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -129,6 +130,7 @@ app.use("/api/stripe", stripeRoutes);
 app.use("/api/c", comfyRoutes);
 app.use("/api/face-swap", faceSwapRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/clip-factory", adminClipFactoryRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/actors", actorRoutes);
 app.use("/api/ugc", ugcScriptRoutes);
