@@ -55,11 +55,18 @@ export interface ScriptAgentResult {
   scenes: ScriptAgentScene[];
 }
 
+export interface ChatVideoAttachment {
+  name: string;
+  preview?: string;
+  url?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   attachments?: ChatAttachment[];
+  videoAttachment?: ChatVideoAttachment;
   structureResult?: InitAgentResult;
   timestamp: Date;
 }

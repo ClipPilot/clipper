@@ -3,7 +3,6 @@ import { adDeconstructorSchema } from "../../outputSchemas/adDeconstructorAgent.
 import { VIDEO_TYPES } from "../../outputSchemas/initAgent.js";
 import { Memory } from "@mastra/memory";
 import { webSearchTool } from "../tools/web-search-tool.js";
-import { analyzeVideoTool } from "../tools/ad-clone/index.js";
 
 const videoTypeDescriptions = Object.entries(VIDEO_TYPES)
   .map(
@@ -17,25 +16,18 @@ export const adDeconstructorAgent = new Agent({
   name: "Ad Deconstructor Agent",
   model: "google/gemini-3.1-pro-preview",
   memory: new Memory(),
-  tools: { webSearchTool, analyzeVideoTool },
+  tools: { webSearchTool },
   defaultOptions: {
     structuredOutput: {
       schema: adDeconstructorSchema,
     },
   },
-  instructions: `You are an expert ad deconstructor that analyzes reference ads and recreates them as full UGC video scripts. You preserve what works from the original while adapting it for a new product.
+  instructions: `You are an expert ad deconstructor that recreates reference ads as full UGC video scripts. You preserve what works from the original while adapting it for a new product.
 
 ===== RESPONSE TYPE DECISION =====
 
-**Mode 0: Video Analysis + Script (geminiFileUri provided)**
-When the user's message contains a JSON object with a "geminiFileUri" field:
-1. IMMEDIATELY call the analyzeVideoTool with the fileUri and mimeType from the message
-2. Include the tool result in the videoAnalysis field of your response
-3. If "analyzeOnly" is true: set responseType to "conversation", scenes to [], and return just the analysis
-4. Otherwise: use the analysis to generate the FULL script (following Mode 2 rules below), set responseType to "script"
-
 **Mode 1: Conversation (no analysis data)**
-When the user's message does NOT include a "=== VIDEO ANALYSIS ===" section AND no geminiFileUri:
+When the user's message does NOT include a "=== VIDEO ANALYSIS ===" section:
 - Set responseType to "conversation"
 - Guide the user to provide a reference ad
 - Set scenes to [], title to "", totalDuration to 0

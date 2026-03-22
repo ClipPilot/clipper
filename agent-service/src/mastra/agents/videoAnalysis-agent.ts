@@ -1,6 +1,4 @@
-import { createTool } from "@mastra/core/tools";
-import { google } from "@ai-sdk/google";
-import { generateObject } from "ai";
+import { Agent } from "@mastra/core/agent";
 import { z } from "zod";
 
 const SCENE_TYPES = ["hook", "problem", "agitate", "solution", "demo", "social-proof", "testimonial", "transformation", "cta"] as const;
@@ -57,7 +55,16 @@ export const VideoAnalysisSchema = z.object({
   estimatedAudioSpeedMultiplier: z.number().min(1.0).max(2.0),
 });
 
-const VIDEO_ANALYSIS_PROMPT = `You are an expert video analyst specializing in deconstructing advertisements for recreation. Analyze this reference video and break it into LOGICAL SCENES so it can be faithfully recreated with a different product.
+export const videoAnalysisAgent = new Agent({
+  id: "video-analysis-agent",
+  name: "Video Analysis Agent",
+  model: "google/gemini-3-pro-preview",
+  defaultOptions: {
+    structuredOutput: {
+      schema: VideoAnalysisSchema,
+    },
+  },
+  instructions: `You are an expert video analyst specializing in deconstructing advertisements for recreation. Analyze the reference video provided and break it into LOGICAL SCENES so it can be faithfully recreated with a different product.
 
 TARGET: 5-6 SCENES TOTAL, each approximately 8-12 seconds long. GROUP related shots into logical scenes — do NOT split every camera cut.
 
@@ -67,55 +74,5 @@ Also extract overall metadata: totalDuration, aspectRatio, overallStyle, hookStr
 
 Detect audio speedup: if WPM>180, pitch sounds high, or unnatural pacing, set audioSpeedupDetected=true and estimatedAudioSpeedMultiplier accordingly.
 
-The goal: someone reading your analysis could recreate this EXACT video — structure, timing, feel, and voice delivery — just with a different product.`;
-
-const PRIMARY_MODEL = "gemini-3-pro-preview";
-const FALLBACK_MODEL = "gemini-3-flash-preview";
-
-type VideoAnalysis = z.infer<typeof VideoAnalysisSchema>;
-
-async function callGeminiForAnalysis(
-  modelId: string,
-  fileUri: string,
-  mimeType: string,
-): Promise<VideoAnalysis> {
-  const result = await generateObject({
-    model: google(modelId),
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "file", data: new URL(fileUri), mimeType },
-          { type: "text", text: VIDEO_ANALYSIS_PROMPT },
-        ],
-      },
-    ],
-    schema: VideoAnalysisSchema,
-  });
-  return result.object as VideoAnalysis;
-}
-
-export const analyzeVideoTool = createTool({
-  id: "analyze-video",
-  description:
-    "Analyze a reference video uploaded to Gemini File API. Returns structured video analysis with scene breakdown, voice delivery, and ad metadata. Call this when the user provides a geminiFileUri.",
-  inputSchema: z.object({
-    fileUri: z.string().describe("Gemini File API URI for the uploaded video"),
-    mimeType: z
-      .string()
-      .default("video/mp4")
-      .describe("MIME type of the video file"),
-  }),
-  outputSchema: VideoAnalysisSchema,
-  execute: async ({ fileUri, mimeType }) => {
-    try {
-      return await callGeminiForAnalysis(PRIMARY_MODEL, fileUri, mimeType ?? "video/mp4");
-    } catch (primaryError) {
-      console.warn(
-        `[analyzeVideoTool] ${PRIMARY_MODEL} failed, falling back to ${FALLBACK_MODEL}:`,
-        primaryError,
-      );
-      return await callGeminiForAnalysis(FALLBACK_MODEL, fileUri, mimeType ?? "video/mp4");
-    }
-  },
+The goal: someone reading your analysis could recreate this EXACT video — structure, timing, feel, and voice delivery — just with a different product.`,
 });

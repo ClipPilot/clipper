@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Image } from "@heroui/react";
+import { Icon } from "@iconify/react";
 import NextImage from "next/image";
 import Markdown from "react-markdown";
 import type { ChatMessage } from "./types";
@@ -68,7 +69,25 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry, theme = "d
           {isUser ? "You" : "Cuttr AI"}
         </span>
 
-        {/* Image attachments */}
+        {message.videoAttachment && (
+          <div className="rounded-xl overflow-hidden ring-1 ring-white/10 max-w-[240px]">
+            {message.videoAttachment.preview ? (
+              <video
+                src={message.videoAttachment.preview}
+                className="w-full max-h-[160px] object-cover"
+                muted
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.04]">
+                <Icon icon="solar:videocamera-record-bold-duotone" width={16} className="text-orange-500 shrink-0" />
+                <span className="text-xs text-text-muted truncate">{message.videoAttachment.name}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {message.attachments && message.attachments.length > 0 && (
           <div className={`flex gap-2 flex-wrap ${isUser ? "justify-end" : "justify-start"}`}>
             {message.attachments.map((att, i) => (
@@ -81,8 +100,6 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry, theme = "d
             ))}
           </div>
         )}
-
-        {/* Message bubble */}
         <div
           className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
             isUser

@@ -225,18 +225,17 @@ class AdCloneService {
 
       const agentServiceUrl = config.agentService.url;
       const agentResponse = await fetch(
-        `${agentServiceUrl}/api/agents/ad-deconstructor-agent/generate`,
+        `${agentServiceUrl}/api/agents/video-analysis-agent/generate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{
               role: "user",
-              content: JSON.stringify({
-                geminiFileUri: uploadResult.file.uri,
-                mimeType: uploadResult.file.mimeType,
-                analyzeOnly: true,
-              }),
+              content: [
+                { type: "file", data: uploadResult.file.uri, mimeType: uploadResult.file.mimeType },
+                { type: "text", text: "Analyze this video." },
+              ],
             }],
           }),
           signal: AbortSignal.timeout(180_000),
@@ -245,40 +244,13 @@ class AdCloneService {
 
       if (!agentResponse.ok) {
         const errorBody = await agentResponse.text();
-        console.error("[AD_CLONE] Agent analysis error:", errorBody);
+        console.error("[AD_CLONE] Video analysis agent error:", errorBody);
         throw new Error("Video analysis failed via agent");
       }
 
       const agentResult = (await agentResponse.json()) as any;
-      console.log("[AD_CLONE] Agent response keys:", JSON.stringify(Object.keys(agentResult)));
-
-      let rawAnalysis: unknown = null;
-
-      const steps = agentResult.steps ?? agentResult.object?.steps;
-      if (Array.isArray(steps)) {
-        console.log("[AD_CLONE] Found steps:", steps.length, "step keys:", JSON.stringify(Object.keys(steps[0] || {})));
-        for (const step of steps) {
-          const toolResults = step.toolResults ?? step.tool_results;
-          if (Array.isArray(toolResults)) {
-            for (const tr of toolResults) {
-              if (tr.toolName === "analyze-video" || tr.tool_name === "analyze-video") {
-                rawAnalysis = tr.result ?? tr.output;
-                break;
-              }
-            }
-          }
-          if (rawAnalysis) break;
-        }
-      }
-
-      if (!rawAnalysis) {
-        rawAnalysis = agentResult.object?.videoAnalysis ?? agentResult.videoAnalysis;
-      }
-
-      if (!rawAnalysis) {
-        console.error("[AD_CLONE] Agent response structure:", JSON.stringify(Object.keys(agentResult)));
-        throw new Error("Agent returned no video analysis");
-      }
+      const rawAnalysis = agentResult.object ?? agentResult;
+      if (!rawAnalysis?.totalDuration) throw new Error("Agent returned no video analysis");
 
       const analysis = VideoAnalysisSchema.parse(rawAnalysis);
 

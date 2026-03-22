@@ -8,12 +8,11 @@ import {
   CloudExporter,
   SensitiveDataFilter,
 } from "@mastra/observability";
-import { weatherWorkflow } from "./workflows/weather-workflow.js";
-import { weatherAgent } from "./agents/weather-agent.js";
 import { scriptInitAgent } from "./agents/scriptInit-agent.js";
 import { scriptAgent } from "./agents/script-agent.js";
 import { adDeconstructorAgent } from "./agents/adDeconstructor-agent.js";
 import { storyboardAgent } from "./agents/storyboard-agent.js";
+import { videoAnalysisAgent } from "./agents/videoAnalysis-agent.js";
 
 export const mastra = new Mastra({
   server: {
@@ -28,7 +27,7 @@ export const mastra = new Mastra({
       }),
     ],
   },
-  agents: { scriptInitAgent, scriptAgent, adDeconstructorAgent, storyboardAgent },
+  agents: { scriptInitAgent, scriptAgent, adDeconstructorAgent, storyboardAgent, videoAnalysisAgent },
   storage: new PostgresStore({
     id: "postgres-store",
     connectionString: process.env.DATABASE_URL!,
