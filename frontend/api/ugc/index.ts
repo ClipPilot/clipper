@@ -293,6 +293,25 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async deleteScript(
+    scriptId: string,
+    teamId: number
+  ): Promise<{ success: boolean }> {
+    const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ teamId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete script");
+    }
+
+    return response.json();
+  }
+
   async listScripts(
     teamId: number,
     options?: { limit?: number; offset?: number }

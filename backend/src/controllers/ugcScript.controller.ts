@@ -480,6 +480,34 @@ export class UGCScriptController {
       });
     }
   }
+  async deleteScript(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId } = req.params;
+      const { teamId } = req.body;
+
+      if (!scriptId) {
+        return res.status(400).json({ error: "scriptId is required" });
+      }
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      await ugcScriptService.deleteScript(scriptId, teamId);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Delete script error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to delete script"),
+      });
+    }
+  }
+
   async storyboardChat(req: AuthRequest, res: Response) {
     try {
       const { scriptId, message, threadId, teamId, characterId } = req.body;

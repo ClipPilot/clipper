@@ -555,4 +555,48 @@ router.get(
   ugcScriptController.listScripts.bind(ugcScriptController)
 );
 
+/**
+ * @openapi
+ * /ugc/script/{scriptId}:
+ *   delete:
+ *     summary: Delete a script
+ *     description: Permanently deletes a UGC script and its associated data
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: scriptId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Script deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ */
+router.delete(
+  "/script/:scriptId",
+  requireAuth,
+  ugcScriptController.deleteScript.bind(ugcScriptController)
+);
+
 export default router;
