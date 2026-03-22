@@ -319,9 +319,9 @@ export class UGCVideoController {
         .where(eq(ugcScripts.id, scriptId));
       const scenes: GenerateUGCVideoJob["scenes"] = [];
 
-      for (const scene of selectedScript.scenes as SceneData[]) {
-        // Find the saved image for this scene
-        const savedImage = savedImages.find((img) => img.scene_id === scene.id);
+      for (const scene of selectedScript.scenes as (SceneData & { slug?: string })[]) {
+        const sceneId = scene.id || scene.slug;
+        const savedImage = savedImages.find((img) => img.scene_id === sceneId);
 
         if (!savedImage) {
           return res.status(400).json({
@@ -330,12 +330,12 @@ export class UGCVideoController {
         }
 
         const sceneData: GenerateUGCVideoJob["scenes"][number] = {
-          sceneId: scene.id,
+          sceneId: sceneId!,
           sceneNumber: scene.sceneNumber,
           shotType: scene.shotType,
           imageKey: savedImage.image_key,
           dialogue: scene.dialogue,
-          duration: scene.durationSeconds || 5,
+          duration: scene.durationSeconds || (scene as any).duration || 5,
           cinematicPrompt: scene.cinematicPrompt,
           action: scene.action,
           emotion: scene.emotion,

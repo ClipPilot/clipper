@@ -363,8 +363,19 @@ export function useAdCloneChatAgent() {
           });
 
           if (result.updatedScript?.scenes) {
-            const mappedScenes = result.updatedScript.scenes;
-            setVideoState((prev) => ({ ...prev, scenes: mappedScenes }));
+            setVideoState((prev) => {
+              const updatedScenes = result.updatedScript.scenes;
+              const merged = prev.scenes.map((existing) => {
+                const updated = updatedScenes.find(
+                  (u: any) => (u.id || u.slug) === existing.id || u.sceneNumber === existing.sceneNumber
+                );
+                return updated ? { ...existing, ...updated, id: existing.id } : existing;
+              });
+              const newScenes = updatedScenes.filter(
+                (u: any) => !prev.scenes.some((e) => (u.id || u.slug) === e.id || u.sceneNumber === e.sceneNumber)
+              );
+              return { ...prev, scenes: [...merged, ...newScenes] };
+            });
           }
 
           if (result.regeneratingJobs?.length) {
@@ -818,9 +829,16 @@ export function useAdCloneChatAgent() {
         .filter((m) => m.role === "user" && m.attachments)
         .flatMap((m) => m.attachments!.map((a) => a.key));
 
+      const mappedScenes = latestAgentResult ? mapScenesToUGC(latestAgentResult.scenes) : [];
+
+      const scriptToSave = {
+        ...generatedScript,
+        scenes: mappedScenes,
+      };
+
       const result = await ugcScriptAPI.saveScript({
         teamId: teamIdRef.current,
-        script: generatedScript,
+        script: scriptToSave,
         characterId: character?.id,
         productImageKeys: allImageKeys,
         isSilent: acceptedResult?.isSilent,
@@ -830,14 +848,19 @@ export function useAdCloneChatAgent() {
       setScriptId(result.scriptId);
       setScriptIdAtom(result.scriptId);
 
-      const mappedScenes = latestAgentResult ? mapScenesToUGC(latestAgentResult.scenes) : [];
+      if (projectId) {
+        adCloneAPI.updateScript(projectId, {
+          script: { ...scriptToSave, _scriptId: result.scriptId },
+        }).catch(() => {});
+      }
+
       if (mappedScenes.length > 0) {
         triggerImageGeneration(mappedScenes, result.scriptId);
       }
     } catch (error) {
       console.error("Failed to save script:", error);
     }
-  }, [generatedScript, acceptedResult, messages, setScriptIdAtom, latestAgentResult, triggerImageGeneration]);
+  }, [generatedScript, acceptedResult, messages, setScriptIdAtom, latestAgentResult, triggerImageGeneration, projectId]);
 
   const updateScene = useCallback(
     (sceneId: string, patch: Partial<UGCScene>) => {
@@ -868,6 +891,26 @@ export function useAdCloneChatAgent() {
     triggerImageGeneration(currentVideoState.scenes, scriptId);
   }, [scriptId, currentVideoState.scenes, triggerImageGeneration]);
 
+  const restoreProject = useCallback((pid: string, restoredScriptId?: string) => {
+    setProjectId(pid);
+    setAnalysisComplete(true);
+
+    if (restoredScriptId) {
+      setScriptId(restoredScriptId);
+      setScriptIdAtom(restoredScriptId);
+      setCurrentArtifact("script");
+      setMessages([
+        INITIAL_MESSAGE,
+        { id: "restored", role: "assistant", content: "Project restored. You can edit the storyboard or chat to make changes.", timestamp: new Date() },
+      ]);
+    } else {
+      setMessages([
+        INITIAL_MESSAGE,
+        { id: "restored", role: "assistant", content: "Analysis complete. Describe your product and any direction to generate a script.", timestamp: new Date() },
+      ]);
+    }
+  }, [setScriptIdAtom]);
+
   return {
     messages,
     isThinking,
@@ -885,6 +928,7 @@ export function useAdCloneChatAgent() {
     generateScript,
     updateScene,
     regenerateAllImages,
+    restoreProject,
     selectedCharacterRef,
     teamIdRef,
   };

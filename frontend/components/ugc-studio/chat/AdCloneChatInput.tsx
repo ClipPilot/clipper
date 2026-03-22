@@ -28,6 +28,7 @@ interface AdCloneChatInputProps {
   isDisabled?: boolean;
   videoAttachment: AdCloneVideoAttachment | null;
   onVideoAttach: (video: AdCloneVideoAttachment | null) => void;
+  hasScript?: boolean;
 }
 
 export interface AdCloneChatInputHandle {
@@ -64,7 +65,7 @@ function looksLikeVideoUrl(url: string): boolean {
 }
 
 export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatInputProps>(
-  function AdCloneChatInput({ onSend, isDisabled, videoAttachment, onVideoAttach }, ref) {
+  function AdCloneChatInput({ onSend, isDisabled, videoAttachment, onVideoAttach, hasScript }, ref) {
     const [text, setText] = useState("");
     const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -89,7 +90,7 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
     const hasContent = text.trim().length > 0;
     const hasAttachments = attachments.length > 0;
     const hasVideo = videoAttachment !== null;
-    const canSend = hasContent && hasVideo && !isDisabled;
+    const canSend = hasContent && (hasVideo || hasScript) && !isDisabled;
     const videoState = useAtomValue(videoStateAtom);
     const mentionMatch = videoState.scriptId ? text.match(/@(\S*)$/) : null;
     const showMentions = !!mentionMatch;
@@ -209,7 +210,7 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
 
     const handleSubmit = () => {
       const trimmed = text.trim();
-      if (!trimmed || !hasVideo) return;
+      if (!trimmed || (!hasVideo && !hasScript)) return;
       const ready = attachments.filter((a) => !a.uploading);
       onSend(trimmed, ready);
       setText("");
@@ -239,7 +240,7 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
           </AnimatePresence>
           {/* === Video Upload Section (always visible, required) === */}
           <AnimatePresence mode="wait">
-            {!hasVideo ? (
+            {hasScript ? null : !hasVideo ? (
               <motion.div
                 key="upload-zone"
                 initial={{ opacity: 0, y: 8 }}
@@ -462,13 +463,13 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
                   onValueChange={setText}
                   onKeyDown={handleKeyDown}
                   placeholder={
-                    hasVideo
+                    hasVideo || hasScript
                       ? "Describe your product and any creative direction..."
                       : "Add a reference ad above first, then describe your product here..."
                   }
                   minRows={1}
                   maxRows={4}
-                  isDisabled={isDisabled || !hasVideo}
+                  isDisabled={isDisabled || (!hasVideo && !hasScript)}
                   classNames={{
                     inputWrapper:
                       "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent !ring-0 !ring-offset-0 min-h-[36px]",
@@ -502,9 +503,11 @@ export const AdCloneChatInput = forwardRef<AdCloneChatInputHandle, AdCloneChatIn
             </div>
           </div>
 
-          <p className="text-[11px] text-text-muted/40 text-center">
-            {hasVideo ? "Add product images for better results" : "A reference ad is required to get started"}
-          </p>
+          {!hasScript && (
+            <p className="text-[11px] text-text-muted/40 text-center">
+              {hasVideo ? "Add product images for better results" : "A reference ad is required to get started"}
+            </p>
+          )}
         </div>
       </div>
     );

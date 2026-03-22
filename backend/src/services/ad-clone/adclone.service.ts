@@ -603,7 +603,7 @@ class AdCloneService {
       throw new Error("Script not found");
     }
 
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId);
+    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
     if (!scene) {
       throw new Error("Scene not found");
     }
@@ -663,7 +663,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       throw new Error("Script not found");
     }
 
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId);
+    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
     if (!scene || !scene.bRollShots) {
       throw new Error("Scene or B-roll shots not found");
     }

@@ -233,7 +233,7 @@ export class SceneBuilderController {
 
       const selectedScript = scriptsData[selectedVariantIndex];
       const sceneData = selectedScript?.scenes?.find(
-        (s: SceneData) => s.id === sceneId
+        (s: any) => s.id === sceneId || s.slug === sceneId
       ) as SceneData | undefined;
 
       if (!sceneData) {

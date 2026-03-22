@@ -43,6 +43,7 @@ export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: st
     generateScript,
     updateScene,
     regenerateAllImages,
+    restoreProject,
     selectedCharacterRef,
     teamIdRef,
   } = useAdCloneChatAgent();
@@ -67,43 +68,49 @@ export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: st
       if (!response.success) return;
       const { project, scripts } = response;
       const script = scripts?.[project.selectedVariantIndex ?? 0];
-      if (!script?.scenes) return;
 
-      setVideoState({
-        scriptId: resumeProjectId,
-        teamId: teamId,
-        scenes: script.scenes,
-        character: null,
-        voice: null,
-        videoType: "ugc",
-        isSilent: !script.scenes.some((s: any) => s.dialogue?.trim()),
-        hasCharacter: true,
-        targetAudience: script.targetAudience ?? "",
-        productImageKeys: [],
-        userDirection: "",
-        structureBlueprint: null,
-        customPattern: null,
-        freshStart: true,
-        isGeneratingScript: false,
-        threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      });
+      if (script?.scenes) {
+        const ugcScriptId = (script as any)._scriptId || resumeProjectId;
+        restoreProject(resumeProjectId, ugcScriptId);
 
-      try {
-        const imgRes = await sceneBuilderAPI.getSceneImages(resumeProjectId);
-        if (imgRes.success) {
-          const restored: Record<string, SceneImageState> = {};
-          for (const [sceneId, img] of Object.entries(imgRes.sceneImages)) {
-            const imgAny = img as any;
-            restored[sceneId] = {
-              status: "completed",
-              imageKey: img.image_key,
-              imageUrl: img.imageUrl,
-              generatedImages: imgAny.generatedImages,
-            };
+        setVideoState({
+          scriptId: ugcScriptId,
+          teamId: teamId,
+          scenes: script.scenes,
+          character: null,
+          voice: null,
+          videoType: "ugc",
+          isSilent: !script.scenes.some((s: any) => s.dialogue?.trim()),
+          hasCharacter: true,
+          targetAudience: script.targetAudience ?? "",
+          productImageKeys: [],
+          userDirection: "",
+          structureBlueprint: null,
+          customPattern: null,
+          freshStart: true,
+          isGeneratingScript: false,
+          threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        });
+
+        try {
+          const imgRes = await sceneBuilderAPI.getSceneImages(ugcScriptId);
+          if (imgRes.success) {
+            const restored: Record<string, SceneImageState> = {};
+            for (const [sceneId, img] of Object.entries(imgRes.sceneImages)) {
+              const imgAny = img as any;
+              restored[sceneId] = {
+                status: "completed",
+                imageKey: img.image_key,
+                imageUrl: img.imageUrl,
+                generatedImages: imgAny.generatedImages,
+              };
+            }
+            setSceneImages(restored);
           }
-          setSceneImages(restored);
-        }
-      } catch {}
+        } catch {}
+      } else {
+        restoreProject(resumeProjectId);
+      }
     }).catch(() => {
       resetAdClone();
     });
@@ -199,6 +206,7 @@ export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: st
             isDisabled={isThinking || isAnalyzing}
             videoAttachment={videoAttachment}
             onVideoAttach={setVideoAttachment}
+            hasScript={!!scriptId}
           />
         </motion.div>
 
