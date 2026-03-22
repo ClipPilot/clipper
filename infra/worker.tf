@@ -113,6 +113,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name  = "MAC_RENDERER_URL"
         value = var.mac_renderer_url
+      },
+      {
+        name  = "AGENT_SERVICE_URL"
+        value = "http://${aws_lb.agent_service.dns_name}"
       }
     ]
 
