@@ -3,6 +3,7 @@
 ## Critical Rules
 
 - **NEVER run `terraform apply`**. Only use `terraform validate` and `terraform plan` for local checks. All infrastructure changes are deployed through CI/CD.
+- **Minimal comments**. Do not add comments to code. Keep code self-explanatory.
 
 ## Project Overview
 

@@ -45,8 +45,6 @@ resource "aws_cloudwatch_log_group" "agent_service" {
   }
 }
 
-# --- Internal ALB for Agent Service ---
-
 resource "aws_security_group" "agent_service_alb" {
   name        = "${var.project_name}-agent-service-alb-sg-${var.environment}"
   description = "Security group for internal agent service ALB"
@@ -119,8 +117,6 @@ resource "aws_lb_listener" "agent_service" {
     target_group_arn = aws_lb_target_group.agent_service.arn
   }
 }
-
-# --- ECS Task Definition ---
 
 resource "aws_ecs_task_definition" "agent_service" {
   family                   = "${var.project_name}-agent-service-${var.environment}"
@@ -223,8 +219,6 @@ resource "aws_ecs_task_definition" "agent_service" {
   }
 }
 
-# --- ECS Service ---
-
 resource "aws_ecs_service" "agent_service" {
   name            = "${var.project_name}-agent-service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
@@ -255,9 +249,6 @@ resource "aws_ecs_service" "agent_service" {
     Name = "${var.project_name}-agent-service-${var.environment}"
   }
 }
-
-# --- Cloud Map (retained temporarily until registered instances drain) ---
-# TODO: Remove these resources once no instances are registered in Cloud Map
 
 resource "aws_service_discovery_private_dns_namespace" "agent" {
   count = var.agent_service_desired_count > 0 ? 1 : 0

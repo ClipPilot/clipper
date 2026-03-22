@@ -230,54 +230,108 @@ export function useAdCloneChatAgent() {
     [messages, processAgentResult],
   );
 
-  useEffect(() => {
-    const teamId = teamIdRef.current;
-    if (!teamId || !projectId || !isAnalyzing) return;
-
-    const socketUrl = getSocketUrl();
-    socketRef.current = io(socketUrl, { transports: ["websocket", "polling"] });
-
-    socketRef.current.on("connect", () => {
-      socketRef.current?.emit("join-team", teamId);
-    });
-
-    socketRef.current.on("ad-clone-job-update", (update: AnalysisSocketUpdate) => {
-      if (update.projectId !== projectId) return;
-
-      if (update.status === "analysis_complete" || update.status === "script_generated") {
-        handleAnalysisComplete(projectId);
-      } else if (update.status === "failed") {
-        const errorMessage: ChatMessage = {
-          id: nextId(),
-          role: "assistant",
-          content: `Analysis failed: ${update.error || "Unknown error"}. Please try again.`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => {
-          const filtered = prev.filter((m) => m.id !== "analyzing-placeholder");
-          return [...filtered, errorMessage];
-        });
-        setIsThinking(false);
-        setIsAnalyzing(false);
-      } else {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === "analyzing-placeholder"
-              ? { ...m, content: update.progressMessage || "Analyzing your ad..." }
-              : m,
-          ),
-        );
-      }
-    });
-
-    return () => {
+  const handleAnalysisFailure = useCallback(
+    (error?: string) => {
+      const errorMessage: ChatMessage = {
+        id: nextId(),
+        role: "assistant",
+        content: `Analysis failed: ${error || "Unknown error"}. Please try again.`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== "analyzing-placeholder");
+        return [...filtered, errorMessage];
+      });
+      setIsThinking(false);
+      setIsAnalyzing(false);
       if (socketRef.current) {
-        socketRef.current.emit("leave-team", teamId);
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+    },
+    [],
+  );
+
+  const connectSocketAndListen = useCallback(
+    (pid: string, teamId: number) => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+
+      const socketUrl = getSocketUrl();
+      const socket = io(socketUrl, { transports: ["websocket", "polling"] });
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        socket.emit("join-team", teamId);
+      });
+
+      socket.on("ad-clone-job-update", (update: AnalysisSocketUpdate) => {
+        if (update.projectId !== pid) return;
+
+        if (update.status === "analysis_complete" || update.status === "script_generated") {
+          handleAnalysisComplete(pid);
+          socket.disconnect();
+          socketRef.current = null;
+        } else if (update.status === "failed") {
+          handleAnalysisFailure(update.error);
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === "analyzing-placeholder"
+                ? { ...m, content: update.progressMessage || "Analyzing your ad..." }
+                : m,
+            ),
+          );
+        }
+      });
+
+      const fallbackInterval = setInterval(async () => {
+        try {
+          const project = await adCloneAPI.getProject(pid);
+          if (!project) return;
+          if (project.status === "analysis_complete" || project.status === "script_generated") {
+            clearInterval(fallbackInterval);
+            handleAnalysisComplete(pid);
+            socket.disconnect();
+            socketRef.current = null;
+          } else if (project.status === "failed") {
+            clearInterval(fallbackInterval);
+            handleAnalysisFailure(project.errorMessage || project.progressMessage);
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }, 5000);
+
+      const timeout = setTimeout(() => {
+        clearInterval(fallbackInterval);
+        if (socketRef.current === socket) {
+          handleAnalysisFailure("Analysis timed out. Please try again.");
+        }
+      }, 180_000);
+
+      const prevCleanup = () => {
+        clearInterval(fallbackInterval);
+        clearTimeout(timeout);
+        socket.emit("leave-team", teamId);
+        socket.disconnect();
+        if (socketRef.current === socket) socketRef.current = null;
+      };
+
+      return prevCleanup;
+    },
+    [handleAnalysisComplete, handleAnalysisFailure],
+  );
+
+  const socketCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      socketCleanupRef.current?.();
     };
-  }, [projectId, isAnalyzing, handleAnalysisComplete]);
+  }, []);
 
   const sendMessage = useCallback(
     async (text: string, attachments: ChatAttachment[] = []) => {
@@ -470,7 +524,6 @@ export function useAdCloneChatAgent() {
             await adCloneAPI.confirmUpload(pid, { referenceVideoKey, productImageKeys: [] });
           }
 
-          await adCloneAPI.startAnalysis(pid, teamId);
           pendingAnalysisRef.current = { text, imageKeys };
           setIsAnalyzing(true);
 
@@ -478,10 +531,45 @@ export function useAdCloneChatAgent() {
             ...prev,
             { id: "analyzing-placeholder", role: "assistant", content: "Analyzing your ad... This usually takes 30-60 seconds.", timestamp: new Date() },
           ]);
+
+          socketCleanupRef.current?.();
+          socketCleanupRef.current = connectSocketAndListen(pid, teamId);
+
+          await adCloneAPI.startAnalysis(pid, teamId);
         } catch (error) {
           setMessages((prev) =>
             prev.filter((m) => m.id !== "downloading-placeholder" && m.id !== "analyzing-placeholder"),
           );
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: error instanceof Error ? `Something went wrong: ${error.message}. Try again?` : "Something went wrong. Try again?",
+              timestamp: new Date(),
+            },
+          ]);
+          setIsThinking(false);
+        }
+        return;
+      }
+
+      if (projectId && !analysisComplete && !isAnalyzing && teamId) {
+        try {
+          const imageKeys = attachments.map((a) => a.key).filter(Boolean);
+          pendingAnalysisRef.current = { text, imageKeys };
+          setIsAnalyzing(true);
+
+          setMessages((prev) => [
+            ...prev,
+            { id: "analyzing-placeholder", role: "assistant", content: "Retrying analysis... This usually takes 30-60 seconds.", timestamp: new Date() },
+          ]);
+
+          socketCleanupRef.current?.();
+          socketCleanupRef.current = connectSocketAndListen(projectId, teamId);
+
+          await adCloneAPI.startAnalysis(projectId, teamId);
+        } catch (error) {
           setMessages((prev) => [
             ...prev,
             {
@@ -553,7 +641,7 @@ export function useAdCloneChatAgent() {
 
       setIsThinking(false);
     },
-    [messages, videoAttachment, projectId, analysisComplete, processAgentResult, scriptId, setVideoState, setSceneImages],
+    [messages, videoAttachment, projectId, analysisComplete, isAnalyzing, processAgentResult, scriptId, setVideoState, setSceneImages, connectSocketAndListen],
   );
 
   const acceptStructure = useCallback(

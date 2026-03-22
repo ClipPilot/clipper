@@ -60,7 +60,6 @@ resource "aws_security_group" "ecs_tasks" {
   }
 }
 
-# Standalone rule to break circular dependency between ecs_tasks <-> agent_service_alb SGs
 resource "aws_security_group_rule" "ecs_tasks_from_agent_service_alb" {
   type                     = "ingress"
   from_port                = 4111

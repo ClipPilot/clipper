@@ -32,7 +32,7 @@ export const mastra = new Mastra({
   storage: new PostgresStore({
     id: "postgres-store",
     connectionString: process.env.DATABASE_URL!,
-    max: 5,
+    max: 2,
     idleTimeoutMillis: 10000,
   }),
   logger: new PinoLogger({
