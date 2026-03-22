@@ -289,16 +289,17 @@ export function useAdCloneChatAgent() {
 
       const fallbackInterval = setInterval(async () => {
         try {
-          const project = await adCloneAPI.getProject(pid);
-          if (!project) return;
-          if (project.status === "analysis_complete" || project.status === "script_generated") {
+          const resp = await adCloneAPI.getProject(pid);
+          if (!resp?.project) return;
+          const p = resp.project;
+          if (p.status === "analysis_complete" || p.status === "script_generated") {
             clearInterval(fallbackInterval);
             handleAnalysisComplete(pid);
             socket.disconnect();
             socketRef.current = null;
-          } else if (project.status === "failed") {
+          } else if (p.status === "failed") {
             clearInterval(fallbackInterval);
-            handleAnalysisFailure(project.errorMessage || project.progressMessage);
+            handleAnalysisFailure(p.progressMessage || "Analysis failed");
           }
         } catch {
           // ignore poll errors
