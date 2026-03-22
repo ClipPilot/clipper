@@ -342,6 +342,7 @@ export function useAdCloneChatAgent() {
         role: "user",
         content: text,
         attachments: attachments.length > 0 ? attachments : undefined,
+        videoAttachment: videoAttachment ? { name: videoAttachment.name, preview: videoAttachment.preview, url: videoAttachment.url } : undefined,
         timestamp: new Date(),
       };
 
