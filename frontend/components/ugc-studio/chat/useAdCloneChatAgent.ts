@@ -455,7 +455,8 @@ export function useAdCloneChatAgent() {
         return;
       }
 
-      if (videoAttachment && !projectId && teamId) {
+      const shouldCreateNewProject = videoAttachment && teamId && (!projectId || (!analysisComplete && videoAttachment.file));
+      if (shouldCreateNewProject) {
         try {
           const imageKeys = attachments.map((a) => a.key).filter(Boolean);
 
@@ -554,7 +555,7 @@ export function useAdCloneChatAgent() {
         return;
       }
 
-      if (projectId && !analysisComplete && !isAnalyzing && teamId) {
+      if (projectId && !analysisComplete && !isAnalyzing && !videoAttachment?.file && teamId) {
         try {
           const imageKeys = attachments.map((a) => a.key).filter(Boolean);
           pendingAnalysisRef.current = { text, imageKeys };
@@ -580,6 +581,7 @@ export function useAdCloneChatAgent() {
             },
           ]);
           setIsThinking(false);
+          setIsAnalyzing(false);
         }
         return;
       }
