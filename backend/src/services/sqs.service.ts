@@ -62,6 +62,7 @@ export interface ClipVideoJob extends BaseJob {
   };
   originalFileName?: string;
   fileSize?: number;
+  clipFactoryBatchId?: number;
 }
 
 // Batch clip video job payload (multiple source videos)
@@ -430,6 +431,7 @@ class SQSService {
     options: ClipVideoJob["options"];
     originalFileName?: string;
     fileSize?: number;
+    clipFactoryBatchId?: number;
   }): Promise<string> {
     const job: ClipVideoJob = {
       type: "clip-video",
@@ -440,6 +442,7 @@ class SQSService {
       options: params.options,
       originalFileName: params.originalFileName,
       fileSize: params.fileSize,
+      clipFactoryBatchId: params.clipFactoryBatchId,
       createdAt: new Date().toISOString(),
     };
 

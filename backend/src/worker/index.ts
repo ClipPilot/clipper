@@ -37,6 +37,7 @@ import {
   processAdCloneAnalyzeAndScriptJob,
 } from "./processors/adCloneProcessor";
 import { processAdPostingJob } from "./processors/adPostingProcessor";
+import { adminClipFactoryService } from "../services/admin-clip-factory.service";
 import {
   VideoProcessingJob,
   ClipVideoJob,
@@ -145,6 +146,13 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
     switch (job.type) {
       case "clip-video":
         await processClipVideoJob(job as ClipVideoJob);
+        if ((job as ClipVideoJob).clipFactoryBatchId) {
+          try {
+            await adminClipFactoryService.advanceBatchIfReady((job as ClipVideoJob).clipFactoryBatchId!);
+          } catch (err) {
+            console.error(`[Worker] Failed to advance clip factory batch:`, err);
+          }
+        }
         break;
       case "batch-clip-video":
         await processBatchClipVideoJob(job as BatchClipVideoJob);

@@ -881,8 +881,8 @@ export const adminAPI = {
     videos: Array<{ s3Key: string; originalFileName: string; fileSize?: number }>,
     options: Record<string, unknown>,
   ): Promise<{
-    jobs: Array<{ rawVideoPublicIds: string[]; fileName: string; clipIds: number[] }>;
-    totalClipsQueued: number;
+    batchId: number;
+    firstVideo: { rawVideoPublicIds: string[]; fileName: string; clipIds: number[] };
   }> {
     const response = await fetch(`${API_URL}/admin/clip-factory/start`, {
       method: "POST",
@@ -914,6 +914,31 @@ export const adminAPI = {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({ rawVideoPublicIds, teamId }),
+    });
+    return handleResponse(response);
+  },
+
+  async getClipFactoryBatchStatus(
+    batchId: number,
+  ): Promise<{
+    batchId: number;
+    status: string;
+    videos: Array<{
+      rawVideoPublicId: string;
+      status: string;
+      clips: Array<{
+        clipId: number;
+        status: string;
+        title: string | null;
+        downloadUrl: string | null;
+        errorMessage: string | null;
+      }>;
+    }>;
+    progress: { total: number; completed: number; failed: number; pending: number };
+    videoProgress: { total: number; completed: number; current: number | null };
+  }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/batch/${batchId}`, {
+      headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
   },

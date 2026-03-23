@@ -36,12 +36,6 @@ interface ClipOptions {
   textBgColor: string;
 }
 
-interface JobInfo {
-  rawVideoPublicIds: string[];
-  fileName: string;
-  clipIds: number[];
-}
-
 type PageState = "setup" | "processing" | "complete";
 
 const COLORS = [
@@ -111,12 +105,11 @@ const TEAM_KEY = "clip-factory-team";
 
 interface PersistedBatch {
   team: Team;
-  jobs: JobInfo[];
-  publicIds: string[];
+  batchId: number;
 }
 
-function saveBatch(team: Team, jobs: JobInfo[]) {
-  const data: PersistedBatch = { team, jobs, publicIds: jobs.flatMap((j) => j.rawVideoPublicIds) };
+function saveBatch(team: Team, batchId: number) {
+  const data: PersistedBatch = { team, batchId };
   localStorage.setItem(BATCH_KEY, JSON.stringify(data));
 }
 
@@ -183,8 +176,8 @@ export default function ClipFactoryPage() {
   });
 
   // Processing
-  const [jobs, setJobs] = useState<JobInfo[]>(() => restored.current?.jobs ?? []);
-  const [statusData, setStatusData] = useState<Awaited<ReturnType<typeof adminAPI.getClipFactoryStatus>> | null>(null);
+  const [batchId, setBatchId] = useState<number | null>(() => restored.current?.batchId ?? null);
+  const [statusData, setStatusData] = useState<Awaited<ReturnType<typeof adminAPI.getClipFactoryBatchStatus>> | null>(null);
   const [error, setError] = useState("");
   const [startLoading, setStartLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -369,7 +362,8 @@ export default function ClipFactoryPage() {
     setIsUploading(false);
   }
 
-  // Start processing
+  // Poll until a specific video's clips are all done (completed or failed)
+  // Start processing — sends all videos, backend handles sequential SQS queuing
   async function handleStart() {
     if (!selectedTeam) return;
     setError("");
@@ -418,10 +412,11 @@ export default function ClipFactoryPage() {
 
     try {
       const result = await adminAPI.startClipFactory(selectedTeam.id, videos, apiOptions);
-      setJobs(result.jobs);
+      const newBatchId = result.batchId;
+      setBatchId(newBatchId);
       setPageState("processing");
-      saveBatch(selectedTeam, result.jobs);
-      startPolling(result.jobs.flatMap((j) => j.rawVideoPublicIds), selectedTeam.id);
+      saveBatch(selectedTeam, newBatchId);
+      startBatchPolling(newBatchId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start");
     } finally {
@@ -429,12 +424,12 @@ export default function ClipFactoryPage() {
     }
   }
 
-  function startPolling(publicIds: string[], teamId: number) {
+  function startBatchPolling(id: number) {
     if (pollRef.current) clearInterval(pollRef.current);
 
     const poll = async () => {
       try {
-        const data = await adminAPI.getClipFactoryStatus(publicIds, teamId);
+        const data = await adminAPI.getClipFactoryBatchStatus(id);
         setStatusData(data);
         if (data.status === "completed" || data.status === "failed" || data.status === "partial") {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -452,7 +447,7 @@ export default function ClipFactoryPage() {
 
   useEffect(() => {
     if (restored.current) {
-      startPolling(restored.current.publicIds, restored.current.team.id);
+      startBatchPolling(restored.current.batchId);
     } else {
       const persistedTeam = loadTeam();
       if (persistedTeam) fetchActiveJobs(persistedTeam.id);
@@ -468,7 +463,7 @@ export default function ClipFactoryPage() {
     clearBatch();
     setPageState("setup");
     setFiles([]);
-    setJobs([]);
+    setBatchId(null);
     setStatusData(null);
     setError("");
   }
@@ -512,32 +507,31 @@ export default function ClipFactoryPage() {
           </div>
         </div>
 
+        {/* Video progress indicator */}
+        {statusData?.videoProgress && (
+          <div className="p-3 rounded-xl bg-surface border border-border text-sm text-text-secondary">
+            Video {statusData.videoProgress.completed + (statusData.videoProgress.current !== null ? 1 : 0)} of {statusData.videoProgress.total}
+            {statusData.videoProgress.current !== null && " — processing"}
+          </div>
+        )}
+
         {/* Per-video status */}
         <div className="space-y-3">
-          {jobs.map((job) => {
-            const allClips = statusData
-              ? statusData.videos
-                  .filter((v) => job.rawVideoPublicIds.includes(v.rawVideoPublicId))
-                  .flatMap((v) => v.clips)
-              : job.clipIds.map((id) => ({ clipId: id, status: "pending", title: null, downloadUrl: null, errorMessage: null }));
-
-            const doneCount = allClips.filter((c) => c.status === "completed").length;
-            const failedCount = allClips.filter((c) => c.status === "failed").length;
-            const jobStatus = doneCount + failedCount === allClips.length
-              ? (failedCount === allClips.length ? "failed" : "completed")
-              : "processing";
+          {statusData?.videos.map((video) => {
+            const doneCount = video.clips.filter((c) => c.status === "completed").length;
+            const failedCount = video.clips.filter((c) => c.status === "failed").length;
 
             return (
-              <div key={job.fileName} className="p-4 rounded-xl bg-surface border border-border">
+              <div key={video.rawVideoPublicId} className="p-4 rounded-xl bg-surface border border-border">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-text-primary font-medium truncate mr-3">{job.fileName}</span>
+                  <span className="text-text-primary font-medium truncate mr-3">{video.rawVideoPublicId}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-text-tertiary text-xs">{doneCount}/{allClips.length}</span>
-                    <StatusBadge status={jobStatus} />
+                    <span className="text-text-tertiary text-xs">{doneCount}/{video.clips.length}</span>
+                    <StatusBadge status={video.status} />
                   </div>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {allClips.map((clip, idx) => (
+                  {video.clips.map((clip, idx) => (
                     <div key={clip.clipId || idx} className="flex items-center justify-between text-sm px-3 py-2 rounded-lg bg-surface-elevated">
                       <span className="text-text-secondary">
                         {clip.title || `Clip #${idx + 1}`}

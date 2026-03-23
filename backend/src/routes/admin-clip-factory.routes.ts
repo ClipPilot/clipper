@@ -6,6 +6,7 @@ import {
   completeMultipart,
   startClipFactory,
   getClipFactoryStatus,
+  getClipFactoryBatchStatus,
   getActiveJobs,
 } from "../controllers/admin-clip-factory.controller";
 
@@ -183,6 +184,26 @@ router.post("/start", requireAdminAuth, startClipFactory);
  *         description: Job statuses
  */
 router.post("/status", requireAdminAuth, getClipFactoryStatus);
+
+/**
+ * @openapi
+ * /api/admin/clip-factory/batch/{batchId}:
+ *   get:
+ *     summary: Get batch processing status by batch ID
+ *     tags: [Admin - Clip Factory]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: batchId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Batch status
+ */
+router.get("/batch/:batchId", requireAdminAuth, getClipFactoryBatchStatus);
 
 /**
  * @openapi

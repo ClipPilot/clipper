@@ -1466,3 +1466,32 @@ export const incidents = pgTable("incidents", {
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
+
+export const clipFactoryBatchStatusEnum = pgEnum("clip_factory_batch_status", [
+  "processing",
+  "completed",
+  "failed",
+]);
+
+export const clipFactoryBatches = pgTable("clip_factory_batches", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id").notNull(),
+  user_id: integer("user_id").notNull(),
+  videos: jsonb("videos")
+    .notNull()
+    .$type<{ s3Key: string; originalFileName: string; fileSize?: number }[]>(),
+  options: jsonb("options").notNull(),
+  loops: integer("loops").notNull().default(1),
+  current_index: integer("current_index").notNull().default(0),
+  status: clipFactoryBatchStatusEnum("status").notNull().default("processing"),
+  current_clip_ids: jsonb("current_clip_ids")
+    .notNull()
+    .$type<number[]>()
+    .default([]),
+  completed_jobs: jsonb("completed_jobs")
+    .notNull()
+    .$type<{ rawVideoPublicIds: string[]; fileName: string; clipIds: number[] }[]>()
+    .default([]),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
