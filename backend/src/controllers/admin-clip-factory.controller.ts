@@ -148,6 +148,22 @@ export async function getClipFactoryStatus(req: AdminRequest, res: Response) {
   }
 }
 
+export async function getClipFactoryBatchStatus(req: AdminRequest, res: Response) {
+  try {
+    const batchId = parseInt(req.params.batchId);
+    if (!batchId) {
+      return res.status(400).json({ error: "Missing batchId" });
+    }
+
+    const result = await adminClipFactoryService.getBatchStatus(batchId);
+    return res.json(result);
+  } catch (err) {
+    console.error("Error getting batch status:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to get batch status" });
+  }
+}
+
 export async function getActiveJobs(req: AdminRequest, res: Response) {
   try {
     const teamId = req.query.teamId as string;
