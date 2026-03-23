@@ -318,8 +318,12 @@ class AdCloneService {
       }
     }
 
+    if (!project.videoAnalysis) {
+      throw new Error("Video analysis not complete. Please wait for analysis to finish before generating a script.");
+    }
+
     let messageText = message;
-    if (project.videoAnalysis) {
+    {
       const analysis = project.videoAnalysis;
       const analysisLines: string[] = [];
 

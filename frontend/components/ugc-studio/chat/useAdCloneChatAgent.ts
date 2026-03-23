@@ -262,6 +262,15 @@ export function useAdCloneChatAgent() {
       const socketUrl = getSocketUrl();
       const socket = io(socketUrl, { transports: ["websocket", "polling"] });
       socketRef.current = socket;
+      let handled = false;
+
+      const cleanup = () => {
+        clearInterval(fallbackInterval);
+        clearTimeout(timeout);
+        socket.emit("leave-team", teamId);
+        socket.disconnect();
+        if (socketRef.current === socket) socketRef.current = null;
+      };
 
       socket.on("connect", () => {
         socket.emit("join-team", teamId);
@@ -271,10 +280,14 @@ export function useAdCloneChatAgent() {
         if (update.projectId !== pid) return;
 
         if (update.status === "analysis_complete" || update.status === "script_generated") {
+          if (handled) return;
+          handled = true;
+          cleanup();
           handleAnalysisComplete(pid);
-          socket.disconnect();
-          socketRef.current = null;
         } else if (update.status === "failed") {
+          if (handled) return;
+          handled = true;
+          cleanup();
           handleAnalysisFailure(update.error);
         } else {
           setMessages((prev) =>
@@ -288,17 +301,20 @@ export function useAdCloneChatAgent() {
       });
 
       const fallbackInterval = setInterval(async () => {
+        if (handled) return;
         try {
           const resp = await adCloneAPI.getProject(pid);
           if (!resp?.project) return;
           const p = resp.project;
           if (p.status === "analysis_complete" || p.status === "script_generated") {
-            clearInterval(fallbackInterval);
+            if (handled) return;
+            handled = true;
+            cleanup();
             handleAnalysisComplete(pid);
-            socket.disconnect();
-            socketRef.current = null;
           } else if (p.status === "failed") {
-            clearInterval(fallbackInterval);
+            if (handled) return;
+            handled = true;
+            cleanup();
             handleAnalysisFailure(p.progressMessage || "Analysis failed");
           }
         } catch {
@@ -307,21 +323,13 @@ export function useAdCloneChatAgent() {
       }, 5000);
 
       const timeout = setTimeout(() => {
-        clearInterval(fallbackInterval);
-        if (socketRef.current === socket) {
-          handleAnalysisFailure("Analysis timed out. Please try again.");
-        }
+        if (handled) return;
+        handled = true;
+        cleanup();
+        handleAnalysisFailure("Analysis timed out. Please try again.");
       }, 180_000);
 
-      const prevCleanup = () => {
-        clearInterval(fallbackInterval);
-        clearTimeout(timeout);
-        socket.emit("leave-team", teamId);
-        socket.disconnect();
-        if (socketRef.current === socket) socketRef.current = null;
-      };
-
-      return prevCleanup;
+      return cleanup;
     },
     [handleAnalysisComplete, handleAnalysisFailure],
   );

@@ -78,6 +78,8 @@ resource "aws_lb" "agent_service" {
   security_groups    = [aws_security_group.agent_service_alb.id]
   subnets            = aws_subnet.private[*].id
 
+  idle_timeout = 300
+
   tags = {
     Name = "${var.project_name}-agent-service-alb-${var.environment}"
   }

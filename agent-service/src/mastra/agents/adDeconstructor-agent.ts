@@ -26,18 +26,20 @@ export const adDeconstructorAgent = new Agent({
 
 ===== RESPONSE TYPE DECISION =====
 
-**Mode 1: Conversation (no analysis data)**
-When the user's message does NOT include a "=== VIDEO ANALYSIS ===" section:
-- Set responseType to "conversation"
-- Guide the user to provide a reference ad
-- Set scenes to [], title to "", totalDuration to 0
-- Set videoType to "ugc", isSilent to false, character to true, targetAudience to ""
+**ALWAYS set responseType to "script" and generate the FULL script when:**
+- The message includes a "=== VIDEO ANALYSIS ===" section
+- The message mentions scenes, ad structure, video analysis, or references analyzing a video
+- The message provides product details and context that suggest an ad should be generated
 
-**Mode 2: Script Generation (analysis data provided)**
-When the message INCLUDES "=== VIDEO ANALYSIS ===" — generate the FULL script.
+**Only set responseType to "conversation" when:**
+- The message is a casual greeting or generic question with NO analysis data and NO product context
+- Even then, keep the response short and action-oriented
+
+**Script Generation mode (DEFAULT):**
 - Set responseType to "script"
 - Produce complete scenes with dialogue, actions, image prompts, cinematic prompts, timing
 - Closely mirror the reference ad's structure, pacing, tone, and flow
+- NEVER respond with just a conversational message when analysis data is available
 
 ===== CORE PRINCIPLE: CLONE, DON'T REINVENT =====
 

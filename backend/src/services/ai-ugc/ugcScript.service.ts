@@ -831,19 +831,39 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const messages = [{ role: "user", content }];
 
     const agentServiceUrl = config.agentService.url;
-    const response = await fetch(
-      `${agentServiceUrl}/api/agents/script-agent/generate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
-      },
-    );
+    const url = `${agentServiceUrl}/api/agents/script-agent/generate`;
+    const fetchOptions: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+      signal: AbortSignal.timeout(270_000),
+    };
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[UGC_SCRIPT] Script agent error:", errorBody);
-      throw new Error("Failed to generate script from agent service");
+    let response!: globalThis.Response;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(url, fetchOptions);
+        if (response.ok) break;
+
+        const errorBody = await response.text();
+        const isGatewayError = response.status === 502 || response.status === 503 || response.status === 504;
+        if (!isGatewayError || attempt === 1) {
+          console.error("[UGC_SCRIPT] Script agent error:", errorBody);
+          throw new Error("Failed to generate script from agent service");
+        }
+        console.warn(`[UGC_SCRIPT] Agent returned ${response.status}, retrying (attempt ${attempt + 1})...`);
+        await new Promise((r) => setTimeout(r, 3000));
+      } catch (err) {
+        lastError = err;
+        if (err instanceof Error && err.message === "Failed to generate script from agent service") throw err;
+        if (attempt === 1) {
+          console.error("[UGC_SCRIPT] Script agent fetch error:", err);
+          throw new Error("Failed to generate script from agent service");
+        }
+        console.warn(`[UGC_SCRIPT] Agent fetch failed, retrying (attempt ${attempt + 1})...`, err);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     const result = (await response.json()) as Record<string, unknown>;
