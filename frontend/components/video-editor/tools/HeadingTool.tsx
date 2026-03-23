@@ -191,7 +191,7 @@ export function HeadingTool() {
               <div className="flex gap-2">
                 <button
                   onClick={() =>
-                    updateHeading({ headingBgColor: "#000000" })
+                    updateHeading({ headingBgColor: "#000000", color: "#FFFFFF" })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
                     (heading.headingBgColor || "#000000") === "#000000"
@@ -203,7 +203,7 @@ export function HeadingTool() {
                 </button>
                 <button
                   onClick={() =>
-                    updateHeading({ headingBgColor: "#FFFFFF" })
+                    updateHeading({ headingBgColor: "#FFFFFF", color: "#000000" })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
                     heading.headingBgColor === "#FFFFFF"

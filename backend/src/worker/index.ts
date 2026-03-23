@@ -71,10 +71,12 @@ const VISIBILITY_TIMEOUT = 900; // 15 minutes
 const HEARTBEAT_INTERVAL = 300000; // 5 minutes - extend visibility before it expires
 const TASK_PROTECTION_MINUTES = 60; // Protect task for up to 60 minutes (safety net)
 const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs concurrently
+const MAX_CONCURRENT_CLIP_JOBS = 3; // Limit clip-video jobs to avoid Gemini file storage quota
 const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 110_000; // 110s — must be under ECS stopTimeout (120s)
 
 let isShuttingDown = false;
 let activeJobs = 0;
+let activeClipJobs = 0;
 
 // Get ECS task metadata (available in Fargate)
 async function getTaskInfo(): Promise<{ cluster: string; taskArn: string } | null> {
@@ -214,12 +216,35 @@ async function markJobFailed(job: VideoProcessingJob, errorMessage: string): Pro
   }
 }
 
+function isClipJob(type: string): boolean {
+  return type === "clip-video" || type === "batch-clip-video";
+}
+
 async function handleMessage(message: { Body: string; ReceiptHandle: string }): Promise<void> {
   activeJobs++;
   let job: VideoProcessingJob | null = null;
+  let clipJobStarted = false;
   try {
     job = JSON.parse(message.Body);
-    console.log(`[Worker] Starting job: ${job!.type} for team ${job!.teamId} (active: ${activeJobs})`);
+
+    if (isClipJob(job!.type) && activeClipJobs >= MAX_CONCURRENT_CLIP_JOBS) {
+      console.log(`[Worker] Clip concurrency limit reached (${activeClipJobs}/${MAX_CONCURRENT_CLIP_JOBS}), releasing ${job!.type} back to queue`);
+      await sqsClient.send(
+        new ChangeMessageVisibilityCommand({
+          QueueUrl: QUEUE_URL,
+          ReceiptHandle: message.ReceiptHandle,
+          VisibilityTimeout: 30,
+        })
+      );
+      return;
+    }
+
+    if (isClipJob(job!.type)) {
+      activeClipJobs++;
+      clipJobStarted = true;
+    }
+
+    console.log(`[Worker] Starting job: ${job!.type} for team ${job!.teamId} (active: ${activeJobs}, clips: ${activeClipJobs})`);
 
     await processMessage(job!, message.ReceiptHandle);
 
@@ -229,7 +254,7 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
         ReceiptHandle: message.ReceiptHandle,
       })
     );
-    console.log(`[Worker] Completed job: ${job!.type} (active: ${activeJobs - 1})`);
+    console.log(`[Worker] Completed job: ${job!.type} (active: ${activeJobs - 1}, clips: ${clipJobStarted ? activeClipJobs - 1 : activeClipJobs})`);
   } catch (error) {
     const errorMessage = sanitizeErrorForFrontend(error, "Job failed. Please try again.");
     console.error("[Worker] Error processing message:", error);
@@ -245,6 +270,7 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
       })
     );
   } finally {
+    if (clipJobStarted) activeClipJobs--;
     activeJobs--;
   }
 }
@@ -309,9 +335,6 @@ async function pollMessages(): Promise<void> {
     }
   }
 
-  // Wait for active jobs to complete before shutting down,
-  // but enforce a hard deadline so ECS sees a clean exit before SIGKILL.
-  // TODO(human): Implement forceExitAfterTimeout() — see Learn by Doing below
   await forceExitAfterTimeout();
 }
 

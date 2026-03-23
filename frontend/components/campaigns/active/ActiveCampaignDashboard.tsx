@@ -142,6 +142,7 @@ export function ActiveCampaignDashboard({
         pageSize: PAGE_SIZE,
         sortBy,
         sortOrder,
+        filter: "queued",
       });
       setPaginatedVideos(result.videos);
       setVideoTotalPages(result.pagination.totalPages);
@@ -208,7 +209,7 @@ export function ActiveCampaignDashboard({
 
   const videoGroups = useMemo(() => {
     if (activeTab === "queued") {
-      return paginatedVideos.filter((video) => video.publish_status !== "published").map((video) => ({
+      return paginatedVideos.map((video) => ({
         clipId: video.clip_id,
         clipTitle: video.title || video.file_name || `Video #${video.id}`,
         clipUrl: video.presigned_url,

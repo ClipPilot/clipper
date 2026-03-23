@@ -254,7 +254,7 @@ class CampaignVideoService {
     options?: {
       page?: number;
       pageSize?: number;
-      filter?: "published" | "unpublished";
+      filter?: "published" | "unpublished" | "queued";
       sortBy?: "created_at" | "title" | "publish_status" | "post_count";
       sortOrder?: "asc" | "desc";
     },
@@ -273,11 +273,21 @@ class CampaignVideoService {
     )`;
 
     // Build WHERE conditions
+    const isPublishedSubquery = sql`EXISTS (
+      SELECT 1 FROM ${userPosts}
+      JOIN ${posts} p2 ON ${userPosts.mass_post_id} = p2.id
+      WHERE p2.campaign_id = ${campaignId}
+      AND p2.clip_id = ${campaignVideos.clip_id}
+      AND ${userPosts.post_url} IS NOT NULL
+    )`;
+
     const conditions = [eq(campaignVideos.campaign_id, campaignId)];
     if (filter === "published") {
       conditions.push(hasPostsSubquery);
     } else if (filter === "unpublished") {
       conditions.push(sql`NOT ${hasPostsSubquery}`);
+    } else if (filter === "queued") {
+      conditions.push(sql`NOT ${isPublishedSubquery}`);
     }
     const whereClause = and(...conditions)!;
 

@@ -313,13 +313,14 @@ class CampaignAPI {
   async listVideos(
     teamId: number,
     campaignId: number,
-    options?: { sortBy?: string; sortOrder?: string; page?: number; pageSize?: number },
+    options?: { sortBy?: string; sortOrder?: string; page?: number; pageSize?: number; filter?: "published" | "unpublished" | "queued" },
   ): Promise<{ videos: CampaignVideo[]; pagination: { page: number; pageSize: number; totalVideos: number; totalPages: number } }> {
     const params = new URLSearchParams();
     if (options?.sortBy) params.set("sortBy", options.sortBy);
     if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
     if (options?.page) params.set("page", options.page.toString());
     if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
+    if (options?.filter) params.set("filter", options.filter);
     const qs = params.toString();
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,

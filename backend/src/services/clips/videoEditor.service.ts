@@ -1442,9 +1442,8 @@ const generateTextImage = async (
 
   const isInstagram = style === "instagram";
 
-  const instagramTextColor = headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF";
   const textStyle = isInstagram
-    ? `color: ${instagramTextColor};
+    ? `color: ${fillColor};
        background: ${headingBgColor};
        padding: 12px 28px;
        border-radius: 20px;
@@ -1532,9 +1531,8 @@ export const addTextOverlayAtPosition = async (
   const isInstagram = style === "instagram";
 
   try {
-    const instagramTextColor = headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF";
     const textStyle = isInstagram
-      ? `color: ${instagramTextColor};
+      ? `color: ${fillColor};
          background: ${headingBgColor};
          padding: 10px 24px;
          border-radius: 20px;
