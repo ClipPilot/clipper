@@ -730,9 +730,21 @@ export default function ClipFactoryPage() {
             <input
               type="number"
               min={1}
-              max={100}
-              value={options.numberOfVideos}
-              onChange={(e) => setOptions({ ...options, numberOfVideos: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) })}
+              max={500}
+              value={options.numberOfVideos || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  setOptions({ ...options, numberOfVideos: 0 });
+                } else {
+                  setOptions({ ...options, numberOfVideos: Math.min(500, parseInt(val) || 0) });
+                }
+              }}
+              onBlur={() => {
+                if (!options.numberOfVideos || options.numberOfVideos < 1) {
+                  setOptions({ ...options, numberOfVideos: 1 });
+                }
+              }}
               className="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-border focus:border-emerald focus:ring-1 focus:ring-emerald outline-none text-text-primary text-sm"
             />
           </div>
