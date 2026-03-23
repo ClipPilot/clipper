@@ -825,14 +825,27 @@ export default function CreateClipPage() {
                 <div>
                   <h2 className="text-xl font-bold text-text-primary">Processing</h2>
                   <p className="text-sm text-text-secondary">
-                    {pendingClips.length + unsavedClips.length > 0
-                      ? `${pendingClips.length + unsavedClips.length} clip${pendingClips.length + unsavedClips.length === 1 ? '' : 's'} being processed`
-                      : "No clips processing"}
+                    {(() => {
+                      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+                      const visiblePendingCount = pendingClips.filter(
+                        (c) => c.status !== "failed" || new Date(c.updated_at) >= twoDaysAgo
+                      ).length;
+                      const total = visiblePendingCount + unsavedClips.length;
+                      return total > 0
+                        ? `${total} clip${total === 1 ? '' : 's'} being processed`
+                        : "No clips processing";
+                    })()}
                   </p>
                 </div>
               </div>
 
-              {pendingClips.length > 0 || unsavedClips.length > 0 ? (
+              {(() => {
+                const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+                const hasVisiblePending = pendingClips.some(
+                  (c) => c.status !== "failed" || new Date(c.updated_at) >= twoDaysAgo
+                );
+                return hasVisiblePending || unsavedClips.length > 0;
+              })() ? (
                 <div className="space-y-6">
                   <PendingClipsSection
                     clips={pendingClips}

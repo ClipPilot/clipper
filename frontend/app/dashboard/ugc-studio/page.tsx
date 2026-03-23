@@ -31,16 +31,6 @@ export default function UGCStudioPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-400/10 border border-accent-400/20 mb-6">
-            <Icon
-              icon="solar:magic-stick-3-bold"
-              className="text-accent-400"
-              width={18}
-            />
-            <span className="text-accent-400 text-sm font-medium">
-              AI-Powered Creation
-            </span>
-          </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-text-primary mb-4">
             UGC Studio
           </h1>
