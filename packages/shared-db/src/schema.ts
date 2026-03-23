@@ -1494,4 +1494,4 @@ export const clipFactoryBatches = pgTable("clip_factory_batches", {
     .default([]),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();
