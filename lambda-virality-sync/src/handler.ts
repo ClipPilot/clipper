@@ -838,15 +838,18 @@ async function scrapeBatchPostMetrics(
   return results;
 }
 
-// ── Orchestrator handler (Step Functions) ──
+// ── Orchestrator handler (Step Functions — cursor-based pagination) ──
+
+const PAGE_SIZE = 100;
 
 export const orchestratorHandler: Handler = async (event: any, context: Context) => {
-  const teamId: number | undefined = event?.Payload?.teamId ?? event?.teamId;
-  const massPostsOnly: boolean = event?.Payload?.massPostsOnly ?? event?.massPostsOnly ?? false;
+  const cursor = event?.cursor ?? null;
+  const teamId: number | undefined = cursor?.teamId ?? event?.Payload?.teamId ?? event?.teamId;
+  const massPostsOnly: boolean = cursor?.massPostsOnly ?? event?.Payload?.massPostsOnly ?? event?.massPostsOnly ?? false;
 
   console.log(`\n========================================`);
   console.log(`  VIRALITY SYNC ORCHESTRATOR - ${new Date().toISOString()}`);
-  console.log(`  teamId=${teamId ?? "all"} massPostsOnly=${massPostsOnly}`);
+  console.log(`  teamId=${teamId ?? "all"} massPostsOnly=${massPostsOnly} cursor=${JSON.stringify(cursor)}`);
   console.log(`========================================\n`);
 
   if (!DATABASE_URL) {
@@ -857,14 +860,9 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
   const db = drizzle(localPool, { schema });
 
   try {
-    let viralityAccounts: any[] = [];
-    let userAcctList: any[] = [];
-
-    // Skip account queries + stale cleanup when only syncing mass posts for a specific team
-    if (!massPostsOnly) {
+    if (!cursor && !massPostsOnly) {
       const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
 
-      // Clean up stale viralityAccounts syncs
       const staleVirality = await db
         .update(schema.viralityAccounts)
         .set({
@@ -887,7 +885,6 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
         console.log(`[Cleanup] Reset ${staleVirality.length} stale virality syncs: ${staleVirality.map((s) => `@${s.username}`).join(", ")}`);
       }
 
-      // Clean up stale userAccounts syncs
       const staleUser = await db
         .update(schema.userAccounts)
         .set({
@@ -909,123 +906,109 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       if (staleUser.length > 0) {
         console.log(`[Cleanup] Reset ${staleUser.length} stale user syncs: ${staleUser.map((s) => `@${s.username}`).join(", ")}`);
       }
+    }
 
-      // Query active virality accounts
-      viralityAccounts = await db
-        .select({
-          id: schema.viralityAccounts.id,
-          username: schema.viralityAccounts.username,
-          platform: schema.viralityAccounts.platform,
-          team_id: schema.viralityAccounts.team_id,
-          syncs_remaining: schema.viralityAccounts.syncs_remaining,
-          account_type: schema.viralityAccounts.account_type,
-        })
-        .from(schema.viralityAccounts)
-        .where(
-          and(
+    const phases = massPostsOnly ? ["mass_post"] : ["virality", "user", "mass_post"];
+    let phaseIndex = phases.indexOf(cursor?.phase ?? phases[0]);
+    let lastId: number = cursor?.lastId ?? 0;
+    let accounts: any[] = [];
+
+    while (accounts.length === 0 && phaseIndex < phases.length) {
+      const phase = phases[phaseIndex];
+
+      if (phase === "virality") {
+        const rows = await db
+          .select({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username })
+          .from(schema.viralityAccounts)
+          .where(and(
             inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
-            eq(schema.viralityAccounts.is_active, true)
-          )
-        );
+            eq(schema.viralityAccounts.is_active, true),
+            gt(schema.viralityAccounts.id, lastId),
+          ))
+          .orderBy(schema.viralityAccounts.id)
+          .limit(PAGE_SIZE);
 
-      // Query active user accounts (skip mass_posting source — those are synced per-post)
-      userAcctList = await db
-        .select({
-          id: schema.userAccounts.id,
-          username: schema.userAccounts.username,
-          platform: schema.userAccounts.platform,
-          team_id: schema.userAccounts.team_id,
-          syncs_remaining: schema.userAccounts.syncs_remaining,
-          account_type: schema.userAccounts.account_type,
-        })
-        .from(schema.userAccounts)
-        .where(
-          and(
+        accounts = rows.map((a) => ({ id: a.id, source: "virality" as const, username: a.username }));
+      } else if (phase === "user") {
+        const rows = await db
+          .select({ id: schema.userAccounts.id, username: schema.userAccounts.username })
+          .from(schema.userAccounts)
+          .where(and(
             inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
             eq(schema.userAccounts.is_active, true),
-            or(
-              isNull(schema.userAccounts.source),
-              not(eq(schema.userAccounts.source, "mass_posting"))
-            )
-          )
-        );
-    }
+            or(isNull(schema.userAccounts.source), not(eq(schema.userAccounts.source, "mass_posting"))),
+            gt(schema.userAccounts.id, lastId),
+          ))
+          .orderBy(schema.userAccounts.id)
+          .limit(PAGE_SIZE);
 
-    // Query mass posts (userPosts with mass_post_id, syncs > 0, campaign active)
-    const massPostConditions = [
-      isNotNull(schema.userPosts.mass_post_id),
-      gt(schema.userPosts.syncs_remaining, 0),
-      eq(schema.campaigns.status, "started"),
-    ];
-    if (teamId) {
-      massPostConditions.push(eq(schema.userAccounts.team_id, teamId));
-    }
+        accounts = rows.map((a) => ({ id: a.id, source: "user" as const, username: a.username }));
+      } else if (phase === "mass_post") {
+        const conditions: any[] = [
+          isNotNull(schema.userPosts.mass_post_id),
+          gt(schema.userPosts.syncs_remaining, 0),
+          eq(schema.campaigns.status, "started"),
+          gt(schema.userAccounts.id, lastId),
+        ];
+        if (teamId) conditions.push(eq(schema.userAccounts.team_id, teamId));
 
-    const massPosts = await db
-      .select({
-        id: schema.userPosts.id,
-        post_url: schema.userPosts.post_url,
-        syncs_remaining: schema.userPosts.syncs_remaining,
-        platform: schema.userAccounts.platform,
-        account_id: schema.userPosts.account_id,
-        team_id: schema.userAccounts.team_id,
-      })
-      .from(schema.userPosts)
-      .innerJoin(schema.userAccounts, eq(schema.userPosts.account_id, schema.userAccounts.id))
-      .innerJoin(schema.posts, eq(schema.userPosts.mass_post_id, schema.posts.id))
-      .innerJoin(schema.campaigns, eq(schema.posts.campaign_id, schema.campaigns.id))
-      .where(and(...massPostConditions));
+        const rows = await db
+          .select({
+            account_id: schema.userAccounts.id,
+            platform: schema.userAccounts.platform,
+            team_id: schema.userAccounts.team_id,
+          })
+          .from(schema.userPosts)
+          .innerJoin(schema.userAccounts, eq(schema.userPosts.account_id, schema.userAccounts.id))
+          .innerJoin(schema.posts, eq(schema.userPosts.mass_post_id, schema.posts.id))
+          .innerJoin(schema.campaigns, eq(schema.posts.campaign_id, schema.campaigns.id))
+          .where(and(...conditions))
+          .groupBy(schema.userAccounts.id, schema.userAccounts.platform, schema.userAccounts.team_id)
+          .orderBy(schema.userAccounts.id)
+          .limit(PAGE_SIZE);
 
-    // Group mass posts into batches by account
-    const massPostBatchMap = new Map<number, {
-      account_id: number;
-      platform: string;
-      team_id: number;
-      posts: Array<{ id: number; post_url: string; syncs_remaining: number }>;
-    }>();
-    for (const p of massPosts) {
-      let batch = massPostBatchMap.get(p.account_id);
-      if (!batch) {
-        batch = {
-          account_id: p.account_id,
-          platform: p.platform,
-          team_id: p.team_id,
-          posts: [],
-        };
-        massPostBatchMap.set(p.account_id, batch);
+        accounts = rows.map((r) => ({
+          id: r.account_id,
+          source: "mass_post_batch" as const,
+          account_id: r.account_id,
+          platform: r.platform,
+          team_id: r.team_id,
+        }));
       }
-      batch.posts.push({ id: p.id, post_url: p.post_url, syncs_remaining: p.syncs_remaining });
+
+      if (accounts.length === 0) {
+        phaseIndex++;
+        lastId = 0;
+      }
     }
 
-    const accounts: any[] = [
-      ...viralityAccounts.map((a: any) => ({ id: a.id, source: "virality" as const, username: a.username })),
-      ...userAcctList.map((a: any) => ({ id: a.id, source: "user" as const, username: a.username })),
-      ...Array.from(massPostBatchMap.values()).map((batch) => ({
-        id: batch.account_id,
-        source: "mass_post_batch" as const,
-        account_id: batch.account_id,
-        platform: batch.platform,
-        team_id: batch.team_id,
-      })),
-    ];
+    const currentPhase = phases[phaseIndex] ?? "done";
+    let nextCursor: any = null;
 
-    console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user + ${massPosts.length} mass posts (${massPostBatchMap.size} batches) = ${accounts.length} total items to sync`);
+    if (accounts.length > 0) {
+      const lastItem = accounts[accounts.length - 1];
+      const lastItemId = lastItem.account_id ?? lastItem.id;
+
+      if (accounts.length === PAGE_SIZE) {
+        nextCursor = { phase: currentPhase, lastId: lastItemId, teamId, massPostsOnly };
+      } else {
+        const nextPhaseIndex = phaseIndex + 1;
+        if (nextPhaseIndex < phases.length) {
+          nextCursor = { phase: phases[nextPhaseIndex], lastId: 0, teamId, massPostsOnly };
+        }
+      }
+    }
+
+    console.log(`[Orchestrator] phase=${currentPhase} returned ${accounts.length} accounts, nextCursor=${JSON.stringify(nextCursor)}`);
     for (const a of accounts) {
       if (a.source === "mass_post_batch") {
         console.log(`  - [mass_post_batch] account=${a.account_id} ${a.platform} (team=${a.team_id})`);
       } else {
-        console.log(`  - [${a.source}] id=${a.id} @${a.username} (team=${a.team_id})`);
+        console.log(`  - [${a.source}] id=${a.id} @${a.username}`);
       }
     }
 
-    const BATCH_SIZE = 100;
-    const batches: any[][] = [];
-    for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
-      batches.push(accounts.slice(i, i + BATCH_SIZE));
-    }
-    console.log(`[Orchestrator] Split ${accounts.length} accounts into ${batches.length} batches of up to ${BATCH_SIZE}`);
-
-    return { batches };
+    return { accounts, nextCursor };
   } finally {
     await localPool.end();
   }

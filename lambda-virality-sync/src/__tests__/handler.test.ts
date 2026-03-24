@@ -754,44 +754,25 @@ describe("orchestrator mass post batching", () => {
   });
 
   it("should group mass posts by account into batches", async () => {
-    // Mock: virality accounts = 0, user accounts = 0, mass posts = 4 across 2 accounts
     let selectCallCount = 0;
     mockDb.select.mockImplementation(() => {
       selectCallCount++;
-      if (selectCallCount === 1) {
-        // virality accounts query
-        return mockDb.createChain([]);
-      }
-      if (selectCallCount === 2) {
-        // user accounts query
-        return mockDb.createChain([]);
-      }
-      // mass posts query
+      if (selectCallCount <= 2) return mockDb.createChain([]);
       return mockDb.createChain([
-        { id: 1, post_url: "https://instagram.com/reel/A1", syncs_remaining: 10, platform: "instagram", account_id: 100, team_id: 1 },
-        { id: 2, post_url: "https://instagram.com/reel/A2", syncs_remaining: 10, platform: "instagram", account_id: 100, team_id: 1 },
-        { id: 3, post_url: "https://instagram.com/reel/B1", syncs_remaining: 5, platform: "instagram", account_id: 200, team_id: 1 },
-        { id: 4, post_url: "https://instagram.com/reel/B2", syncs_remaining: 5, platform: "instagram", account_id: 200, team_id: 1 },
+        { account_id: 100, platform: "instagram", team_id: 1 },
+        { account_id: 200, platform: "instagram", team_id: 1 },
       ]);
     });
 
     const result = await orchestratorHandler({}, makeContext(), () => {});
 
-    expect(result.batches).toBeDefined();
-    expect(result.batches.length).toBe(1);
-    const accounts = result.batches[0];
-    // Should be 2 batch items (one per account), not 4 individual items
-    expect(accounts.length).toBe(2);
-    expect(accounts[0].source).toBe("mass_post_batch");
-    expect(accounts[1].source).toBe("mass_post_batch");
-
-    // Account 100 should exist (posts are fetched by worker at runtime)
-    const batch100 = accounts.find((a: any) => a.account_id === 100);
-    expect(batch100).toBeDefined();
-
-    // Account 200 should exist
-    const batch200 = accounts.find((a: any) => a.account_id === 200);
-    expect(batch200).toBeDefined();
+    expect(result.accounts).toBeDefined();
+    expect(result.accounts.length).toBe(2);
+    expect(result.accounts[0].source).toBe("mass_post_batch");
+    expect(result.accounts[1].source).toBe("mass_post_batch");
+    expect(result.accounts.find((a: any) => a.account_id === 100)).toBeDefined();
+    expect(result.accounts.find((a: any) => a.account_id === 200)).toBeDefined();
+    expect(result.nextCursor).toBeNull();
   });
 
   it("should not emit mass_post (old format) items", async () => {
@@ -800,19 +781,16 @@ describe("orchestrator mass post batching", () => {
       selectCallCount++;
       if (selectCallCount <= 2) return mockDb.createChain([]);
       return mockDb.createChain([
-        { id: 1, post_url: "https://instagram.com/reel/X1", syncs_remaining: 10, platform: "instagram", account_id: 100, team_id: 1 },
+        { account_id: 100, platform: "instagram", team_id: 1 },
       ]);
     });
 
     const result = await orchestratorHandler({}, makeContext(), () => {});
 
-    const accounts = result.batches[0];
-    // No items should have source "mass_post" (old format)
-    const oldFormatItems = accounts.filter((a: any) => a.source === "mass_post");
+    const oldFormatItems = result.accounts.filter((a: any) => a.source === "mass_post");
     expect(oldFormatItems.length).toBe(0);
 
-    // Should be mass_post_batch
-    const batchItems = accounts.filter((a: any) => a.source === "mass_post_batch");
+    const batchItems = result.accounts.filter((a: any) => a.source === "mass_post_batch");
     expect(batchItems.length).toBe(1);
   });
 });
