@@ -7,6 +7,7 @@ import {
   startClipFactory,
   getClipFactoryStatus,
   getClipFactoryBatchStatus,
+  cancelClipFactoryBatch,
   getActiveJobs,
 } from "../controllers/admin-clip-factory.controller";
 
@@ -204,6 +205,28 @@ router.post("/status", requireAdminAuth, getClipFactoryStatus);
  *         description: Batch status
  */
 router.get("/batch/:batchId", requireAdminAuth, getClipFactoryBatchStatus);
+
+/**
+ * @openapi
+ * /api/admin/clip-factory/batch/{batchId}/cancel:
+ *   post:
+ *     summary: Cancel a running clip factory batch
+ *     tags: [Admin - Clip Factory]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: batchId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Batch cancelled
+ *       400:
+ *         description: Invalid batchId
+ */
+router.post("/batch/:batchId/cancel", requireAdminAuth, cancelClipFactoryBatch);
 
 /**
  * @openapi

@@ -212,7 +212,8 @@ resource "aws_iam_role_policy" "ecs_worker_sqs" {
         "sqs:DeleteMessage",
         "sqs:GetQueueUrl",
         "sqs:GetQueueAttributes",
-        "sqs:ChangeMessageVisibility"
+        "sqs:ChangeMessageVisibility",
+        "sqs:SendMessage"
       ]
       Resource = [
         aws_sqs_queue.video_processing.arn

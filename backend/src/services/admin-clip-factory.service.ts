@@ -358,6 +358,33 @@ class AdminClipFactoryService {
     };
   }
 
+  async cancelBatch(batchId: number) {
+    const [batch] = await db
+      .select()
+      .from(clipFactoryBatches)
+      .where(eq(clipFactoryBatches.id, batchId))
+      .limit(1);
+
+    if (!batch) throw new Error("Batch not found");
+    if (batch.status !== "processing") throw new Error("Batch is not processing");
+
+    const currentClipIds = batch.current_clip_ids as number[];
+    if (currentClipIds.length > 0) {
+      await db
+        .update(clips)
+        .set({ status: "failed", error_message: "Cancelled by admin", updated_at: new Date() })
+        .where(and(inArray(clips.id, currentClipIds), eq(clips.status, "pending")));
+    }
+
+    await db
+      .update(clipFactoryBatches)
+      .set({ status: "failed", current_clip_ids: [], updated_at: new Date() })
+      .where(eq(clipFactoryBatches.id, batchId));
+
+    console.log(`[ClipFactory] Batch ${batchId} cancelled by admin`);
+    return { success: true };
+  }
+
   async getActiveJobs(teamId: number) {
     const pendingClipRows = await db
       .select({

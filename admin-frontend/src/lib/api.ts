@@ -943,6 +943,16 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
+  async cancelClipFactoryBatch(
+    batchId: number,
+  ): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_URL}/admin/clip-factory/batch/${batchId}/cancel`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
   async getClipFactoryActiveJobs(
     teamId: number,
   ): Promise<{
