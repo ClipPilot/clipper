@@ -455,6 +455,16 @@ class AdCloneService {
       }>;
     };
 
+    if (agentResult.title && agentResult.responseType === "script") {
+      await db
+        .update(adCloneProjects)
+        .set({
+          product_name: agentResult.title,
+          updated_at: new Date(),
+        })
+        .where(eq(adCloneProjects.id, projectId));
+    }
+
     return agentResult;
   }
 

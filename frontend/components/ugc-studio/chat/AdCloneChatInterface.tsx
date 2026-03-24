@@ -11,7 +11,7 @@ import { resetUGCAtom } from "@/store/ugc";
 import { videoStateAtom } from "@/store/videoState";
 import { useAtomValue } from "jotai";
 import { adCloneAPI } from "@/api/adClone";
-import { ugcVideoAPI } from "@/api/ugc/video";
+
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { sceneImagesAtom, type SceneImageState } from "@/store/ugc";
 import { useAdCloneChatAgent } from "./useAdCloneChatAgent";
@@ -131,21 +131,20 @@ export function AdCloneChatInterface({ resumeProjectId }: { resumeProjectId?: st
   const [isStartingGeneration, setIsStartingGeneration] = useState(false);
 
   const handleContinueToGenerate = useCallback(async () => {
-    if (!teamId || !scriptId) return;
+    if (!teamId || !projectId) return;
     setIsStartingGeneration(true);
     try {
-      const result = await ugcVideoAPI.generateVideo({
+      await adCloneAPI.generateVideo(projectId, {
         teamId,
-        scriptId,
-        voiceId: videoState.voice?.id,
-        isSilent: videoState.isSilent,
+        voiceId: videoState.voice!.id,
+        characterId: videoState.character!.id,
       });
-      router.push(`/dashboard/ugc-studio/ai-video-creator/${result.jobId}`);
+      router.push(`/dashboard/ugc-studio/ad-clone/${projectId}`);
     } catch (err) {
       console.error("Failed to start video generation:", err);
       setIsStartingGeneration(false);
     }
-  }, [teamId, scriptId, videoState.voice, videoState.isSilent, router]);
+  }, [teamId, projectId, videoState.voice, videoState.character, router]);
 
   const isPanelMode = currentArtifact !== null;
 
