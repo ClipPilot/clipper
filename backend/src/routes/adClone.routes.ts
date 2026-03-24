@@ -359,29 +359,4 @@ router.get(
   adCloneController.getProject.bind(adCloneController)
 );
 
-/**
- * @openapi
- * /ad-clone/{projectId}:
- *   delete:
- *     summary: Delete a project
- *     tags:
- *       - Ad Clone
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: projectId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Project deleted
- */
-router.delete(
-  "/:projectId",
-  requireAuth,
-  adCloneController.deleteProject.bind(adCloneController)
-);
-
 export default router;
