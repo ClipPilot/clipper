@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtom, useSetAtom } from "jotai";
+import { io, Socket } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socket";
 import {
   videoStateAtom,
   resolveAgent,
@@ -9,13 +11,17 @@ import {
 } from "@/store/videoState";
 import { sceneImagesAtom, type SceneImageState } from "@/store/ugc";
 import { ugcScriptAPI } from "@/api/ugc";
+import { adCloneAPI } from "@/api/adClone";
+import { videoAPI } from "@/api/video";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import type { UGCScript, UGCScene } from "@/components/ugc-studio/script/types";
+import type { VideoAttachment } from "./ChatInput";
 import type {
   ChatMessage,
   ChatAttachment,
   InitAgentResult,
   ScriptAgentResult,
+  ScriptAgentScene,
 } from "./types";
 
 let messageIdCounter = 0;
@@ -27,15 +33,18 @@ const INITIAL_MESSAGE: ChatMessage = {
   id: "initial",
   role: "assistant",
   content:
-    "Hey! Describe the video you'd like to create and drop in any product images. I'll design the perfect structure for it.",
+    "Hey! Describe the video you'd like to create, or drop in a video to clone an existing ad. Add product images for best results.",
   timestamp: new Date(),
 };
 
-/**
- * Convert ScriptAgentResult (from script-agent) to UGCScript (DB/storyboard shape).
- */
-function mapScriptAgentResultToUGCScript(raw: ScriptAgentResult): UGCScript {
-  const scenes: UGCScene[] = raw.scenes.map((s) => ({
+function extractEmotion(dialogue: string | undefined): string | null {
+  if (!dialogue) return null;
+  const match = dialogue.match(/\[([a-z]+)\]/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function mapScenesToUGC(scenes: ScriptAgentScene[]): UGCScene[] {
+  return scenes.map((s) => ({
     id: s.slug,
     sceneNumber: s.sceneNumber,
     sceneType: s.storyBeat as UGCScene["sceneType"],
@@ -57,24 +66,6 @@ function mapScriptAgentResultToUGCScript(raw: ScriptAgentResult): UGCScript {
           }))
         : null,
   }));
-
-  return {
-    title: raw.title,
-    hook: scenes[0]?.dialogue || "",
-    targetAudience: raw.targetAudience,
-    totalEstimatedDuration: raw.totalDuration,
-    scenes,
-    viralScore: 0,
-    viralReasoning: "",
-    productMentions: [],
-  };
-}
-
-/** Extract the first [emotion] tag from dialogue text */
-function extractEmotion(dialogue: string | undefined): string | null {
-  if (!dialogue) return null;
-  const match = dialogue.match(/\[([a-z]+)\]/i);
-  return match ? match[1].toLowerCase() : null;
 }
 
 function buildConversationHistory(
@@ -99,6 +90,18 @@ function buildConversationHistory(
     });
 }
 
+interface AdCloneAgentResult {
+  responseType: "conversation" | "script";
+  message: string;
+  videoType: string;
+  isSilent: boolean;
+  character: boolean;
+  targetAudience: string;
+  title: string;
+  totalDuration: number;
+  scenes: ScriptAgentScene[];
+}
+
 export interface ExistingScriptMeta {
   isSilent: boolean;
   hasCharacter: boolean;
@@ -106,36 +109,36 @@ export interface ExistingScriptMeta {
 }
 
 export function useChatAgent() {
-  // ---------------------------------------------------------------------------
-  // VideoState — single source of truth
-  // ---------------------------------------------------------------------------
   const [videoState, setVideoState] = useAtom(videoStateAtom);
   const setSceneImages = useSetAtom(sceneImagesAtom);
 
-  // ---------------------------------------------------------------------------
-  // Chat-only local state (not shared with other components)
-  // ---------------------------------------------------------------------------
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Refs for values synced from ChatInterface
-  // ---------------------------------------------------------------------------
+  const [videoAttachment, setVideoAttachment] = useState<VideoAttachment | null>(null);
+  const [adCloneProjectId, setAdCloneProjectId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [adCloneStep, setAdCloneStep] = useState<"analyzing" | "deconstructing" | null>(null);
+  const waitingForAnalysisRef = useRef(false);
+
   const selectedCharacterRef = useRef<any>(null);
   const teamIdRef = useRef<number | null>(null);
   const pollingIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const socketCleanupRef = useRef<(() => void) | null>(null);
+  const pendingAnalysisRef = useRef<{ text: string; imageKeys: string[] } | null>(null);
+  const threadIdRef = useRef(`thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const adCloneScriptRef = useRef<AdCloneAgentResult | null>(null);
 
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
       pollingIntervalsRef.current.forEach(clearInterval);
+      socketCleanupRef.current?.();
     };
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Helpers to build a UGCScript from VideoState (for image gen etc.)
-  // ---------------------------------------------------------------------------
   function buildUGCScriptFromState(vs: VideoState): UGCScript | null {
     if (vs.scenes.length === 0) return null;
     return {
@@ -155,9 +158,6 @@ export function useChatAgent() {
     };
   }
 
-  // ---------------------------------------------------------------------------
-  // triggerImageGeneration — fires scene image jobs, polls for completion
-  // ---------------------------------------------------------------------------
   const triggerImageGeneration = useCallback(
     async (script: UGCScript, generatedScriptId: string) => {
       const teamId = teamIdRef.current;
@@ -176,7 +176,6 @@ export function useChatAgent() {
         bRollShots: scene.bRollShots,
       }));
 
-      // Set all scenes to "generating" state
       const initialImageState: Record<string, SceneImageState> = {};
       for (const scene of script.scenes) {
         initialImageState[scene.id] = { status: "generating" };
@@ -200,7 +199,6 @@ export function useChatAgent() {
           }
         });
 
-        // Update state with job IDs
         setSceneImages((prev) => {
           const next = { ...prev };
           for (const { jobId, sceneId } of jobScenePairs) {
@@ -209,18 +207,14 @@ export function useChatAgent() {
           return next;
         });
 
-        // Poll each job
         const completedJobs = new Set<string>();
         const interval = setInterval(async () => {
           for (const { jobId, sceneId } of jobScenePairs) {
             if (completedJobs.has(jobId)) continue;
-
             try {
               const status = await sceneBuilderAPI.getGenerationStatus(jobId);
-
               if (status.status === "completed" && status.images?.length) {
                 completedJobs.add(jobId);
-                const firstImage = status.images[0];
                 setSceneImages((prev) => ({
                   ...prev,
                   [sceneId]: {
@@ -228,18 +222,16 @@ export function useChatAgent() {
                     status: "completed",
                     jobId,
                     generatedImages: status.images,
-                    imageKey: firstImage.key,
-                    imageUrl: firstImage.url,
+                    imageKey: status.images![0].key,
+                    imageUrl: status.images![0].url,
                   },
                 }));
-
-                // Auto-select the first image
                 sceneBuilderAPI
                   .selectSceneImage({
                     scriptId: generatedScriptId,
                     sceneId,
                     sceneNumber: status.sceneNumber,
-                    imageKey: firstImage.key,
+                    imageKey: status.images![0].key,
                     generationJobId: jobId,
                   })
                   .catch(() => {});
@@ -247,23 +239,17 @@ export function useChatAgent() {
                 completedJobs.add(jobId);
                 setSceneImages((prev) => ({
                   ...prev,
-                  [sceneId]: {
-                    ...prev[sceneId],
-                    status: "failed",
-                    jobId,
-                  },
+                  [sceneId]: { ...prev[sceneId], status: "failed", jobId },
                 }));
               }
             } catch {
-              // Ignore individual poll errors
+              // ignore
             }
           }
-
           if (completedJobs.size >= jobScenePairs.length) {
             clearInterval(interval);
           }
         }, 2000);
-
         pollingIntervalsRef.current.push(interval);
       } catch (error) {
         console.error("[useChatAgent] Image generation failed:", error);
@@ -272,9 +258,175 @@ export function useChatAgent() {
     [setSceneImages],
   );
 
-  // ---------------------------------------------------------------------------
-  // sendMessage — routes to the correct agent based on VideoState
-  // ---------------------------------------------------------------------------
+  const handleAdCloneAnalysisComplete = useCallback(
+    async (pid: string) => {
+      const pending = pendingAnalysisRef.current;
+      if (!pending) return;
+
+      setIsThinking(true);
+      setAdCloneStep("deconstructing");
+
+      try {
+        const conversationHistory = buildConversationHistory(messages);
+        const result = await adCloneAPI.initStructure({
+          projectId: pid,
+          message: pending.text,
+          productImageKeys: pending.imageKeys,
+          threadId: threadIdRef.current,
+          conversationHistory,
+        });
+
+        let structureResult: InitAgentResult | undefined;
+        if (result.responseType === "script" && result.scenes?.length) {
+          adCloneScriptRef.current = result as AdCloneAgentResult;
+          structureResult = {
+            videoType: result.videoType,
+            isSilent: result.isSilent,
+            character: result.character,
+            targetAudience: result.targetAudience,
+            structure: result.scenes.map((s: any) => ({
+              sceneType: s.sceneType,
+              slug: s.slug,
+              description: s.storyBeat,
+              shots: s.shots?.map((sh: any) => ({ label: sh.label, shotType: sh.shotType })) || [],
+            })),
+          };
+        }
+
+        setMessages((prev) => {
+          return [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant" as const,
+              content: result.message,
+              structureResult,
+              timestamp: new Date(),
+            },
+          ];
+        });
+      } catch (error) {
+        setMessages((prev) => {
+          return [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant" as const,
+              content: error instanceof Error
+                ? `Something went wrong: ${error.message}. Try again?`
+                : "Something went wrong. Try again?",
+              timestamp: new Date(),
+            },
+          ];
+        });
+      } finally {
+        setIsThinking(false);
+        setIsAnalyzing(false);
+        setAnalysisComplete(true);
+        setAdCloneStep(null);
+        waitingForAnalysisRef.current = false;
+        pendingAnalysisRef.current = null;
+      }
+    },
+    [messages],
+  );
+
+  const connectSocketAndListen = useCallback(
+    (pid: string, teamId: number) => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+
+      const socketUrl = getSocketUrl();
+      const socket = io(socketUrl, { transports: ["websocket", "polling"] });
+      socketRef.current = socket;
+      let handled = false;
+
+      const cleanup = () => {
+        clearInterval(fallbackInterval);
+        clearTimeout(timeout);
+        socket.emit("leave-team", teamId);
+        socket.disconnect();
+        if (socketRef.current === socket) socketRef.current = null;
+      };
+
+      socket.on("connect", () => {
+        socket.emit("join-team", teamId);
+      });
+
+      socket.on("ad-clone-job-update", (update: any) => {
+        if (update.projectId !== pid) return;
+        if (update.status === "analysis_complete" || update.status === "script_generated") {
+          if (handled) return;
+          handled = true;
+          cleanup();
+          handleAdCloneAnalysisComplete(pid);
+        } else if (update.status === "failed") {
+          if (handled) return;
+          handled = true;
+          cleanup();
+          setMessages((prev) => {
+            const filtered = prev.filter((m) => m.id !== "analyzing-placeholder");
+            return [
+              ...filtered,
+              { id: nextId(), role: "assistant", content: `Analysis failed: ${update.error || "Unknown error"}. Please try again.`, timestamp: new Date() },
+            ];
+          });
+          setIsThinking(false);
+          setIsAnalyzing(false);
+          setAdCloneStep(null);
+          waitingForAnalysisRef.current = false;
+        }
+      });
+
+      const fallbackInterval = setInterval(async () => {
+        if (handled) return;
+        try {
+          const resp = await adCloneAPI.getProject(pid);
+          if (!resp?.project) return;
+          if (resp.project.status === "analysis_complete" || resp.project.status === "script_generated") {
+            if (handled) return;
+            handled = true;
+            cleanup();
+            handleAdCloneAnalysisComplete(pid);
+          } else if (resp.project.status === "failed") {
+            if (handled) return;
+            handled = true;
+            cleanup();
+            setMessages((prev) => [
+              ...prev,
+              { id: nextId(), role: "assistant", content: `Analysis failed. Please try again.`, timestamp: new Date() },
+            ]);
+            setIsThinking(false);
+            setIsAnalyzing(false);
+            setAdCloneStep(null);
+            waitingForAnalysisRef.current = false;
+          }
+        } catch {
+          // ignore
+        }
+      }, 5000);
+
+      const timeout = setTimeout(() => {
+        if (handled) return;
+        handled = true;
+        cleanup();
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "assistant", content: "Analysis timed out. Please try again.", timestamp: new Date() },
+        ]);
+        setIsThinking(false);
+        setIsAnalyzing(false);
+        setAdCloneStep(null);
+        waitingForAnalysisRef.current = false;
+      }, 180_000);
+
+      return cleanup;
+    },
+    [handleAdCloneAnalysisComplete],
+  );
+
   const sendMessage = useCallback(
     async (text: string, attachments: ChatAttachment[] = []) => {
       const userMessage: ChatMessage = {
@@ -282,6 +434,7 @@ export function useChatAgent() {
         role: "user",
         content: text,
         attachments: attachments.length > 0 ? attachments : undefined,
+        videoAttachment: videoAttachment ? { name: videoAttachment.name, preview: videoAttachment.preview, url: videoAttachment.url } : undefined,
         timestamp: new Date(),
       };
 
@@ -291,32 +444,22 @@ export function useChatAgent() {
 
       try {
         const agent = resolveAgent(videoState);
+        const teamId = teamIdRef.current;
 
         if (agent === "storyboard") {
           const result = await ugcScriptAPI.storyboardChat({
             scriptId: videoState.scriptId!,
             message: text,
             threadId: videoState.threadId,
-            teamId: teamIdRef.current ?? undefined,
+            teamId: teamId ?? undefined,
             characterId: selectedCharacterRef.current?.id ?? undefined,
           });
 
-          // Update scenes from storyboard agent response
           if (result.updatedScript?.scenes) {
-            setVideoState((prev) => ({
-              ...prev,
-              scenes: result.updatedScript.scenes,
-            }));
+            setVideoState((prev) => ({ ...prev, scenes: result.updatedScript.scenes }));
           }
 
-          // If the agent triggered image regeneration, start polling
           if (result.regeneratingJobs?.length) {
-            const jobScenePairs = result.regeneratingJobs.map((j) => ({
-              jobId: j.jobId,
-              sceneId: j.sceneId,
-            }));
-
-            // Set affected scenes to "regenerating" state with shot index
             setSceneImages((prev) => {
               const next = { ...prev };
               for (const job of result.regeneratingJobs!) {
@@ -330,40 +473,28 @@ export function useChatAgent() {
               return next;
             });
 
-            // Poll for completion
             const completedJobs = new Set<string>();
             const interval = setInterval(async () => {
-              for (const { jobId, sceneId } of jobScenePairs) {
-                if (completedJobs.has(jobId)) continue;
+              for (const job of result.regeneratingJobs!) {
+                if (completedJobs.has(job.jobId)) continue;
                 try {
-                  const status =
-                    await sceneBuilderAPI.getGenerationStatus(jobId);
-                  if (
-                    status.status === "completed" &&
-                    status.images?.length
-                  ) {
-                    completedJobs.add(jobId);
-                    // Merge new images into existing array by index
-                    // (preserves other shots during single-shot regen)
+                  const status = await sceneBuilderAPI.getGenerationStatus(job.jobId);
+                  if (status.status === "completed" && status.images?.length) {
+                    completedJobs.add(job.jobId);
                     setSceneImages((prev) => {
-                      const existing = prev[sceneId]?.generatedImages || [];
+                      const existing = prev[job.sceneId]?.generatedImages || [];
                       const merged = [...existing];
                       for (const newImg of status.images!) {
-                        const idx = merged.findIndex(
-                          (m) => m.index === newImg.index,
-                        );
-                        if (idx >= 0) {
-                          merged[idx] = newImg;
-                        } else {
-                          merged.push(newImg);
-                        }
+                        const idx = merged.findIndex((m) => m.index === newImg.index);
+                        if (idx >= 0) merged[idx] = newImg;
+                        else merged.push(newImg);
                       }
                       return {
                         ...prev,
-                        [sceneId]: {
-                          ...prev[sceneId],
+                        [job.sceneId]: {
+                          ...prev[job.sceneId],
                           status: "completed",
-                          jobId,
+                          jobId: job.jobId,
                           generatedImages: merged,
                           imageKey: merged[0]?.key,
                           imageUrl: merged[0]?.url,
@@ -371,55 +502,153 @@ export function useChatAgent() {
                         },
                       };
                     });
-                    const firstImage = status.images![0];
                     sceneBuilderAPI
                       .selectSceneImage({
                         scriptId: videoState.scriptId!,
-                        sceneId,
+                        sceneId: job.sceneId,
                         sceneNumber: status.sceneNumber,
-                        imageKey: firstImage.key,
-                        generationJobId: jobId,
+                        imageKey: status.images![0].key,
+                        generationJobId: job.jobId,
                       })
                       .catch(() => {});
                   } else if (status.status === "failed") {
-                    completedJobs.add(jobId);
+                    completedJobs.add(job.jobId);
                     setSceneImages((prev) => ({
                       ...prev,
-                      [sceneId]: {
-                        ...prev[sceneId],
-                        status: "failed",
-                        jobId,
-                      },
+                      [job.sceneId]: { ...prev[job.sceneId], status: "failed", jobId: job.jobId },
                     }));
                   }
                 } catch {
-                  // Ignore poll errors
+                  // ignore
                 }
               }
-              if (completedJobs.size >= jobScenePairs.length) {
+              if (completedJobs.size >= result.regeneratingJobs!.length) {
                 clearInterval(interval);
               }
             }, 2000);
             pollingIntervalsRef.current.push(interval);
           }
 
-          const assistantMessage: ChatMessage = {
-            id: nextId(),
-            role: "assistant",
-            content: result.message,
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-        } else {
-          // Pre-script phase: route to initStructure
-          const conversationHistory =
-            buildConversationHistory(currentMessages);
+          setMessages((prev) => [
+            ...prev,
+            { id: nextId(), role: "assistant", content: result.message, timestamp: new Date() },
+          ]);
+        } else if (videoAttachment && teamId && !adCloneProjectId) {
+          // Ad clone: create project, upload video, start analysis
+          const imageKeys = attachments.map((a) => a.key).filter(Boolean);
+          const createResult = await adCloneAPI.createProject({
+            teamId,
+            adDirection: text,
+          });
 
+          const pid = createResult.projectId;
+          setAdCloneProjectId(pid);
+
+          let referenceVideoKey: string;
+          if (videoAttachment.url && !videoAttachment.file) {
+            setMessages((prev) => [
+              ...prev,
+              { id: "downloading-placeholder", role: "assistant", content: "Downloading video from link...", timestamp: new Date() },
+            ]);
+            const downloadResult = await videoAPI.downloadFromUrl(
+              videoAttachment.url,
+              teamId,
+              (progress) => {
+                if (progress.type === "progress") {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === "downloading-placeholder"
+                        ? { ...m, content: `Downloading video... ${progress.percent ?? 0}%` }
+                        : m,
+                    ),
+                  );
+                }
+              },
+            );
+            referenceVideoKey = downloadResult.s3Key;
+            setMessages((prev) => prev.filter((m) => m.id !== "downloading-placeholder"));
+          } else if (videoAttachment.file) {
+            await adCloneAPI.uploadFile(createResult.uploadUrls.video.uploadUrl, videoAttachment.file);
+            referenceVideoKey = createResult.uploadUrls.video.s3Key;
+          } else {
+            throw new Error("No video file or URL provided");
+          }
+
+          if (imageKeys.length > 0 && attachments.length > 0) {
+            const uploadUrls = await adCloneAPI.getUploadUrls({
+              teamId,
+              projectId: pid,
+              videoFileName: videoAttachment.name,
+              productImageFileNames: attachments.filter((a) => a.file).map((a) => a.file!.name),
+            });
+            await Promise.all(
+              uploadUrls.uploadUrls.productImages.map((url, i) =>
+                adCloneAPI.uploadFile(url.uploadUrl, attachments[i].file!),
+              ),
+            );
+            await adCloneAPI.confirmUpload(pid, {
+              referenceVideoKey,
+              productImageKeys: uploadUrls.uploadUrls.productImages.map((u) => u.s3Key),
+            });
+          } else {
+            await adCloneAPI.confirmUpload(pid, { referenceVideoKey, productImageKeys: [] });
+          }
+
+          pendingAnalysisRef.current = { text, imageKeys };
+          setIsAnalyzing(true);
+          setAdCloneStep("analyzing");
+          waitingForAnalysisRef.current = true;
+
+
+          socketCleanupRef.current?.();
+          socketCleanupRef.current = connectSocketAndListen(pid, teamId);
+          await adCloneAPI.startAnalysis(pid, teamId);
+        } else if (adCloneProjectId && analysisComplete) {
+          // Ad clone follow-up: refine the structure
+          const conversationHistory = buildConversationHistory(currentMessages);
+          const imageKeys = attachments.map((a) => a.key).filter(Boolean);
+
+          const result = await adCloneAPI.initStructure({
+            projectId: adCloneProjectId,
+            message: text,
+            productImageKeys: imageKeys,
+            threadId: threadIdRef.current,
+            conversationHistory,
+          });
+
+          let structureResult: InitAgentResult | undefined;
+          if (result.responseType === "script" && result.scenes?.length) {
+            adCloneScriptRef.current = result as AdCloneAgentResult;
+            structureResult = {
+              videoType: result.videoType,
+              isSilent: result.isSilent,
+              character: result.character,
+              targetAudience: result.targetAudience,
+              structure: result.scenes.map((s: any) => ({
+                sceneType: s.sceneType,
+                slug: s.slug,
+                description: s.storyBeat,
+                shots: s.shots?.map((sh: any) => ({ label: sh.label, shotType: sh.shotType })) || [],
+              })),
+            };
+          }
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: nextId(),
+              role: "assistant",
+              content: result.message,
+              structureResult,
+              timestamp: new Date(),
+            },
+          ]);
+        } else {
+          // Standard UGC: route to initStructure
+          const conversationHistory = buildConversationHistory(currentMessages);
           const result = await ugcScriptAPI.initStructure({
             message: text,
-            productImageKeys: attachments
-              .map((a) => a.key)
-              .filter(Boolean),
+            productImageKeys: attachments.map((a) => a.key).filter(Boolean),
             threadId: videoState.threadId,
             conversationHistory,
           });
@@ -434,8 +663,7 @@ export function useChatAgent() {
                     videoType: result.videoType!,
                     isSilent: result.isSilent!,
                     character: result.character!,
-                    targetAudience:
-                      (result as any).targetAudience || "",
+                    targetAudience: (result as any).targetAudience || "",
                     structure: result.structure,
                   }
                 : undefined,
@@ -444,26 +672,26 @@ export function useChatAgent() {
           setMessages((prev) => [...prev, assistantMessage]);
         }
       } catch (error) {
-        const errorMessage: ChatMessage = {
-          id: nextId(),
-          role: "assistant",
-          content:
-            error instanceof Error
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            content: error instanceof Error
               ? `Something went wrong: ${error.message}. Try again?`
               : "Something went wrong. Try again?",
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorMessage]);
+            timestamp: new Date(),
+          },
+        ]);
       } finally {
-        setIsThinking(false);
+        if (!waitingForAnalysisRef.current) {
+          setIsThinking(false);
+        }
       }
     },
-    [messages, videoState, setVideoState],
+    [messages, videoState, videoAttachment, adCloneProjectId, analysisComplete, setVideoState, setSceneImages, connectSocketAndListen],
   );
 
-  // ---------------------------------------------------------------------------
-  // acceptStructure — user accepted a structure from the init agent
-  // ---------------------------------------------------------------------------
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
       const customPattern = result.structure.map((scene) => ({
@@ -481,13 +709,16 @@ export function useChatAgent() {
         productImageKeys: imageKeys,
         customPattern,
       }));
+
+      // If ad clone agent provided scenes, pre-populate them
+      if (adCloneScriptRef.current?.scenes?.length) {
+        const mappedScenes = mapScenesToUGC(adCloneScriptRef.current.scenes);
+        setVideoState((prev) => ({ ...prev, scenes: mappedScenes }));
+      }
     },
     [setVideoState],
   );
 
-  // ---------------------------------------------------------------------------
-  // generateScript — call script-agent, populate scenes
-  // ---------------------------------------------------------------------------
   const generateScript = useCallback(async () => {
     const blueprint = videoState.structureBlueprint;
     if (!blueprint || !teamIdRef.current) return;
@@ -499,56 +730,95 @@ export function useChatAgent() {
       const allImageKeys = messages
         .filter((m) => m.role === "user" && m.attachments)
         .flatMap((m) => m.attachments!.map((a) => a.key));
-
       const userDirection =
         messages.find((m) => m.role === "user")?.content || "";
 
-      const result = await ugcScriptAPI.generateScriptAgent({
-        teamId: teamIdRef.current,
-        structure: blueprint.structure,
-        characterId: character?.id,
-        character: character
-          ? {
-              name: character.name,
-              gender: character.gender,
-              age_range: character.age_range,
-              appearance_config: character.appearance_config,
-            }
-          : null,
-        voice: videoState.voice ? { name: videoState.voice.name } : null,
-        targetAudience: blueprint.targetAudience || "",
-        productImageKeys: allImageKeys,
-        userDirection,
-        isSilent: blueprint.isSilent,
-        videoType: blueprint.videoType,
-      });
+      if (adCloneScriptRef.current?.scenes?.length) {
+        // Ad clone path: save the pre-generated script
+        const mappedScenes = mapScenesToUGC(adCloneScriptRef.current.scenes);
+        const scriptToSave = {
+          title: adCloneScriptRef.current.title,
+          targetAudience: adCloneScriptRef.current.targetAudience,
+          totalDuration: adCloneScriptRef.current.totalDuration,
+          scenes: mappedScenes,
+        };
 
-      // Backend now returns script already in UGCScript format (normalized from agent output)
-      const script = result.script as UGCScript;
+        const result = await ugcScriptAPI.saveScript({
+          teamId: teamIdRef.current,
+          script: scriptToSave,
+          characterId: character?.id,
+          productImageKeys: allImageKeys,
+          isSilent: blueprint.isSilent,
+          videoType: blueprint.videoType,
+        });
 
-      setVideoState((prev) => ({
-        ...prev,
-        scriptId: result.scriptId,
-        scenes: script.scenes,
-        userDirection,
-        structureBlueprint: null, // consumed
-        isGeneratingScript: false,
-      }));
+        setVideoState((prev) => ({
+          ...prev,
+          scriptId: result.scriptId,
+          scenes: mappedScenes,
+          userDirection,
+          structureBlueprint: null,
+          isGeneratingScript: false,
+        }));
 
-      // Auto-trigger image generation in background
-      triggerImageGeneration(script, result.scriptId);
+        if (adCloneProjectId) {
+          adCloneAPI.updateScript(adCloneProjectId, {
+            script: { ...scriptToSave, _scriptId: result.scriptId },
+          }).catch(() => {});
+        }
+
+        const ugcScript: UGCScript = {
+          title: scriptToSave.title,
+          hook: mappedScenes[0]?.dialogue || "",
+          targetAudience: scriptToSave.targetAudience,
+          totalEstimatedDuration: scriptToSave.totalDuration,
+          scenes: mappedScenes,
+          viralScore: 0,
+          viralReasoning: "",
+          productMentions: [],
+        };
+        triggerImageGeneration(ugcScript, result.scriptId);
+      } else {
+        // Standard UGC path: generate script via agent
+        const result = await ugcScriptAPI.generateScriptAgent({
+          teamId: teamIdRef.current,
+          structure: blueprint.structure,
+          characterId: character?.id,
+          character: character
+            ? {
+                name: character.name,
+                gender: character.gender,
+                age_range: character.age_range,
+                appearance_config: character.appearance_config,
+              }
+            : null,
+          voice: videoState.voice ? { name: videoState.voice.name } : null,
+          targetAudience: blueprint.targetAudience || "",
+          productImageKeys: allImageKeys,
+          userDirection,
+          isSilent: blueprint.isSilent,
+          videoType: blueprint.videoType,
+        });
+
+        const script = result.script as UGCScript;
+
+        setVideoState((prev) => ({
+          ...prev,
+          scriptId: result.scriptId,
+          scenes: script.scenes,
+          userDirection,
+          structureBlueprint: null,
+          isGeneratingScript: false,
+        }));
+
+        triggerImageGeneration(script, result.scriptId);
+      }
     } catch (error) {
       console.error("[useChatAgent] Script generation failed:", error);
-      setVideoState((prev) => ({
-        ...prev,
-        isGeneratingScript: false,
-      }));
+      setVideoState((prev) => ({ ...prev, isGeneratingScript: false }));
     }
-  }, [videoState, messages, triggerImageGeneration, setVideoState]);
+  }, [videoState, messages, adCloneProjectId, triggerImageGeneration, setVideoState]);
 
-  // ---------------------------------------------------------------------------
-  // loadExistingScript — set VideoState for an existing script
-  // ---------------------------------------------------------------------------
   const loadExistingScript = useCallback(
     (meta: ExistingScriptMeta) => {
       setVideoState((prev) => ({
@@ -562,9 +832,6 @@ export function useChatAgent() {
     [setVideoState],
   );
 
-  // ---------------------------------------------------------------------------
-  // retryStructure — re-send the last user message
-  // ---------------------------------------------------------------------------
   const retryStructure = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
@@ -572,9 +839,6 @@ export function useChatAgent() {
     }
   }, [messages, sendMessage]);
 
-  // ---------------------------------------------------------------------------
-  // updateScene — inline edit handler with debounced backend save
-  // ---------------------------------------------------------------------------
   const updateScene = useCallback(
     (sceneId: string, patch: Partial<UGCScene>) => {
       setVideoState((prev) => {
@@ -582,17 +846,13 @@ export function useChatAgent() {
           s.id === sceneId ? { ...s, ...patch } : s,
         );
 
-        // Debounce backend save (500ms)
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         if (prev.scriptId) {
           saveTimerRef.current = setTimeout(() => {
             ugcScriptAPI
               .updateScript(prev.scriptId!, { scenes: updatedScenes })
               .catch((err) => {
-                console.error(
-                  "[useChatAgent] Failed to save scene edit:",
-                  err,
-                );
+                console.error("[useChatAgent] Failed to save scene edit:", err);
               });
           }, 500);
         }
@@ -603,9 +863,6 @@ export function useChatAgent() {
     [setVideoState],
   );
 
-  // ---------------------------------------------------------------------------
-  // confirmCharacter — write selected character to VideoState
-  // ---------------------------------------------------------------------------
   const confirmCharacter = useCallback(() => {
     const character = selectedCharacterRef.current;
     if (character) {
@@ -631,7 +888,12 @@ export function useChatAgent() {
   return {
     messages,
     isThinking,
+    isAnalyzing,
+    adCloneStep,
     videoState,
+    videoAttachment,
+    setVideoAttachment,
+    adCloneProjectId,
     sendMessage,
     acceptStructure,
     retryStructure,

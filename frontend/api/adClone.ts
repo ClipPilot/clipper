@@ -340,6 +340,28 @@ class AdCloneAPI {
     return response.json();
   }
 
+  async linkVideoJob(
+    projectId: string,
+    videoJobId: string
+  ): Promise<{ success: boolean }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/${projectId}/link-video-job`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ videoJobId }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to link video job");
+    }
+
+    return response.json();
+  }
+
   async getStatus(projectId: string): Promise<ProjectStatusResponse> {
     const response = await apiFetch(
       `${API_URL}/ad-clone/${projectId}/status`,

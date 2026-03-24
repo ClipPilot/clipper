@@ -621,6 +621,26 @@ export class AdCloneController {
     }
   }
 
+  async linkVideoJob(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { videoJobId } = req.body;
+
+      if (!projectId || !videoJobId) {
+        return res.status(400).json({ error: "projectId and videoJobId are required" });
+      }
+
+      await adCloneService.setVideoJobId(projectId, videoJobId);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[AD_CLONE] Link video job error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to link video job"),
+      });
+    }
+  }
+
   async getStatus(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;

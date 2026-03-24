@@ -542,6 +542,42 @@ router.post(
 
 /**
  * @openapi
+ * /ad-clone/{projectId}/link-video-job:
+ *   post:
+ *     summary: Link a UGC video generation job to this ad clone project
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - videoJobId
+ *             properties:
+ *               videoJobId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Video job linked
+ */
+router.post(
+  "/:projectId/link-video-job",
+  requireAuth,
+  adCloneController.linkVideoJob.bind(adCloneController)
+);
+
+/**
+ * @openapi
  * /ad-clone/{projectId}/status:
  *   get:
  *     summary: Get project status and progress
