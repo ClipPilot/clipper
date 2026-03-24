@@ -51,13 +51,13 @@ variable "backend_desired_count" {
 variable "agent_service_cpu" {
   description = "CPU units for agent service container (1024 = 1 vCPU)"
   type        = number
-  default     = 1024 # 1 vCPU
+  default     = 2048 # 2 vCPU
 }
 
 variable "agent_service_memory" {
   description = "Memory for agent service container in MB"
   type        = number
-  default     = 2048 # 2 GB
+  default     = 4096 # 4 GB
 }
 
 variable "agent_service_desired_count" {

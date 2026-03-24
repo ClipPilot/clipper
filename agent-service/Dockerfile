@@ -39,4 +39,4 @@ EXPOSE 4111
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:4111/health || exit 1
 
-CMD ["node", "index.mjs"]
+CMD ["node", "--max-old-space-size=3584", "index.mjs"]
