@@ -180,6 +180,7 @@ export default function ClipFactoryPage() {
   const [statusData, setStatusData] = useState<Awaited<ReturnType<typeof adminAPI.getClipFactoryBatchStatus>> | null>(null);
   const [error, setError] = useState("");
   const [startLoading, setStartLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Active jobs
@@ -458,6 +459,22 @@ export default function ClipFactoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function handleCancel() {
+    if (!batchId) return;
+    if (!confirm("Cancel this batch? Currently processing clips will finish, but no new clips will be queued.")) return;
+    setCancelLoading(true);
+    try {
+      await adminAPI.cancelClipFactoryBatch(batchId);
+      if (pollRef.current) clearInterval(pollRef.current);
+      clearBatch();
+      setPageState("complete");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel");
+    } finally {
+      setCancelLoading(false);
+    }
+  }
+
   function handleReset() {
     if (pollRef.current) clearInterval(pollRef.current);
     clearBatch();
@@ -489,9 +506,20 @@ export default function ClipFactoryPage() {
               {selectedTeam && <span className="text-text-tertiary"> — {selectedTeam.name}</span>}
             </p>
           </div>
-          <button onClick={handleReset} className="px-4 py-2.5 rounded-lg bg-emerald text-black font-semibold hover:bg-emerald-light transition-colors">
-            New Batch
-          </button>
+          <div className="flex items-center gap-3">
+            {pageState === "processing" && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelLoading}
+                className="px-4 py-2.5 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition-colors disabled:opacity-50"
+              >
+                {cancelLoading ? "Cancelling..." : "Cancel Batch"}
+              </button>
+            )}
+            <button onClick={handleReset} className="px-4 py-2.5 rounded-lg bg-emerald text-black font-semibold hover:bg-emerald-light transition-colors">
+              New Batch
+            </button>
+          </div>
         </div>
 
         {/* Overall Progress */}

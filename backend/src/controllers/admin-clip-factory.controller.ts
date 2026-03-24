@@ -164,6 +164,23 @@ export async function getClipFactoryBatchStatus(req: AdminRequest, res: Response
   }
 }
 
+export async function cancelClipFactoryBatch(req: AdminRequest, res: Response) {
+  try {
+    const batchId = parseInt(req.params.batchId);
+    if (!batchId) {
+      return res.status(400).json({ error: "Missing batchId" });
+    }
+
+    const result = await adminClipFactoryService.cancelBatch(batchId);
+    return res.json(result);
+  } catch (err) {
+    console.error("Error cancelling batch:", err);
+    Sentry.captureException(err);
+    const message = err instanceof Error ? err.message : "Failed to cancel batch";
+    return res.status(500).json({ error: message });
+  }
+}
+
 export async function getActiveJobs(req: AdminRequest, res: Response) {
   try {
     const teamId = req.query.teamId as string;
