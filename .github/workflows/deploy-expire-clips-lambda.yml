@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - staging
     paths:
       - "lambda-expire-clips/**"
       - "packages/shared-db/**"
@@ -13,14 +12,14 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  ECR_REPOSITORY: ${{ github.ref == 'refs/heads/main' && 'clipster-expire-clips-lambda' || 'clipster-expire-clips-lambda-staging' }}
-  LAMBDA_FUNCTION: ${{ github.ref == 'refs/heads/main' && 'clipster-expire-clips' || 'clipster-expire-clips-staging' }}
+  ECR_REPOSITORY: clipster-expire-clips-lambda
+  LAMBDA_FUNCTION: clipster-expire-clips
 
 jobs:
   deploy:
     name: Deploy Expire Clips Lambda
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    environment: production
 
     steps:
       - name: Checkout code
