@@ -396,19 +396,37 @@ class AdCloneService {
       };
     }
 
-    const response = await fetch(
-      `${agentServiceUrl}/api/agents/ad-deconstructor-agent/generate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      },
-    );
+    const deconstructorUrl = `${agentServiceUrl}/api/agents/ad-deconstructor-agent/generate`;
+    const deconstructorFetchOptions: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(120_000),
+    };
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[AD_CLONE] Ad deconstructor agent error:", errorBody);
-      throw new Error("Failed to generate structure from ad deconstructor agent");
+    let response!: globalThis.Response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(deconstructorUrl, deconstructorFetchOptions);
+        if (response.ok) break;
+
+        const errorBody = await response.text();
+        const isGatewayError = response.status === 502 || response.status === 503 || response.status === 504;
+        if (!isGatewayError || attempt === 1) {
+          console.error("[AD_CLONE] Ad deconstructor agent error:", errorBody);
+          throw new Error("Failed to generate structure from ad deconstructor agent");
+        }
+        console.warn(`[AD_CLONE] Deconstructor returned ${response.status}, retrying...`);
+        await new Promise((r) => setTimeout(r, 3000));
+      } catch (err) {
+        if (err instanceof Error && err.message === "Failed to generate structure from ad deconstructor agent") throw err;
+        if (attempt === 1) {
+          console.error("[AD_CLONE] Deconstructor fetch error:", err);
+          throw new Error("Failed to generate structure from ad deconstructor agent");
+        }
+        console.warn("[AD_CLONE] Deconstructor fetch failed, retrying...", err);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     const result = (await response.json()) as Record<string, unknown>;

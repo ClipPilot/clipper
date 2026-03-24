@@ -721,19 +721,37 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       };
     }
 
-    const response = await fetch(
-      `${agentServiceUrl}/api/agents/script-init-agent/generate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      },
-    );
+    const url = `${agentServiceUrl}/api/agents/script-init-agent/generate`;
+    const fetchOptions: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(120_000),
+    };
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[UGC_SCRIPT] Agent service error:", errorBody);
-      throw new Error("Failed to generate init structure from agent service");
+    let response!: globalThis.Response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(url, fetchOptions);
+        if (response.ok) break;
+
+        const errorBody = await response.text();
+        const isGatewayError = response.status === 502 || response.status === 503 || response.status === 504;
+        if (!isGatewayError || attempt === 1) {
+          console.error("[UGC_SCRIPT] Agent service error:", errorBody);
+          throw new Error("Failed to generate init structure from agent service");
+        }
+        console.warn(`[UGC_SCRIPT] Init agent returned ${response.status}, retrying...`);
+        await new Promise((r) => setTimeout(r, 3000));
+      } catch (err) {
+        if (err instanceof Error && err.message === "Failed to generate init structure from agent service") throw err;
+        if (attempt === 1) {
+          console.error("[UGC_SCRIPT] Init agent fetch error:", err);
+          throw new Error("Failed to generate init structure from agent service");
+        }
+        console.warn("[UGC_SCRIPT] Init agent fetch failed, retrying...", err);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     const result = (await response.json()) as Record<string, unknown>;
@@ -1015,19 +1033,37 @@ ${message}`;
       resource: "storyboard-chat",
     };
 
-    const response = await fetch(
-      `${agentServiceUrl}/api/agents/storyboard-agent/generate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      },
-    );
+    const storyboardUrl = `${agentServiceUrl}/api/agents/storyboard-agent/generate`;
+    const storyboardFetchOptions: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(270_000),
+    };
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[UGC_SCRIPT] Storyboard agent error:", errorBody);
-      throw new Error("Failed to process storyboard edit");
+    let response!: globalThis.Response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(storyboardUrl, storyboardFetchOptions);
+        if (response.ok) break;
+
+        const errorBody = await response.text();
+        const isGatewayError = response.status === 502 || response.status === 503 || response.status === 504;
+        if (!isGatewayError || attempt === 1) {
+          console.error("[UGC_SCRIPT] Storyboard agent error:", errorBody);
+          throw new Error("Failed to process storyboard edit");
+        }
+        console.warn(`[UGC_SCRIPT] Storyboard agent returned ${response.status}, retrying...`);
+        await new Promise((r) => setTimeout(r, 3000));
+      } catch (err) {
+        if (err instanceof Error && err.message === "Failed to process storyboard edit") throw err;
+        if (attempt === 1) {
+          console.error("[UGC_SCRIPT] Storyboard agent fetch error:", err);
+          throw new Error("Failed to process storyboard edit");
+        }
+        console.warn("[UGC_SCRIPT] Storyboard agent fetch failed, retrying...", err);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
     }
 
     const result = (await response.json()) as Record<string, unknown>;

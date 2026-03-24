@@ -98,8 +98,8 @@ resource "aws_lb_target_group" "agent_service" {
     port                = "traffic-port"
     protocol            = "HTTP"
     healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
+    unhealthy_threshold = 5
+    timeout             = 10
     interval            = 30
     matcher             = "200"
   }
@@ -208,9 +208,9 @@ resource "aws_ecs_task_definition" "agent_service" {
     healthCheck = {
       command     = ["CMD-SHELL", "curl -f http://localhost:4111/health || exit 1"]
       interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 60
+      timeout     = 10
+      retries     = 5
+      startPeriod = 120
     }
 
     essential = true
