@@ -326,7 +326,7 @@ resource "aws_sfn_state_machine" "virality_sync" {
   }
 
   definition = jsonencode({
-    Comment = "Virality Sync - parallel fan-out per account"
+    Comment = "Virality Sync - batched fan-out (100 accounts per batch)"
     StartAt = "FetchAccounts"
     States = {
       FetchAccounts = {
@@ -336,46 +336,64 @@ resource "aws_sfn_state_machine" "virality_sync" {
           FunctionName = aws_lambda_function.virality_sync_orchestrator.arn
           Payload      = { source = "step-functions" }
         }
-        ResultSelector = { "accounts.$" = "$.Payload.accounts" }
+        ResultSelector = { "batches.$" = "$.Payload.batches" }
         ResultPath     = "$.orchestratorResult"
-        Next           = "SyncAllAccounts"
+        Next           = "SyncBatches"
       }
-      SyncAllAccounts = {
+      SyncBatches = {
         Type           = "Map"
-        ItemsPath      = "$.orchestratorResult.accounts"
-        MaxConcurrency = var.virality_sync_max_concurrency
+        ItemsPath      = "$.orchestratorResult.batches"
+        MaxConcurrency = 1
         Iterator = {
-          StartAt = "SyncOneAccount"
+          StartAt = "SyncBatch"
           States = {
-            SyncOneAccount = {
-              Type     = "Task"
-              Resource = "arn:aws:states:::lambda:invoke"
-              Parameters = {
-                FunctionName = aws_lambda_function.virality_sync_worker.arn
-                "Payload.$"  = "$"
+            SyncBatch = {
+              Type           = "Map"
+              ItemsPath      = "$"
+              MaxConcurrency = var.virality_sync_max_concurrency
+              Iterator = {
+                StartAt = "SyncOneAccount"
+                States = {
+                  SyncOneAccount = {
+                    Type     = "Task"
+                    Resource = "arn:aws:states:::lambda:invoke"
+                    Parameters = {
+                      FunctionName = aws_lambda_function.virality_sync_worker.arn
+                      "Payload.$"  = "$"
+                    }
+                    ResultPath = null
+                    Retry = [{
+                      ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+                      IntervalSeconds = 30
+                      MaxAttempts     = 1
+                      BackoffRate     = 2
+                    }]
+                    Catch = [{
+                      ErrorEquals = ["States.ALL"]
+                      ResultPath  = "$.error"
+                      Next        = "AccountSyncFailed"
+                    }]
+                    End = true
+                  }
+                  AccountSyncFailed = {
+                    Type   = "Pass"
+                    Result = { status = "failed" }
+                    End    = true
+                  }
+                }
               }
-              ResultSelector = { "result.$" = "$.Payload" }
-              Retry = [{
-                ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
-                IntervalSeconds = 30
-                MaxAttempts     = 1
-                BackoffRate     = 2
-              }]
-              Catch = [{
-                ErrorEquals = ["States.ALL"]
-                ResultPath  = "$.error"
-                Next        = "AccountSyncFailed"
-              }]
-              End = true
-            }
-            AccountSyncFailed = {
-              Type   = "Pass"
-              Result = { status = "failed" }
-              End    = true
+              ResultPath = null
+              End        = true
             }
           }
         }
-        ResultPath = "$.mapResults"
+        ResultPath = null
+        Next       = "ClearState"
+      }
+      ClearState = {
+        Type       = "Pass"
+        Result     = {}
+        ResultPath = "$"
         Next       = "ExtractTeams"
       }
       ExtractTeams = {
@@ -383,7 +401,7 @@ resource "aws_sfn_state_machine" "virality_sync" {
         Resource = "arn:aws:states:::lambda:invoke"
         Parameters = {
           FunctionName = aws_lambda_function.virality_sync_extractor.arn
-          Payload      = { "mapResults.$" = "$.mapResults" }
+          Payload      = { source = "step-functions" }
         }
         ResultSelector = { "teams.$" = "$.Payload.teams" }
         ResultPath     = "$.extractorResult"
