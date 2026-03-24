@@ -489,11 +489,9 @@ export default function ClipFactoryPage() {
               {selectedTeam && <span className="text-text-tertiary"> — {selectedTeam.name}</span>}
             </p>
           </div>
-          {pageState === "complete" && (
-            <button onClick={handleReset} className="px-4 py-2.5 rounded-lg bg-emerald text-black font-semibold hover:bg-emerald-light transition-colors">
-              New Batch
-            </button>
-          )}
+          <button onClick={handleReset} className="px-4 py-2.5 rounded-lg bg-emerald text-black font-semibold hover:bg-emerald-light transition-colors">
+            New Batch
+          </button>
         </div>
 
         {/* Overall Progress */}
