@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardBody, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
@@ -25,10 +25,59 @@ interface BillingTabProps {
   campaign: Campaign;
 }
 
+type DateRange = 7 | 30 | 90 | null;
+type BinSize = 1 | 3 | 7;
+
+const DATE_RANGE_OPTIONS: { label: string; value: DateRange }[] = [
+  { label: "7D", value: 7 },
+  { label: "30D", value: 30 },
+  { label: "90D", value: 90 },
+  { label: "All", value: null },
+];
+
+const BIN_SIZE_OPTIONS: { label: string; value: BinSize }[] = [
+  { label: "Daily", value: 1 },
+  { label: "3-Day", value: 3 },
+  { label: "Weekly", value: 7 },
+];
+
+function ToggleGroup<T extends string | number | null>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { label: string; value: T }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex items-center bg-surface-elevated rounded-lg p-0.5 gap-0.5">
+      {options.map((opt) => (
+        <button
+          key={String(opt.value)}
+          onClick={() => onChange(opt.value)}
+          className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+            value === opt.value
+              ? "bg-accent-500 text-white"
+              : "text-text-tertiary hover:text-text-secondary"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const fmtShort = (d: Date) =>
+  d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
 export function BillingTab({ campaign }: BillingTabProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const [billing, setBilling] = useState<CpmBillingBreakdown | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>(30);
+  const [binSize, setBinSize] = useState<BinSize>(1);
 
   const fetchBilling = useCallback(async () => {
     if (!selectedTeam?.id) return;
@@ -50,6 +99,45 @@ export function BillingTab({ campaign }: BillingTabProps) {
     fetchBilling();
   }, [fetchBilling]);
 
+  const filteredCharges = useMemo(() => {
+    if (!billing) return [];
+    const charges = [...billing.dailyCharges];
+    if (!dateRange) return charges;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - dateRange);
+    return charges.filter((c) => new Date(c.chargeDate) >= cutoff);
+  }, [billing, dateRange]);
+
+  const chartData = useMemo(() => {
+    const chronological = [...filteredCharges].reverse();
+    if (chronological.length === 0) return [];
+
+    if (binSize === 1) {
+      return chronological.map((c) => ({
+        date: fmtShort(new Date(c.chargeDate)),
+        views: c.totalViewsDelta,
+        charge: c.chargeCents / 100,
+      }));
+    }
+
+    const bins: { date: string; views: number; charge: number }[] = [];
+    for (let i = 0; i < chronological.length; i += binSize) {
+      const slice = chronological.slice(i, i + binSize);
+      const startDate = new Date(slice[0].chargeDate);
+      const endDate = new Date(slice[slice.length - 1].chargeDate);
+      const label =
+        slice.length === 1
+          ? fmtShort(startDate)
+          : `${fmtShort(startDate)}–${fmtShort(endDate)}`;
+      bins.push({
+        date: label,
+        views: slice.reduce((sum, c) => sum + c.totalViewsDelta, 0),
+        charge: slice.reduce((sum, c) => sum + c.chargeCents, 0) / 100,
+      });
+    }
+    return bins;
+  }, [filteredCharges, binSize]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -66,20 +154,8 @@ export function BillingTab({ campaign }: BillingTabProps) {
     );
   }
 
-  const { summary, dailyCharges } = billing;
+  const { summary } = billing;
   const cpmRate = summary.cpmRate ? parseFloat(summary.cpmRate) : 0;
-
-  const chartData = [...dailyCharges]
-    .reverse()
-    .map((c) => ({
-      date: new Date(c.chargeDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-      views: c.totalViewsDelta,
-      charge: c.chargeCents / 100,
-      status: c.status,
-    }));
 
   const summaryCards = [
     {
@@ -114,7 +190,6 @@ export function BillingTab({ campaign }: BillingTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {summaryCards.map((stat) => (
           <Card
@@ -140,96 +215,122 @@ export function BillingTab({ campaign }: BillingTabProps) {
         ))}
       </div>
 
-      {/* Chart */}
       <div className="bg-surface-base border border-border-base rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-text-primary">
-            Daily Charges
-          </h3>
-          <span className="text-xs text-text-secondary">
-            ${cpmRate.toFixed(2)} CPM
-          </span>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-medium text-text-primary">
+              Daily Charges
+            </h3>
+            <span className="text-xs text-text-secondary">
+              ${cpmRate.toFixed(2)} CPM
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ToggleGroup
+              options={BIN_SIZE_OPTIONS}
+              value={binSize}
+              onChange={setBinSize}
+            />
+            <div className="w-px h-5 bg-border-base" />
+            <ToggleGroup
+              options={DATE_RANGE_OPTIONS}
+              value={dateRange}
+              onChange={setDateRange}
+            />
+          </div>
         </div>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={chartData}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(var(--heroui-default-200))"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `$${v}`}
-            />
-            <Tooltip
-              cursor={{ fill: "hsl(var(--heroui-default-100))" }}
-              contentStyle={{
-                backgroundColor: "hsl(var(--heroui-content1))",
-                border: "1px solid hsl(var(--heroui-default-200))",
-                borderRadius: "8px",
-                fontSize: "12px",
-                padding: "8px 12px",
-              }}
-              formatter={(value, _name, props) => [
-                `$${Number(value).toFixed(2)}`,
-                `${(props as any).payload.views.toLocaleString()} views`,
-              ]}
-              labelFormatter={(label) => label}
-            />
-            <Bar
-              dataKey="charge"
-              fill="#6366F1"
-              radius={[4, 4, 0, 0]}
-              maxBarSize={40}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={chartData}>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--heroui-default-200))"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `$${v}`}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--heroui-default-100))" }}
+                contentStyle={{
+                  backgroundColor: "hsl(var(--heroui-content1))",
+                  border: "1px solid hsl(var(--heroui-default-200))",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                }}
+                formatter={(value, _name, props) => [
+                  `$${Number(value).toFixed(2)}`,
+                  `${(props as any).payload.views.toLocaleString()} views`,
+                ]}
+                labelFormatter={(label) => label}
+              />
+              <Bar
+                dataKey="charge"
+                fill="#6366F1"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={40}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[280px] text-sm text-text-tertiary">
+            No charges in this period
+          </div>
+        )}
       </div>
 
-      {/* Daily breakdown table */}
       <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
         <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
           <span className="text-sm font-medium text-text-primary">
             Billing History
           </span>
           <span className="text-xs text-text-secondary">
-            {dailyCharges.length} day{dailyCharges.length !== 1 ? "s" : ""}
+            {filteredCharges.length} day
+            {filteredCharges.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <table className="w-full">
-          <thead className="bg-surface-elevated border-b border-border-base">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Date
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                New Views
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Charge
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Source
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-base">
-            {dailyCharges.map((charge) => (
-              <DailyChargeRow key={charge.id} charge={charge} />
-            ))}
-          </tbody>
-        </table>
+        {filteredCharges.length > 0 ? (
+          <table className="w-full">
+            <thead className="bg-surface-elevated border-b border-border-base">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  New Views
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  Charge
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-base">
+              {filteredCharges.map((charge) => (
+                <DailyChargeRow key={charge.id} charge={charge} />
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="py-10 text-center text-sm text-text-tertiary">
+            No charges in this period
+          </div>
+        )}
       </div>
     </div>
   );
@@ -239,11 +340,9 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
   const [expanded, setExpanded] = useState(false);
 
   const statusStyles: Record<string, string> = {
-    charged:
-      "bg-success-500/10 border-success-500/20 text-success-500",
+    charged: "bg-success-500/10 border-success-500/20 text-success-500",
     failed: "bg-danger-500/10 border-danger-500/20 text-danger-500",
-    waived:
-      "bg-default-500/10 border-default-500/20 text-default-500",
+    waived: "bg-default-500/10 border-default-500/20 text-default-500",
   };
 
   const sourceLabel: Record<string, string> = {
@@ -339,7 +438,9 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
                             #{post.user_post_id}
                           </a>
                         ) : (
-                          <span className="text-text-secondary">#{post.user_post_id}</span>
+                          <span className="text-text-secondary">
+                            #{post.user_post_id}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-1.5 text-xs text-text-secondary">
