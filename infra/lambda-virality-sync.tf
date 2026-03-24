@@ -326,69 +326,74 @@ resource "aws_sfn_state_machine" "virality_sync" {
   }
 
   definition = jsonencode({
-    Comment = "Virality Sync - batched fan-out (100 accounts per batch)"
-    StartAt = "FetchAccounts"
+    Comment = "Virality Sync - cursor-based pagination (infinitely scalable)"
+    StartAt = "FetchBatch"
     States = {
-      FetchAccounts = {
+      FetchBatch = {
         Type     = "Task"
         Resource = "arn:aws:states:::lambda:invoke"
         Parameters = {
           FunctionName = aws_lambda_function.virality_sync_orchestrator.arn
-          Payload      = { source = "step-functions" }
+          "Payload.$"  = "$"
         }
-        ResultSelector = { "batches.$" = "$.Payload.batches" }
-        ResultPath     = "$.orchestratorResult"
-        Next           = "SyncBatches"
+        ResultSelector = {
+          "accounts.$"   = "$.Payload.accounts"
+          "nextCursor.$" = "$.Payload.nextCursor"
+        }
+        ResultPath = "$.batch"
+        Next       = "ProcessBatch"
       }
-      SyncBatches = {
+      ProcessBatch = {
         Type           = "Map"
-        ItemsPath      = "$.orchestratorResult.batches"
-        MaxConcurrency = 1
+        ItemsPath      = "$.batch.accounts"
+        MaxConcurrency = var.virality_sync_max_concurrency
         Iterator = {
-          StartAt = "SyncBatch"
+          StartAt = "SyncOneAccount"
           States = {
-            SyncBatch = {
-              Type           = "Map"
-              ItemsPath      = "$"
-              MaxConcurrency = var.virality_sync_max_concurrency
-              Iterator = {
-                StartAt = "SyncOneAccount"
-                States = {
-                  SyncOneAccount = {
-                    Type     = "Task"
-                    Resource = "arn:aws:states:::lambda:invoke"
-                    Parameters = {
-                      FunctionName = aws_lambda_function.virality_sync_worker.arn
-                      "Payload.$"  = "$"
-                    }
-                    ResultPath = null
-                    Retry = [{
-                      ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
-                      IntervalSeconds = 30
-                      MaxAttempts     = 1
-                      BackoffRate     = 2
-                    }]
-                    Catch = [{
-                      ErrorEquals = ["States.ALL"]
-                      ResultPath  = "$.error"
-                      Next        = "AccountSyncFailed"
-                    }]
-                    End = true
-                  }
-                  AccountSyncFailed = {
-                    Type   = "Pass"
-                    Result = { status = "failed" }
-                    End    = true
-                  }
-                }
+            SyncOneAccount = {
+              Type     = "Task"
+              Resource = "arn:aws:states:::lambda:invoke"
+              Parameters = {
+                FunctionName = aws_lambda_function.virality_sync_worker.arn
+                "Payload.$"  = "$"
               }
               ResultPath = null
-              End        = true
+              Retry = [{
+                ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+                IntervalSeconds = 30
+                MaxAttempts     = 1
+                BackoffRate     = 2
+              }]
+              Catch = [{
+                ErrorEquals = ["States.ALL"]
+                ResultPath  = "$.error"
+                Next        = "AccountSyncFailed"
+              }]
+              End = true
+            }
+            AccountSyncFailed = {
+              Type   = "Pass"
+              Result = { status = "failed" }
+              End    = true
             }
           }
         }
         ResultPath = null
-        Next       = "ClearState"
+        Next       = "HasMoreBatches"
+      }
+      HasMoreBatches = {
+        Type    = "Choice"
+        Choices = [{
+          Variable  = "$.batch.nextCursor"
+          IsNull    = false
+          Next      = "PrepareCursor"
+        }]
+        Default = "ClearState"
+      }
+      PrepareCursor = {
+        Type       = "Pass"
+        Parameters = { "cursor.$" = "$.batch.nextCursor" }
+        Next       = "FetchBatch"
       }
       ClearState = {
         Type       = "Pass"
