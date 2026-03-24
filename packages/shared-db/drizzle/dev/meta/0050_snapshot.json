@@ -1,5 +1,5 @@
 {
-  "id": "de656d48-5cd8-4d48-9763-3832dbc9a5e3",
+  "id": "ea3737e4-4c99-4112-b943-11bf48f13d07",
   "prevId": "39baab05-d0e9-4076-9a77-77d5705dea34",
   "version": "7",
   "dialect": "postgresql",
@@ -2271,99 +2271,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
-    },
-    "public.clip_factory_batches": {
-      "name": "clip_factory_batches",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "videos": {
-          "name": "videos",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "options": {
-          "name": "options",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "loops": {
-          "name": "loops",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "current_index": {
-          "name": "current_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "status": {
-          "name": "status",
-          "type": "clip_factory_batch_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'processing'"
-        },
-        "current_clip_ids": {
-          "name": "current_clip_ids",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "completed_jobs": {
-          "name": "completed_jobs",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
     },
     "public.clip_folders": {
       "name": "clip_folders",
@@ -4843,7 +4750,7 @@
           "name": "character_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "product_image_keys": {
           "name": "product_image_keys",
@@ -5042,7 +4949,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -6881,15 +6788,6 @@
       "values": [
         "queued",
         "generating",
-        "completed",
-        "failed"
-      ]
-    },
-    "public.clip_factory_batch_status": {
-      "name": "clip_factory_batch_status",
-      "schema": "public",
-      "values": [
-        "processing",
         "completed",
         "failed"
       ]

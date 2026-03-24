@@ -1,12 +1,11 @@
 import { Request, Response } from "express";
 import { s3Service } from "../services/s3.service";
-import { sqsService } from "../services/sqs.service";
 import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { ugcScripts, characters } from "@clipper/shared-db/src/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
+import { eq, desc, and, isNotNull } from "drizzle-orm";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
@@ -14,92 +13,6 @@ interface AuthRequest extends Request {
 }
 
 export class UGCScriptController {
-  async generateScript(req: AuthRequest, res: Response) {
-    try {
-      const {
-        teamId,
-        characterId,
-        productImageKeys,
-        productName,
-        scriptDirection,
-        targetDuration,
-        numberOfVariations,
-        structureId,
-        customPattern,
-        isSilent,
-      } = req.body;
-
-      if (!teamId || !characterId) {
-        return res.status(400).json({
-          error: "teamId and characterId are required",
-        });
-      }
-
-      if (productImageKeys && productImageKeys.length > 5) {
-        return res.status(400).json({ error: "Maximum 5 product images allowed" });
-      }
-
-      if (!req.user?.dbUserId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      const team = await teamService.getTeamById(teamId);
-      if (!team || !canAccessUGCStudio(team.plan)) {
-        return res.status(403).json({ error: "UGC Studio access required" });
-      }
-
-      const character = await ugcScriptService.getCharacterById(characterId);
-      if (!character) {
-        return res.status(404).json({ error: "Character not found" });
-      }
-
-      const [job] = await db
-        .insert(ugcScripts)
-        .values({
-          team_id: teamId,
-          character_id: characterId,
-          product_image_keys: productImageKeys || [],
-          product_name: productName || null,
-          script_direction: scriptDirection || null,
-          structure_id: structureId || "classic",
-          custom_pattern: customPattern || null,
-          target_duration: targetDuration || 30,
-          number_of_variations: numberOfVariations || 2,
-          status: "queued",
-          progress: 0,
-          progress_message: "Queued for generation...",
-        })
-        .returning();
-
-      await sqsService.sendGenerateScriptJob({
-        jobId: job.id,
-        teamId,
-        userId: req.user.dbUserId,
-        characterId,
-        productImageKeys: productImageKeys || [],
-        productName,
-        scriptDirection,
-        targetDuration: targetDuration || 30,
-        numberOfVariations: numberOfVariations || 2,
-        structureId: structureId || "classic",
-        customPattern,
-        isSilent: !!isSilent,
-      });
-
-      return res.status(202).json({
-        success: true,
-        scriptId: job.id,
-        status: "queued",
-        message: "Script generation started. Poll for status.",
-      });
-    } catch (error) {
-      console.error("[UGC_SCRIPT] Generate script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue script generation"),
-      });
-    }
-  }
-
   async getScriptStatus(req: AuthRequest, res: Response) {
     try {
       const { scriptId } = req.params;
@@ -263,6 +176,139 @@ export class UGCScriptController {
     }
   }
 
+  async generateScriptAgent(req: AuthRequest, res: Response) {
+    try {
+      const {
+        teamId,
+        characterId,
+        structure,
+        character,
+        voice,
+        targetAudience,
+        productImageKeys,
+        userDirection,
+        isSilent,
+        videoType,
+      } = req.body;
+
+      if (!teamId || !structure) {
+        return res.status(400).json({ error: "teamId and structure are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      const result = await ugcScriptService.generateScriptViaAgent({
+        teamId,
+        characterId,
+        structure,
+        character,
+        voice,
+        targetAudience: targetAudience || "",
+        productImageKeys,
+        userDirection,
+        isSilent: !!isSilent,
+        videoType: videoType || "ugc",
+      });
+
+      return res.status(200).json({
+        success: true,
+        scriptId: result.scriptId,
+        script: result.script,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Generate script agent error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate script via agent"),
+      });
+    }
+  }
+
+  async saveScript(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, script, characterId, productImageKeys, isSilent, videoType } = req.body;
+
+      if (!teamId || !script) {
+        return res.status(400).json({ error: "teamId and script are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      const insertValues: Record<string, unknown> = {
+        team_id: teamId,
+        product_image_keys: productImageKeys || [],
+        scripts_data: [script],
+        selected_variant_index: 0,
+        status: "completed",
+        is_silent: !!isSilent,
+        has_character: !!characterId,
+        video_type: videoType || "ugc",
+      };
+      if (characterId) {
+        insertValues.character_id = characterId;
+      }
+
+      const [inserted] = await db
+        .insert(ugcScripts)
+        .values(insertValues as any)
+        .returning({ id: ugcScripts.id });
+
+      return res.status(200).json({
+        success: true,
+        scriptId: inserted.id,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Save script error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to save script"),
+      });
+    }
+  }
+
+  async initStructure(req: AuthRequest, res: Response) {
+    try {
+      const { message, productImageKeys, threadId, conversationHistory } = req.body;
+
+      if (!message || !message.trim()) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      if (productImageKeys && productImageKeys.length > 5) {
+        return res.status(400).json({ error: "Maximum 5 product images allowed" });
+      }
+
+      const result = await ugcScriptService.initStructure({
+        message,
+        productImageKeys,
+        threadId,
+        conversationHistory,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Init structure error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate init structure"),
+      });
+    }
+  }
+
   async getUploadUrl(req: AuthRequest, res: Response) {
     try {
       const { teamId, fileName, contentType } = req.body;
@@ -341,6 +387,9 @@ export class UGCScriptController {
         scripts: fullScript.scripts,
         selectedVariantIndex: fullScript.selectedVariantIndex,
         characterId: fullScript.characterId,
+        isSilent: fullScript.isSilent,
+        hasCharacter: fullScript.hasCharacter,
+        videoType: fullScript.videoType,
       });
     } catch (error) {
       console.error("[UGC_SCRIPT] Get full script error:", error);
@@ -377,9 +426,11 @@ export class UGCScriptController {
           createdAt: ugcScripts.created_at,
           characterId: ugcScripts.character_id,
           characterName: characters.name,
+          videoJobId: ugcVideoGenerationJobs.id,
         })
         .from(ugcScripts)
         .leftJoin(characters, eq(ugcScripts.character_id, characters.id))
+        .leftJoin(ugcVideoGenerationJobs, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
         .where(
           and(
             eq(ugcScripts.team_id, parseInt(teamId)),
@@ -413,6 +464,7 @@ export class UGCScriptController {
           hook: selectedScript?.hook || "",
           viralScore: selectedScript?.viralScore || 0,
           createdAt: script.createdAt,
+          hasVideo: !!script.videoJobId,
         };
       });
 
@@ -425,6 +477,66 @@ export class UGCScriptController {
       console.error("[UGC_SCRIPT] List scripts error:", error);
       return res.status(500).json({
         error: sanitizeErrorForFrontend(error, "Failed to list scripts"),
+      });
+    }
+  }
+  async deleteScript(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId } = req.params;
+      const { teamId } = req.body;
+
+      if (!scriptId) {
+        return res.status(400).json({ error: "scriptId is required" });
+      }
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      await ugcScriptService.deleteScript(scriptId, teamId);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Delete script error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to delete script"),
+      });
+    }
+  }
+
+  async storyboardChat(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId, message, threadId, teamId, characterId } = req.body;
+
+      if (!scriptId || !message?.trim()) {
+        return res
+          .status(400)
+          .json({ error: "scriptId and message are required" });
+      }
+
+      const result = await ugcScriptService.storyboardChat({
+        scriptId,
+        message,
+        threadId,
+        teamId,
+        characterId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Storyboard chat error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(
+          error,
+          "Failed to process storyboard edit",
+        ),
       });
     }
   }

@@ -4,13 +4,89 @@ import { atom } from "jotai";
 import type { Voice } from "@/config/voicesConfig";
 import type { UGCScript } from "@/components/ugc-studio/script/types";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
+import { videoStateAtom, DEFAULT_VIDEO_STATE } from "./videoState";
 
-export const selectedVoiceAtom = atom<Voice | null>(null);
+export const selectedVoiceAtom = atom(
+  (get) => get(videoStateAtom).voice,
+  (get, set, value: Voice | null) =>
+    set(videoStateAtom, { ...get(videoStateAtom), voice: value }),
+);
 
-export const scriptIdAtom = atom<string | null>(null);
-export const scriptsAtom = atom<UGCScript[]>([]);
+export const scriptIdAtom = atom(
+  (get) => get(videoStateAtom).scriptId,
+  (get, set, value: string | null) =>
+    set(videoStateAtom, { ...get(videoStateAtom), scriptId: value }),
+);
+
+export const productImageKeysAtom = atom(
+  (get) => get(videoStateAtom).productImageKeys,
+  (get, set, value: string[]) =>
+    set(videoStateAtom, { ...get(videoStateAtom), productImageKeys: value }),
+);
+
+export const isSilentAtom = atom(
+  (get) => get(videoStateAtom).isSilent,
+  (get, set, value: boolean) =>
+    set(videoStateAtom, { ...get(videoStateAtom), isSilent: value }),
+);
+
+export const videoTypeAtom = atom(
+  (get) => get(videoStateAtom).videoType,
+  (get, set, value: string) =>
+    set(videoStateAtom, { ...get(videoStateAtom), videoType: value }),
+);
+
+export const hasCharacterAtom = atom(
+  (get) => get(videoStateAtom).hasCharacter,
+  (get, set, value: boolean) =>
+    set(videoStateAtom, { ...get(videoStateAtom), hasCharacter: value }),
+);
+
+export const customPatternAtom = atom(
+  (get) => get(videoStateAtom).customPattern,
+  (get, set, value: { type: string; shot: string }[] | null) =>
+    set(videoStateAtom, { ...get(videoStateAtom), customPattern: value }),
+);
+
+export const freshStartAtom = atom(
+  (get) => get(videoStateAtom).freshStart,
+  (get, set, value: boolean) =>
+    set(videoStateAtom, { ...get(videoStateAtom), freshStart: value }),
+);
+
+const _existingScriptsAtom = atom<UGCScript[] | null>(null);
+
+export const scriptsAtom = atom(
+  (get) => {
+    const existing = get(_existingScriptsAtom);
+    if (existing) return existing;
+
+    const vs = get(videoStateAtom);
+    if (vs.scenes.length === 0) return [];
+    return [
+      {
+        title: vs.targetAudience ? `Script for ${vs.targetAudience}` : "Generated Script",
+        hook: vs.scenes[0]?.dialogue || "",
+        targetAudience: vs.targetAudience,
+        totalEstimatedDuration: vs.scenes.reduce(
+          (sum, s) => sum + s.estimatedDurationSeconds,
+          0,
+        ),
+        scenes: vs.scenes,
+        viralScore: 0,
+        viralReasoning: "",
+        productMentions: [],
+      },
+    ] as UGCScript[];
+  },
+  (get, set, value: UGCScript[] | ((prev: UGCScript[]) => UGCScript[])) => {
+    const prev = get(scriptsAtom);
+    const next = typeof value === "function" ? value(prev) : value;
+    set(_existingScriptsAtom, next);
+  },
+);
+
 export const selectedVariantIndexAtom = atom(0);
-export const productImageKeysAtom = atom<string[]>([]);
 
 export interface SceneImageState {
   status: "idle" | "generating" | "regenerating" | "completed" | "failed";
@@ -20,15 +96,13 @@ export interface SceneImageState {
   imageUrl?: string;
   userRefinement?: string;
   supportingImageKeys?: string[];
-  // Per-scene advanced options
-  useEndFrame?: boolean; // Generate/use end frame for this scene
-  // Custom uploaded images (skip generation)
+  useEndFrame?: boolean;
   customStartImageKey?: string;
   customStartImageUrl?: string;
   customEndImageKey?: string;
   customEndImageUrl?: string;
-  // Custom uploaded B-roll shot images (override generated images)
   customBRollImages?: Record<number, { key: string; url: string }>;
+  regeneratingShotIndex?: number;
 }
 
 export const sceneImagesAtom = atom<Record<string, SceneImageState>>({});
@@ -42,15 +116,24 @@ export const allScenesCompleteAtom = atom((get) => {
   if (!currentScript || !currentScript.scenes) return false;
 
   return currentScript.scenes.every(
-    (scene) => sceneImages[scene.id]?.imageKey
+    (scene) => sceneImages[scene.id]?.imageKey,
   );
 });
 
-// Silent mode — set when auto-structure or silent template is selected
-export const isSilentAtom = atom(false);
-
-// Video Generation state
 export const videoJobIdAtom = atom<string | null>(null);
 export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);
-// Fresh start flag - set true when loading existing script (only use script text, nothing else)
-export const freshStartAtom = atom(false);
+
+export const sceneRefAtom = atom<string | null>(null);
+
+export const resetUGCAtom = atom(null, (_get, set) => {
+  set(videoStateAtom, {
+    ...DEFAULT_VIDEO_STATE,
+    threadId: `thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  set(_existingScriptsAtom, null);
+  set(selectedVariantIndexAtom, 0);
+  set(sceneImagesAtom, {});
+  set(videoJobIdAtom, null);
+  set(videoStatusAtom, null);
+  set(sceneRefAtom, null);
+});

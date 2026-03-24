@@ -6,45 +6,6 @@ const router = Router();
 
 /**
  * @openapi
- * /ugc/generate-script:
- *   post:
- *     summary: Generate a UGC script
- *     tags:
- *       - UGC Script
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - teamId
- *               - productName
- *             properties:
- *               teamId:
- *                 type: number
- *               productName:
- *                 type: string
- *               productDescription:
- *                 type: string
- *               productImageKeys:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Script generation started
- */
-router.post(
-  "/generate-script",
-  requireAuth,
-  ugcScriptController.generateScript.bind(ugcScriptController)
-);
-
-/**
- * @openapi
  * /ugc/regenerate-scene:
  *   post:
  *     summary: Regenerate a single scene in a script
@@ -229,6 +190,227 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/generate-script-agent:
+ *   post:
+ *     summary: Generate a script using the AI script agent
+ *     description: Uses the Mastra script agent to generate a full video script from structure, character, voice, and audience context
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - structure
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *               structure:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               characterId:
+ *                 type: number
+ *               character:
+ *                 type: object
+ *               voice:
+ *                 type: object
+ *               targetAudience:
+ *                 type: string
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               userDirection:
+ *                 type: string
+ *               isSilent:
+ *                 type: boolean
+ *               videoType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Generated script
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scriptId:
+ *                   type: string
+ *                 script:
+ *                   type: object
+ */
+router.post(
+  "/generate-script-agent",
+  requireAuth,
+  ugcScriptController.generateScriptAgent.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
+ * /ugc/save-script:
+ *   post:
+ *     summary: Save a pre-generated script to the database
+ *     description: Stores an already-generated script (e.g. from ad clone deconstructor) without calling any agent.
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - script
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *               script:
+ *                 type: object
+ *               characterId:
+ *                 type: number
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               isSilent:
+ *                 type: boolean
+ *               videoType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Script saved
+ */
+router.post(
+  "/save-script",
+  requireAuth,
+  ugcScriptController.saveScript.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
+ * /ugc/init-structure:
+ *   post:
+ *     summary: Generate an AI video structure from a chat message
+ *     description: Uses the script init agent to analyze a message (with optional product images) and return an optimal video structure, type, and flags
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: User's description of the desired video
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: S3 keys of uploaded product images
+ *     responses:
+ *       200:
+ *         description: Agent-generated structure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 videoType:
+ *                   type: string
+ *                 isSilent:
+ *                   type: boolean
+ *                 character:
+ *                   type: boolean
+ *                 structure:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sceneType:
+ *                         type: string
+ *                       slug:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ */
+router.post(
+  "/init-structure",
+  requireAuth,
+  ugcScriptController.initStructure.bind(ugcScriptController)
+);
+
+
+/**
+ * @openapi
+ * /ugc/storyboard-chat:
+ *   post:
+ *     summary: Chat with the storyboard agent to edit a script
+ *     description: Send a natural language message to modify scenes, shots, dialogue, or direction in a storyboard
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - scriptId
+ *               - message
+ *             properties:
+ *               scriptId:
+ *                 type: string
+ *                 description: UUID of the script to edit
+ *               message:
+ *                 type: string
+ *                 description: Natural language editing instruction
+ *               threadId:
+ *                 type: string
+ *                 description: Optional thread ID for conversational memory
+ *     responses:
+ *       200:
+ *         description: Storyboard edit applied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 updatedScript:
+ *                   type: object
+ */
+router.post(
+  "/storyboard-chat",
+  requireAuth,
+  ugcScriptController.storyboardChat.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/upload-product-image:
  *   post:
  *     summary: Get a presigned upload URL for a product image
@@ -371,6 +553,50 @@ router.get(
   "/scripts/:teamId",
   requireAuth,
   ugcScriptController.listScripts.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
+ * /ugc/script/{scriptId}:
+ *   delete:
+ *     summary: Delete a script
+ *     description: Permanently deletes a UGC script and its associated data
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: scriptId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Script deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ */
+router.delete(
+  "/script/:scriptId",
+  requireAuth,
+  ugcScriptController.deleteScript.bind(ugcScriptController)
 );
 
 export default router;

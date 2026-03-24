@@ -38,6 +38,29 @@ export async function requireAuth(
   next: NextFunction,
 ) {
   try {
+    // Allow internal service-to-service calls (agent-service → backend)
+    // Scoped to specific route prefixes only
+    const internalKey = req.headers["x-internal-api-key"];
+    const expectedKey = process.env.INTERNAL_API_KEY;
+    if (internalKey && expectedKey && internalKey === expectedKey) {
+      const allowedPrefixes = [
+        "/api/scene-builder",
+        "/api/ugc",
+        "/api/ad-clone",
+      ];
+      const isAllowedRoute = allowedPrefixes.some((p) => req.originalUrl.startsWith(p));
+      if (!isAllowedRoute) {
+        return res.status(403).json({ error: "Internal key not authorized for this route" });
+      }
+      (req as AuthRequest).user = {
+        id: "internal-service",
+        email: "internal@cuttr.com",
+        dbUserId: -1,
+      };
+      (req as any).isInternalRequest = true;
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {

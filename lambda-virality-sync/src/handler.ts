@@ -997,30 +997,35 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       batch.posts.push({ id: p.id, post_url: p.post_url, syncs_remaining: p.syncs_remaining });
     }
 
-    // Merge all lists with a source field
     const accounts: any[] = [
-      ...viralityAccounts.map((a: any) => ({ ...a, source: "virality" as const })),
-      ...userAcctList.map((a: any) => ({ ...a, source: "user" as const })),
+      ...viralityAccounts.map((a: any) => ({ id: a.id, source: "virality" as const, username: a.username })),
+      ...userAcctList.map((a: any) => ({ id: a.id, source: "user" as const, username: a.username })),
       ...Array.from(massPostBatchMap.values()).map((batch) => ({
         id: batch.account_id,
         source: "mass_post_batch" as const,
-        platform: batch.platform,
         account_id: batch.account_id,
+        platform: batch.platform,
         team_id: batch.team_id,
-        posts: batch.posts,
       })),
     ];
 
     console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user + ${massPosts.length} mass posts (${massPostBatchMap.size} batches) = ${accounts.length} total items to sync`);
     for (const a of accounts) {
       if (a.source === "mass_post_batch") {
-        console.log(`  - [mass_post_batch] account=${a.account_id} ${a.platform} ${a.posts.length} posts (team=${a.team_id})`);
+        console.log(`  - [mass_post_batch] account=${a.account_id} ${a.platform} (team=${a.team_id})`);
       } else {
         console.log(`  - [${a.source}] id=${a.id} @${a.username} (team=${a.team_id})`);
       }
     }
 
-    return { accounts };
+    const BATCH_SIZE = 100;
+    const batches: any[][] = [];
+    for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+      batches.push(accounts.slice(i, i + BATCH_SIZE));
+    }
+    console.log(`[Orchestrator] Split ${accounts.length} accounts into ${batches.length} batches of up to ${BATCH_SIZE}`);
+
+    return { batches };
   } finally {
     await localPool.end();
   }
@@ -1033,10 +1038,10 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
 
   // ── Mass post batch: scrape all posts for one account in a single Apify run ──
   if (source === "mass_post_batch") {
-    const { platform, account_id, team_id, posts: batchPosts } = event;
+    const { platform, account_id, team_id } = event;
 
     console.log(`\n========================================`);
-    console.log(`  MASS POST BATCH SYNC - account=${account_id} [${platform}] ${batchPosts.length} posts`);
+    console.log(`  MASS POST BATCH SYNC - account=${account_id} [${platform}]`);
     console.log(`  ${new Date().toISOString()}`);
     console.log(`========================================\n`);
 
@@ -1051,7 +1056,29 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
     let skippedCount = 0;
 
     try {
-      // Decrement syncs_remaining for all posts in batch atomically
+      const batchPosts = await db
+        .select({
+          id: schema.userPosts.id,
+          post_url: schema.userPosts.post_url,
+          syncs_remaining: schema.userPosts.syncs_remaining,
+        })
+        .from(schema.userPosts)
+        .innerJoin(schema.posts, eq(schema.userPosts.mass_post_id, schema.posts.id))
+        .innerJoin(schema.campaigns, eq(schema.posts.campaign_id, schema.campaigns.id))
+        .where(and(
+          eq(schema.userPosts.account_id, account_id),
+          isNotNull(schema.userPosts.mass_post_id),
+          gt(schema.userPosts.syncs_remaining, 0),
+          eq(schema.campaigns.status, "started"),
+        ));
+
+      console.log(`[DB] Found ${batchPosts.length} eligible posts for account=${account_id}`);
+
+      if (batchPosts.length === 0) {
+        console.log(`[Skip] No eligible posts for account=${account_id}`);
+        return { id: account_id, source: "mass_post_batch", status: "skipped", reason: "no_posts" };
+      }
+
       const eligiblePosts: Array<{ id: number; post_url: string }> = [];
       for (const p of batchPosts) {
         const decremented = await db
@@ -1335,21 +1362,32 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
 
 // ── Team Extractor handler (Step Functions — deduplicates teamIds from sync results) ──
 
-export const teamExtractorHandler: Handler = async (event: any) => {
-  const mapResults: any[] = event.mapResults || [];
-  const teamIds = new Set<number>();
-
-  for (const item of mapResults) {
-    const result = item?.result;
-    if (result?.status === "completed" && result?.teamId && result?.source === "virality") {
-      teamIds.add(result.teamId);
-    }
+export const teamExtractorHandler: Handler = async () => {
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
   }
 
-  const teams = Array.from(teamIds).map((id) => ({ teamId: id }));
-  console.log(`[Extractor] Found ${teams.length} unique teams from ${mapResults.length} sync results`);
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
 
-  return { teams };
+  try {
+    const results = await db
+      .selectDistinct({ team_id: schema.viralityAccounts.team_id })
+      .from(schema.viralityAccounts)
+      .where(and(
+        eq(schema.viralityAccounts.is_active, true),
+        isNotNull(schema.viralityAccounts.team_id)
+      ));
+
+    const teams = results
+      .filter((r) => r.team_id != null)
+      .map((r) => ({ teamId: r.team_id }));
+    console.log(`[Extractor] Found ${teams.length} unique teams with active virality accounts`);
+
+    return { teams };
+  } finally {
+    await localPool.end();
+  }
 };
 
 // ── Reporter handler (Step Functions — runs once per team after extraction) ──

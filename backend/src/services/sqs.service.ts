@@ -17,7 +17,6 @@ export type JobType =
   | "video-edit"
   | "generate-character"
   | "generate-scene-image"
-  | "generate-script"
   | "generate-ugc-video"
   | "kling-face-swap"
   | "ad-clone-analyze"
@@ -298,21 +297,6 @@ export interface GenerateSceneImageJob extends BaseJob {
   existingSceneImageKey?: string;
 }
 
-// Script generation job payload
-export interface GenerateScriptJob extends BaseJob {
-  type: "generate-script";
-  jobId: string;
-  characterId: number;
-  productImageKeys: string[];
-  productName?: string;
-  scriptDirection?: string;
-  targetDuration: number;
-  numberOfVariations: number;
-  structureId: string;
-  customPattern?: { type: string; shot: string }[];
-  isSilent?: boolean;
-}
-
 export interface GenerateUGCVideoJob extends BaseJob {
   type: "generate-ugc-video";
   jobId: string;
@@ -398,7 +382,6 @@ export type VideoProcessingJob =
   | VideoEditJob
   | GenerateCharacterJob
   | GenerateSceneImageJob
-  | GenerateScriptJob
   | GenerateUGCVideoJob
   | KlingFaceSwapJob
   | AdCloneAnalyzeJob
@@ -638,40 +621,6 @@ class SQSService {
       adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
       adCloneSceneTimestamp: params.adCloneSceneTimestamp,
       existingSceneImageKey: params.existingSceneImageKey,
-      createdAt: new Date().toISOString(),
-    };
-
-    return this.sendJob(job);
-  }
-
-  async sendGenerateScriptJob(params: {
-    jobId: string;
-    teamId: number;
-    userId: number;
-    characterId: number;
-    productImageKeys: string[];
-    productName?: string;
-    scriptDirection?: string;
-    targetDuration: number;
-    numberOfVariations: number;
-    structureId: string;
-    customPattern?: { type: string; shot: string }[];
-    isSilent?: boolean;
-  }): Promise<string> {
-    const job: GenerateScriptJob = {
-      type: "generate-script",
-      jobId: params.jobId,
-      teamId: params.teamId,
-      userId: params.userId,
-      characterId: params.characterId,
-      productImageKeys: params.productImageKeys,
-      productName: params.productName,
-      scriptDirection: params.scriptDirection,
-      targetDuration: params.targetDuration,
-      numberOfVariations: params.numberOfVariations,
-      structureId: params.structureId,
-      customPattern: params.customPattern,
-      isSilent: params.isSilent,
       createdAt: new Date().toISOString(),
     };
 

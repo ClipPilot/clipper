@@ -500,8 +500,7 @@ export const ugcScripts = pgTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     character_id: integer("character_id")
-      .notNull()
-      .references(() => characters.id, { onDelete: "cascade" }),
+      .references(() => characters.id, { onDelete: "set null" }),
     product_image_keys: jsonb("product_image_keys").notNull(),
     product_name: varchar("product_name", { length: 255 }),
     script_direction: text("script_direction"),
@@ -517,6 +516,9 @@ export const ugcScripts = pgTable(
     custom_pattern: jsonb("custom_pattern"),
     target_duration: integer("target_duration").default(30),
     number_of_variations: integer("number_of_variations").default(2),
+    is_silent: boolean("is_silent").notNull().default(false),
+    has_character: boolean("has_character").notNull().default(true),
+    video_type: varchar("video_type", { length: 50 }).notNull().default("ugc"),
     started_at: timestamp("started_at"),
     completed_at: timestamp("completed_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
@@ -1492,4 +1494,4 @@ export const clipFactoryBatches = pgTable("clip_factory_batches", {
     .default([]),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();

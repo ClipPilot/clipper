@@ -74,6 +74,20 @@ resource "aws_secretsmanager_secret_version" "internal_api_key" {
   secret_string = var.internal_api_key
 }
 
+resource "aws_secretsmanager_secret" "tavily_api_key" {
+  name                    = "${var.project_name}-${var.environment}/tavily-api-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-tavily-api-key-${var.environment}"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "tavily_api_key" {
+  secret_id     = aws_secretsmanager_secret.tavily_api_key.id
+  secret_string = var.tavily_api_key
+}
+
 # Stripe Secret Key
 resource "aws_secretsmanager_secret" "stripe_secret_key" {
   name                    = "${var.project_name}-${var.environment}/stripe-secret-key"

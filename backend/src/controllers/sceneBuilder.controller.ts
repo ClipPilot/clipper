@@ -6,6 +6,7 @@ import {
   ugcScripts,
   characters,
   adCloneProjects,
+  teamMembers,
 } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -166,13 +167,28 @@ export class SceneBuilderController {
         });
       }
 
-      if (!req.user?.dbUserId) {
+      const isInternal = !!(req as any).isInternalRequest;
+      if (!isInternal && !req.user?.dbUserId) {
         return res.status(401).json({ error: "Authentication required" });
       }
 
       const team = await teamService.getTeamById(teamId);
       if (!team || !canAccessUGCStudio(team.plan)) {
         return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      // For internal requests, resolve a valid user ID from the team
+      let userId: number = req.user?.dbUserId ?? 0;
+      if (isInternal) {
+        const [member] = await db
+          .select({ user_id: teamMembers.user_id })
+          .from(teamMembers)
+          .where(eq(teamMembers.team_id, teamId))
+          .limit(1);
+        userId = member?.user_id;
+        if (!userId) {
+          return res.status(400).json({ error: "No team members found" });
+        }
       }
 
       // First try ugcScripts table, then fall back to adCloneProjects
@@ -217,7 +233,7 @@ export class SceneBuilderController {
 
       const selectedScript = scriptsData[selectedVariantIndex];
       const sceneData = selectedScript?.scenes?.find(
-        (s: SceneData) => s.id === sceneId
+        (s: any) => s.id === sceneId || s.slug === sceneId
       ) as SceneData | undefined;
 
       if (!sceneData) {
@@ -276,7 +292,7 @@ export class SceneBuilderController {
         .insert(sceneImageGenerationJobs)
         .values({
           team_id: teamId,
-          user_id: req.user.dbUserId,
+          user_id: userId,
           script_id: scriptId,
           scene_id: sceneId,
           scene_number: sceneNumber,
@@ -302,7 +318,7 @@ export class SceneBuilderController {
       await sqsService.sendGenerateSceneImageJob({
         jobId: job.id,
         teamId,
-        userId: req.user.dbUserId,
+        userId,
         scriptId,
         sceneId,
         sceneNumber,
@@ -337,7 +353,9 @@ export class SceneBuilderController {
       return res.status(202).json({
         success: true,
         jobId: job.id,
+        sceneId,
         status: "queued",
+        singleBRollShotIndex: singleBRollShotIndex ?? null,
         message: singleBRollShotIndex !== undefined
           ? `Regenerating shot ${singleBRollShotIndex + 1}. Poll for status.`
           : "Scene image generation started. Poll for status.",

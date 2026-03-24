@@ -123,6 +123,12 @@ function makeExistingPost(overrides: Record<string, any> = {}) {
   };
 }
 
+function mockBatchPostsSelect(posts: Array<{id: number, post_url: string, syncs_remaining?: number}>) {
+  mockDb.select.mockReturnValueOnce(
+    mockDb.createChain(posts.map(p => ({ id: p.id, post_url: p.post_url, syncs_remaining: p.syncs_remaining ?? 10 })))
+  );
+}
+
 // ── Tests ──
 
 describe("mass_post_batch worker", () => {
@@ -137,6 +143,8 @@ describe("mass_post_batch worker", () => {
         { id: 2, post_url: "https://www.instagram.com/reel/DEF456" },
         { id: 3, post_url: "https://www.instagram.com/reel/GHI789" },
       ];
+
+      mockBatchPostsSelect(batchPosts);
 
       // Mock: syncs_remaining decrement succeeds for all
       mockDb.update.mockImplementation(() => {
@@ -170,7 +178,6 @@ describe("mass_post_batch worker", () => {
         platform: "instagram",
         account_id: 100,
         team_id: 1,
-        posts: batchPosts,
       };
 
       const result = await workerHandler(event, makeContext(), () => {});
@@ -190,6 +197,7 @@ describe("mass_post_batch worker", () => {
         { id: 11, post_url: "https://www.tiktok.com/@user/video/222222" },
       ];
 
+      mockBatchPostsSelect(batchPosts);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([
@@ -207,7 +215,7 @@ describe("mass_post_batch worker", () => {
 
       const result = await workerHandler({
         id: 200, source: "mass_post_batch", platform: "tiktok",
-        account_id: 200, team_id: 1, posts: batchPosts,
+        account_id: 200, team_id: 1,
       }, makeContext(), () => {});
 
       expect(result.status).toBe("completed");
@@ -221,6 +229,7 @@ describe("mass_post_batch worker", () => {
         { id: 21, post_url: "https://x.com/user/status/999002" },
       ];
 
+      mockBatchPostsSelect(batchPosts);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([
@@ -246,7 +255,7 @@ describe("mass_post_batch worker", () => {
 
       const result = await workerHandler({
         id: 300, source: "mass_post_batch", platform: "x",
-        account_id: 300, team_id: 1, posts: batchPosts,
+        account_id: 300, team_id: 1,
       }, makeContext(), () => {});
 
       expect(result.status).toBe("completed");
@@ -256,6 +265,10 @@ describe("mass_post_batch worker", () => {
     });
 
     it("should skip posts with no syncs remaining", async () => {
+      mockBatchPostsSelect([
+        { id: 40, post_url: "https://www.instagram.com/reel/AAA" },
+        { id: 41, post_url: "https://www.instagram.com/reel/BBB" },
+      ]);
       // First post: decrement succeeds; second: fails (no syncs)
       let callCount = 0;
       mockDb.update.mockImplementation(() => {
@@ -281,10 +294,6 @@ describe("mass_post_batch worker", () => {
       const result = await workerHandler({
         id: 400, source: "mass_post_batch", platform: "instagram",
         account_id: 400, team_id: 1,
-        posts: [
-          { id: 40, post_url: "https://www.instagram.com/reel/AAA" },
-          { id: 41, post_url: "https://www.instagram.com/reel/BBB" },
-        ],
       }, makeContext(), () => {});
 
       expect(result.status).toBe("completed");
@@ -293,15 +302,15 @@ describe("mass_post_batch worker", () => {
     });
 
     it("should skip all posts and return skipped if none have syncs remaining", async () => {
+      mockBatchPostsSelect([
+        { id: 50, post_url: "https://www.instagram.com/reel/XXX" },
+        { id: 51, post_url: "https://www.instagram.com/reel/YYY" },
+      ]);
       mockDb.update.mockImplementation(() => mockDb.createChain([])); // all fail
 
       const result = await workerHandler({
         id: 500, source: "mass_post_batch", platform: "instagram",
         account_id: 500, team_id: 1,
-        posts: [
-          { id: 50, post_url: "https://www.instagram.com/reel/XXX" },
-          { id: 51, post_url: "https://www.instagram.com/reel/YYY" },
-        ],
       }, makeContext(), () => {});
 
       expect(result.status).toBe("skipped");
@@ -311,6 +320,10 @@ describe("mass_post_batch worker", () => {
     });
 
     it("should skip posts that Apify returns no metrics for", async () => {
+      mockBatchPostsSelect([
+        { id: 60, post_url: "https://www.instagram.com/reel/AAA" },
+        { id: 61, post_url: "https://www.instagram.com/reel/BBB" },
+      ]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([
@@ -330,10 +343,6 @@ describe("mass_post_batch worker", () => {
       const result = await workerHandler({
         id: 600, source: "mass_post_batch", platform: "instagram",
         account_id: 600, team_id: 1,
-        posts: [
-          { id: 60, post_url: "https://www.instagram.com/reel/AAA" },
-          { id: 61, post_url: "https://www.instagram.com/reel/BBB" },
-        ],
       }, makeContext(), () => {});
 
       expect(result.status).toBe("completed");
@@ -348,6 +357,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 50, comments: 10, views: 2000 },
       ];
 
+      mockBatchPostsSelect([{ id: 70, post_url: "https://www.instagram.com/reel/FLAKY" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
 
       mockDb.select.mockImplementation(() =>
@@ -381,7 +391,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 700, source: "mass_post_batch", platform: "instagram",
         account_id: 700, team_id: 1,
-        posts: [{ id: 70, post_url: "https://www.instagram.com/reel/FLAKY" }],
       }, makeContext(), () => {});
 
       // Find the metrics update call (has like_count field)
@@ -399,6 +408,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 50, comments: 10, views: 5000 },
       ];
 
+      mockBatchPostsSelect([{ id: 80, post_url: "https://www.instagram.com/reel/MONO" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -431,7 +441,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 800, source: "mass_post_batch", platform: "instagram",
         account_id: 800, team_id: 1,
-        posts: [{ id: 80, post_url: "https://www.instagram.com/reel/MONO" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.like_count !== undefined);
@@ -449,6 +458,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 50, comments: 10, views: 5000 },
       ];
 
+      mockBatchPostsSelect([{ id: 90, post_url: "https://www.instagram.com/reel/UP" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -478,7 +488,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 900, source: "mass_post_batch", platform: "instagram",
         account_id: 900, team_id: 1,
-        posts: [{ id: 90, post_url: "https://www.instagram.com/reel/UP" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.like_count !== undefined);
@@ -492,6 +501,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 50, comments: 10, views: 3000 },
       ];
 
+      mockBatchPostsSelect([{ id: 100, post_url: "https://www.instagram.com/reel/NULL" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -522,7 +532,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 1000, source: "mass_post_batch", platform: "instagram",
         account_id: 1000, team_id: 1,
-        posts: [{ id: 100, post_url: "https://www.instagram.com/reel/NULL" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.like_count !== undefined);
@@ -532,6 +541,7 @@ describe("mass_post_batch worker", () => {
     });
 
     it("should allow zero on first sync (no previous data)", async () => {
+      mockBatchPostsSelect([{ id: 110, post_url: "https://www.instagram.com/reel/NEW" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -564,7 +574,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 1100, source: "mass_post_batch", platform: "instagram",
         account_id: 1100, team_id: 1,
-        posts: [{ id: 110, post_url: "https://www.instagram.com/reel/NEW" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.like_count !== undefined);
@@ -577,6 +586,10 @@ describe("mass_post_batch worker", () => {
     it("should handle multiple posts with mixed flaky and real data", async () => {
       // Post A: has history, will get flaky data
       // Post B: has history, will get real data
+      mockBatchPostsSelect([
+        { id: 120, post_url: "https://www.instagram.com/reel/POSTA" },
+        { id: 121, post_url: "https://www.instagram.com/reel/POSTB" },
+      ]);
       // Bulk select returns both posts in a single query
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([
@@ -618,10 +631,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 1200, source: "mass_post_batch", platform: "instagram",
         account_id: 1200, team_id: 1,
-        posts: [
-          { id: 120, post_url: "https://www.instagram.com/reel/POSTA" },
-          { id: 121, post_url: "https://www.instagram.com/reel/POSTB" },
-        ],
       }, makeContext(), () => {});
 
       // Find metrics updates (have like_count)
@@ -646,6 +655,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 50, comments: 10, views: 5000 },
       ];
 
+      mockBatchPostsSelect([{ id: 130, post_url: "https://www.instagram.com/reel/HIST" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -675,7 +685,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 1300, source: "mass_post_batch", platform: "instagram",
         account_id: 1300, team_id: 1,
-        posts: [{ id: 130, post_url: "https://www.instagram.com/reel/HIST" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.metrics_history !== undefined);
@@ -695,6 +704,7 @@ describe("mass_post_batch worker", () => {
         { recorded_at: "2026-03-08T00:00:00Z", likes: 100, comments: 20, views: 8000 },
       ];
 
+      mockBatchPostsSelect([{ id: 140, post_url: "https://www.instagram.com/reel/FLAKY2" }]);
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
@@ -725,7 +735,6 @@ describe("mass_post_batch worker", () => {
       await workerHandler({
         id: 1400, source: "mass_post_batch", platform: "instagram",
         account_id: 1400, team_id: 1,
-        posts: [{ id: 140, post_url: "https://www.instagram.com/reel/FLAKY2" }],
       }, makeContext(), () => {});
 
       const metricsUpdate = updateCalls.find((c) => c.metrics_history !== undefined);
@@ -768,19 +777,21 @@ describe("orchestrator mass post batching", () => {
 
     const result = await orchestratorHandler({}, makeContext(), () => {});
 
-    expect(result.accounts).toBeDefined();
+    expect(result.batches).toBeDefined();
+    expect(result.batches.length).toBe(1);
+    const accounts = result.batches[0];
     // Should be 2 batch items (one per account), not 4 individual items
-    expect(result.accounts.length).toBe(2);
-    expect(result.accounts[0].source).toBe("mass_post_batch");
-    expect(result.accounts[1].source).toBe("mass_post_batch");
+    expect(accounts.length).toBe(2);
+    expect(accounts[0].source).toBe("mass_post_batch");
+    expect(accounts[1].source).toBe("mass_post_batch");
 
-    // Account 100 should have 2 posts
-    const batch100 = result.accounts.find((a: any) => a.account_id === 100);
-    expect(batch100.posts.length).toBe(2);
+    // Account 100 should exist (posts are fetched by worker at runtime)
+    const batch100 = accounts.find((a: any) => a.account_id === 100);
+    expect(batch100).toBeDefined();
 
-    // Account 200 should have 2 posts
-    const batch200 = result.accounts.find((a: any) => a.account_id === 200);
-    expect(batch200.posts.length).toBe(2);
+    // Account 200 should exist
+    const batch200 = accounts.find((a: any) => a.account_id === 200);
+    expect(batch200).toBeDefined();
   });
 
   it("should not emit mass_post (old format) items", async () => {
@@ -795,12 +806,13 @@ describe("orchestrator mass post batching", () => {
 
     const result = await orchestratorHandler({}, makeContext(), () => {});
 
+    const accounts = result.batches[0];
     // No items should have source "mass_post" (old format)
-    const oldFormatItems = result.accounts.filter((a: any) => a.source === "mass_post");
+    const oldFormatItems = accounts.filter((a: any) => a.source === "mass_post");
     expect(oldFormatItems.length).toBe(0);
 
     // Should be mass_post_batch
-    const batchItems = result.accounts.filter((a: any) => a.source === "mass_post_batch");
+    const batchItems = accounts.filter((a: any) => a.source === "mass_post_batch");
     expect(batchItems.length).toBe(1);
   });
 });

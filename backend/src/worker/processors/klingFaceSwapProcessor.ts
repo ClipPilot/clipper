@@ -284,41 +284,42 @@ export async function processKlingFaceSwapJob(
       let sourceVideoPath: string;
       let referenceUrl: string;
 
+      // Generate pose reference image for each segment (both modes)
+      const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
+      await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
+
+      const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_seg${segIdx}_${timestamp}.jpg`;
+      await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
+      const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
+
+      const referenceImageUrl = segIdx === 0 ? faceImageUrl : firstPoseUrl!;
+
+      const poseResult = await falImageService.generateImageWithReferences({
+        prompt: POSE_GENERATION_PROMPT,
+        imageUrls: [referenceImageUrl, frameUrl],
+        aspectRatio: "auto",
+        numImages: 1,
+      });
+
+      const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);
+      const poseResponse = await fetch(poseResult.imageUrl);
+      const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
+      fs.writeFileSync(poseImagePath, poseBuffer);
+
+      const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_seg${segIdx}_${timestamp}.png`;
+      await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
+      const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
+
+      if (segIdx === 0) {
+        firstPoseUrl = poseUrl;
+      }
+
       if (isFaceMode) {
-        // Face mode (WaveSpeed): use face image directly, no pose generation
+        // Face mode (WaveSpeed): use pose reference but no prepended frame
         sourceVideoPath = segmentPath;
-        referenceUrl = faceImageUrl;
+        referenceUrl = poseUrl;
       } else {
-        // Fullbody mode (Kling): generate pose image and prepend frame
-        const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
-        await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
-
-        const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_seg${segIdx}_${timestamp}.jpg`;
-        await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
-        const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
-
-        const referenceImageUrl = segIdx === 0 ? faceImageUrl : firstPoseUrl!;
-
-        const poseResult = await falImageService.generateImageWithReferences({
-          prompt: POSE_GENERATION_PROMPT,
-          imageUrls: [referenceImageUrl, frameUrl],
-          aspectRatio: "auto",
-          numImages: 1,
-        });
-
-        const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);
-        const poseResponse = await fetch(poseResult.imageUrl);
-        const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
-        fs.writeFileSync(poseImagePath, poseBuffer);
-
-        const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_seg${segIdx}_${timestamp}.png`;
-        await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
-        const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
-
-        if (segIdx === 0) {
-          firstPoseUrl = poseUrl;
-        }
-
+        // Fullbody mode (Kling): also prepend pose frame to video
         const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
         await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
 
@@ -414,6 +415,56 @@ export async function processKlingFaceSwapJob(
     }
 
     console.log(`[kling-face-swap] All ${processedSegmentPaths.length} segments processed`);
+
+    // Lip sync each processed segment individually before merging (face mode only)
+    if (swapType === "face" && syncService.isConfigured()) {
+      console.log(`[wavespeed-face-swap] Applying lip sync to ${processedSegmentPaths.length} segments`);
+      await updateProgress(jobId, teamId, 82, "Applying lip sync");
+
+      for (let segIdx = 0; segIdx < processedSegmentPaths.length; segIdx++) {
+        try {
+          const segPath = processedSegmentPaths[segIdx];
+          const lipsyncTempDir = path.join(outDir, `lipsync-seg${segIdx}-${Date.now()}`);
+          fs.mkdirSync(lipsyncTempDir, { recursive: true });
+
+          const tempVideoPath = path.join(lipsyncTempDir, "faceswap.mp4");
+          const tempAudioPath = path.join(lipsyncTempDir, "audio.wav");
+          fs.copyFileSync(segPath, tempVideoPath);
+          await extractAudio(tempVideoPath, tempAudioPath);
+
+          const lsVideoKey = `comfy-outputs/${teamId}/${jobId}/seg${segIdx}_pre_lipsync.mp4`;
+          const lsAudioKey = `comfy-outputs/${teamId}/${jobId}/seg${segIdx}_audio_lipsync.wav`;
+          const videoBuffer = fs.readFileSync(tempVideoPath);
+          const audioBuffer = fs.readFileSync(tempAudioPath);
+          await Promise.all([
+            s3Service.uploadBuffer(videoBuffer, lsVideoKey, "video/mp4"),
+            s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
+          ]);
+          const [videoPresignedUrl, audioPresignedUrl] = await Promise.all([
+            s3Service.getPresignedUrl(lsVideoKey, 3600),
+            s3Service.getPresignedUrl(lsAudioKey, 3600),
+          ]);
+
+          const lipsyncOutputUrl = await syncService.applyLipSync(
+            videoPresignedUrl,
+            audioPresignedUrl,
+          );
+
+          const lipsyncVideoPath = path.join(lipsyncTempDir, "lipsynced.mp4");
+          await s3Service.downloadVideoFromUrl(lipsyncOutputUrl, lipsyncVideoPath);
+          processedSegmentPaths[segIdx] = lipsyncVideoPath;
+          console.log(`[wavespeed-face-swap] Lip sync applied to segment ${segIdx + 1}/${processedSegmentPaths.length}`);
+
+          s3Service.deleteObject(lsVideoKey).catch(() => {});
+          s3Service.deleteObject(lsAudioKey).catch(() => {});
+        } catch (lipsyncError) {
+          console.error(
+            `[wavespeed-face-swap] Lip sync failed for segment ${segIdx + 1}, using face-swapped segment:`,
+            (lipsyncError as Error).message,
+          );
+        }
+      }
+    }
 
     let finalOutputPath: string;
 
@@ -511,53 +562,6 @@ export async function processKlingFaceSwapJob(
           },
         })
         .where(eq(comfyJobs.id, jobId));
-    }
-
-    // Lip sync for face mode
-    if (swapType === "face" && syncService.isConfigured()) {
-      console.log(`[wavespeed-face-swap] Applying lip sync for job ${jobId}`);
-      await updateProgress(jobId, teamId, 88, "Applying lip sync");
-
-      try {
-        const lipsyncTempDir = path.join(outDir, `lipsync-${Date.now()}`);
-        fs.mkdirSync(lipsyncTempDir, { recursive: true });
-
-        const tempVideoPath = path.join(lipsyncTempDir, "faceswap.mp4");
-        const tempAudioPath = path.join(lipsyncTempDir, "audio.wav");
-        fs.copyFileSync(finalOutputPath, tempVideoPath);
-        await extractAudio(tempVideoPath, tempAudioPath);
-
-        const lsVideoKey = `comfy-outputs/${teamId}/${jobId}/faceswap_pre_lipsync.mp4`;
-        const lsAudioKey = `comfy-outputs/${teamId}/${jobId}/audio_for_lipsync.wav`;
-        const videoBuffer = fs.readFileSync(tempVideoPath);
-        const audioBuffer = fs.readFileSync(tempAudioPath);
-        await Promise.all([
-          s3Service.uploadBuffer(videoBuffer, lsVideoKey, "video/mp4"),
-          s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
-        ]);
-        const [videoPresignedUrl, audioPresignedUrl] = await Promise.all([
-          s3Service.getPresignedUrl(lsVideoKey, 3600),
-          s3Service.getPresignedUrl(lsAudioKey, 3600),
-        ]);
-
-        const lipsyncOutputUrl = await syncService.applyLipSync(
-          videoPresignedUrl,
-          audioPresignedUrl,
-        );
-
-        const lipsyncVideoPath = path.join(lipsyncTempDir, "lipsynced.mp4");
-        await s3Service.downloadVideoFromUrl(lipsyncOutputUrl, lipsyncVideoPath);
-        finalOutputPath = lipsyncVideoPath;
-        console.log(`[wavespeed-face-swap] Lip sync applied for job ${jobId}`);
-
-        s3Service.deleteObject(lsVideoKey).catch(() => {});
-        s3Service.deleteObject(lsAudioKey).catch(() => {});
-      } catch (lipsyncError) {
-        console.error(
-          `[wavespeed-face-swap] Lip sync failed for job ${jobId}, using face-swapped video:`,
-          (lipsyncError as Error).message,
-        );
-      }
     }
 
     // Speech-to-Speech voice conversion if voiceId is provided

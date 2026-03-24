@@ -410,7 +410,7 @@ async function processFullbodyMode(params: {
     .where(eq(comfyJobs.id, jobId));
 
   // Detect face segments
-  const detectedSegments = await detectFaceSegmentsWithPadding(localVideoPath, duration);
+  const detectedSegments = await detectFaceSegmentsWithPadding(localVideoPath, duration, swapType);
   if (detectedSegments.length === 0) {
     throw new Error("No faces detected in video");
   }

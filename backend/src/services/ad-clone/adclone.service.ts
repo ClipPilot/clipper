@@ -8,7 +8,7 @@ import {
   GeminiVideoUploadResult,
   GeminiUploadedFile,
 } from "./gemini.service";
-import { analyzeVideoWithGemini } from "./videoAnalysis.service";
+import { VideoAnalysisSchema } from "../../types/adClone.types";
 import {
   AdCloneProject,
   AdCloneProjectStatus,
@@ -21,6 +21,8 @@ import { BRollShotSchema, BRollShot } from "../../types/ugcScript.types";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+import { mergeConsecutiveArollStructure } from "../ai-ugc/ugcScript.service";
+import { config } from "../../config/env";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -221,7 +223,36 @@ class AdCloneService {
         "Analyzing video structure with AI..."
       );
 
-      const analysis = await analyzeVideoWithGemini(uploadResult.file);
+      const agentServiceUrl = config.agentService.url;
+      const agentResponse = await fetch(
+        `${agentServiceUrl}/api/agents/video-analysis-agent/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{
+              role: "user",
+              content: [
+                { type: "file", data: uploadResult.file.uri, mimeType: uploadResult.file.mimeType },
+                { type: "text", text: "Analyze this video." },
+              ],
+            }],
+          }),
+          signal: AbortSignal.timeout(180_000),
+        },
+      );
+
+      if (!agentResponse.ok) {
+        const errorBody = await agentResponse.text();
+        console.error("[AD_CLONE] Video analysis agent error:", errorBody);
+        throw new Error("Video analysis failed via agent");
+      }
+
+      const agentResult = (await agentResponse.json()) as any;
+      const rawAnalysis = agentResult.object ?? agentResult;
+      if (!rawAnalysis?.totalDuration) throw new Error("Agent returned no video analysis");
+
+      const analysis = VideoAnalysisSchema.parse(rawAnalysis);
 
       await db
         .update(adCloneProjects)
@@ -260,6 +291,171 @@ class AdCloneService {
         fs.rmdirSync(tempDir, { recursive: true });
       }
     }
+  }
+
+  async initStructureFromAnalysis(params: {
+    projectId: string;
+    message: string;
+    productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
+  }) {
+    const { projectId, message, productImageKeys, threadId, conversationHistory } = params;
+
+    const project = await this.getProject(projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [];
+
+    if (productImageKeys?.length) {
+      const presignedUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key)),
+      );
+      for (const url of presignedUrls) {
+        content.push({ type: "image", image: url, mediaType: "image/jpeg" });
+      }
+    }
+
+    if (!project.videoAnalysis) {
+      throw new Error("Video analysis not complete. Please wait for analysis to finish before generating a script.");
+    }
+
+    let messageText = message;
+    {
+      const analysis = project.videoAnalysis;
+      const analysisLines: string[] = [];
+
+      analysisLines.push("=== VIDEO ANALYSIS ===");
+      analysisLines.push("");
+      analysisLines.push(`Total duration: ${analysis.totalDuration}s`);
+      analysisLines.push(`Aspect ratio: ${analysis.aspectRatio}`);
+      analysisLines.push(`Overall style: ${analysis.overallStyle}`);
+      analysisLines.push(`Pacing: ${analysis.pacing}`);
+      analysisLines.push(`Hook strategy: ${analysis.hookStrategy}`);
+      analysisLines.push(`CTA approach: ${analysis.ctaApproach}`);
+      analysisLines.push(`Target demographic: ${analysis.targetDemographic}`);
+      analysisLines.push(`Overall narrative: ${analysis.overallNarrative}`);
+
+      if (analysis.keyStrengths?.length) {
+        analysisLines.push("");
+        analysisLines.push("Key strengths:");
+        analysis.keyStrengths.forEach((s: string) => analysisLines.push(`- ${s}`));
+      }
+
+      analysisLines.push("");
+      analysisLines.push("Scene-by-scene breakdown:");
+      for (const scene of analysis.scenes) {
+        analysisLines.push(`  Scene ${scene.sceneNumber} (${scene.durationSeconds}s): ${scene.sceneType} / ${scene.shotType}`);
+        analysisLines.push(`    Emotion: ${scene.emotionalTone}`);
+        if (scene.transcribedDialogue) {
+          analysisLines.push(`    Dialogue: "${scene.transcribedDialogue}"`);
+        }
+        analysisLines.push(`    Action: ${scene.actionDescription}`);
+        analysisLines.push(`    Setting: ${scene.settingDescription}`);
+      }
+
+      if (message) {
+        analysisLines.push("");
+        analysisLines.push("=== USER DIRECTION ===");
+        analysisLines.push(message);
+      }
+
+      if (project.productName) {
+        analysisLines.push("");
+        analysisLines.push(`Product name: ${project.productName}`);
+      }
+      if (project.productDescription) {
+        analysisLines.push(`Product description: ${project.productDescription}`);
+      }
+      if (project.adDirection) {
+        analysisLines.push(`Ad direction: ${project.adDirection}`);
+      }
+
+      messageText = analysisLines.join("\n");
+    }
+
+    content.push({ type: "text", text: messageText });
+
+    const messages: Array<{ role: string; content: unknown }> = [];
+    if (conversationHistory?.length) {
+      for (const msg of conversationHistory.slice(0, -1)) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+    messages.push({ role: "user", content });
+
+    const agentServiceUrl = config.agentService.url;
+    const requestBody: Record<string, unknown> = { messages };
+
+    if (threadId) {
+      requestBody.memory = {
+        thread: threadId,
+        resource: "ad-clone-chat",
+      };
+    }
+
+    const deconstructorUrl = `${agentServiceUrl}/api/agents/ad-deconstructor-agent/generate`;
+    const deconstructorFetchOptions: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(120_000),
+    };
+
+    let response!: globalThis.Response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await fetch(deconstructorUrl, deconstructorFetchOptions);
+        if (response.ok) break;
+
+        const errorBody = await response.text();
+        const isGatewayError = response.status === 502 || response.status === 503 || response.status === 504;
+        if (!isGatewayError || attempt === 1) {
+          console.error("[AD_CLONE] Ad deconstructor agent error:", errorBody);
+          throw new Error("Failed to generate structure from ad deconstructor agent");
+        }
+        console.warn(`[AD_CLONE] Deconstructor returned ${response.status}, retrying...`);
+        await new Promise((r) => setTimeout(r, 3000));
+      } catch (err) {
+        if (err instanceof Error && err.message === "Failed to generate structure from ad deconstructor agent") throw err;
+        if (attempt === 1) {
+          console.error("[AD_CLONE] Deconstructor fetch error:", err);
+          throw new Error("Failed to generate structure from ad deconstructor agent");
+        }
+        console.warn("[AD_CLONE] Deconstructor fetch failed, retrying...", err);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentResult = (result.object ?? result) as {
+      responseType: "conversation" | "script";
+      message: string;
+      isSilent: boolean;
+      character: boolean;
+      videoType: string;
+      targetAudience: string;
+      title: string;
+      totalDuration: number;
+      scenes: Array<{
+        sceneNumber: number;
+        slug: string;
+        sceneType: string;
+        storyBeat: string;
+        dialogue: string;
+        isSilent: boolean;
+        duration: number;
+        action: string;
+        imageGenPrompt: string;
+        cinematicPrompt: string;
+        ambientSound: string | null;
+        shots: any[];
+      }>;
+    };
+
+    return agentResult;
   }
 
   async generateAdaptedScript(
@@ -429,7 +625,7 @@ class AdCloneService {
       throw new Error("Script not found");
     }
 
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId);
+    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
     if (!scene) {
       throw new Error("Scene not found");
     }
@@ -489,7 +685,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       throw new Error("Script not found");
     }
 
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId);
+    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
     if (!scene || !scene.bRollShots) {
       throw new Error("Scene or B-roll shots not found");
     }
@@ -520,10 +716,8 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     const parsed = JSON.parse(response.output_text);
     const newShots: BRollShot[] = ShotsResponseSchema.parse(parsed).shots;
 
-    // Update scene in-memory
     scene.bRollShots = newShots;
 
-    // Persist to database
     await db
       .update(adCloneProjects)
       .set({

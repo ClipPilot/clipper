@@ -1,3 +1,9 @@
+.agents
+.mastra
+*.db
+*.db-shm
+*.db-wal
+.env
 
 .env*
 .flaskenv*

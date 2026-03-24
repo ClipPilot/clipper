@@ -29,7 +29,7 @@ export const EMOTIONS = [
   "determined",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll"] as const;
+export const SHOT_TYPES = ["a-roll", "b-roll", "visual"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",
@@ -88,41 +88,6 @@ export interface ProductImage {
   key: string;
   url: string;
   file?: File;
-}
-
-export interface GenerateScriptRequest {
-  teamId: number;
-  characterId: number;
-  productImageKeys: string[];
-  productName?: string;
-  productDescription?: string;
-  scriptDirection?: string;
-  targetDuration?: number;
-  numberOfVariations?: number;
-  structureId?: string;
-  customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
-  isSilent?: boolean;
-}
-
-export interface GenerateScriptResponse {
-  success: boolean;
-  scriptId: string;
-  status: "queued" | "generating" | "completed" | "failed";
-  message: string;
-}
-
-export interface ScriptStatusResponse {
-  success: boolean;
-  scriptId: string;
-  status: "queued" | "generating" | "completed" | "failed";
-  progress: number;
-  progressMessage: string;
-  scripts?: UGCScript[];
-  selectedVariantIndex?: number;
-  error?: string;
-  createdAt?: string;
-  startedAt?: string;
-  completedAt?: string;
 }
 
 export interface RegenerateSceneRequest {

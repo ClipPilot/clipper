@@ -644,6 +644,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         video_url = body.get('video_url') or body.get('videoUrl')
         video_duration = body.get('video_duration') or body.get('videoDuration')
         frame_accurate = body.get('frame_accurate') or body.get('frameAccurate') or False
+        swap_type = body.get('swap_type') or body.get('swapType') or 'fullbody'
 
         if not video_url:
             return {
@@ -702,12 +703,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             log_remaining_time("Validation complete - applying frame offset")
 
-            offset_segments = apply_frame_offset(
-                validated_segments,
-                video_duration,
-                native_fps,
-                config.get('frame_offset', 2)
-            )
+            if swap_type == 'face':
+                print(f"[FACE-DETECT] Skipping frame offset for face swap mode")
+                offset_segments = validated_segments
+            else:
+                offset_segments = apply_frame_offset(
+                    validated_segments,
+                    video_duration,
+                    native_fps,
+                    config.get('frame_offset', 2)
+                )
 
             log_remaining_time("Frame offset applied - padding segments")
 
