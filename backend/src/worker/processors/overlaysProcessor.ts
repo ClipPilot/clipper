@@ -35,15 +35,21 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
     // Step 1: Apply heading if provided
     if (heading && heading.text.trim()) {
       console.log("Applying heading overlay...");
+      const headingStyle = heading.style || "stroke";
+      const rawBg = heading.headingBgColor || "#000000";
+      const headingBg = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
+      const isLightBg = headingBg === "#FFFFFF" || headingBg.toLowerCase() === "white";
+      const headingColor = heading.color
+        || (headingStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
       const headingPath = await regenerateClipWithTextOverlay(currentVideoPath, {
         text: heading.text,
-        color: heading.color || "#FFFFFF",
+        color: headingColor,
         font: heading.font || "Montserrat",
         x: heading.x ?? 50,
         y: heading.y ?? 10,
         fontSize: heading.fontSize ?? 48,
-        style: heading.style || "stroke",
-        headingBgColor: heading.headingBgColor || "#000000",
+        style: headingStyle,
+        headingBgColor: headingBg,
       });
 
       // If we already have a processed video (not the original blank), delete it

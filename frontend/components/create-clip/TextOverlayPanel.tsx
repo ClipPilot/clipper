@@ -252,7 +252,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                   <Button
                     variant={textBgColor === "#000000" ? "solid" : "bordered"}
                     color={textBgColor === "#000000" ? "primary" : "default"}
-                    onPress={() => setTextBgColor("#000000")}
+                    onPress={() => { setTextBgColor("#000000"); setTextColor("#FFFFFF"); }}
                     size="sm"
                     className={textBgColor === "#000000" ? "bg-black text-white border-accent-400" : ""}
                   >
@@ -261,7 +261,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                   <Button
                     variant={textBgColor === "#FFFFFF" ? "solid" : "bordered"}
                     color={textBgColor === "#FFFFFF" ? "primary" : "default"}
-                    onPress={() => setTextBgColor("#FFFFFF")}
+                    onPress={() => { setTextBgColor("#FFFFFF"); setTextColor("#000000"); }}
                     size="sm"
                     className={textBgColor === "#FFFFFF" ? "bg-white text-black border-accent-400" : ""}
                   >
