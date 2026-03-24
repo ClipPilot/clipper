@@ -212,8 +212,60 @@ jobs:
 
       - name: Create terraform.tfvars from secrets
         run: |
-          # (same tfvars block as above — keep unchanged)
-          cat terraform.tfvars > /dev/null
+          cat > terraform.tfvars <<EOF
+          aws_region          = "${{ env.AWS_REGION }}"
+          environment         = "prod"
+          node_env            = "production"
+          project_name        = "clipster"
+
+          backend_container_port = 3001
+          backend_cpu            = 2048
+          backend_memory         = 4096
+          backend_desired_count  = 2
+
+          worker_cpu             = 4096
+          worker_memory          = 8192
+
+          openai_api_key     = "${{ secrets.OPENAI_API_KEY }}"
+          deepgram_api_key   = "${{ secrets.DEEPGRAM_API_KEY }}"
+          database_url       = "${{ secrets.DATABASE_URL }}"
+          supabase_url       = "${{ secrets.SUPABASE_URL }}"
+          supabase_anon_key  = "${{ secrets.SUPABASE_ANON_KEY }}"
+          resend_api_key     = "${{ secrets.RESEND_API_KEY }}"
+
+          stripe_secret_key     = "${{ secrets.STRIPE_SECRET_KEY }}"
+          stripe_webhook_secret = "${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+
+          github_repository   = "${{ github.repository }}"
+          github_access_token = "${{ secrets.GH_PAT }}"
+          gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
+          amplify_branch      = "main"
+
+          admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+          sync_key            = "${{ secrets.SYNC_KEY }}"
+
+          elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
+          fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
+          apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+          socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
+
+          tavily_api_key     = "${{ secrets.TAVILY_API_KEY }}"
+          internal_api_key   = "${{ secrets.INTERNAL_API_KEY }}"
+
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
+          api_domain          = "api.cuttr.com"
+          frontend_url        = "https://platform.cuttr.com"
+
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status.cuttr.com"
+
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
+          EOF
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
