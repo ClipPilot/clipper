@@ -95,12 +95,12 @@ resource "aws_lb_target_group" "agent_service" {
   health_check {
     enabled             = true
     path                = "/health"
-    port                = "traffic-port"
+    port                = "4112"
     protocol            = "HTTP"
     healthy_threshold   = 2
     unhealthy_threshold = 5
-    timeout             = 10
-    interval            = 30
+    timeout             = 5
+    interval            = 60
     matcher             = "200"
   }
 
@@ -133,10 +133,16 @@ resource "aws_ecs_task_definition" "agent_service" {
     name  = "agent-service"
     image = "${aws_ecr_repository.agent_service.repository_url}:latest"
 
-    portMappings = [{
-      containerPort = 4111
-      protocol      = "tcp"
-    }]
+    portMappings = [
+      {
+        containerPort = 4111
+        protocol      = "tcp"
+      },
+      {
+        containerPort = 4112
+        protocol      = "tcp"
+      }
+    ]
 
     environment = [
       {
@@ -162,6 +168,10 @@ resource "aws_ecs_task_definition" "agent_service" {
       {
         name  = "BACKEND_URL"
         value = var.api_domain != "" ? "https://${var.api_domain}" : "http://${aws_lb.backend.dns_name}"
+      },
+      {
+        name  = "HEALTH_PORT"
+        value = "4112"
       }
     ]
 
@@ -206,10 +216,10 @@ resource "aws_ecs_task_definition" "agent_service" {
     }
 
     healthCheck = {
-      command     = ["CMD-SHELL", "curl -f http://localhost:4111/health || exit 1"]
-      interval    = 30
-      timeout     = 10
-      retries     = 5
+      command     = ["CMD-SHELL", "curl -f http://localhost:4112/health || exit 1"]
+      interval    = 60
+      timeout     = 5
+      retries     = 3
       startPeriod = 120
     }
 

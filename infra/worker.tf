@@ -172,6 +172,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
         valueFrom = aws_secretsmanager_secret.google_service_account_private_key.arn
+      },
+      {
+        name      = "SYNC_KEY"
+        valueFrom = aws_secretsmanager_secret.sync_key.arn
       }
     ]
 

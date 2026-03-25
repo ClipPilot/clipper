@@ -34,9 +34,9 @@ COPY --from=builder /app/agent-service/.mastra/output ./
 ENV NODE_ENV=production \
     PORT=4111
 
-EXPOSE 4111
+EXPOSE 4111 4112
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-    CMD curl -f http://localhost:4111/health || exit 1
+HEALTHCHECK --interval=60s --timeout=5s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:4112/health || exit 1
 
-CMD ["node", "--max-old-space-size=3584", "index.mjs"]
+CMD ["node", "--max-old-space-size=3072", "index.mjs"]
