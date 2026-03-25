@@ -169,10 +169,10 @@ export default function ClipFactoryPage() {
     customText: "",
     headingInstructions: "",
     textStyle: "instagram",
-    textColor: "#FFFFFF",
+    textColor: "#000000",
     textFont: "Proxima Nova",
     textPosition: "top",
-    textBgColor: "white",
+    textBgColor: "#FFFFFF",
   });
 
   // Processing
@@ -944,12 +944,18 @@ export default function ClipFactoryPage() {
                     <label className="block text-xs text-text-tertiary mb-1">BG Color</label>
                     <select
                       value={options.textBgColor}
-                      onChange={(e) => setOptions({ ...options, textBgColor: e.target.value })}
+                      onChange={(e) => {
+                        const bg = e.target.value;
+                        setOptions({
+                          ...options,
+                          textBgColor: bg,
+                          textColor: bg === "#FFFFFF" ? "#000000" : "#FFFFFF",
+                        });
+                      }}
                       className="w-full px-3 py-2 rounded-lg bg-surface-elevated border border-border focus:border-emerald outline-none text-text-primary text-sm"
                     >
-                      <option value="">None</option>
-                      <option value="black">Black</option>
-                      <option value="white">White</option>
+                      <option value="#000000">Black</option>
+                      <option value="#FFFFFF">White</option>
                     </select>
                   </div>
                 )}

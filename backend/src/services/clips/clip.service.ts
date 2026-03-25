@@ -287,11 +287,14 @@ export const createCombinedClipService = async (
     const headingPath = path.join(outDir, `heading_${jobId}_${videoIndex}_temp.mp4`);
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
-    const fillColor = options.textColor || "#FFFFFF";
+    const textStyle = options.textStyle || "stroke";
+    const rawBg = options.textBgColor || "#000000";
+    const bgColor = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
+    const isLightBg = bgColor === "#FFFFFF" || bgColor.toLowerCase() === "white";
+    const fillColor = options.textColor
+      || (textStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
-    const textStyle = options.textStyle || "stroke";
-    const bgColor = options.textBgColor || "#000000";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -657,11 +660,14 @@ export const createBatchCombinedClipService = async (
     );
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
-    const fillColor = options.textColor || "#FFFFFF";
+    const textStyle = options.textStyle || "stroke";
+    const rawBg = options.textBgColor || "#000000";
+    const bgColor = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
+    const isLightBg = bgColor === "#FFFFFF" || bgColor.toLowerCase() === "white";
+    const fillColor = options.textColor
+      || (textStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
-    const textStyle = options.textStyle || "stroke";
-    const bgColor = options.textBgColor || "#000000";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
