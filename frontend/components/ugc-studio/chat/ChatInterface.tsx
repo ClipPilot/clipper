@@ -11,6 +11,7 @@ import { resetAdCloneAtom } from "@/store/adClone";
 import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
+import { adCloneAPI } from "@/api/adClone";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { useTeams } from "@/hooks/useTeams";
 import { useChatAgent } from "./useChatAgent";
@@ -21,7 +22,6 @@ import { ArtifactPanel } from "./ArtifactPanel";
 import { ExistingScriptsDrawer } from "./ExistingScriptsDrawer";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
-/** Minimum width percentage for each panel */
 const MIN_CHAT_PCT = 25;
 const MAX_CHAT_PCT = 75;
 
@@ -33,7 +33,12 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
   const {
     messages,
     isThinking,
+    isAnalyzing,
+    adCloneStep,
     videoState,
+    videoAttachment,
+    setVideoAttachment,
+    adCloneProjectId,
     sendMessage,
     acceptStructure,
     retryStructure,
@@ -116,14 +121,14 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
   const isImagesGenerating = Object.values(sceneImages).some(
     (img) => img.status === "generating" || img.status === "regenerating",
   );
-  const isChatDisabled = isThinking;
+  const isChatDisabled = isThinking || isAnalyzing;
 
   const chatInputRef = useRef<ChatInputHandle>(null);
   const savedCharacterIdRef = useRef<number | null>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
-    null,
-  );
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [showExistingScripts, setShowExistingScripts] = useState(false);
+  const [mode, setMode] = useState<"scratch" | "clone">(resumeScriptId ? "scratch" : "scratch");
+  const showModePicker = messages.length <= 1 && !videoState.scriptId && !isAnalyzing;
 
   const [chatWidthPct, setChatWidthPct] = useState(40);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -144,12 +149,15 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
         voiceId: videoState.voice?.id,
         isSilent: videoState.isSilent,
       });
+      if (adCloneProjectId) {
+        adCloneAPI.linkVideoJob(adCloneProjectId, result.jobId).catch(() => {});
+      }
       router.push(`/dashboard/ugc-studio/ai-video-creator/${result.jobId}`);
     } catch (err) {
       console.error("Failed to start video generation:", err);
       setIsStartingGeneration(false);
     }
-  }, [teamId, videoState.scriptId, videoState.voice, videoState.isSilent, router]);
+  }, [teamId, videoState.scriptId, videoState.voice, videoState.isSilent, adCloneProjectId, router]);
 
   const isPanelMode = step !== null;
 
@@ -168,7 +176,6 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
 
   const handleCharacterConfirm = useCallback(() => {
     confirmCharacter();
-
     if (resumeScriptId && selectedCharacter && savedCharacterIdRef.current !== selectedCharacter.id) {
       setSceneImages({});
     }
@@ -226,7 +233,6 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     [setVideoState, setSceneImages, teamId],
   );
 
-  /* -- Drag-to-resize handlers ---------------------------------------- */
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     isDragging.current = true;
@@ -254,41 +260,28 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-border-base shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() =>
-              router.push("/dashboard/ugc-studio/ai-video-creator")
-            }
+            onClick={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
             className="p-2 rounded-lg hover:bg-surface-elevated transition-colors"
           >
-            <Icon
-              icon="solar:arrow-left-linear"
-              className="text-text-secondary"
-              width={20}
-            />
+            <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
           </button>
-          <h1 className="text-lg font-semibold text-text-primary">
-            Create Video
-          </h1>
+          <h1 className="text-lg font-semibold text-text-primary">Create Video</h1>
         </div>
         <Button
           variant="bordered"
           size="sm"
           className="border-border-base text-text-secondary"
-          startContent={
-            <Icon icon="solar:document-text-bold" width={16} />
-          }
+          startContent={<Icon icon="solar:document-text-bold" width={16} />}
           onPress={() => setShowExistingScripts(true)}
         >
           Use Existing Script
         </Button>
       </div>
 
-      {/* Main content area */}
       <div ref={containerRef} className="flex-1 flex min-h-0">
-        {/* Chat panel */}
         <motion.div
           layout
           className="flex flex-col min-h-0"
@@ -298,10 +291,11 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
           <ImageDropZone onDrop={handleDropFiles} isDisabled={isChatDisabled}>
             <MessageList
               messages={messages}
-              isThinking={isThinking}
+              isThinking={isThinking && !adCloneStep}
               acceptedResult={videoState.structureBlueprint}
               onAccept={handleAccept}
               onRetry={retryStructure}
+              adCloneStep={adCloneStep}
             />
           </ImageDropZone>
           {isImagesGenerating && (
@@ -310,35 +304,57 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
               <span>Scene images are generating… editing is available once complete.</span>
             </div>
           )}
+          {showModePicker && (
+            <div className="px-4 pt-2 pb-0 shrink-0">
+              <div className="max-w-2xl mx-auto flex gap-2">
+                <button
+                  onClick={() => { setMode("scratch"); setVideoAttachment(null); }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    mode === "scratch"
+                      ? "bg-accent-400/10 text-accent-400 border border-accent-400/30"
+                      : "text-text-secondary border border-white/[0.06] hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <Icon icon="solar:magic-stick-3-bold-duotone" width={14} />
+                  Create from Scratch
+                </button>
+                <button
+                  onClick={() => setMode("clone")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    mode === "clone"
+                      ? "bg-amber-400/10 text-amber-400 border border-amber-400/30"
+                      : "text-text-secondary border border-white/[0.06] hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <Icon icon="solar:copy-bold-duotone" width={14} />
+                  Clone an Ad
+                </button>
+              </div>
+            </div>
+          )}
           <ChatInput
             ref={chatInputRef}
             onSend={sendMessage}
             isDisabled={isChatDisabled}
+            videoAttachment={videoAttachment}
+            onVideoAttach={mode === "clone" ? setVideoAttachment : undefined}
+            placeholder={mode === "clone" && !videoAttachment ? "Describe your product and attach a reference ad above..." : undefined}
           />
         </motion.div>
 
-        {/* Resize handle */}
         {isPanelMode && (
           <div
             onMouseDown={handleDragStart}
             className="w-1 shrink-0 cursor-col-resize group relative z-10 flex items-center justify-center"
           >
-            {/* Visible track */}
             <div className="absolute inset-y-0 w-px bg-border-base group-hover:bg-accent-400/50 transition-colors" />
-            {/* Wider hit area */}
             <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
-            {/* Grab indicator */}
             <div className="relative z-10 w-3 h-8 rounded-full bg-surface-elevated border border-border-base group-hover:border-accent-400/50 flex items-center justify-center transition-colors">
-              <Icon
-                icon="solar:menu-dots-bold"
-                width={8}
-                className="text-text-muted rotate-90"
-              />
+              <Icon icon="solar:menu-dots-bold" width={8} className="text-text-muted rotate-90" />
             </div>
           </div>
         )}
 
-        {/* Artifact panel */}
         {isPanelMode && step && (
           <motion.div
             layout
@@ -362,7 +378,6 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
         )}
       </div>
 
-      {/* Existing scripts drawer */}
       {teamId && (
         <ExistingScriptsDrawer
           isOpen={showExistingScripts}

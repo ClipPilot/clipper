@@ -8,7 +8,6 @@ import {
   sceneImages,
   sceneImageGenerationJobs,
   clips,
-  adCloneProjects,
 } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
@@ -62,13 +61,6 @@ export class UGCVideoController {
         return res.status(400).json({ error: "teamId is required" });
       }
 
-      // Exclude jobs that belong to Ad Clone projects
-      const adCloneJobFilter = sql`${ugcVideoGenerationJobs.id} NOT IN (
-        SELECT ${adCloneProjects.video_job_id} FROM ${adCloneProjects}
-        WHERE ${adCloneProjects.video_job_id} IS NOT NULL
-      )`;
-
-      // Get jobs with script info (only AI UGC jobs, not Ad Clone)
       const jobs = await db
         .select({
           id: ugcVideoGenerationJobs.id,
@@ -81,17 +73,13 @@ export class UGCVideoController {
           errorMessage: ugcVideoGenerationJobs.error_message,
           createdAt: ugcVideoGenerationJobs.created_at,
           completedAt: ugcVideoGenerationJobs.completed_at,
-          // Script info - fetch the full data and extract in JS
           scriptsData: ugcScripts.scripts_data,
           selectedVariantIndex: ugcScripts.selected_variant_index,
           productName: ugcScripts.product_name,
         })
         .from(ugcVideoGenerationJobs)
         .leftJoin(ugcScripts, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
-        .where(and(
-          eq(ugcVideoGenerationJobs.team_id, teamId),
-          adCloneJobFilter
-        ))
+        .where(eq(ugcVideoGenerationJobs.team_id, teamId))
         .orderBy(desc(ugcVideoGenerationJobs.created_at))
         .limit(limit)
         .offset(offset);
@@ -117,14 +105,10 @@ export class UGCVideoController {
         }
       }
 
-      // Get total count (excluding Ad Clone jobs)
       const [countResult] = await db
         .select({ count: count() })
         .from(ugcVideoGenerationJobs)
-        .where(and(
-          eq(ugcVideoGenerationJobs.team_id, teamId),
-          adCloneJobFilter
-        ));
+        .where(eq(ugcVideoGenerationJobs.team_id, teamId));
 
       // Get thumbnails for each job (first scene image per script)
       const scriptIds = [...new Set(jobs.map((j) => j.scriptId))];

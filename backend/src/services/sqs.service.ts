@@ -710,40 +710,6 @@ class SQSService {
     return this.sendJob(job);
   }
 
-  async sendAdCloneGenerateScriptJob(params: {
-    projectId: string;
-    teamId: number;
-    userId: number;
-    characterId?: number;
-  }): Promise<string> {
-    const job: AdCloneGenerateScriptJob = {
-      type: "ad-clone-generate-script",
-      projectId: params.projectId,
-      teamId: params.teamId,
-      userId: params.userId,
-      characterId: params.characterId,
-      createdAt: new Date().toISOString(),
-    };
-
-    return this.sendJob(job);
-  }
-
-  async sendAdCloneAnalyzeAndScriptJob(params: {
-    projectId: string;
-    teamId: number;
-    userId: number;
-  }): Promise<string> {
-    const job: AdCloneAnalyzeAndScriptJob = {
-      type: "ad-clone-analyze-and-script",
-      projectId: params.projectId,
-      teamId: params.teamId,
-      userId: params.userId,
-      createdAt: new Date().toISOString(),
-    };
-
-    return this.sendJob(job);
-  }
-
   async sendVideoEditJob(params: {
     clipId: number;
     teamId: number;

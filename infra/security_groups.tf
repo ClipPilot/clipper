@@ -63,7 +63,7 @@ resource "aws_security_group" "ecs_tasks" {
 resource "aws_security_group_rule" "ecs_tasks_from_agent_service_alb" {
   type                     = "ingress"
   from_port                = 4111
-  to_port                  = 4111
+  to_port                  = 4112
   protocol                 = "tcp"
   description              = "Allow traffic from agent service internal ALB"
   security_group_id        = aws_security_group.ecs_tasks.id

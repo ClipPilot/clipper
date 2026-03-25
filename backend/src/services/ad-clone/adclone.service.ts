@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { adCloneProjects, characters } from "@clipper/shared-db";
-import { eq, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { s3Service } from "../s3.service";
 import {
   uploadVideoToGemini,
@@ -16,10 +16,6 @@ import {
 } from "../../types/adClone.types";
 import { UGCScript } from "../../types/ugcScript.types";
 import { ugcScriptService } from "../ai-ugc/ugcScript.service";
-import { openaiClient } from "../openai.service";
-import { BRollShotSchema, BRollShot } from "../../types/ugcScript.types";
-import { zodTextFormat } from "openai/helpers/zod";
-import { z } from "zod";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 import { mergeConsecutiveArollStructure } from "../ai-ugc/ugcScript.service";
 import { config } from "../../config/env";
@@ -86,30 +82,6 @@ class AdCloneService {
     return this.mapDbToProject(project);
   }
 
-  async listProjects(
-    teamId: number,
-    limit = 20,
-    offset = 0
-  ): Promise<{ projects: AdCloneProject[]; total: number }> {
-    const projects = await db
-      .select()
-      .from(adCloneProjects)
-      .where(eq(adCloneProjects.team_id, teamId))
-      .orderBy(desc(adCloneProjects.created_at))
-      .limit(limit)
-      .offset(offset);
-
-    const [countResult] = await db
-      .select({ count: db.$count(adCloneProjects) })
-      .from(adCloneProjects)
-      .where(eq(adCloneProjects.team_id, teamId));
-
-    return {
-      projects: projects.map((p) => this.mapDbToProject(p)),
-      total: countResult?.count ?? 0,
-    };
-  }
-
   async updateProjectStatus(
     projectId: string,
     status: AdCloneProjectStatus,
@@ -124,32 +96,6 @@ class AdCloneService {
         progress,
         progress_message: progressMessage || null,
         error_message: errorMessage || null,
-        updated_at: new Date(),
-      })
-      .where(eq(adCloneProjects.id, projectId));
-  }
-
-  async updateCharacterId(
-    projectId: string,
-    characterId: number
-  ): Promise<void> {
-    await db
-      .update(adCloneProjects)
-      .set({
-        character_id: characterId,
-        updated_at: new Date(),
-      })
-      .where(eq(adCloneProjects.id, projectId));
-  }
-
-  async updateVoiceId(
-    projectId: string,
-    voiceId: string
-  ): Promise<void> {
-    await db
-      .update(adCloneProjects)
-      .set({
-        voice_id: voiceId,
         updated_at: new Date(),
       })
       .where(eq(adCloneProjects.id, projectId));
@@ -616,129 +562,6 @@ class AdCloneService {
       .where(eq(adCloneProjects.id, projectId));
   }
 
-  async regenerateBRollPrompt(params: {
-    projectId: string;
-    sceneId: string;
-    bRollShotIndex: number;
-    newAction: string;
-  }): Promise<string> {
-    const { projectId, sceneId, bRollShotIndex, newAction } = params;
-
-    const project = await this.getProject(projectId);
-    if (!project) {
-      throw new Error("Project not found");
-    }
-
-    const scripts = project.adaptedScripts || [];
-    const currentScript = scripts[project.selectedVariantIndex];
-    if (!currentScript) {
-      throw new Error("Script not found");
-    }
-
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
-    if (!scene) {
-      throw new Error("Scene not found");
-    }
-
-    if (!scene.bRollShots || !scene.bRollShots[bRollShotIndex]) {
-      throw new Error("B-roll shot not found");
-    }
-
-    const prompt = `Generate a detailed cinematicPrompt for a B-roll shot with this action: "${newAction}"
-
-The cinematicPrompt should be 2-3 paragraphs describing:
-1. Visual composition, lighting, and framing
-2. Camera movement and timing
-3. Technical style and what to avoid
-
-Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
-
-    const response = await openaiClient.responses.create({
-      model: "gpt-5-mini",
-      input: [{ role: "user", content: prompt }],
-    });
-
-    const newCinematicPrompt =
-      response.output_text?.trim() || scene.bRollShots[bRollShotIndex].cinematicPrompt;
-
-    scene.bRollShots[bRollShotIndex].action = newAction;
-    scene.bRollShots[bRollShotIndex].cinematicPrompt = newCinematicPrompt;
-
-    await db
-      .update(adCloneProjects)
-      .set({
-        adapted_scripts: scripts,
-        updated_at: new Date(),
-      })
-      .where(eq(adCloneProjects.id, projectId));
-
-    return newCinematicPrompt;
-  }
-
-  async regenerateAllBRollShots(params: {
-    projectId: string;
-    sceneId: string;
-    newSceneAction: string;
-    shotCount: number;
-    shotDurations: number[];
-  }): Promise<BRollShot[]> {
-    const { projectId, sceneId, newSceneAction, shotCount, shotDurations } = params;
-
-    const project = await this.getProject(projectId);
-    if (!project) {
-      throw new Error("Project not found");
-    }
-
-    const scripts = project.adaptedScripts || [];
-    const currentScript = scripts[project.selectedVariantIndex];
-    if (!currentScript) {
-      throw new Error("Script not found");
-    }
-
-    const scene = currentScript.scenes.find((s: any) => s.id === sceneId || s.slug === sceneId);
-    if (!scene || !scene.bRollShots) {
-      throw new Error("Scene or B-roll shots not found");
-    }
-
-    const ShotsResponseSchema = z.object({
-      shots: z.array(BRollShotSchema).length(shotCount),
-    });
-
-    const prompt = `You are generating ${shotCount} B-roll shot descriptions for a product demo scene.
-
-Scene action: "${newSceneAction}"
-
-Generate exactly ${shotCount} shots that break down this scene action into individual camera shots.
-Each shot should have:
-- "action": A single, specific camera action (1-2 sentences). Describe what the hands/camera do. NEVER mention on-screen text, captions, or graphics.
-- "cinematicPrompt": A detailed cinematic description (2-3 sentences) for AI image generation describing composition, lighting, and framing.
-- "durationSeconds": Use these durations in order: [${shotDurations.join(", ")}]
-- "productImageNeeded": true if the shot shows the product, false for lifestyle/mood shots.
-
-Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`;
-
-    const response = await openaiClient.responses.create({
-      model: "gpt-5-mini",
-      input: [{ role: "user", content: prompt }],
-      text: { format: zodTextFormat(ShotsResponseSchema, "b_roll_shots") },
-    });
-
-    const parsed = JSON.parse(response.output_text);
-    const newShots: BRollShot[] = ShotsResponseSchema.parse(parsed).shots;
-
-    scene.bRollShots = newShots;
-
-    await db
-      .update(adCloneProjects)
-      .set({
-        adapted_scripts: scripts,
-        updated_at: new Date(),
-      })
-      .where(eq(adCloneProjects.id, projectId));
-
-    return newShots;
-  }
-
   async setVideoJobId(projectId: string, videoJobId: string): Promise<void> {
     await db
       .update(adCloneProjects)
@@ -762,31 +585,6 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
         progress_message: "Video generation complete",
         updated_at: new Date(),
       })
-      .where(eq(adCloneProjects.id, projectId));
-  }
-
-  async deleteProject(projectId: string): Promise<void> {
-    const project = await this.getProject(projectId);
-    if (!project) return;
-
-    if (project.referenceVideoKey) {
-      try {
-        await s3Service.deleteObject(project.referenceVideoKey);
-      } catch (e) {
-        console.warn("Failed to delete reference video:", e);
-      }
-    }
-
-    if (project.finalVideoKey) {
-      try {
-        await s3Service.deleteObject(project.finalVideoKey);
-      } catch (e) {
-        console.warn("Failed to delete final video:", e);
-      }
-    }
-
-    await db
-      .delete(adCloneProjects)
       .where(eq(adCloneProjects.id, projectId));
   }
 

@@ -372,6 +372,13 @@
       "when": 1774290034706,
       "tag": "0052_ordinary_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1774377531417,
+      "tag": "0053_chunky_maddog",
+      "breakpoints": true
     }
   ]
 }

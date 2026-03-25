@@ -1,0 +1,1 @@
+ALTER TABLE "clip_factory_batches" ENABLE ROW LEVEL SECURITY;

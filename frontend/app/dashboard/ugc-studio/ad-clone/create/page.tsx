@@ -1,38 +1,19 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Spinner } from "@heroui/react";
-import { useAtomValue } from "jotai";
-import { selectedTeamAtom } from "@/store/auth";
-import { AdCloneChatInterface } from "@/components/ugc-studio/chat/AdCloneChatInterface";
 
-function AdCloneCreateContent() {
-  const selectedTeam = useAtomValue(selectedTeamAtom);
-  const searchParams = useSearchParams();
-  const projectId = searchParams.get("projectId");
+export default function AdCloneCreateRedirect() {
+  const router = useRouter();
 
-  if (!selectedTeam) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="warning" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    router.replace("/dashboard/ugc-studio/ai-video-creator/create");
+  }, [router]);
 
-  return <AdCloneChatInterface resumeProjectId={projectId} />;
-}
-
-export default function AdCloneCreatePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="warning" />
-        </div>
-      }
-    >
-      <AdCloneCreateContent />
-    </Suspense>
+    <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+      <Spinner size="lg" />
+    </div>
   );
 }
