@@ -250,6 +250,8 @@ resource "aws_ecs_service" "agent_service" {
     container_port   = 4111
   }
 
+  health_check_grace_period_seconds = 300
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
