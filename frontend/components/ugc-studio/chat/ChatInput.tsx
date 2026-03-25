@@ -9,7 +9,7 @@ import {
   useEffect,
   type KeyboardEvent,
 } from "react";
-import { Textarea, Input } from "@heroui/react";
+import { TextArea, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom } from "jotai";
@@ -264,7 +264,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">
+                    <p className="text-sm font-medium text-text-accent truncate">
                       {videoAttachment!.name}
                     </p>
                     <p className="text-[11px] text-text-muted">
@@ -322,7 +322,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                       <Icon icon="solar:upload-minimalistic-bold-duotone" width={20} className="text-amber-400" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium text-text-primary">Upload reference ad</p>
+                      <p className="text-sm font-medium text-text-accent">Upload reference ad</p>
                       <p className="text-[11px] text-text-muted">MP4, MOV, WebM up to {MAX_VIDEO_SIZE_MB}MB</p>
                     </div>
                   </button>
@@ -335,28 +335,22 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <Input
-                        value={linkUrl}
-                        onValueChange={(v) => { setLinkUrl(v); setLinkError(null); }}
-                        placeholder="YouTube, TikTok, Instagram, or X link"
-                        size="sm"
-                        isDisabled={isDisabled || isFetchingLink}
-                        isInvalid={!!linkError}
-                        errorMessage={linkError}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleLinkSubmit();
-                          }
-                        }}
-                        startContent={
-                          <Icon icon="solar:link-round-bold" width={16} className="text-text-muted shrink-0" />
-                        }
-                        classNames={{
-                          inputWrapper: "bg-white/[0.03] border-white/[0.06] data-[hover=true]:bg-white/[0.05] group-data-[focus=true]:border-amber-400/40",
-                          input: "text-sm",
-                        }}
-                      />
+                      <Input onChange={(e) => ((v) => { setLinkUrl(v); setLinkError(null); })(e.target.value)}
+ value={linkUrl}
+ placeholder="YouTube, TikTok, Instagram, or X link"
+ isDisabled={isDisabled || isFetchingLink}
+ isInvalid={!!linkError}
+ errorMessage={linkError}
+ onKeyDown={(e) => {
+ if (e.key === "Enter") {
+ e.preventDefault();
+ handleLinkSubmit();
+ }
+ }}
+ startContent={
+ <Icon icon="solar:link-round-bold" width={16} className="text-text-muted shrink-0" />
+ }
+ />
                     </div>
                     <button
                       onClick={handleLinkSubmit}
@@ -456,21 +450,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     )}
                   </div>
                 )}
-                <Textarea
-                  value={text}
-                  onValueChange={setText}
-                  onKeyDown={handleKeyDown}
-                  placeholder={customPlaceholder || (hasVideo ? "Describe your product and any creative direction..." : "Describe the video you want to make, or attach a video to clone...")}
-                  minRows={1}
-                  maxRows={4}
-                  isDisabled={isDisabled}
-                  classNames={{
-                    inputWrapper:
-                      "bg-transparent shadow-none border-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent !ring-0 !ring-offset-0 min-h-[36px]",
-                    input: "text-sm text-text-primary placeholder:text-text-muted/50",
-                    innerWrapper: "pb-0",
-                  }}
-                />
+                <TextArea
+ value={text}
+ onValueChange={setText}
+ onKeyDown={handleKeyDown}
+ placeholder={customPlaceholder || (hasVideo ? "Describe your product and any creative direction..." : "Describe the video you want to make, or attach a video to clone...")}
+ minRows={1}
+ maxRows={4}
+ isDisabled={isDisabled}
+ />
               </div>
 
               <motion.div

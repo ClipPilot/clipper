@@ -47,7 +47,7 @@ export function CropTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:crop-bold" className="text-accent-400" />
           Crop & Resize
         </h3>
@@ -66,7 +66,7 @@ export function CropTool() {
             />
           </div>
           <div>
-            <p className="text-text-primary font-medium">{cropState.aspectRatio}</p>
+            <p className="text-text-accent font-medium">{cropState.aspectRatio}</p>
             <p className="text-xs text-text-tertiary">
               {getAspectRatioDescription(cropState.aspectRatio)}
             </p>
@@ -74,11 +74,10 @@ export function CropTool() {
         </div>
         {cropState.aspectRatio !== "9:16" && (
           <Button
-            size="sm"
-            variant="flat"
-            color="warning"
-            onPress={() => handleAspectRatioChange("9:16")}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={() => handleAspectRatioChange("9:16")}
+ >
             Reset
           </Button>
         )}
@@ -107,7 +106,7 @@ export function CropTool() {
                   />
                   <span
                     className={`font-semibold ${
-                      isSelected ? "text-accent-400" : "text-text-primary"
+                      isSelected ? "text-accent-400" : "text-text-accent"
                     }`}
                   >
                     {preset.label}

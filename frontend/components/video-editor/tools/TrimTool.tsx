@@ -56,7 +56,7 @@ export function TrimTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:scissors-bold" className="text-accent-400" />
           Trim Video
         </h3>
@@ -70,30 +70,18 @@ export function TrimTool() {
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">Start Time</label>
           <Input
-            value={formatTime(trimState.startTime)}
-            onChange={(e) => handleStartTimeChange(e.target.value)}
-            variant="bordered"
-            size="sm"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-border-base",
-              input: "font-mono",
-            }}
-            startContent={<Icon icon="solar:play-bold" className="text-text-tertiary text-sm" />}
-          />
+ value={formatTime(trimState.startTime)}
+ onChange={(e) => handleStartTimeChange(e.target.value)}
+ startContent={<Icon icon="solar:play-bold" className="text-text-tertiary text-sm" />}
+ />
         </div>
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">End Time</label>
           <Input
-            value={formatTime(trimState.endTime)}
-            onChange={(e) => handleEndTimeChange(e.target.value)}
-            variant="bordered"
-            size="sm"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-border-base",
-              input: "font-mono",
-            }}
-            startContent={<Icon icon="solar:stop-bold" className="text-text-tertiary text-sm" />}
-          />
+ value={formatTime(trimState.endTime)}
+ onChange={(e) => handleEndTimeChange(e.target.value)}
+ startContent={<Icon icon="solar:stop-bold" className="text-text-tertiary text-sm" />}
+ />
         </div>
       </div>
 
@@ -101,7 +89,7 @@ export function TrimTool() {
       <div className="bg-surface-elevated rounded-lg p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-sm text-text-secondary">Original Duration</span>
-          <span className="text-sm text-text-primary font-mono">{formatTime(duration)}</span>
+          <span className="text-sm text-text-accent font-mono">{formatTime(duration)}</span>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-text-secondary">New Duration</span>
@@ -124,25 +112,24 @@ export function TrimTool() {
         <p className="text-xs text-text-tertiary">Quick Actions</p>
         <div className="flex flex-wrap gap-2">
           <Button
-            size="sm"
-            variant="flat"
-            onPress={() => setTrimState((prev) => ({ ...prev, startTime: 0 }))}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={() => setTrimState((prev) => ({ ...prev, startTime: 0 }))}
+ >
             Reset Start
           </Button>
           <Button
-            size="sm"
-            variant="flat"
-            onPress={() => setTrimState((prev) => ({ ...prev, endTime: duration }))}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={() => setTrimState((prev) => ({ ...prev, endTime: duration }))}
+ >
             Reset End
           </Button>
           <Button
-            size="sm"
-            variant="flat"
-            color="warning"
-            onPress={handleReset}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={handleReset}
+ >
             Reset All
           </Button>
         </div>

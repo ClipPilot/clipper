@@ -1,16 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+import { Modal,
   Button,
-  Textarea,
-  Progress,
-} from "@heroui/react";
+  TextArea,
+  ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import type { Character, GeneratedImage } from "./types";
@@ -152,24 +146,14 @@ export function VariationModal({
   const primaryImageUrl = character.primaryImageUrl || character.imageUrls?.[character.primary_image_index || 0];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="2xl"
-      classNames={{
-        base: "bg-surface-base border border-border-base mx-2 sm:mx-auto",
-        header: "border-b border-border-base px-4 sm:px-6",
-        body: "py-4 sm:py-6 px-4 sm:px-6",
-        footer: "border-t border-border-base px-4 sm:px-6",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-3">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="flex items-center gap-3">
           <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={24} />
           <span>Create Variation of {character.name}</span>
-        </ModalHeader>
+        </Modal.Header>
 
-        <ModalBody>
+        <Modal.Body>
           {step === "prompt" ? (
             <div className="space-y-4 sm:space-y-6">
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
@@ -192,29 +176,25 @@ export function VariationModal({
                         <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={28} />
                       </div>
                       <div className="text-center">
-                        <p className="text-text-primary font-medium mb-1">Generating Variations</p>
+                        <p className="text-text-accent font-medium mb-1">Generating Variations</p>
                         <p className="text-text-secondary text-sm">{progressMessage}</p>
                       </div>
                       <div className="w-full max-w-xs">
-                        <Progress
-                          value={progress}
-                          size="sm"
-                          classNames={{
-                            base: "w-full",
-                            track: "bg-surface-elevated",
-                            indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
-                          }}
-                        />
+                        <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                       </div>
                       <p className="text-text-muted text-xs">{progress > 0 ? `${progress}%` : "Starting..."}</p>
                     </div>
                   ) : (
                     <>
                       <div>
-                        <label className="text-sm font-medium text-text-primary mb-2 block">
+                        <label className="text-sm font-medium text-text-accent mb-2 block">
                           What changes do you want?
                         </label>
-                        <Textarea
+                        <TextArea
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
                           placeholder="e.g., wearing a red dress at a coffee shop, casual gym outfit in a modern apartment, professional blazer in an office setting..."
@@ -236,7 +216,7 @@ export function VariationModal({
           ) : (
             <div className="space-y-4 sm:space-y-6">
               <div className="text-center">
-                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-1 sm:mb-2">Select Your Favorites</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-text-accent mb-1 sm:mb-2">Select Your Favorites</h3>
                 <p className="text-text-secondary text-xs sm:text-sm">
                   Click on images to select • {selectedImageKeys.length} selected
                 </p>
@@ -285,52 +265,52 @@ export function VariationModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <Icon icon="solar:tag-bold-duotone" className="text-accent-400 w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-xs sm:text-sm text-text-primary">Credit Cost</span>
+                    <span className="text-xs sm:text-sm text-text-accent">Credit Cost</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-base sm:text-lg font-semibold text-text-primary">{selectedImageKeys.length} credits</span>
+                    <span className="text-base sm:text-lg font-semibold text-text-accent">{selectedImageKeys.length} credits</span>
                     <p className="text-[10px] sm:text-xs text-text-muted">1 credit per image</p>
                   </div>
                 </div>
               </div>
             </div>
           )}
-        </ModalBody>
+        </Modal.Body>
 
-        <ModalFooter>
+        <Modal.Footer>
           {step === "prompt" ? (
             <>
-              <Button variant="light" onPress={handleClose} className="text-text-secondary">
+              <Button variant="tertiary" onPress={handleClose} className="text-text-secondary">
                 Cancel
               </Button>
               <Button
-                className="bg-accent-400 text-white font-semibold"
-                onPress={handleGenerate}
-                isLoading={isGenerating}
-                isDisabled={!prompt.trim()}
-                startContent={<Icon icon="solar:magic-stick-3-bold" width={18} />}
-              >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={handleGenerate}
+ isPending={isGenerating}
+ isDisabled={!prompt.trim()}
+ >
+                <Icon icon="solar:magic-stick-3-bold" width={18} />
                 Generate Variations
               </Button>
             </>
           ) : (
             <>
-              <Button variant="light" onPress={() => setStep("prompt")} className="text-text-secondary">
+              <Button variant="tertiary" onPress={() => setStep("prompt")} className="text-text-secondary">
                 Back
               </Button>
               <Button
-                className="bg-accent-400 text-white font-semibold"
-                onPress={handleSave}
-                isLoading={isSaving}
-                isDisabled={selectedImageKeys.length === 0}
-                startContent={<Icon icon="solar:check-circle-bold" width={18} />}
-              >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={handleSave}
+ isPending={isSaving}
+ isDisabled={selectedImageKeys.length === 0}
+ >
+                <Icon icon="solar:check-circle-bold" width={18} />
                 Save ({selectedImageKeys.length} credits)
               </Button>
             </>
           )}
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

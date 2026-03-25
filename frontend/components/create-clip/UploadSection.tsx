@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Button, Card, CardBody, Progress, Input, Tabs, Tab } from "@heroui/react";
+import { Button, Card, ProgressBar, Input, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { videoAPI, UploadProgress, MultipartUploadResponse, VideoUrlInfo, VideoDownloadProgress } from "@/api/video";
 import { formatBytes, formatDuration } from "@/lib/videoUrlUtils";
@@ -280,14 +280,16 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">
+            <h3 className="text-lg font-bold text-text-accent mb-2">
               Downloading from Google Drive
             </h3>
             <p className="text-sm text-text-secondary">
               Please wait while we fetch your file...
             </p>
           </div>
-          <Progress isIndeterminate color="primary" className="w-full max-w-md" />
+          <ProgressBar isIndeterminate className="w-full max-w-md" >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
         </>
       ) : isUploading ? (
         <>
@@ -310,7 +312,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">
+            <h3 className="text-lg font-bold text-text-accent mb-2">
               Uploading Video
             </h3>
             {selectedFile && (
@@ -321,12 +323,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="w-full max-w-md">
-            <Progress
-              value={progress?.percentage || 0}
-              color="primary"
-              className="mb-3"
-              showValueLabel
-            />
+            <ProgressBar
+ value={progress?.percentage || 0}
+ className="mb-3"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
             <div className="flex justify-between text-sm text-text-secondary">
               <span>
                 {progress
@@ -368,7 +370,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             </div>
 
             <div className="text-center">
-              <h3 className="text-lg font-bold text-text-primary mb-1">
+              <h3 className="text-lg font-bold text-text-accent mb-1">
                 Drag & Drop Video
               </h3>
               <p className="text-sm text-text-secondary">or click to browse</p>
@@ -384,15 +386,14 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
             <div className="flex gap-3">
               <Button
-                as="label"
-                htmlFor="video-upload"
-                size="md"
-                color="primary"
-                isDisabled={downloading}
-                variant="flat"
-                startContent={<Icon icon="solar:folder-open-bold" />}
-                className="cursor-pointer"
-              >
+ as="label"
+ htmlFor="video-upload"
+ size="md"
+ isDisabled={downloading}
+ variant="tertiary"
+ className="cursor-pointer"
+ >
+                <Icon icon="solar:folder-open-bold" />
                 Browse Files
               </Button>
 
@@ -436,7 +437,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">
+            <h3 className="text-lg font-bold text-text-accent mb-2">
               {downloadProgress?.type === "uploading"
                 ? "Uploading to Cloud..."
                 : "Downloading Video"}
@@ -449,23 +450,20 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="w-full max-w-md">
-            <Progress
-              value={
-                downloadProgress?.type === "uploading"
-                  ? 100
-                  : downloadProgress?.percent || 0
-              }
-              color="primary"
-              className="mb-3"
-              isIndeterminate={
-                downloadProgress?.type === "start" ||
-                downloadProgress?.type === "uploading"
-              }
-              showValueLabel={
-                downloadProgress?.type !== "start" &&
-                downloadProgress?.type !== "uploading"
-              }
-            />
+            <ProgressBar
+ value={
+ downloadProgress?.type === "uploading"
+ ? 100
+ : downloadProgress?.percent || 0
+ }
+ className="mb-3"
+ isIndeterminate={
+ downloadProgress?.type === "start" ||
+ downloadProgress?.type === "uploading"
+ }
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
             <div className="flex justify-between text-sm text-text-secondary">
               <span>
                 {downloadProgress?.type === "uploading"
@@ -487,30 +485,26 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         <>
           <div className="flex gap-2">
             <Input
-              placeholder="Paste video URL (YouTube, Twitch, TikTok, etc.)"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
-              }}
-              startContent={
-                <Icon
-                  icon="solar:link-bold"
-                  className="text-text-tertiary"
-                />
-              }
-              isDisabled={isFetchingInfo}
-              classNames={{
-                inputWrapper: "bg-surface-elevated border border-border-base",
-              }}
-            />
+ placeholder="Paste video URL (YouTube, Twitch, TikTok, etc.)"
+ value={urlInput}
+ onChange={(e) => setUrlInput(e.target.value)}
+ onKeyDown={(e) => {
+ if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
+ }}
+ startContent={
+ <Icon
+ icon="solar:link-bold"
+ className="text-text-tertiary"
+ />
+ }
+ isDisabled={isFetchingInfo}
+ />
             <Button
-              color="primary"
-              variant="flat"
-              onPress={handleFetchVideoInfo}
-              isLoading={isFetchingInfo}
-              isDisabled={!urlInput.trim()}
-            >
+ variant="tertiary"
+ onPress={handleFetchVideoInfo}
+ isPending={isFetchingInfo}
+ isDisabled={!urlInput.trim()}
+ >
               Fetch
             </Button>
           </div>
@@ -526,7 +520,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-text-primary truncate">
+                  <h4 className="text-sm font-semibold text-text-accent truncate">
                     {videoInfo.title}
                   </h4>
                   <p className="text-xs text-text-secondary mt-1">
@@ -548,12 +542,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 </div>
               </div>
 
-              <Button
-                color="primary"
-                className="w-full mt-4"
-                onPress={handleUrlDownload}
-                startContent={<Icon icon="solar:download-bold" />}
-              >
+              <Button variant="primary"
+ className="w-full mt-4"
+ onPress={handleUrlDownload}
+ >
+                <Icon icon="solar:download-bold" />
                 Download & Import
               </Button>
             </div>
@@ -576,7 +569,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   if (isDisabled) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8">
+        <Card.Content className="p-8">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="w-20 h-20 bg-surface-elevated rounded-full flex items-center justify-center">
               <Icon
@@ -593,19 +586,18 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
               </p>
             </div>
             <div className="flex gap-3">
-              <Button
-                size="md"
-                color="primary"
-                isDisabled
-                startContent={<Icon icon="solar:folder-open-bold" />}
-                className="opacity-50 cursor-not-allowed"
-              >
+              <Button variant="primary"
+ size="md"
+ isDisabled
+ className="opacity-50 cursor-not-allowed"
+ >
+                <Icon icon="solar:folder-open-bold" />
                 Browse Files
               </Button>
 
             </div>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -614,26 +606,19 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   if (isUploading || isDownloading) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8">
+        <Card.Content className="p-8">
           {isDownloading ? renderUrlDownload() : renderFileUpload()}
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-8">
+      <Card.Content className="p-8">
         <Tabs
-          aria-label="Upload method"
-          variant="underlined"
-          classNames={{
-            tabList: "gap-4 w-full relative rounded-none p-0 border-b border-border-base mb-6",
-            cursor: "w-full bg-accent-400",
-            tab: "max-w-fit px-2 h-10",
-            tabContent: "group-data-[selected=true]:text-accent-400",
-          }}
-        >
+ aria-label="Upload method"
+ >
           <Tab
             key="file"
             title={
@@ -657,7 +642,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             {renderUrlDownload()}
           </Tab>
         </Tabs>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 };

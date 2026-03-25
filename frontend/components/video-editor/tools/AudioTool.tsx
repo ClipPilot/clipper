@@ -132,7 +132,7 @@ export function AudioTool() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:volume-loud-bold" className="text-accent-400" />
           Audio Settings
         </h3>
@@ -148,16 +148,14 @@ export function AudioTool() {
               icon="solar:microphone-bold"
               className="text-text-secondary"
             />
-            <span className="text-sm font-medium text-text-primary">
+            <span className="text-sm font-medium text-text-accent">
               Original Audio
             </span>
           </div>
           <Switch
-            isSelected={!audioState.originalMuted}
-            onValueChange={(val) => handleMuteToggle(!val)}
-            color="success"
-            size="sm"
-          />
+ isSelected={!audioState.originalMuted}
+ onChange={(val) => handleMuteToggle(!val)}
+ />
         </div>
 
         {!audioState.originalMuted && (
@@ -167,26 +165,12 @@ export function AudioTool() {
               <span>{Math.round(audioState.originalVolume * 100)}%</span>
             </div>
             <Slider
-              value={audioState.originalVolume}
-              onChange={(val) => handleVolumeChange(val as number)}
-              minValue={0}
-              maxValue={1}
-              step={0.01}
-              color="secondary"
-              size="sm"
-              startContent={
-                <Icon
-                  icon="solar:volume-cross-bold"
-                  className="text-text-tertiary"
-                />
-              }
-              endContent={
-                <Icon
-                  icon="solar:volume-loud-bold"
-                  className="text-text-tertiary"
-                />
-              }
-            />
+ value={audioState.originalVolume}
+ onChange={(val) => handleVolumeChange(val as number)}
+ minValue={0}
+ maxValue={1}
+ step={0.01}
+ />
           </div>
         )}
 
@@ -201,7 +185,7 @@ export function AudioTool() {
       <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Icon icon="solar:music-notes-bold" className="text-text-secondary" />
-          <span className="text-sm font-medium text-text-primary">
+          <span className="text-sm font-medium text-text-accent">
             Background Music
           </span>
         </div>
@@ -217,7 +201,7 @@ export function AudioTool() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-text-primary truncate">
+                  <p className="text-sm text-text-accent truncate">
                     {audioState.backgroundMusic.fileName}
                   </p>
                   <p className="text-xs text-text-tertiary">
@@ -226,12 +210,11 @@ export function AudioTool() {
                 </div>
               </div>
               <Button
-                size="sm"
-                variant="flat"
-                color="danger"
-                isIconOnly
-                onPress={handleRemoveMusic}
-              >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ onPress={handleRemoveMusic}
+ >
                 <Icon icon="solar:trash-bin-trash-bold" />
               </Button>
             </div>
@@ -244,14 +227,12 @@ export function AudioTool() {
                 </span>
               </div>
               <Slider
-                value={audioState.backgroundMusic.volume}
-                onChange={(val) => handleMusicVolumeChange(val as number)}
-                minValue={0}
-                maxValue={1}
-                step={0.01}
-                color="secondary"
-                size="sm"
-              />
+ value={audioState.backgroundMusic.volume}
+ onChange={(val) => handleMusicVolumeChange(val as number)}
+ minValue={0}
+ maxValue={1}
+ step={0.01}
+ />
             </div>
 
             <div>
@@ -262,14 +243,12 @@ export function AudioTool() {
                 </span>
               </div>
               <Slider
-                value={audioState.backgroundMusic.trimStart || 0}
-                onChange={(val) => handleMusicTrimStartChange(val as number)}
-                minValue={0}
-                maxValue={Math.max(audioState.backgroundMusic.duration - 1, 0)}
-                step={1}
-                color="secondary"
-                size="sm"
-              />
+ value={audioState.backgroundMusic.trimStart || 0}
+ onChange={(val) => handleMusicTrimStartChange(val as number)}
+ minValue={0}
+ maxValue={Math.max(audioState.backgroundMusic.duration - 1, 0)}
+ step={1}
+ />
             </div>
           </div>
         ) : (
@@ -282,12 +261,12 @@ export function AudioTool() {
               onChange={handleMusicUpload}
             />
             <Button
-              variant="bordered"
-              className="w-full"
-              onPress={() => fileInputRef.current?.click()}
-              isLoading={uploading}
-              startContent={!uploading && <Icon icon="solar:upload-bold" />}
-            >
+ variant="outline"
+ className="w-full"
+ onPress={() => fileInputRef.current?.click()}
+ isPending={uploading}
+ >
+              {!uploading && <Icon icon="solar:upload-bold" />}
               {uploading ? `Uploading ${uploadProgress}%` : "Upload Music"}
             </Button>
             <p className="text-xs text-text-tertiary mt-2 text-center">

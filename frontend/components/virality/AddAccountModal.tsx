@@ -1,16 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalBody,
+import { Modal,
   Button,
   Input,
   Switch,
-  Select,
-  SelectItem,
-} from "@heroui/react";
+  Select } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
 import { MY_PERFORMANCE_NAME } from "@/lib/viralityConstants";
@@ -111,27 +106,19 @@ export function AddAccountModal({
 
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="md"
-      hideCloseButton
-      classNames={{
-        base: "bg-[#1a1d2e] border border-[#2a2d3e] rounded-2xl",
-        body: "p-6",
-      }}
-    >
-      <ModalContent>
-        <ModalBody className="gap-6">
+ hideCloseButton>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
+        <Modal.Body className="gap-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Add New Account</h2>
             <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={handleClose}
-              className="text-gray-400 hover:text-white"
-            >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ onPress={handleClose}
+ className="text-gray-400 hover:text-white"
+ >
               <Icon icon="solar:close-circle-linear" width={24} />
             </Button>
           </div>
@@ -174,46 +161,40 @@ export function AddAccountModal({
                     ? "Profile URL"
                     : "Username or Profile URL"}
             </label>
-            <Input
-              placeholder={
-                accountType === "hashtag"
-                  ? "e.g. #fashion or fashion"
-                  : accountType === "keyword"
-                    ? "e.g. trending coffee"
-                    : selectedPlatform === "tiktok"
-                      ? "e.g. @selenagomez or tiktok.com/@selenagomez"
-                      : selectedPlatform === "x"
-                        ? "e.g. @elonmusk or x.com/elonmusk"
-                        : "e.g. instagram.com/creatorscale"
-              }
-              value={profileUrl}
-              onValueChange={handleUrlChange}
-              startContent={
-                <Icon
-                  icon={
-                    accountType === "hashtag"
-                      ? "solar:hashtag-bold"
-                      : accountType === "keyword"
-                        ? "solar:magnifer-bold"
-                        : selectedPlatform === "instagram"
-                          ? "solar:link-linear"
-                          : "solar:at-linear"
-                  }
-                  width={18}
-                  className="text-gray-500"
-                />
-              }
-              classNames={{
-                inputWrapper:
-                  "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                input: "text-white placeholder:text-gray-500",
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && profileUrl.trim()) {
-                  handleSubmit();
-                }
-              }}
-            />
+            <Input onChange={(e) => (handleUrlChange)(e.target.value)}
+ placeholder={
+ accountType === "hashtag"
+ ? "e.g. #fashion or fashion"
+ : accountType === "keyword"
+ ? "e.g. trending coffee"
+ : selectedPlatform === "tiktok"
+ ? "e.g. @selenagomez or tiktok.com/@selenagomez"
+ : selectedPlatform === "x"
+ ? "e.g. @elonmusk or x.com/elonmusk"
+ : "e.g. instagram.com/creatorscale"
+ }
+ value={profileUrl}
+ startContent={
+ <Icon
+ icon={
+ accountType === "hashtag"
+ ? "solar:hashtag-bold"
+ : accountType === "keyword"
+ ? "solar:magnifer-bold"
+ : selectedPlatform === "instagram"
+ ? "solar:link-linear"
+ : "solar:at-linear"
+ }
+ width={18}
+ className="text-gray-500"
+ />
+ }
+ onKeyDown={(e) => {
+ if (e.key === "Enter" && profileUrl.trim()) {
+ handleSubmit();
+ }
+ }}
+ />
           </div>
 
           {/* Platform Selection */}
@@ -265,34 +246,24 @@ export function AddAccountModal({
             <div className="space-y-2">
               <label className="text-sm text-gray-400">Competitor Group</label>
               <Select
-                items={[
-                  { key: "my-performance", label: MY_PERFORMANCE_NAME },
-                  { key: "new", label: "Create New Competitor" },
-                  ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
-                ]}
-                selectedKeys={[competitorSelection]}
-                onSelectionChange={(keys) => {
-                  const val = Array.from(keys)[0] as string;
-                  if (val) setCompetitorSelection(val);
-                }}
-                classNames={{
-                  trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                  value: "text-white",
-                }}
-              >
+ items={[
+ { key: "my-performance", label: MY_PERFORMANCE_NAME },
+ { key: "new", label: "Create New Competitor" },
+ ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
+ ]}
+ selectedKeys={[competitorSelection]}
+ onSelectionChange={(keys) => {
+ const val = Array.from(keys)[0] as string;
+ if (val) setCompetitorSelection(val);
+ }}
+ >
                 {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
               </Select>
               {competitorSelection === "new" && (
-                <Input
-                  placeholder="e.g. Nike, Adidas"
-                  value={newCompetitorName}
-                  onValueChange={setNewCompetitorName}
-                  classNames={{
-                    inputWrapper:
-                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                    input: "text-white placeholder:text-gray-500",
-                  }}
-                />
+                <Input onChange={(e) => (setNewCompetitorName)(e.target.value)}
+ placeholder="e.g. Nike, Adidas"
+ value={newCompetitorName}
+ />
               )}
             </div>
           )}
@@ -311,12 +282,9 @@ export function AddAccountModal({
               </div>
             </div>
             <Switch
-              isSelected={enableAlerts}
-              onValueChange={setEnableAlerts}
-              classNames={{
-                wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
-              }}
-            />
+ isSelected={enableAlerts}
+ onChange={setEnableAlerts}
+ />
           </div>
 
           {/* Error Message */}
@@ -329,21 +297,19 @@ export function AddAccountModal({
 
           {/* Start Tracking Button */}
           <Button
-            className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
-            onPress={handleSubmit}
-            isLoading={isSubmitting}
-            isDisabled={!profileUrl.trim()}
-            startContent={
-              !isSubmitting && <Icon icon="solar:bolt-bold" width={20} />
-            }
-          >
+ className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
+ onPress={handleSubmit}
+ isPending={isSubmitting}
+ isDisabled={!profileUrl.trim()}
+ >
+            {!isSubmitting && <Icon icon="solar:bolt-bold" width={20} />}
             Start Tracking
           </Button>
           <p className="text-xs text-text-tertiary text-center underline">
             1 credit/account/week
           </p>
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

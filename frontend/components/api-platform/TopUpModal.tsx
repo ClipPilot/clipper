@@ -9,7 +9,7 @@ import {
   ModalFooter,
   Button,
   Spinner,
-  addToast,
+  toast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -46,7 +46,7 @@ function TopUpForm({ amountCents, teamId, paymentIntentId, onSuccess, onClose }:
         const { credited } = await apiPlatformAPI.getTopUpStatus(teamId, paymentIntentId);
         if (credited) {
           onSuccess();
-          addToast({ title: "Wallet funded", description: `${formatCents(amountCents)} added to your balance`, color: "success" });
+          toast.success("Wallet funded", { description: `${formatCents(amountCents)} added to your balance` });
           onClose();
           return;
         }
@@ -55,11 +55,7 @@ function TopUpForm({ amountCents, teamId, paymentIntentId, onSuccess, onClose }:
       }
     }
 
-    addToast({
-      title: "Still processing",
-      description: "Your payment succeeded but funds are still being credited. They'll appear shortly.",
-      color: "warning",
-    });
+    toast.warning("Still processing", { description: "Your payment succeeded but funds are still being credited. They'll appear shortly." });
     onClose();
   };
 
@@ -78,11 +74,7 @@ function TopUpForm({ amountCents, teamId, paymentIntentId, onSuccess, onClose }:
     });
 
     if (error) {
-      addToast({
-        title: "Payment failed",
-        description: error.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Payment failed", { description: error.message || "Something went wrong" });
       setIsSubmitting(false);
       return;
     }

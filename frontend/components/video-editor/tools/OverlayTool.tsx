@@ -154,7 +154,7 @@ export function OverlayTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:layers-bold" className="text-accent-400" />
           Media Overlays
         </h3>
@@ -180,12 +180,12 @@ export function OverlayTool() {
           onChange={handleFileSelect}
         />
         <Button
-          variant="bordered"
-          className="w-full"
-          onPress={() => fileInputRef.current?.click()}
-          isLoading={uploading}
-          startContent={!uploading && <Icon icon="solar:upload-bold" />}
-        >
+ variant="outline"
+ className="w-full"
+ onPress={() => fileInputRef.current?.click()}
+ isPending={uploading}
+ >
+          {!uploading && <Icon icon="solar:upload-bold" />}
           {uploading ? `Uploading... ${uploadProgress}%` : "Add Image/Video Overlay"}
         </Button>
         <p className="text-xs text-text-tertiary mt-2 text-center">
@@ -229,7 +229,7 @@ export function OverlayTool() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-text-primary truncate">{getOverlayLabel(overlay)}</p>
+                  <p className="text-sm text-text-accent truncate">{getOverlayLabel(overlay)}</p>
                   <p className="text-xs text-text-tertiary">
                     {getOverlaySubtitle(overlay)} &middot;{" "}
                     {formatTime(overlay.startTime)} - {formatTime(overlay.endTime)}
@@ -237,12 +237,11 @@ export function OverlayTool() {
                 </div>
               </div>
               <Button
-                size="sm"
-                variant="flat"
-                color="danger"
-                isIconOnly
-                onPress={() => handleRemoveOverlay(overlay.id)}
-              >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ onPress={() => handleRemoveOverlay(overlay.id)}
+ >
                 <Icon icon="solar:trash-bin-trash-bold" />
               </Button>
             </div>
@@ -270,18 +269,16 @@ export function OverlayTool() {
               />
             </button>
             <Slider
-              value={selectedOverlay.opacity}
-              onChange={(val) =>
-                updateOverlay(selectedOverlay.id, { opacity: val as number })
-              }
-              minValue={0}
-              maxValue={1}
-              step={0.05}
-              size="sm"
-              color="secondary"
-              className="flex-1"
-              aria-label="Opacity"
-            />
+ value={selectedOverlay.opacity}
+ onChange={(val) =>
+ updateOverlay(selectedOverlay.id, { opacity: val as number })
+ }
+ minValue={0}
+ maxValue={1}
+ step={0.05}
+ className="flex-1"
+ aria-label="Opacity"
+ />
             <span className="text-xs text-text-tertiary w-8 text-right tabular-nums">
               {Math.round(selectedOverlay.opacity * 100)}%
             </span>

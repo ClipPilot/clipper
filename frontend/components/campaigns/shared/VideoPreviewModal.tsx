@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-} from "@heroui/react";
+import { Modal } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CampaignVideo } from "@/api/campaign";
 
@@ -20,26 +15,21 @@ export function VideoPreviewModal({ video, isOpen, onClose }: VideoPreviewModalP
   const src = video.presigned_url;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="lg"
-      classNames={{ base: "bg-surface-base border border-border-base" }}
-    >
-      <ModalContent>
-        <ModalHeader className="border-b border-border-base">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="border-b border-border-base">
           <div className="flex items-center gap-2 min-w-0">
             <Icon
               icon="solar:video-frame-play-vertical-bold-duotone"
               className="text-accent-400 flex-shrink-0"
               width={20}
             />
-            <span className="text-text-primary truncate">
+            <span className="text-text-accent truncate">
               {video.title ?? video.file_name ?? `Video #${video.id}`}
             </span>
           </div>
-        </ModalHeader>
-        <ModalBody className="py-4 flex items-center justify-center">
+        </Modal.Header>
+        <Modal.Body className="py-4 flex items-center justify-center">
           {src ? (
             <video
               src={src}
@@ -60,8 +50,8 @@ export function VideoPreviewModal({ video, isOpen, onClose }: VideoPreviewModalP
               </p>
             </div>
           )}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Progress } from "@heroui/react";
+import { ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface ScriptGeneratingPhaseProps {
@@ -18,20 +18,18 @@ export function ScriptGeneratingPhase({ progress, message }: ScriptGeneratingPha
           width={48}
         />
       </div>
-      <h3 className="text-xl font-semibold text-text-primary mb-2">
+      <h3 className="text-xl font-semibold text-text-accent mb-2">
         Crafting Your Viral Script
       </h3>
       <p className="text-text-secondary mb-6">
         {message || "Analyzing product images and generating script variations..."}
       </p>
       <div className="w-full max-w-md space-y-2">
-        <Progress
-          value={progress}
-          size="lg"
-          classNames={{
-            indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
-          }}
-        />
+        <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
         <p className="text-center text-xs text-text-muted">{progress}% complete</p>
       </div>
     </div>

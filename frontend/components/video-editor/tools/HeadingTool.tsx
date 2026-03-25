@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Textarea, Slider, Button } from "@heroui/react";
+import { TextArea, Slider, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   headingStateAtom,
@@ -73,7 +73,7 @@ export function HeadingTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:text-bold" className="text-accent-400" />
           Heading Overlay
         </h3>
@@ -87,19 +87,16 @@ export function HeadingTool() {
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm text-text-secondary">Heading Text</label>
           <Button
-            size="sm"
-            variant="flat"
-            color="secondary"
-            isLoading={isGenerating}
-            onPress={handleAIGenerate}
-            startContent={
-              !isGenerating && <Icon icon="solar:magic-stick-3-bold" />
-            }
-          >
+ size="sm"
+ variant="tertiary"
+ isPending={isGenerating}
+ onPress={handleAIGenerate}
+ >
+            {!isGenerating && <Icon icon="solar:magic-stick-3-bold" />}
             AI Generate
           </Button>
         </div>
-        <Textarea
+        <TextArea
           value={heading.text}
           onChange={(e) => handleTextChange(e.target.value)}
           placeholder="Enter heading or use AI Generate..."
@@ -251,24 +248,21 @@ export function HeadingTool() {
               Font Size: {heading.fontSize}px
             </label>
             <Slider
-              value={heading.fontSize}
-              onChange={(val) => updateHeading({ fontSize: val as number })}
-              minValue={16}
-              maxValue={120}
-              step={2}
-              color="secondary"
-              size="sm"
-            />
+ value={heading.fontSize}
+ onChange={(val) => updateHeading({ fontSize: val as number })}
+ minValue={16}
+ maxValue={120}
+ step={2}
+ />
           </div>
 
           {/* Clear Button */}
           <Button
-            variant="flat"
-            color="danger"
-            className="w-full"
-            onPress={handleClear}
-            startContent={<Icon icon="solar:trash-bin-trash-bold" />}
-          >
+ variant="danger-soft"
+ className="w-full"
+ onPress={handleClear}
+ >
+            <Icon icon="solar:trash-bin-trash-bold" />
             Remove Heading
           </Button>
         </>

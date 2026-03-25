@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal,
+  Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -31,25 +25,17 @@ export function ConfirmGenerateModal({
   accentButtonClass,
 }: ConfirmGenerateModalProps) {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      classNames={{
-        base: "bg-surface-elevated border border-border-base",
-        header: "border-b border-border-base",
-        footer: "border-t border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader>
-          <span className="text-text-primary">Confirm Video Generation</span>
-        </ModalHeader>
-        <ModalBody>
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
+        <Modal.Header>
+          <span className="text-text-accent">Confirm Video Generation</span>
+        </Modal.Header>
+        <Modal.Body>
           <div className="text-center py-4">
             <div className="flex justify-center mb-4">
               <BrandLogo size={64} />
             </div>
-            <p className="text-text-primary mb-2">
+            <p className="text-text-accent mb-2">
               This will use{" "}
               <span className={`font-bold ${accentTextClass}`}>
                 {creditCost} credits
@@ -62,24 +48,24 @@ export function ConfirmGenerateModal({
               You&apos;ll have {creditsRemaining - creditCost} credits remaining
             </p>
           </div>
-        </ModalBody>
-        <ModalFooter>
+        </Modal.Body>
+        <Modal.Footer>
           <Button
-            variant="bordered"
-            className="border-border-base text-text-secondary"
-            onPress={onClose}
-          >
+ variant="outline"
+ className="border-border-base text-text-secondary"
+ onPress={onClose}
+ >
             Cancel
           </Button>
           <Button
-            className={accentButtonClass}
-            onPress={onConfirm}
-            startContent={<Icon icon="solar:play-bold" width={16} />}
-          >
+ className={accentButtonClass}
+ onPress={onConfirm}
+ >
+            <Icon icon="solar:play-bold" width={16} />
             Generate Video
           </Button>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

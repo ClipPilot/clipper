@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Table,
+import { Table,
   TableHeader,
   TableColumn,
   TableBody,
@@ -13,10 +12,7 @@ import {
   Button,
   Spinner,
   Modal,
-  ModalContent,
-  ModalBody,
-  useDisclosure,
-} from "@heroui/react";
+  useOverlayState } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { formatDateTime } from "@/lib/formatters";
 import {
@@ -49,7 +45,7 @@ export function PublishedPostsTab({
   const [platformFilter, setPlatformFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const fireParams = useCallback(
     (overrides: Partial<GetTeamPostsParams> = {}) => {
@@ -146,13 +142,13 @@ export function PublishedPostsTab({
           }}
           rightContent={
             <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:export-bold" width={14} />}
-              onPress={handleExportCSV}
-              isDisabled={posts.length === 0}
-            >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+ onPress={handleExportCSV}
+ isDisabled={posts.length === 0}
+ >
+              <Icon icon="solar:export-bold" width={14} />
               Export CSV
             </Button>
           }
@@ -160,7 +156,7 @@ export function PublishedPostsTab({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" color="primary" />
+            <Spinner size="lg" color="accent" />
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
@@ -227,7 +223,7 @@ export function PublishedPostsTab({
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-text-primary truncate max-w-[320px]">
+                          <p className="text-sm font-semibold text-text-accent truncate max-w-[320px]">
                             {post.clip_title || `Post #${post.id}`}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -246,15 +242,10 @@ export function PublishedPostsTab({
                     </TableCell>
                     <TableCell>
                       <Chip
-                        size="sm"
-                        variant="flat"
-                        classNames={{
-                          base: `${platformChipClass(post.platform)} h-6 px-2`,
-                        }}
-                        startContent={
-                          <Icon icon={platformIcon(post.platform)} width={12} />
-                        }
-                      >
+ size="sm"
+ variant="tertiary"
+ >
+                        <Icon icon={platformIcon(post.platform)} width={12} />
                         <span className="text-xs capitalize">
                           {post.platform}
                         </span>
@@ -262,19 +253,19 @@ export function PublishedPostsTab({
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm text-text-primary">{date}</p>
+                        <p className="text-sm text-text-accent">{date}</p>
                         <p className="text-xs text-text-tertiary">{time}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       {post.post_url ? (
                         <Button
-                          size="sm"
-                          variant="flat"
-                          isIconOnly
-                          className="bg-transparent hover:bg-surface-elevated"
-                          onPress={() => window.open(post.post_url!, "_blank")}
-                        >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-transparent hover:bg-surface-elevated"
+ onPress={() => window.open(post.post_url!, "_blank")}
+ >
                           <Icon
                             icon="solar:square-arrow-right-up-linear"
                             width={16}
@@ -310,37 +301,24 @@ export function PublishedPostsTab({
           </p>
           {totalPages > 1 && (
             <Pagination
-              total={totalPages}
-              page={page}
-              onChange={(p) => {
-                setPage(p);
-                fireParams({ page: p });
-              }}
-              size="sm"
-              classNames={{
-                item: "bg-surface-elevated text-text-secondary",
-                cursor: "bg-accent-400 text-white",
-              }}
-            />
+ total={totalPages}
+ page={page}
+ onChange={(p) => {
+ setPage(p);
+ fireParams({ page: p });
+ }}
+ />
           )}
         </div>
       </div>
 
       {/* Video Preview Modal */}
-      <Modal
-        isOpen={isOpen}
-        onClose={() => {
-          onClose();
-          setVideoUrl(null);
-        }}
-        size="3xl"
-        classNames={{
-          base: "bg-surface-base border border-border-base",
-          closeButton: "text-text-secondary hover:text-text-primary",
-        }}
-      >
-        <ModalContent>
-          <ModalBody className="p-0">
+      <Modal>
+        <Modal.Backdrop isOpen={isOpen} onOpenChange={() => {
+ onOpenChange();
+ setVideoUrl(null);
+ }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+          <Modal.Body className="p-0">
             {videoUrl && (
               <video
                 src={videoUrl}
@@ -349,8 +327,8 @@ export function PublishedPostsTab({
                 className="w-full rounded-lg"
               />
             )}
-          </ModalBody>
-        </ModalContent>
+          </Modal.Body>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </>
   );

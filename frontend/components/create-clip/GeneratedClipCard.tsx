@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardBody, CardHeader, CardFooter, Button, Chip } from "@heroui/react";
+import { Card, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface GeneratedClip {
@@ -31,13 +31,13 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
 
   return (
     <Card className="bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all">
-      <CardHeader className="flex items-center justify-between p-4 border-b border-border-base">
+      <Card.Header className="flex items-center justify-between p-4 border-b border-border-base">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent-400/10 rounded-lg flex items-center justify-center">
             <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-2xl text-accent-400" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-text-primary">
+            <h3 className="text-base font-bold text-text-accent">
               Clip #{index + 1}
             </h3>
             <p className="text-xs text-text-tertiary">ID: {clip.id}</p>
@@ -45,16 +45,16 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
         </div>
 
         <Chip
-          color={getScoreColor(clip.evalScore)}
-          variant="flat"
-          startContent={<Icon icon="solar:star-bold" />}
-          size="sm"
-        >
+ color={getScoreColor(clip.evalScore)}
+ variant="tertiary"
+ size="sm"
+ >
+          <Icon icon="solar:star-bold" />
           {clip.evalScore}/100
         </Chip>
-      </CardHeader>
+      </Card.Header>
 
-      <CardBody className="p-4">
+      <Card.Content className="p-4">
         {/* Video Preview Placeholder */}
         <div className="aspect-video bg-surface-dark rounded-lg mb-4 flex items-center justify-center border border-border-base">
           <div className="text-center">
@@ -69,7 +69,7 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Icon icon="solar:chat-round-bold-duotone" className="text-lg text-accent-400" />
-              <h4 className="text-sm font-semibold text-text-primary">AI Analysis</h4>
+              <h4 className="text-sm font-semibold text-text-accent">AI Analysis</h4>
             </div>
             <p className="text-sm text-text-secondary leading-relaxed pl-6">
               {clip.finalMessage}
@@ -79,38 +79,37 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
           {/* Quality Badge */}
           <div className="flex items-center gap-2 pl-6">
             <Icon icon="solar:medal-star-bold-duotone" className="text-lg text-accent-400" />
-            <span className="text-sm font-medium text-text-primary">
+            <span className="text-sm font-medium text-text-accent">
               Quality: {getScoreLabel(clip.evalScore)}
             </span>
           </div>
         </div>
-      </CardBody>
+      </Card.Content>
 
-      <CardFooter className="p-4 border-t border-border-base flex gap-2">
-        <Button
-          size="sm"
-          color="primary"
-          startContent={<Icon icon="solar:download-bold" />}
-          className="flex-1"
-        >
+      <Card.Footer className="p-4 border-t border-border-base flex gap-2">
+        <Button variant="primary"
+ size="sm"
+ className="flex-1"
+ >
+          <Icon icon="solar:download-bold" />
           Download
         </Button>
         <Button
-          size="sm"
-          variant="bordered"
-          startContent={<Icon icon="solar:share-bold" />}
-          className="flex-1"
-        >
+ size="sm"
+ variant="outline"
+ className="flex-1"
+ >
+          <Icon icon="solar:share-bold" />
           Share
         </Button>
         <Button
-          size="sm"
-          variant="light"
-          isIconOnly
-          startContent={<Icon icon="solar:eye-bold" />}
-        >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ >
+        <Icon icon="solar:eye-bold" />
         </Button>
-      </CardFooter>
+      </Card.Footer>
     </Card>
   );
 };

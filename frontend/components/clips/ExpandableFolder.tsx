@@ -143,7 +143,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-text-primary truncate">
+            <h3 className="text-sm font-semibold text-text-accent truncate">
               {folder.name}
             </h3>
             {clipCount !== null && (
@@ -158,13 +158,12 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onDelete && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="danger"
-              onPress={() => onDelete(folder.id)}
-              onClick={(e) => e.stopPropagation()}
-            >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ onPress={() => onDelete(folder.id)}
+ onClick={(e) => e.stopPropagation()}
+ >
               <Icon icon="solar:trash-bin-outline" className="text-lg" />
             </Button>
           )}

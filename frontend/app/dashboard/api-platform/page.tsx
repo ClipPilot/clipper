@@ -2,25 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  Card,
-  CardBody,
-  CardHeader,
+import { Card,
   Input,
   Button,
-  Divider,
+  Separator,
   Chip,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Skeleton,
   Switch,
   Select,
-  SelectItem,
-  addToast,
-} from "@heroui/react";
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -103,7 +94,7 @@ export default function ApiPlatformPage() {
         setFaceSwapJobResult(result);
       }
     } catch {
-      addToast({ title: "Error", description: "Failed to load job results", color: "danger" });
+      toast.danger("Error", { description: "Failed to load job results" });
       setJobModalOpen(false);
     } finally {
       setJobModalLoading(false);
@@ -118,11 +109,7 @@ export default function ApiPlatformPage() {
       const data = await apiPlatformAPI.getWallet(teamId);
       setWallet(data);
     } catch {
-      addToast({
-        title: "Error",
-        description: "Failed to load wallet",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load wallet" });
     } finally {
       setWalletLoading(false);
     }
@@ -134,11 +121,7 @@ export default function ApiPlatformPage() {
       const data = await apiPlatformAPI.listKeys(teamId);
       setKeys(data.keys);
     } catch {
-      addToast({
-        title: "Error",
-        description: "Failed to load API keys",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load API keys" });
     } finally {
       setKeysLoading(false);
     }
@@ -180,11 +163,7 @@ export default function ApiPlatformPage() {
     if (!teamId) return;
     const cents = Math.round(parseFloat(topUpAmount) * 100);
     if (isNaN(cents) || cents < 500) {
-      addToast({
-        title: "Invalid amount",
-        description: "Minimum top-up is $5.00",
-        color: "danger",
-      });
+      toast.danger("Invalid amount", { description: "Minimum top-up is $5.00" });
       return;
     }
     setIsCreatingTopUp(true);
@@ -195,12 +174,7 @@ export default function ApiPlatformPage() {
       setTopUpAmountCents(cents);
       setTopUpModalOpen(true);
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to start top-up",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to start top-up" });
     } finally {
       setIsCreatingTopUp(false);
     }
@@ -217,12 +191,7 @@ export default function ApiPlatformPage() {
       setNewKeyName("");
       fetchKeys();
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to create API key",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to create API key" });
     } finally {
       setIsCreatingKey(false);
     }
@@ -233,19 +202,10 @@ export default function ApiPlatformPage() {
     setRevokingKeyId(keyId);
     try {
       await apiPlatformAPI.revokeKey(teamId, keyId);
-      addToast({
-        title: "Key revoked",
-        description: "The API key has been permanently revoked.",
-        color: "success",
-      });
+      toast.success("Key revoked", { description: "The API key has been permanently revoked." });
       fetchKeys();
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to revoke key",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to revoke key" });
     } finally {
       setRevokingKeyId(null);
     }
@@ -259,19 +219,9 @@ export default function ApiPlatformPage() {
     try {
       const updated = await apiPlatformAPI.updateAutoRefill(teamId, updates);
       setAutoRefill(updated);
-      addToast({
-        title: "Auto-refill updated",
-        description: updates.auto_refill !== undefined
-          ? updates.auto_refill ? "Auto-refill enabled" : "Auto-refill disabled"
-          : "Settings saved",
-        color: "success",
-      });
+      toast.success("Auto-refill updated", { description: updates.auto_refill !== undefined });
     } catch (err) {
-      addToast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update auto-refill",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to update auto-refill" });
       fetchAutoRefill();
     } finally {
       setAutoRefillSaving(false);
@@ -279,32 +229,23 @@ export default function ApiPlatformPage() {
   };
 
   const renderCreatedKeyModal = () => (
-    <Modal
-      isOpen={createdKeyModal}
-      onClose={() => {
-        setCreatedKeyModal(false);
-        setCreatedKeyRaw("");
-        setCopied(false);
-      }}
-      size="lg"
-      classNames={{
-        base: "bg-surface-base border border-border-base",
-        header: "border-b border-border-base",
-        footer: "border-t border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
+    <Modal>
+      <Modal.Backdrop isOpen={createdKeyModal} onOpenChange={() => {
+ setCreatedKeyModal(false);
+ setCreatedKeyRaw("");
+ setCopied(false);
+ }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <Icon
               icon="solar:key-bold-duotone"
               className="text-green-500"
               width={24}
             />
-            <span className="text-text-primary">API Key Created</span>
+            <span className="text-text-accent">API Key Created</span>
           </div>
-        </ModalHeader>
-        <ModalBody className="py-6 gap-4">
+        </Modal.Header>
+        <Modal.Body className="py-6 gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <Icon
               icon="solar:danger-triangle-bold-duotone"
@@ -319,7 +260,7 @@ export default function ApiPlatformPage() {
           <div className="p-4 rounded-lg bg-surface-elevated space-y-4">
             <div>
               <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Key Name</p>
-              <p className="text-text-primary font-medium">{createdKeyName}</p>
+              <p className="text-text-accent font-medium">{createdKeyName}</p>
             </div>
             <div>
               <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">API Key</p>
@@ -328,19 +269,19 @@ export default function ApiPlatformPage() {
                   {createdKeyRaw}
                 </code>
                 <Button
-                  size="sm"
-                  isIconOnly
-                  variant="flat"
-                  className={
-                    copied
-                      ? "bg-green-500/20 text-green-500"
-                      : "bg-surface-dark text-text-secondary hover:text-text-primary"
-                  }
-                  onPress={() => {
-                    navigator.clipboard.writeText(createdKeyRaw);
-                    setCopied(true);
-                  }}
-                >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ className={
+ copied
+ ? "bg-green-500/20 text-green-500"
+ : "bg-surface-dark text-text-secondary hover:text-text-accent"
+ }
+ onPress={() => {
+ navigator.clipboard.writeText(createdKeyRaw);
+ setCopied(true);
+ }}
+ >
                   <Icon
                     icon={copied ? "solar:check-circle-bold-duotone" : "solar:copy-bold-duotone"}
                     width={18}
@@ -349,20 +290,20 @@ export default function ApiPlatformPage() {
               </div>
             </div>
           </div>
-        </ModalBody>
-        <ModalFooter>
+        </Modal.Body>
+        <Modal.Footer>
           <Button
-            className="bg-accent-400 text-white font-medium"
-            onPress={() => {
-              setCreatedKeyModal(false);
-              setCreatedKeyRaw("");
-              setCopied(false);
-            }}
-          >
+ className="bg-accent-400 text-white font-medium"
+ onPress={() => {
+ setCreatedKeyModal(false);
+ setCreatedKeyRaw("");
+ setCopied(false);
+ }}
+ >
             Done
           </Button>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 
@@ -383,7 +324,7 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <h1 className="text-2xl font-bold text-text-primary">API Platform</h1>
+          <h1 className="text-2xl font-bold text-text-accent">API Platform</h1>
           <p className="text-text-secondary mt-1">
             Manage your API keys and wallet balance
           </p>
@@ -419,22 +360,22 @@ export default function ApiPlatformPage() {
           transition={{ duration: 0.4, delay: 0.2 }}
         >
           <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+            <Card.Header className="flex flex-row items-center gap-3 pb-0">
               <Icon
                 icon="solar:wallet-bold-duotone"
                 className="text-accent-400"
                 width={24}
               />
               <div>
-                <h2 className="text-lg font-semibold text-text-primary">
+                <h2 className="text-lg font-semibold text-text-accent">
                   Wallet
                 </h2>
                 <p className="text-sm text-text-tertiary">
                   Fund your wallet to make API calls
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-6">
+            </Card.Header>
+            <Card.Content className="gap-6">
               {walletLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
@@ -454,7 +395,7 @@ export default function ApiPlatformPage() {
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Spent
                       </p>
-                      <p className="text-2xl font-bold text-text-primary">
+                      <p className="text-2xl font-bold text-text-accent">
                         {formatCents(wallet.total_spent_cents)}
                       </p>
                     </div>
@@ -462,13 +403,13 @@ export default function ApiPlatformPage() {
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Funded
                       </p>
-                      <p className="text-2xl font-bold text-text-primary">
+                      <p className="text-2xl font-bold text-text-accent">
                         {formatCents(wallet.total_topped_up_cents)}
                       </p>
                     </div>
                   </div>
 
-                  <Divider className="bg-border-base" />
+                  <Separator className="bg-border-base" />
 
                   <div>
                     <p className="text-sm font-medium text-text-secondary mb-3">
@@ -477,49 +418,41 @@ export default function ApiPlatformPage() {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {TOP_UP_PRESETS.map((preset) => (
                         <Button
-                          key={preset}
-                          size="sm"
-                          variant="flat"
-                          className={
-                            topUpAmount === (preset / 100).toString()
-                              ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
-                              : "bg-surface-elevated text-text-secondary hover:text-text-primary"
-                          }
-                          onPress={() =>
-                            setTopUpAmount((preset / 100).toString())
-                          }
-                        >
+ key={preset}
+ size="sm"
+ variant="tertiary"
+ className={
+ topUpAmount === (preset / 100).toString()
+ ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
+ : "bg-surface-elevated text-text-secondary hover:text-text-accent"
+ }
+ onPress={() =>
+ setTopUpAmount((preset / 100).toString())
+ }
+ >
                           {formatCents(preset)}
                         </Button>
                       ))}
                     </div>
                     <div className="flex gap-3">
-                      <Input
-                        placeholder="Amount in USD"
-                        value={topUpAmount}
-                        onValueChange={setTopUpAmount}
-                        startContent={
-                          <span className="text-text-tertiary text-sm">$</span>
-                        }
-                        type="number"
-                        min={5}
-                        step={1}
-                        classNames={{
-                          input: "bg-surface-elevated text-text-primary",
-                          inputWrapper:
-                            "bg-surface-elevated border-border-base hover:border-border-light",
-                        }}
-                      />
+                      <Input onChange={(e) => (setTopUpAmount)(e.target.value)}
+ placeholder="Amount in USD"
+ value={topUpAmount}
+ startContent={
+ <span className="text-text-tertiary text-sm">$</span>
+ }
+ type="number"
+ min={5}
+ step={1}
+ />
                       <Button
-                        className="bg-accent-400 text-white font-medium flex-shrink-0"
-                        isLoading={isCreatingTopUp}
-                        onPress={handleTopUp}
-                        startContent={
-                          !isCreatingTopUp && (
+ className="bg-accent-400 text-white font-medium flex-shrink-0"
+ isPending={isCreatingTopUp}
+ onPress={handleTopUp}
+ >
+                        {!isCreatingTopUp && (
                             <Icon icon="solar:card-bold-duotone" width={18} />
-                          )
-                        }
-                      >
+                          )}
                         Top Up
                       </Button>
                     </div>
@@ -528,7 +461,7 @@ export default function ApiPlatformPage() {
               ) : (
                 <p className="text-text-tertiary">Failed to load wallet.</p>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
 
@@ -539,29 +472,29 @@ export default function ApiPlatformPage() {
           transition={{ duration: 0.4, delay: 0.25 }}
         >
           <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+            <Card.Header className="flex flex-row items-center gap-3 pb-0">
               <Icon
                 icon="solar:refresh-circle-bold-duotone"
                 className="text-accent-400"
                 width={24}
               />
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-text-primary">
+                <h2 className="text-lg font-semibold text-text-accent">
                   Auto-Refill
                 </h2>
                 <p className="text-sm text-text-tertiary">
                   Automatically top up when balance is low
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-4">
+            </Card.Header>
+            <Card.Content className="gap-4">
               {autoRefillLoading ? (
                 <Skeleton className="h-16 rounded-lg" />
               ) : autoRefill ? (
                 <>
                   <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
                     <div>
-                      <p className="text-text-primary font-medium">
+                      <p className="text-text-accent font-medium">
                         Enable Auto-Refill
                       </p>
                       <p className="text-sm text-text-tertiary">
@@ -571,15 +504,12 @@ export default function ApiPlatformPage() {
                       </p>
                     </div>
                     <Switch
-                      isSelected={autoRefill.auto_refill}
-                      isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
-                      onValueChange={(val) =>
-                        handleAutoRefillUpdate({ auto_refill: val })
-                      }
-                      classNames={{
-                        wrapper: "group-data-[selected=true]:bg-accent-400",
-                      }}
-                    />
+ isSelected={autoRefill.auto_refill}
+ isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
+ onChange={(val) =>
+ handleAutoRefillUpdate({ auto_refill: val })
+ }
+ />
                   </div>
 
                   {autoRefill.auto_refill && (
@@ -589,17 +519,13 @@ export default function ApiPlatformPage() {
                           Refill when balance drops below
                         </p>
                         <Select
-                          selectedKeys={[autoRefill.refill_threshold_cents.toString()]}
-                          onSelectionChange={(keys) => {
-                            const val = Array.from(keys)[0] as string;
-                            if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val) });
-                          }}
-                          isDisabled={autoRefillSaving}
-                          classNames={{
-                            trigger: "bg-surface-elevated border-border-base",
-                            value: "text-text-primary",
-                          }}
-                        >
+ selectedKeys={[autoRefill.refill_threshold_cents.toString()]}
+ onSelectionChange={(keys) => {
+ const val = Array.from(keys)[0] as string;
+ if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val) });
+ }}
+ isDisabled={autoRefillSaving}
+ >
                           <SelectItem key="500">$5.00</SelectItem>
                           <SelectItem key="1000">$10.00</SelectItem>
                           <SelectItem key="2500">$25.00</SelectItem>
@@ -611,17 +537,13 @@ export default function ApiPlatformPage() {
                           Amount to refill
                         </p>
                         <Select
-                          selectedKeys={[autoRefill.refill_amount_cents.toString()]}
-                          onSelectionChange={(keys) => {
-                            const val = Array.from(keys)[0] as string;
-                            if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val) });
-                          }}
-                          isDisabled={autoRefillSaving}
-                          classNames={{
-                            trigger: "bg-surface-elevated border-border-base",
-                            value: "text-text-primary",
-                          }}
-                        >
+ selectedKeys={[autoRefill.refill_amount_cents.toString()]}
+ onSelectionChange={(keys) => {
+ const val = Array.from(keys)[0] as string;
+ if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val) });
+ }}
+ isDisabled={autoRefillSaving}
+ >
                           <SelectItem key="1000">$10.00</SelectItem>
                           <SelectItem key="2500">$25.00</SelectItem>
                           <SelectItem key="5000">$50.00</SelectItem>
@@ -634,7 +556,7 @@ export default function ApiPlatformPage() {
               ) : (
                 <p className="text-text-tertiary">Failed to load auto-refill settings.</p>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
 
@@ -645,53 +567,45 @@ export default function ApiPlatformPage() {
           transition={{ duration: 0.4, delay: 0.3 }}
         >
           <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+            <Card.Header className="flex flex-row items-center gap-3 pb-0">
               <Icon
                 icon="solar:key-bold-duotone"
                 className="text-accent-400"
                 width={24}
               />
               <div>
-                <h2 className="text-lg font-semibold text-text-primary">
+                <h2 className="text-lg font-semibold text-text-accent">
                   API Keys
                 </h2>
                 <p className="text-sm text-text-tertiary">
                   Create and manage your API keys
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-6">
+            </Card.Header>
+            <Card.Content className="gap-6">
               {/* Create Key */}
               <div className="flex gap-3">
-                <Input
-                  placeholder="Key name (e.g. Production, Testing)"
-                  value={newKeyName}
-                  onValueChange={setNewKeyName}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreateKey();
-                  }}
-                  classNames={{
-                    input: "bg-surface-elevated text-text-primary",
-                    inputWrapper:
-                      "bg-surface-elevated border-border-base hover:border-border-light",
-                  }}
-                />
+                <Input onChange={(e) => (setNewKeyName)(e.target.value)}
+ placeholder="Key name (e.g. Production, Testing)"
+ value={newKeyName}
+ onKeyDown={(e) => {
+ if (e.key === "Enter") handleCreateKey();
+ }}
+ />
                 <Button
-                  className="bg-accent-400 text-white font-medium flex-shrink-0"
-                  isLoading={isCreatingKey}
-                  isDisabled={!newKeyName.trim()}
-                  onPress={handleCreateKey}
-                  startContent={
-                    !isCreatingKey && (
+ className="bg-accent-400 text-white font-medium flex-shrink-0"
+ isPending={isCreatingKey}
+ isDisabled={!newKeyName.trim()}
+ onPress={handleCreateKey}
+ >
+                  {!isCreatingKey && (
                       <Icon icon="solar:add-circle-bold-duotone" width={18} />
-                    )
-                  }
-                >
+                    )}
                   Create Key
                 </Button>
               </div>
 
-              <Divider className="bg-border-base" />
+              <Separator className="bg-border-base" />
 
               {/* Keys List */}
               {keysLoading ? (
@@ -728,7 +642,7 @@ export default function ApiPlatformPage() {
                           width={20}
                         />
                         <div className="min-w-0">
-                          <p className="text-text-primary font-medium truncate">
+                          <p className="text-text-accent font-medium truncate">
                             {key.name}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -752,22 +666,18 @@ export default function ApiPlatformPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Chip
-                          size="sm"
-                          variant="flat"
-                          classNames={{
-                            base: "bg-green-500/10",
-                            content: "text-green-500 text-xs font-medium",
-                          }}
-                        >
+ size="sm"
+ variant="tertiary"
+ >
                           Active
                         </Chip>
                         <Button
-                          size="sm"
-                          variant="flat"
-                          className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                          isLoading={revokingKeyId === key.id}
-                          onPress={() => handleRevokeKey(key.id)}
-                        >
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
+ isPending={revokingKeyId === key.id}
+ onPress={() => handleRevokeKey(key.id)}
+ >
                           Revoke
                         </Button>
                       </div>
@@ -791,7 +701,7 @@ export default function ApiPlatformPage() {
                               width={20}
                             />
                             <div className="min-w-0">
-                              <p className="text-text-primary font-medium truncate">
+                              <p className="text-text-accent font-medium truncate">
                                 {key.name}
                               </p>
                               <code className="text-xs text-text-tertiary font-mono">
@@ -800,13 +710,9 @@ export default function ApiPlatformPage() {
                             </div>
                           </div>
                           <Chip
-                            size="sm"
-                            variant="flat"
-                            classNames={{
-                              base: "bg-red-500/10",
-                              content: "text-red-500 text-xs font-medium",
-                            }}
-                          >
+ size="sm"
+ variant="tertiary"
+ >
                             Revoked
                           </Chip>
                         </div>
@@ -815,7 +721,7 @@ export default function ApiPlatformPage() {
                   )}
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
 
@@ -826,14 +732,14 @@ export default function ApiPlatformPage() {
           transition={{ duration: 0.4, delay: 0.4 }}
         >
           <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+            <Card.Header className="flex flex-row items-center gap-3 pb-0">
               <Icon
                 icon="solar:chart-bold-duotone"
                 className="text-accent-400"
                 width={24}
               />
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-text-primary">
+                <h2 className="text-lg font-semibold text-text-accent">
                   Recent Usage
                 </h2>
                 <p className="text-sm text-text-tertiary">
@@ -842,8 +748,8 @@ export default function ApiPlatformPage() {
                     : "API request history"}
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-4">
+            </Card.Header>
+            <Card.Content className="gap-4">
               {usageLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
@@ -917,17 +823,12 @@ export default function ApiPlatformPage() {
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
                               <Chip
-                                size="sm"
-                                variant="flat"
-                                classNames={{
-                                  base: "bg-surface-elevated px-1.5",
-                                  content:
-                                    "text-text-secondary text-xs font-mono",
-                                }}
-                              >
+ size="sm"
+ variant="tertiary"
+ >
                                 {log.method}
                               </Chip>
-                              <span className="text-text-primary font-mono text-xs truncate max-w-[200px]">
+                              <span className="text-text-accent font-mono text-xs truncate max-w-[200px]">
                                 {log.endpoint}
                               </span>
                             </div>
@@ -937,19 +838,9 @@ export default function ApiPlatformPage() {
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <Chip
-                              size="sm"
-                              variant="flat"
-                              classNames={{
-                                base:
-                                  log.status_code < 400
-                                    ? "bg-green-500/10"
-                                    : "bg-red-500/10",
-                                content:
-                                  log.status_code < 400
-                                    ? "text-green-500 text-xs"
-                                    : "text-red-500 text-xs",
-                              }}
-                            >
+ size="sm"
+ variant="tertiary"
+ >
                               {log.status_code}
                             </Chip>
                           </td>
@@ -962,32 +853,32 @@ export default function ApiPlatformPage() {
                                     : log.metadata.jobId}
                                 </span>
                                 <Button
-                                  size="sm"
-                                  variant="light"
-                                  isIconOnly
-                                  className="min-w-6 w-6 h-6"
-                                  onPress={() => {
-                                    navigator.clipboard.writeText(String(log.metadata!.jobId));
-                                    addToast({ title: "Copied", description: "Job ID copied to clipboard", color: "success" });
-                                  }}
-                                >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="min-w-6 w-6 h-6"
+ onPress={() => {
+ navigator.clipboard.writeText(String(log.metadata!.jobId));
+ toast.success("Copied", { description: "Job ID copied to clipboard" });
+ }}
+ >
                                   <Icon icon="solar:copy-bold" width={14} className="text-text-tertiary" />
                                 </Button>
                                 {log.status_code < 400 && (
                                   <Button
-                                    size="sm"
-                                    variant="light"
-                                    isIconOnly
-                                    className="min-w-6 w-6 h-6"
-                                    onPress={() => openJobModal(log)}
-                                  >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="min-w-6 w-6 h-6"
+ onPress={() => openJobModal(log)}
+ >
                                     <Icon icon="solar:eye-bold" width={14} className="text-accent-400" />
                                   </Button>
                                 )}
                               </div>
                             ) : "—"}
                           </td>
-                          <td className="py-2.5 px-3 text-right text-text-primary">
+                          <td className="py-2.5 px-3 text-right text-text-accent">
                             {log.cost_cents > 0
                               ? formatCents(log.cost_cents)
                               : "—"}
@@ -998,7 +889,7 @@ export default function ApiPlatformPage() {
                   </table>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
       </div>
@@ -1023,22 +914,12 @@ export default function ApiPlatformPage() {
       />
 
       {/* Job Result Modal */}
-      <Modal
-        isOpen={jobModalOpen}
-        onClose={() => setJobModalOpen(false)}
-        size="2xl"
-        scrollBehavior="inside"
-        classNames={{
-          base: "bg-surface-base border border-border-base",
-          header: "border-b border-border-base",
-          body: "py-4",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="text-text-primary">
+      <Modal>
+        <Modal.Backdrop isOpen={jobModalOpen} onOpenChange={() => setJobModalOpen(false)}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
+          <Modal.Header className="text-text-accent">
             {jobModalType === "clip" ? "Clip Job Results" : "Face Swap Job Results"}
-          </ModalHeader>
-          <ModalBody>
+          </Modal.Header>
+          <Modal.Body>
             {jobModalLoading ? (
               <div className="flex flex-col items-center gap-3 py-8">
                 <Icon icon="solar:refresh-bold-duotone" className="text-accent-400 animate-spin" width={32} />
@@ -1049,13 +930,9 @@ export default function ApiPlatformPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-text-tertiary text-sm">Status:</span>
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: clipJobResult.status === "completed" ? "bg-green-500/10" : "bg-yellow-500/10",
-                      content: clipJobResult.status === "completed" ? "text-green-500 text-xs" : "text-yellow-500 text-xs",
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ >
                     {clipJobResult.status}
                   </Chip>
                   {clipJobResult.progress && (
@@ -1066,10 +943,10 @@ export default function ApiPlatformPage() {
                 </div>
                 {clipJobResult.clips?.map((clip) => (
                   <Card key={clip.clip_id} className="bg-surface-elevated border border-border-base">
-                    <CardBody className="gap-3">
+                    <Card.Content className="gap-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-text-primary font-medium text-sm">
+                          <p className="text-text-accent font-medium text-sm">
                             {clip.title || `Clip #${clip.clip_id}`}
                           </p>
                           {clip.heading && (
@@ -1077,13 +954,9 @@ export default function ApiPlatformPage() {
                           )}
                         </div>
                         <Chip
-                          size="sm"
-                          variant="flat"
-                          classNames={{
-                            base: clip.status === "completed" ? "bg-green-500/10" : "bg-red-500/10",
-                            content: clip.status === "completed" ? "text-green-500 text-xs" : "text-red-500 text-xs",
-                          }}
-                        >
+ size="sm"
+ variant="tertiary"
+ >
                           {clip.status}
                         </Chip>
                       </div>
@@ -1095,13 +968,13 @@ export default function ApiPlatformPage() {
                             className="w-full max-h-[300px] rounded-lg bg-black"
                           />
                           <Button
-                            size="sm"
-                            variant="flat"
-                            as="a"
-                            href={clip.download_url}
-                            target="_blank"
-                            startContent={<Icon icon="solar:download-bold" width={16} />}
-                          >
+ size="sm"
+ variant="tertiary"
+ as="a"
+ href={clip.download_url}
+ target="_blank"
+ >
+                            <Icon icon="solar:download-bold" width={16} />
                             Download
                           </Button>
                         </div>
@@ -1109,7 +982,7 @@ export default function ApiPlatformPage() {
                       {clip.status === "failed" && clip.error && (
                         <p className="text-red-500 text-xs">{clip.error}</p>
                       )}
-                    </CardBody>
+                    </Card.Content>
                   </Card>
                 ))}
               </div>
@@ -1118,21 +991,9 @@ export default function ApiPlatformPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-text-tertiary text-sm">Status:</span>
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: faceSwapJobResult.status === "completed"
-                        ? "bg-green-500/10"
-                        : faceSwapJobResult.status === "failed"
-                          ? "bg-red-500/10"
-                          : "bg-yellow-500/10",
-                      content: faceSwapJobResult.status === "completed"
-                        ? "text-green-500 text-xs"
-                        : faceSwapJobResult.status === "failed"
-                          ? "text-red-500 text-xs"
-                          : "text-yellow-500 text-xs",
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ >
                     {faceSwapJobResult.status}
                   </Chip>
                 </div>
@@ -1144,13 +1005,13 @@ export default function ApiPlatformPage() {
                       className="w-full max-h-[400px] rounded-lg bg-black"
                     />
                     <Button
-                      size="sm"
-                      variant="flat"
-                      as="a"
-                      href={faceSwapJobResult.download_url}
-                      target="_blank"
-                      startContent={<Icon icon="solar:download-bold" width={16} />}
-                    >
+ size="sm"
+ variant="tertiary"
+ as="a"
+ href={faceSwapJobResult.download_url}
+ target="_blank"
+ >
+                      <Icon icon="solar:download-bold" width={16} />
                       Download
                     </Button>
                   </div>
@@ -1166,13 +1027,13 @@ export default function ApiPlatformPage() {
                 )}
               </div>
             ) : null}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={() => setJobModalOpen(false)}>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="tertiary" onPress={() => setJobModalOpen(false)}>
               Close
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </motion.div>
   );

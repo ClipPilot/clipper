@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { authAPI } from "../../../api/auth";
-import { Card, CardBody, Spinner } from "@heroui/react";
+import { Card, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 export default function AuthCallbackPage() {
@@ -33,7 +33,7 @@ export default function AuthCallbackPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-dark">
       <Card className="bg-surface-base border border-border-base max-w-sm w-full">
-        <CardBody className="flex flex-col items-center gap-4 py-10">
+        <Card.Content className="flex flex-col items-center gap-4 py-10">
           {/* Brand icon */}
           <div className="w-14 h-14 rounded-2xl bg-accent-400/10 flex items-center justify-center">
             <Icon
@@ -44,18 +44,18 @@ export default function AuthCallbackPage() {
           </div>
 
           {/* Spinner */}
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
 
           {/* Text */}
           <div className="text-center space-y-1">
-            <p className="text-lg font-semibold text-text-primary">
+            <p className="text-lg font-semibold text-text-accent">
               Connecting to Google Drive
             </p>
             <p className="text-sm text-text-secondary animate-pulse">
                 Finishing Google authentication…
             </p>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );

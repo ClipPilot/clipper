@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, CardBody, Tooltip } from "@heroui/react";
+import { Button, Card, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FolderSelector } from "@/components/clips";
 import { FACE_SWAP_TIPS, FULL_BODY_SWAP_TIPS } from "./constants";
@@ -47,7 +47,7 @@ export function GeneratePanel({
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-4">
+      <Card.Content className="p-4">
         <div className="space-y-4">
           {/* Swap Mode Toggle */}
           {onSwapTypeChange && (
@@ -83,13 +83,13 @@ export function GeneratePanel({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className={`w-2.5 h-2.5 rounded-full ${hasVideo ? "bg-green-500" : "bg-surface-elevated"}`} />
-              <span className={`text-sm ${hasVideo ? "text-text-primary" : "text-text-tertiary"}`}>
+              <span className={`text-sm ${hasVideo ? "text-text-accent" : "text-text-tertiary"}`}>
                 Video uploaded
               </span>
             </div>
             <div className="flex items-center gap-3">
               <div className={`w-2.5 h-2.5 rounded-full ${hasCharacter ? "bg-green-500" : "bg-surface-elevated"}`} />
-              <span className={`text-sm ${hasCharacter ? "text-text-primary" : "text-text-tertiary"}`}>
+              <span className={`text-sm ${hasCharacter ? "text-text-accent" : "text-text-tertiary"}`}>
                 {characterCount > 0
                   ? `${characterCount} face${characterCount > 1 ? "s" : ""} selected`
                   : "Select character faces"}
@@ -104,7 +104,7 @@ export function GeneratePanel({
                 />
                 <span
                   className={`text-sm ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "text-text-primary" : "text-text-tertiary"
+                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "text-text-accent" : "text-text-tertiary"
                   }`}
                 >
                   {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤5min)
@@ -160,48 +160,44 @@ export function GeneratePanel({
           {/* Face Swap mode — auto-detect button (no editor) */}
           {swapType === "face" && !showEditor && onFaceSwapGenerate && (
             <Button
-              className="w-full bg-accent-400 text-white font-semibold"
-              size="lg"
-              isDisabled={!canFaceSwap}
-              onPress={onFaceSwapGenerate}
-              startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
-              endContent={
-                <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+ className="w-full bg-accent-400 text-white font-semibold"
+ size="lg"
+ isDisabled={!canFaceSwap}
+ onPress={onFaceSwapGenerate}
+ >
+              <Icon icon="solar:magic-stick-3-bold-duotone" width={20} />
+              Generate Face Swap
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
                   {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
                 </span>
-              }
-            >
-              Generate Face Swap
-            </Button>
+</Button>
           )}
 
           {/* Full Body mode — auto-detect button (no editor) */}
           {swapType === "fullbody" && !showEditor && onAutoDetectAndGenerate && (
             <Button
-              className="w-full bg-purple-500 text-white font-semibold"
-              size="lg"
-              isDisabled={!canAutoGenerate}
-              onPress={onAutoDetectAndGenerate}
-              startContent={<Icon icon="solar:face-scan-circle-bold" width={20} />}
-              endContent={
-                <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+ className="w-full bg-purple-500 text-white font-semibold"
+ size="lg"
+ isDisabled={!canAutoGenerate}
+ onPress={onAutoDetectAndGenerate}
+ >
+              <Icon icon="solar:face-scan-circle-bold" width={20} />
+              Auto-detect & Generate
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
                   {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
                 </span>
-              }
-            >
-              Auto-detect & Generate
-            </Button>
+</Button>
           )}
 
           {/* Both modes — back to auto-detect (editor open) */}
           {showEditor && onToggleEditor && (
             <Button
-              className={`w-full ${swapType === "face" ? "bg-accent-400/20 text-accent-400" : "bg-purple-500/20 text-purple-400"} font-medium`}
-              size="lg"
-              variant="flat"
-              onPress={onToggleEditor}
-              startContent={<Icon icon="solar:face-scan-circle-bold" width={20} />}
-            >
+ className={`w-full ${swapType === "face" ? "bg-accent-400/20 text-accent-400" : "bg-purple-500/20 text-purple-400"} font-medium`}
+ size="lg"
+ variant="tertiary"
+ onPress={onToggleEditor}
+ >
+              <Icon icon="solar:face-scan-circle-bold" width={20} />
               Back to Auto-detect
             </Button>
           )}
@@ -209,22 +205,20 @@ export function GeneratePanel({
           {/* Both modes — manual generate (editor open) */}
           {showEditor && (
             <Button
-              className="w-full bg-accent-400 text-white font-semibold"
-              size="lg"
-              isDisabled={!isValid}
-              onPress={onGenerate}
-              startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
-              endContent={
-                <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+ className="w-full bg-accent-400 text-white font-semibold"
+ size="lg"
+ isDisabled={!isValid}
+ onPress={onGenerate}
+ >
+              <Icon icon="solar:magic-stick-3-bold-duotone" width={20} />
+              {swapType === "face" ? "Generate Face Swap" : "Generate"}
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
                   {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
                 </span>
-              }
-            >
-              {swapType === "face" ? "Generate Face Swap" : "Generate"}
-            </Button>
+</Button>
           )}
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

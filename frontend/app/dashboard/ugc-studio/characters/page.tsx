@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { Button, Card, CardBody, Spinner, Tabs, Tab } from "@heroui/react";
+import { Button, Card, Spinner, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
@@ -23,7 +23,7 @@ export default function CharactersPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
         </div>
       }
     >
@@ -138,7 +138,7 @@ function CharactersPageContent() {
               >
                 <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
               </button>
-              <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Characters</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-text-accent">Characters</h1>
             </div>
             <p className="text-text-secondary ml-10">
               Create and manage your AI actors for UGC videos
@@ -147,15 +147,9 @@ function CharactersPageContent() {
         </div>
 
         <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => setActiveTab(key as "create" | "my-actors")}
-          classNames={{
-            tabList: "bg-surface-elevated/50 p-1.5 rounded-2xl gap-2 border border-border-base",
-            cursor: "bg-accent-400 shadow-lg",
-            tab: "px-6 py-2.5 text-text-secondary data-[selected=true]:text-white font-medium rounded-xl transition-all text-sm",
-            tabContent: "group-data-[selected=true]:text-white",
-          }}
-        >
+ selectedKey={activeTab}
+ onSelectionChange={(key) => setActiveTab(key as "create" | "my-actors")}
+ >
           <Tab
             key="create"
             title={
@@ -191,7 +185,7 @@ function CharactersPageContent() {
             <div className="pt-8 space-y-6">
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Spinner size="lg" color="primary" />
+                  <Spinner size="lg" color="accent" />
                 </div>
               ) : mainActors.length > 0 ? (
                 <>
@@ -207,11 +201,11 @@ function CharactersPageContent() {
                   {myActors.length < myActorsTotal && (
                     <div className="flex justify-center pt-4">
                       <Button
-                        variant="bordered"
-                        className="border-border-base"
-                        onPress={() => loadMyActors(false)}
-                        isLoading={loadingMore}
-                      >
+ variant="outline"
+ className="border-border-base"
+ onPress={() => loadMyActors(false)}
+ isPending={loadingMore}
+ >
                         Load More
                       </Button>
                     </div>
@@ -219,7 +213,7 @@ function CharactersPageContent() {
                 </>
               ) : (
                 <Card className="bg-gradient-to-br from-surface-elevated to-surface-base border border-border-base border-dashed">
-                  <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+                  <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
                     <div className="w-20 h-20 rounded-2xl bg-accent-400/10 flex items-center justify-center mb-6">
                       <Icon
                         icon="solar:user-plus-bold-duotone"
@@ -227,20 +221,20 @@ function CharactersPageContent() {
                         width={40}
                       />
                     </div>
-                    <h3 className="text-xl font-semibold text-text-primary mb-2">
+                    <h3 className="text-xl font-semibold text-text-accent mb-2">
                       No actors yet
                     </h3>
                     <p className="text-text-secondary text-sm mb-6 max-w-sm">
                       Create your first AI actor to start making amazing UGC ads
                     </p>
                     <Button
-                      className="bg-accent-400 text-white font-semibold"
-                      startContent={<Icon icon="solar:magic-stick-3-bold" width={18} />}
-                      onPress={() => setActiveTab("create")}
-                    >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={() => setActiveTab("create")}
+ >
+                      <Icon icon="solar:magic-stick-3-bold" width={18} />
                       Create Your First Actor
                     </Button>
-                  </CardBody>
+                  </Card.Content>
                 </Card>
               )}
             </div>

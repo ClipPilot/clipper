@@ -149,7 +149,7 @@ export function QueuedPostsTab({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
         </div>
       ) : grouped.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
@@ -199,7 +199,7 @@ export function QueuedPostsTab({
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-text-primary truncate max-w-[280px]">
+                        <p className="text-sm font-semibold text-text-accent truncate max-w-[280px]">
                           {group.clip_title || `Clip #${group.clip_id}`}
                         </p>
                         <p className="text-xs text-text-tertiary">
@@ -210,7 +210,7 @@ export function QueuedPostsTab({
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="text-sm text-text-primary">{date}</p>
+                      <p className="text-sm text-text-accent">{date}</p>
                       <p className="text-xs text-text-tertiary">{time}</p>
                     </div>
                   </TableCell>
@@ -223,10 +223,10 @@ export function QueuedPostsTab({
                         }
                         return Array.from(counts.entries()).map(([platform, count]) => (
                           <Tooltip
-                            key={platform}
-                            content={`${platform}${count > 1 ? ` ×${count}` : ""}`}
-                            placement="top"
-                          >
+ key={platform}
+ content={`${platform}${count > 1 ? ` ×${count}` : ""}`}
+ placement="top"
+ >
                             <span
                               className={`relative w-7 h-7 rounded-full flex items-center justify-center ${platformChipClass(platform)}`}
                             >
@@ -295,18 +295,13 @@ export function QueuedPostsTab({
         </p>
         {totalPages > 1 && (
           <Pagination
-            total={totalPages}
-            page={page}
-            onChange={(p) => {
-              setPage(p);
-              fireParams({ page: p });
-            }}
-            size="sm"
-            classNames={{
-              item: "bg-surface-elevated text-text-secondary",
-              cursor: "bg-accent-400 text-white",
-            }}
-          />
+ total={totalPages}
+ page={page}
+ onChange={(p) => {
+ setPage(p);
+ fireParams({ page: p });
+ }}
+ />
         )}
       </div>
     </div>

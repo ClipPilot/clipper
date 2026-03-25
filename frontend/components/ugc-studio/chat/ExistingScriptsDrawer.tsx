@@ -65,8 +65,8 @@ export function ExistingScriptsDrawer({
             className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md bg-surface-dark border-l border-border-base flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-border-base">
-              <h3 className="text-lg font-semibold text-text-primary">Existing Scripts</h3>
-              <Button isIconOnly variant="light" size="sm" onPress={onClose}>
+              <h3 className="text-lg font-semibold text-text-accent">Existing Scripts</h3>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={onClose}>
                 <Icon icon="solar:close-circle-bold" width={20} />
               </Button>
             </div>
@@ -79,7 +79,7 @@ export function ExistingScriptsDrawer({
                   className="w-full text-left p-3 rounded-xl bg-surface-elevated hover:bg-surface-elevated/80 border border-border-base transition-colors space-y-1"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-text-primary truncate">
+                    <span className="text-sm font-medium text-text-accent truncate">
                       {script.title}
                     </span>
                     <span className="text-xs text-text-muted shrink-0 ml-2">
@@ -102,11 +102,11 @@ export function ExistingScriptsDrawer({
 
               {hasMore && !isLoading && (
                 <Button
-                  variant="flat"
-                  size="sm"
-                  className="w-full"
-                  onPress={() => loadScripts(scripts.length)}
-                >
+ variant="tertiary"
+ size="sm"
+ className="w-full"
+ onPress={() => loadScripts(scripts.length)}
+ >
                   Load More
                 </Button>
               )}

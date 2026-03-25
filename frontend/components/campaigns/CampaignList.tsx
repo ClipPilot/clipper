@@ -2,15 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
   Chip,
   Spinner,
   Accordion,
-  AccordionItem,
-} from "@heroui/react";
+  AccordionItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { type Campaign } from "@/api/campaign";
@@ -112,18 +109,17 @@ export function CampaignList() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-accent">
               Campaigns
             </h1>
             <p className="text-sm text-text-secondary mt-1">
               Manage your ad campaigns and track their progress.
             </p>
           </div>
-          <Button
-            color="primary"
-            onPress={() => router.push("/dashboard/publish-posts/create")}
-            startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-          >
+          <Button variant="primary"
+ onPress={() => router.push("/dashboard/publish-posts/create")}
+ >
+            <Icon icon="solar:add-circle-bold" width={18} />
             New Campaign
           </Button>
         </div>
@@ -160,11 +156,11 @@ export function CampaignList() {
         {/* Campaign grid */}
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
-            <Spinner size="lg" color="primary" />
+            <Spinner size="lg" color="accent" />
           </div>
         ) : campaigns.length === 0 ? (
           <Card className="bg-surface-base border border-border-base">
-            <CardBody className="flex flex-col items-center text-center py-20 gap-4">
+            <Card.Content className="flex flex-col items-center text-center py-20 gap-4">
               <div className="w-16 h-16 rounded-2xl bg-accent-400/10 flex items-center justify-center">
                 <Icon
                   icon="solar:megaphone-bold-duotone"
@@ -173,7 +169,7 @@ export function CampaignList() {
                 />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-semibold text-text-primary">
+                <h3 className="text-lg font-semibold text-text-accent">
                   No campaigns yet
                 </h3>
                 <p className="text-sm text-text-secondary max-w-xs">
@@ -181,14 +177,13 @@ export function CampaignList() {
                   with targeted video ads.
                 </p>
               </div>
-              <Button
-                color="primary"
-                onPress={() => router.push("/dashboard/publish-posts/create")}
-                startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-              >
+              <Button variant="primary"
+ onPress={() => router.push("/dashboard/publish-posts/create")}
+ >
+                <Icon icon="solar:add-circle-bold" width={18} />
                 Create Campaign
               </Button>
-            </CardBody>
+            </Card.Content>
           </Card>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center text-center py-16 gap-2">
@@ -258,7 +253,7 @@ function HowItWorks() {
         className="bg-surface-base border border-border-base rounded-xl px-0"
         itemClasses={{
           base: "py-0",
-          title: "text-sm font-medium text-text-primary",
+          title: "text-sm font-medium text-text-accent",
           trigger: "px-4 py-3",
           content: "px-4 pb-4 pt-0",
         }}
@@ -278,7 +273,7 @@ function HowItWorks() {
               <div key={item.key} className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <Icon icon={item.icon} width={14} className="text-accent-400 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-text-primary">{item.title}</span>
+                  <span className="text-xs font-semibold text-text-accent">{item.title}</span>
                 </div>
                 <p className="text-xs text-text-secondary leading-relaxed">{item.content}</p>
               </div>
@@ -315,17 +310,17 @@ function CampaignCard({
       className="text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 rounded-xl"
     >
       <Card className="bg-surface-base border border-border-base hover:border-accent-400/50 transition-colors cursor-pointer h-full">
-        <CardBody className="p-4 flex flex-col gap-3">
+        <Card.Content className="p-4 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-text-primary truncate">
+            <p className="text-sm font-semibold text-text-accent truncate">
               {campaign.name}
             </p>
             <Chip
-              color={statusColor(campaign.status)}
-              variant="flat"
-              size="sm"
-              className="flex-shrink-0"
-            >
+ color={statusColor(campaign.status)}
+ variant="tertiary"
+ size="sm"
+ className="flex-shrink-0"
+ >
               {statusLabel(campaign.status)}
             </Chip>
           </div>
@@ -333,12 +328,12 @@ function CampaignCard({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="text-text-secondary">Budget</span>
-              <span className="text-text-primary font-medium">{budget}</span>
+              <span className="text-text-accent font-medium">{budget}</span>
             </div>
             {cpm && (
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-secondary">CPM</span>
-                <span className="text-text-primary font-medium">{cpm}</span>
+                <span className="text-text-accent font-medium">{cpm}</span>
               </div>
             )}
           </div>
@@ -351,7 +346,7 @@ function CampaignCard({
             />
             <span className="text-xs text-text-tertiary">View details</span>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     </button>
   );

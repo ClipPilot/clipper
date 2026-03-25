@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
-  CardHeader,
   Chip,
-  Divider,
+  Separator,
   Spinner,
-  addToast,
-} from "@heroui/react";
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -71,11 +67,11 @@ function StepSection({
 
   return (
     <Card
-      className={`bg-surface-base border transition-colors ${
-        complete ? "border-success-500/30" : "border-border-base"
-      }`}
-    >
-      <CardHeader
+ className={`bg-surface-base border transition-colors ${
+ complete ? "border-success-500/30" : "border-border-base"
+ }`}
+ >
+      <Card.Header
         className="cursor-pointer select-none"
         onClick={() => setIsExpanded((v) => !v)}
       >
@@ -97,12 +93,12 @@ function StepSection({
                 Step {number}
               </span>
               {complete && (
-                <Chip color="success" variant="flat" size="sm" className="h-5">
+                <Chip color="success" variant="tertiary" size="sm" className="h-5">
                   Complete
                 </Chip>
               )}
             </div>
-            <p className="text-sm font-semibold text-text-primary">{title}</p>
+            <p className="text-sm font-semibold text-text-accent">{title}</p>
             <p className="text-xs text-text-secondary">{description}</p>
           </div>
           <StepStatusIcon complete={complete} />
@@ -112,11 +108,11 @@ function StepSection({
             width={16}
           />
         </div>
-      </CardHeader>
+      </Card.Header>
       {isExpanded && (
         <>
-          <Divider className="bg-border-base" />
-          <CardBody className="p-4 sm:p-5">{children}</CardBody>
+          <Separator className="bg-border-base" />
+          <Card.Content className="p-4 sm:p-5">{children}</Card.Content>
         </>
       )}
     </Card>
@@ -136,7 +132,7 @@ function StepsProgressBar({ gates }: { gates: CampaignGates }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-text-secondary">Steps complete</span>
-        <span className="font-semibold text-text-primary">{completed} / 3</span>
+        <span className="font-semibold text-text-accent">{completed} / 3</span>
       </div>
       <div className="flex gap-1.5">
         {[gates.videos.complete, gates.payment.complete, gates.contract.complete].map(
@@ -346,18 +342,10 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         campaignId
       );
       setCampaign(updated);
-      addToast({
-        title: "Campaign started",
-        description: message || "Your campaign is now live.",
-        color: "success",
-      });
+      toast.success("Campaign started", { description: message || "Your campaign is now live." });
       fetchAll();
     } catch (err: any) {
-      addToast({
-        title: "Failed to start campaign",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to start campaign", { description: err.message || "Something went wrong" });
     } finally {
       setIsStarting(false);
     }
@@ -366,7 +354,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
@@ -379,11 +367,11 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           className="text-warning-500"
           width={40}
         />
-        <p className="text-lg font-semibold text-text-primary">Unauthorized</p>
+        <p className="text-lg font-semibold text-text-accent">Unauthorized</p>
         <p className="text-text-secondary text-sm">
           This campaign doesn&apos;t exist or you don&apos;t have access to it.
         </p>
-        <Button variant="flat" onPress={onBack}>
+        <Button variant="tertiary" onPress={onBack}>
           Back to Campaigns
         </Button>
       </div>
@@ -399,7 +387,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           width={40}
         />
         <p className="text-text-secondary">Failed to load campaign.</p>
-        <Button variant="flat" onPress={onBack}>
+        <Button variant="tertiary" onPress={onBack}>
           Back to Campaigns
         </Button>
       </div>
@@ -413,12 +401,12 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
           <Button
-            variant="light"
-            size="sm"
-            className="text-text-secondary -ml-2"
-            onPress={onBack}
-            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-          >
+ variant="tertiary"
+ size="sm"
+ className="text-text-secondary -ml-2"
+ onPress={onBack}
+ >
+            <Icon icon="solar:arrow-left-linear" width={16} />
             Back to Campaigns
           </Button>
 
@@ -431,8 +419,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
               />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
-              <Chip color="warning" variant="flat" className="capitalize mt-2">
+              <h1 className="text-2xl font-bold text-text-accent">{campaign.name}</h1>
+              <Chip color="warning" variant="tertiary" className="capitalize mt-2">
                 {campaign.status === "appeal" ? "Under Appeal" : "Pending Review"}
               </Chip>
             </div>
@@ -478,12 +466,12 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
           <Button
-            variant="light"
-            size="sm"
-            className="text-text-secondary -ml-2"
-            onPress={onBack}
-            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-          >
+ variant="tertiary"
+ size="sm"
+ className="text-text-secondary -ml-2"
+ onPress={onBack}
+ >
+            <Icon icon="solar:arrow-left-linear" width={16} />
             Back to Campaigns
           </Button>
 
@@ -496,8 +484,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
               />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
-              <Chip color="default" variant="flat" className="capitalize mt-2">
+              <h1 className="text-2xl font-bold text-text-accent">{campaign.name}</h1>
+              <Chip color="default" variant="tertiary" className="capitalize mt-2">
                 Completed
               </Chip>
             </div>
@@ -526,12 +514,12 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Back nav */}
         <Button
-          variant="light"
-          size="sm"
-          className="text-text-secondary -ml-2"
-          onPress={onBack}
-          startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-        >
+ variant="tertiary"
+ size="sm"
+ className="text-text-secondary -ml-2"
+ onPress={onBack}
+ >
+          <Icon icon="solar:arrow-left-linear" width={16} />
           Back to Campaigns
         </Button>
 
@@ -539,29 +527,29 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         <div className="space-y-1">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-text-primary truncate">
+              <h1 className="text-2xl font-bold text-text-accent truncate">
                 {campaign.name}
               </h1>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-text-secondary">
                 {budget > 0 && (
                   <span className="flex items-center gap-1">
                     <Icon icon="solar:dollar-bold" width={14} />
-                    Budget: <strong className="text-text-primary">${budget.toLocaleString()}</strong>
+                    Budget: <strong className="text-text-accent">${budget.toLocaleString()}</strong>
                   </span>
                 )}
                 {cpm > 0 && (
                   <span className="flex items-center gap-1">
                     <Icon icon="solar:chart-bold-duotone" width={14} />
-                    CPM: <strong className="text-text-primary">${cpm.toFixed(2)}</strong>
+                    CPM: <strong className="text-text-accent">${cpm.toFixed(2)}</strong>
                   </span>
                 )}
               </div>
             </div>
             <Chip
-              color={campaign.status === "rejected" ? "danger" : "default"}
-              variant="flat"
-              className="flex-shrink-0 capitalize"
-            >
+ color={campaign.status === "rejected" ? "danger" : "default"}
+ variant="tertiary"
+ className="flex-shrink-0 capitalize"
+ >
               {campaign.status}
             </Chip>
           </div>
@@ -623,19 +611,16 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
 
         {/* Start campaign button */}
         <div className="pt-2 pb-8">
-          <Button
-            color="primary"
-            size="lg"
-            className="w-full"
-            onPress={handleStartCampaign}
-            isLoading={isStarting}
-            isDisabled={!canStart}
-            startContent={
-              !isStarting && (
+          <Button variant="primary"
+ size="lg"
+ className="w-full"
+ onPress={handleStartCampaign}
+ isPending={isStarting}
+ isDisabled={!canStart}
+ >
+            {!isStarting && (
                 <Icon icon="solar:play-circle-bold-duotone" width={20} />
-              )
-            }
-          >
+              )}
             {allStepsComplete
               ? "Start Campaign"
               : `Complete ${3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length} more step${

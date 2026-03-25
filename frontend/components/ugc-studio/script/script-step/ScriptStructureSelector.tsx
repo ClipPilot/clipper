@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Select, SelectItem, Tooltip, Spinner } from "@heroui/react";
+import { Button, Select, Tooltip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCRIPT_STRUCTURES, SCENE_TYPES, SceneType, ShotType } from "../types";
 import type { CustomPatternStep } from "./types";
@@ -52,7 +52,7 @@ export function ScriptStructureSelector({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+      <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
         <Icon icon="solar:video-frame-bold-duotone" width={20} className="text-accent-400" />
         Script Structure
       </h3>
@@ -73,7 +73,7 @@ export function ScriptStructureSelector({
                 width={20}
                 className={selectedStructureId === structure.id ? "text-accent-400" : "text-text-muted"}
               />
-              <span className="font-medium text-text-primary text-sm">{structure.name}</span>
+              <span className="font-medium text-text-accent text-sm">{structure.name}</span>
             </div>
             <p className="text-xs text-text-secondary mb-2">{structure.description}</p>
             <div className="flex flex-wrap gap-1">
@@ -92,7 +92,7 @@ export function ScriptStructureSelector({
 
       {selectedStructureId === "auto" && isGeneratingAutoStructure && (
         <div className="bg-surface-base rounded-lg p-4 border border-border-base flex items-center justify-center gap-3">
-          <Spinner size="sm" color="secondary" />
+          <Spinner size="sm" color="current" />
           <p className="text-sm text-text-secondary">Analyzing your direction and picking the best structure...</p>
         </div>
       )}
@@ -126,33 +126,32 @@ export function ScriptStructureSelector({
         <div className="bg-surface-base rounded-lg p-4 border border-border-base space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-text-primary">Build your structure:</p>
+              <p className="text-sm font-medium text-text-accent">Build your structure:</p>
               <Tooltip
-                content={
-                  <div className="max-w-xs p-2 text-xs space-y-2">
-                    <p className="font-medium">Shot Types:</p>
-                    <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
-                    <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
-                    <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
-                    <p><span className="text-amber-400 font-medium">Visual</span> — Silent scene with no voiceover. Tells the story through visuals only — products, environments, actions.</p>
-                  </div>
-                }
-                placement="right"
-                classNames={{ content: "bg-surface-elevated border border-border-base" }}
-              >
+ content={
+ <div className="max-w-xs p-2 text-xs space-y-2">
+ <p className="font-medium">Shot Types:</p>
+ <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
+ <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
+ <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
+ <p><span className="text-amber-400 font-medium">Visual</span> — Silent scene with no voiceover. Tells the story through visuals only — products, environments, actions.</p>
+ </div>
+ }
+ placement="right"
+ >
                 <div className="cursor-help">
                   <Icon icon="solar:info-circle-linear" className="text-text-muted" width={16} />
                 </div>
               </Tooltip>
             </div>
             <Button
-              size="sm"
-              variant="flat"
-              className="text-accent-400"
-              onPress={addScene}
-              isDisabled={customPattern.length >= 8}
-              startContent={<Icon icon="solar:add-circle-linear" width={16} />}
-            >
+ size="sm"
+ variant="tertiary"
+ className="text-accent-400"
+ onPress={addScene}
+ isDisabled={customPattern.length >= 8}
+ >
+              <Icon icon="solar:add-circle-linear" width={16} />
               Add Scene
             </Button>
           </div>
@@ -161,20 +160,14 @@ export function ScriptStructureSelector({
               <div key={i} className="flex items-center gap-2 bg-surface-elevated p-2 rounded-lg">
                 <span className="text-xs text-text-muted w-5">{i + 1}.</span>
                 <Select
-                  aria-label="Scene type"
-                  selectedKeys={[step.type]}
-                  onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as SceneType;
-                    if (value) updateSceneType(i, value);
-                  }}
-                  size="sm"
-                  className="flex-1"
-                  classNames={{
-                    trigger: "bg-surface-base border-border-base min-h-8 h-8",
-                    value: "text-text-primary text-sm capitalize",
-                    popoverContent: "bg-surface-elevated border border-border-base",
-                  }}
-                >
+ aria-label="Scene type"
+ selectedKeys={[step.type]}
+ onSelectionChange={(keys) => {
+ const value = Array.from(keys)[0] as SceneType;
+ if (value) updateSceneType(i, value);
+ }}
+ className="flex-1"
+ >
                   {SCENE_TYPES.map((type) => (
                     <SelectItem key={type} textValue={type} className="capitalize">
                       {type}
@@ -182,31 +175,15 @@ export function ScriptStructureSelector({
                   ))}
                 </Select>
                 <Select
-                  aria-label="Shot type"
-                  selectedKeys={[step.shot]}
-                  isDisabled={isAutoSilent}
-                  onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as ShotType | "visual";
-                    if (value) updateShotType(i, value);
-                  }}
-                  size="sm"
-                  className="w-28"
-                  classNames={{
-                    trigger: `min-h-8 h-8 ${
-                      step.shot === "a-roll" ? "bg-green-500/10 border-green-500/30" :
-                      step.shot === "b-roll" ? "bg-blue-500/10 border-blue-500/30" :
-                      step.shot === "visual" ? "bg-amber-500/10 border-amber-500/30" :
-                      "bg-purple-500/10 border-purple-500/30"
-                    }`,
-                    value: `text-sm ${
-                      step.shot === "a-roll" ? "text-green-400" :
-                      step.shot === "b-roll" ? "text-blue-400" :
-                      step.shot === "visual" ? "text-amber-400" :
-                      "text-purple-400"
-                    }`,
-                    popoverContent: "bg-surface-elevated border border-border-base",
-                  }}
-                >
+ aria-label="Shot type"
+ selectedKeys={[step.shot]}
+ isDisabled={isAutoSilent}
+ onSelectionChange={(keys) => {
+ const value = Array.from(keys)[0] as ShotType | "visual";
+ if (value) updateShotType(i, value);
+ }}
+ className="w-28"
+ >
                   <SelectItem key="a-roll" textValue="A-roll" className="text-green-400">
                     <div className="flex items-center gap-2">
                       <Icon icon="solar:user-speak-bold" width={14} />
@@ -233,13 +210,13 @@ export function ScriptStructureSelector({
                   </SelectItem>
                 </Select>
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={() => removeScene(i)}
-                  isDisabled={customPattern.length <= 1}
-                  className="text-text-muted hover:text-red-400 min-w-7 w-7 h-7"
-                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => removeScene(i)}
+ isDisabled={customPattern.length <= 1}
+ className="text-text-muted hover:text-red-400 min-w-7 w-7 h-7"
+ >
                   <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
                 </Button>
               </div>
@@ -257,7 +234,7 @@ export function ScriptStructureSelector({
                 className="flex items-center gap-1.5 text-xs bg-surface-elevated px-2 py-1 rounded"
               >
                 <span className="text-text-muted">{i + 1}.</span>
-                <span className="text-text-primary capitalize">{step.type}</span>
+                <span className="text-text-accent capitalize">{step.type}</span>
                 <span className={`text-[10px] px-1 rounded ${
                   step.shot === "a-roll" ? "bg-green-500/20 text-green-400" :
                   step.shot === "b-roll" ? "bg-blue-500/20 text-blue-400" :

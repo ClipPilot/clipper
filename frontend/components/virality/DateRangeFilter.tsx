@@ -81,20 +81,20 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
       {/* Custom preset dropdown */}
       <div className="relative" ref={dropdownRef}>
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary hover:text-text-primary"
-          onPress={() => setDropdownOpen((v) => !v)}
-          endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-        >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary hover:text-text-accent"
+ onPress={() => setDropdownOpen((v) => !v)}
+ >
           Custom
-        </Button>
+          <Icon icon="solar:alt-arrow-down-linear" width={14} />
+</Button>
         {dropdownOpen && (
           <div className="absolute top-full left-0 mt-1 z-50 bg-surface-elevated border border-border-base rounded-lg shadow-lg py-1 min-w-[140px]">
             {CUSTOM_PRESETS.map((preset) => (
               <button
                 key={preset.months}
-                className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-base hover:text-text-primary transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-base hover:text-text-accent transition-colors"
                 onClick={() => {
                   onChange(subtractMonths(preset.months));
                   setDropdownOpen(false);
@@ -111,12 +111,12 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
                 max={99}
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
-                className="w-12 rounded-md bg-surface-base border border-border-base text-text-primary text-sm text-center px-1 py-1 outline-none focus:border-accent-400"
+                className="w-12 rounded-md bg-surface-base border border-border-base text-text-accent text-sm text-center px-1 py-1 outline-none focus:border-accent-400"
               />
               <select
                 value={customUnit}
                 onChange={(e) => setCustomUnit(e.target.value as "months" | "years")}
-                className="rounded-md bg-surface-base border border-border-base text-text-primary text-sm px-1.5 py-1 outline-none focus:border-accent-400"
+                className="rounded-md bg-surface-base border border-border-base text-text-accent text-sm px-1.5 py-1 outline-none focus:border-accent-400"
               >
                 <option value="months">Months</option>
                 <option value="years">Years</option>

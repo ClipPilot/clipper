@@ -3,8 +3,8 @@
 import { useState } from "react";
 import {
   Button,
-  Progress,
-  addToast,
+  ProgressBar,
+  toast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
@@ -58,13 +58,9 @@ export function VideosGate({
     try {
       await campaignAPI.removeVideo(selectedTeam.id, campaignId, videoId);
       onVideoRemoved(videoId);
-      addToast({ title: "Video removed", color: "success" });
+      toast.success("Video removed");
     } catch (err: any) {
-      addToast({
-        title: "Failed to remove video",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to remove video", { description: err.message || "Something went wrong" });
     } finally {
       setRemovingId(null);
     }
@@ -75,16 +71,15 @@ export function VideosGate({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-text-secondary">Videos added</span>
-          <span className="font-semibold text-text-primary">
+          <span className="font-semibold text-text-accent">
             {gate.videoCount} / {gate.videoMinimum}
           </span>
         </div>
-        <Progress
-          value={progressValue}
-          color={gate.complete ? "success" : "primary"}
-          size="sm"
-          classNames={{ base: "w-full" }}
-        />
+        <ProgressBar
+ value={progressValue}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
         {gate.complete && (
           <p className="text-xs text-success-500 flex items-center gap-1">
             <Icon icon="solar:check-circle-bold" width={14} />
@@ -95,20 +90,19 @@ export function VideosGate({
 
       <div className="flex flex-wrap gap-2">
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary"
-          onPress={() => setIsPickerOpen(true)}
-          startContent={<Icon icon="solar:library-bold-duotone" width={16} />}
-        >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary"
+ onPress={() => setIsPickerOpen(true)}
+ >
+          <Icon icon="solar:library-bold-duotone" width={16} />
           Add from Library
         </Button>
-        <Button
-          size="sm"
-          color="primary"
-          onPress={() => setIsUploadOpen(true)}
-          startContent={<Icon icon="solar:upload-bold-duotone" width={16} />}
-        >
+        <Button variant="primary"
+ size="sm"
+ onPress={() => setIsUploadOpen(true)}
+ >
+          <Icon icon="solar:upload-bold-duotone" width={16} />
           Upload Videos
         </Button>
       </div>

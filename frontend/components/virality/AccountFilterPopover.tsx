@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button, Popover, PopoverTrigger, PopoverContent, Input } from "@heroui/react";
+import { Button, Popover, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount } from "@/api/virality";
 
@@ -67,36 +67,31 @@ export function AccountFilterPopover({
 
   return (
     <Popover isOpen={isOpen} onOpenChange={handleOpen} placement="bottom-start">
-      <PopoverTrigger>
+      <Popover.Trigger>
         <Button
-          variant="flat"
-          className={
-            isActive
-              ? "bg-accent-400/10 text-accent-400 border-2 border-accent-400/50"
-              : "bg-surface-base text-text-primary border-2 border-border-base hover:border-accent-400/40 transition-colors"
-          }
-          startContent={<Icon icon="solar:filter-bold" width={16} />}
-          endContent={
-            isActive ? (
+ variant="tertiary"
+ className={
+ isActive
+ ? "bg-accent-400/10 text-accent-400 border-2 border-accent-400/50"
+ : "bg-surface-base text-text-accent border-2 border-border-base hover:border-accent-400/40 transition-colors"
+ }
+ >
+          <Icon icon="solar:filter-bold" width={16} />
+          Filter Accounts
+          {isActive ? (
               <span className="ml-1 flex items-center justify-center min-w-[20px] h-5 rounded-full bg-accent-400 text-white text-xs font-semibold px-1.5">
                 {selectedAccountIds.length}
               </span>
-            ) : null
-          }
-        >
-          Filter Accounts
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-0 bg-surface-elevated border border-border-base">
+            ) : null}
+</Button>
+      </Popover.Trigger>
+      <Popover.Content className="w-72 p-0 bg-surface-elevated border border-border-base">
         <div className="p-3 space-y-3">
-          <Input
-            size="sm"
-            placeholder="Search accounts..."
-            value={search}
-            onValueChange={setSearch}
-            startContent={<Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />}
-            classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
-          />
+          <Input onChange={(e) => (setSearch)(e.target.value)}
+ placeholder="Search accounts..."
+ value={search}
+ startContent={<Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />}
+ />
 
           <div className="max-h-60 overflow-y-auto space-y-0.5">
             {filteredAccounts.length === 0 ? (
@@ -117,7 +112,7 @@ export function AccountFilterPopover({
                     }`}
                   >
                     <Icon icon={platform.icon} width={16} className={platform.color} />
-                    <span className="flex-1 text-sm text-text-primary truncate">
+                    <span className="flex-1 text-sm text-text-accent truncate">
                       @{account.username}
                     </span>
                     {selected && (
@@ -132,32 +127,32 @@ export function AccountFilterPopover({
           <div className="flex items-center justify-between pt-2 border-t border-border-base">
             <div className="flex items-center gap-1">
               <Button
-                size="sm"
-                variant="light"
-                className="text-text-secondary"
-                onPress={handleSelectAll}
-              >
+ size="sm"
+ variant="tertiary"
+ className="text-text-secondary"
+ onPress={handleSelectAll}
+ >
                 All
               </Button>
               <Button
-                size="sm"
-                variant="light"
-                className="text-text-secondary"
-                onPress={handleClearAll}
-              >
+ size="sm"
+ variant="tertiary"
+ className="text-text-secondary"
+ onPress={handleClearAll}
+ >
                 None
               </Button>
             </div>
             <Button
-              size="sm"
-              className="bg-accent-400 text-white"
-              onPress={handleApply}
-            >
+ size="sm"
+ className="bg-accent-400 text-white"
+ onPress={handleApply}
+ >
               Apply
             </Button>
           </div>
         </div>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 }

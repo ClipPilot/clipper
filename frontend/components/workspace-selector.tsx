@@ -1,15 +1,11 @@
 "use client";
 
 import React from "react";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
-  CardHeader,
   ScrollShadow,
   cn,
-  type CardProps,
-} from "@heroui/react";
+  type CardProps } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -50,13 +46,13 @@ export default function WorkspaceSelector({
 
   return (
       <Card
-        className="w-full min-w-[320px] bg-surface-base border border-border-base"
-        {...props}
-      >
-        <CardHeader className="flex flex-col px-0 pb-0">
+ className="w-full min-w-[320px] bg-surface-base border border-border-base"
+ {...props}
+ >
+        <Card.Header className="flex flex-col px-0 pb-0">
           <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
             <div>
-              <h4 className="text-medium font-semibold text-text-primary">
+              <h4 className="text-base font-semibold text-text-accent">
                 Current Workspace
               </h4>
               <div className="flex items-center gap-2 mt-1">
@@ -71,8 +67,8 @@ export default function WorkspaceSelector({
               </div>
             </div>
           </div>
-        </CardHeader>
-        <CardBody className="w-full gap-0 p-0">
+        </Card.Header>
+        <Card.Content className="w-full gap-0 p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <span className="text-sm text-text-tertiary">
@@ -144,7 +140,7 @@ export default function WorkspaceSelector({
                               "text-sm font-medium truncate",
                               selectedTeam?.id === team.id
                                 ? "text-accent-400"
-                                : "text-text-primary"
+                                : "text-text-accent"
                             )}
                           >
                             {team.name}
@@ -207,7 +203,7 @@ export default function WorkspaceSelector({
               })}
             </ScrollShadow>
           )}
-        </CardBody>
+        </Card.Content>
 
         {!isPaidPlan(currentPlan) && (
           <div className="px-4 py-3 border-t border-border-base">
@@ -327,24 +323,20 @@ export default function WorkspaceSelector({
 
         <div className="px-4 py-3 border-t border-border-base space-y-2">
           <Button
-            variant="flat"
-            className="w-full bg-accent-400/10 text-accent-400 hover:bg-accent-400/20"
-            startContent={
-              <Icon icon="solar:add-circle-bold-duotone" width={18} />
-            }
-            onPress={onCreateTeam}
-          >
+ variant="tertiary"
+ className="w-full bg-accent-400/10 text-accent-400 hover:bg-accent-400/20"
+ onPress={onCreateTeam}
+ >
+            <Icon icon="solar:add-circle-bold-duotone" width={18} />
             Create Team
           </Button>
           {selectedTeam && (
             <Button
-              variant="light"
-              className="w-full text-text-secondary"
-              startContent={
-                <Icon icon="solar:settings-bold-duotone" width={18} />
-              }
-              onPress={onManageTeam}
-            >
+ variant="tertiary"
+ className="w-full text-text-secondary"
+ onPress={onManageTeam}
+ >
+              <Icon icon="solar:settings-bold-duotone" width={18} />
               Manage Team
             </Button>
           )}

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
-import { Button, Card, CardBody, Progress, addToast } from "@heroui/react";
+import { Button, Card, ProgressBar } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { videoAPI, BatchUploadedVideo, ConversionMode } from "@/api/video";
@@ -244,7 +245,7 @@ export default function CreateClipPage() {
       setMusicFile(null);
       setMusicFileName("");
       setMusicS3Key("");
-      addToast({ title: "Failed to upload music", description: err.message, color: "danger" });
+      toast.danger("Failed to upload music", { description: err.message });
     } finally {
       setIsMusicUploading(false);
     }
@@ -336,11 +337,7 @@ export default function CreateClipPage() {
           backgroundMusicS3Key: musicS3Key || undefined,
         });
 
-        addToast({
-          title: "Batch clips queued for processing",
-          description: `${numberOfVideos} clip${numberOfVideos > 1 ? "s" : ""} from ${batchVideos.length} videos will be ready soon.`,
-          color: "success",
-        });
+        toast.success("Batch clips queued for processing", { description: `${numberOfVideos} clip${numberOfVideos > 1 ? "s" : ""} from ${batchVideos.length} videos will be ready soon.` });
       } else {
         // Single mode
         await videoAPI.submitClipJob({
@@ -368,11 +365,7 @@ export default function CreateClipPage() {
           backgroundMusicS3Key: musicS3Key || undefined,
         });
 
-        addToast({
-          title: "Clips queued for processing",
-          description: `${numberOfVideos} clip${numberOfVideos > 1 ? "s" : ""} will be ready soon.`,
-          color: "success",
-        });
+        toast.success("Clips queued for processing", { description: `${numberOfVideos} clip${numberOfVideos > 1 ? "s" : ""} will be ready soon.` });
       }
 
       triggerRefresh();
@@ -398,11 +391,7 @@ export default function CreateClipPage() {
       setError(err.message || "Failed to create clip");
       setIsProcessing(false);
 
-      addToast({
-        title: "Failed to create clip",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to create clip", { description: err.message || "Something went wrong" });
     }
   };
 
@@ -453,7 +442,7 @@ export default function CreateClipPage() {
           </div>
           {usageStats && (
             <Card className="bg-surface-base border border-border-accent flex-shrink-0">
-              <CardBody className="p-3 sm:p-4">
+              <Card.Content className="p-3 sm:p-4">
                 {selectedTeam?.plan === "free" ? (
                   <div className="flex sm:block items-center gap-3">
                     <p className="text-xs sm:text-sm text-text-secondary sm:mb-1">
@@ -479,20 +468,20 @@ export default function CreateClipPage() {
                     </p>
                   </div>
                 )}
-              </CardBody>
+              </Card.Content>
             </Card>
           )}
         </div>
 
         {error && (
           <Card className="mb-6 bg-red-500/10 border border-red-500">
-            <CardBody className="p-4 flex items-center gap-3">
+            <Card.Content className="p-4 flex items-center gap-3">
               <Icon
                 icon="solar:danger-circle-bold"
                 className="text-2xl text-red-500"
               />
               <p className="text-red-500">{error}</p>
-            </CardBody>
+            </Card.Content>
           </Card>
         )}
 
@@ -538,7 +527,7 @@ export default function CreateClipPage() {
               <div className="lg:col-span-3">
                 {/* Batch mode toggle */}
                 <Card className="bg-surface-base border border-border-base mb-4" data-tour="clip-mode-toggle">
-                  <CardBody className="p-4">
+                  <Card.Content className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Icon
@@ -581,7 +570,7 @@ export default function CreateClipPage() {
                         />
                       </Tooltip>
                     </div>
-                  </CardBody>
+                  </Card.Content>
                 </Card>
 
                 <div data-tour="clip-upload">
@@ -631,7 +620,7 @@ export default function CreateClipPage() {
               <>
                 <div className="lg:col-span-1">
                   <Card className="bg-surface-base border border-border-base mb-4">
-                    <CardBody className="p-4">
+                    <Card.Content className="p-4">
                       {batchMode ? (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -697,11 +686,11 @@ export default function CreateClipPage() {
                           </Button>
                         </div>
                       )}
-                    </CardBody>
+                    </Card.Content>
                   </Card>
 
                   <Card className="bg-surface-base border border-border-base" data-tour="clip-settings">
-                    <CardBody className="p-4 sm:p-6">
+                    <Card.Content className="p-4 sm:p-6">
                       <SettingsPanel
                         promptType={promptType}
                         setPromptType={setPromptType}
@@ -727,13 +716,13 @@ export default function CreateClipPage() {
                         }
                         batchMode={batchMode}
                       />
-                    </CardBody>
+                    </Card.Content>
                   </Card>
                 </div>
 
                 <div className="lg:col-span-2">
                   <Card className="bg-surface-base border border-border-base h-full" data-tour="clip-overlays">
-                    <CardBody className="p-4 sm:p-6">
+                    <Card.Content className="p-4 sm:p-6">
                       <TextOverlayPanel
                         customText={customText}
                         setCustomText={setCustomText}
@@ -806,7 +795,7 @@ export default function CreateClipPage() {
                               : "Create Clips"}
                         </Button>
                       </div>
-                    </CardBody>
+                    </Card.Content>
                   </Card>
                 </div>
               </>
@@ -864,7 +853,7 @@ export default function CreateClipPage() {
                 </div>
               ) : (
                 <Card className="bg-surface-base border border-border-base">
-                  <CardBody className="flex flex-col items-center justify-center py-12">
+                  <Card.Content className="flex flex-col items-center justify-center py-12">
                     <Icon
                       icon="solar:check-circle-bold-duotone"
                       className="text-5xl text-success-500 mb-3"
@@ -875,7 +864,7 @@ export default function CreateClipPage() {
                     <p className="text-text-tertiary text-center text-sm max-w-md">
                       Upload a video above to generate new clips
                     </p>
-                  </CardBody>
+                  </Card.Content>
                 </Card>
               )}
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, TextField, Label, FieldError } from "@heroui/react";
 
 interface ForgotPasswordFormProps {
   onBackToLogin: () => void;
@@ -26,7 +26,7 @@ export default function ForgotPasswordForm({
   return (
     <>
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">Reset Password</h2>
+        <h2 className="text-2xl font-bold text-text-accent">Reset Password</h2>
         <p className="text-sm text-text-secondary mt-1">Enter your email to receive a reset link</p>
       </div>
 
@@ -37,25 +37,23 @@ export default function ForgotPasswordForm({
       )}
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Email Address</label>
+        <TextField type="email" isRequired>
+          <Label>Email Address</Label>
           <Input
-            isRequired
             name="email"
             placeholder="Enter your email"
-            type="email"
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-        </div>
+          <FieldError />
+        </TextField>
 
-        <Button className="bg-accent-400 text-white font-semibold mt-2 rounded-xl" type="submit" size="lg" isLoading={isLoading}>
+        <Button
+          className="bg-accent-400 text-white font-semibold mt-2 rounded-xl"
+          type="submit"
+          size="lg"
+          isPending={isLoading}
+        >
           Send Reset Link
         </Button>
       </form>

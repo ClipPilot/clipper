@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, Tab, Chip, Spinner } from "@heroui/react";
+import { Tabs, Chip, Spinner } from "@heroui/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { adPostingAPI, type GetTeamPostsParams } from "@/api/adPosting";
@@ -71,19 +71,9 @@ export function MassPostingDashboard() {
         <DashboardHeader />
 
         <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => setActiveTab(key as TabKey)}
-          variant="underlined"
-          classNames={{
-            base: "w-full",
-            tabList:
-              "gap-6 px-0 py-0 w-full relative rounded-none border-b border-border-base",
-            cursor: "w-full bg-accent-400",
-            tab: "max-w-fit px-2 h-12",
-            tabContent:
-              "text-text-secondary group-data-[selected=true]:text-accent-400",
-          }}
-        >
+ selectedKey={activeTab}
+ onSelectionChange={(key) => setActiveTab(key as TabKey)}
+ >
           <Tab
             key="queued"
             title={
@@ -91,13 +81,9 @@ export function MassPostingDashboard() {
                 <span>Queued Posts</span>
                 {queuedCount > 0 && (
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: "bg-accent-400/10 text-accent-400 h-5 min-w-5",
-                      content: "text-xs font-semibold px-1",
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ >
                     {queuedCount}
                   </Chip>
                 )}

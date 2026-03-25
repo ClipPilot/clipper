@@ -38,20 +38,23 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
     >
       {/* Badges */}
       <div className="flex flex-wrap gap-1.5">
-        <Chip size="sm" variant="flat" color="primary" className="text-[11px]">
+        <Chip size="sm" variant="tertiary" color="accent" className="text-[11px]">
           {VIDEO_TYPE_LABELS[result.videoType] ?? result.videoType}
         </Chip>
         {result.isSilent && (
-          <Chip size="sm" variant="flat" color="warning" className="text-[11px]" startContent={<Icon icon="solar:volume-cross-bold" width={12} />}>
+          <Chip size="sm" variant="tertiary" color="warning" className="text-[11px]">
+            <Icon icon="solar:volume-cross-bold" width={12} />
             No Dialogue
           </Chip>
         )}
         {result.character ? (
-          <Chip size="sm" variant="flat" color="secondary" className="text-[11px]" startContent={<Icon icon="solar:user-bold" width={12} />}>
+          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
+            <Icon icon="solar:user-bold" width={12} />
             Character
           </Chip>
         ) : (
-          <Chip size="sm" variant="flat" color="default" className="text-[11px]" startContent={<Icon icon="solar:video-frame-bold" width={12} />}>
+          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
+            <Icon icon="solar:video-frame-bold" width={12} />
             No Character
           </Chip>
         )}
@@ -80,14 +83,13 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-text-primary">{scene.slug}</span>
+                    <span className="text-[13px] font-medium text-text-accent">{scene.slug}</span>
                     <Tooltip
-                      content={SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}
-                      placement="top"
-                      size="sm"
-                      delay={200}
-                      classNames={{ content: "text-[11px] px-2 py-1" }}
-                    >
+ content={SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}
+ placement="top"
+ size="sm"
+ delay={200}
+ >
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium cursor-help ${
                         scene.sceneType === "a-roll"
                           ? "bg-blue-500/10 text-blue-400"
@@ -146,20 +148,20 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
         ) : (
           <div className="flex gap-2">
             <Button
-              size="sm"
-              className={`${theme === "orange" ? "bg-orange-500" : "bg-accent-400"} text-white font-semibold flex-1 h-9`}
-              onPress={onAccept}
-              startContent={<Icon icon="solar:check-circle-bold" width={16} />}
-            >
+ size="sm"
+ className={`${theme === "orange" ? "bg-orange-500" : "bg-accent-400"} text-white font-semibold flex-1 h-9`}
+ onPress={onAccept}
+ >
+              <Icon icon="solar:check-circle-bold" width={16} />
               Accept
             </Button>
             <Button
-              size="sm"
-              variant="bordered"
-              className="border-white/[0.08] text-text-secondary h-9"
-              onPress={onRetry}
-              startContent={<Icon icon="solar:refresh-bold" width={16} />}
-            >
+ size="sm"
+ variant="outline"
+ className="border-white/[0.08] text-text-secondary h-9"
+ onPress={onRetry}
+ >
+              <Icon icon="solar:refresh-bold" width={16} />
               Try Again
             </Button>
           </div>

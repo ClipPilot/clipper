@@ -9,7 +9,7 @@ import {
   ModalBody,
   ModalFooter,
   Spinner,
-  addToast,
+  toast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { campaignAPI, type CampaignVideo } from "@/api/campaign";
@@ -75,11 +75,7 @@ export function ClipPickerModal({
           setOffset(newOffset + batch.length);
         }
       } catch {
-        addToast({
-          title: "Failed to load clips",
-          description: "Could not load your clip library.",
-          color: "danger",
-        });
+        toast.danger("Failed to load clips", { description: "Could not load your clip library." });
       } finally {
         setIsLoading(false);
       }
@@ -131,19 +127,11 @@ export function ClipPickerModal({
     setIsAdding(true);
     try {
       const result = await campaignAPI.addVideos(teamId, campaignId, Array.from(selectedIds));
-      addToast({
-        title: "Clips added",
-        description: `${selectedIds.size} clip${selectedIds.size !== 1 ? "s" : ""} added to campaign.`,
-        color: "success",
-      });
+      toast.success("Clips added", { description: `${selectedIds.size} clip${selectedIds.size !== 1 ? "s" : ""} added to campaign.` });
       onAdded(result.videos);
       onClose();
     } catch (err: any) {
-      addToast({
-        title: "Failed to add clips",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to add clips", { description: err.message || "Something went wrong" });
     } finally {
       setIsAdding(false);
     }

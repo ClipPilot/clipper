@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Card, CardBody } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
@@ -31,7 +31,7 @@ export default function UGCStudioPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl lg:text-5xl font-bold text-text-primary mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold text-text-accent mb-4">
             UGC Studio
           </h1>
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
@@ -97,11 +97,10 @@ export default function UGCStudioPage() {
           className="mt-10"
         >
           <Card
-            className="bg-surface-base border border-border-base overflow-hidden hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
-            isPressable
-            onPress={() => router.push("/dashboard/ugc-studio/characters")}
-          >
-            <CardBody className="p-0">
+ className="bg-surface-base border border-border-base overflow-hidden hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
+ onPress={() => router.push("/dashboard/ugc-studio/characters")}
+ >
+            <Card.Content className="p-0">
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-48 h-32 md:h-auto bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-transparent flex items-center justify-center">
                   <div className="w-16 h-16 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -114,7 +113,7 @@ export default function UGCStudioPage() {
                 </div>
                 <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-text-primary mb-1">
+                    <h3 className="text-xl font-semibold text-text-accent mb-1">
                       Characters
                     </h3>
                     <p className="text-sm text-text-secondary max-w-lg">
@@ -143,7 +142,7 @@ export default function UGCStudioPage() {
                   </div>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
 
@@ -183,15 +182,14 @@ function FeatureCard({
 }) {
   return (
     <Card
-      className={`bg-surface-base border border-border-base overflow-hidden transition-all duration-300 ${
-        comingSoon
-          ? "opacity-70 cursor-not-allowed"
-          : "hover:border-accent-400/40 hover:shadow-lg hover:shadow-accent-400/5 cursor-pointer group"
-      }`}
-      isPressable={!comingSoon}
-      onPress={onPress}
-    >
-      <CardBody className="p-0">
+ className={`bg-surface-base border border-border-base overflow-hidden transition-all duration-300 ${
+ comingSoon
+ ? "opacity-70 cursor-not-allowed"
+ : "hover:border-accent-400/40 hover:shadow-lg hover:shadow-accent-400/5 cursor-pointer group"
+ }`}
+ onPress={onPress}
+ >
+      <Card.Content className="p-0">
         <div
           className={`h-32 bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
         >
@@ -216,7 +214,7 @@ function FeatureCard({
         <div className="p-6 space-y-4">
           <div>
             <h3
-              className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-primary"}`}
+              className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-accent"}`}
             >
               {title}
             </h3>
@@ -255,7 +253,7 @@ function FeatureCard({
             </div>
           )}
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

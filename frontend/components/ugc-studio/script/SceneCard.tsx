@@ -1,20 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Card,
-  CardBody,
+import { Card,
   Button,
-  Textarea,
+  TextArea,
   Chip,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
   Tooltip,
   Switch,
-  Slider,
-} from "@heroui/react";
+  Slider } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EmotionSelector } from "./EmotionSelector";
 import { CameraAngleSelector } from "./CameraAngleSelector";
@@ -162,20 +156,20 @@ export function SceneCard({
 
   return (
     <Card className={`bg-surface-elevated border overflow-visible ${isArollMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
-      <CardBody className="p-4 space-y-3">
+      <Card.Content className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Dropdown>
-              <DropdownTrigger>
-                <Chip
-                  size="sm"
-                  className={`${sceneConfig.color} cursor-pointer hover:opacity-80`}
-                  startContent={<Icon icon={sceneConfig.icon} width={12} />}
-                >
+<Chip
+ size="sm"
+ className={`${sceneConfig.color} cursor-pointer hover:opacity-80`}
+ >
+                  <Icon icon={sceneConfig.icon} width={12} />
                   {sceneConfig.label}
                 </Chip>
-              </DropdownTrigger>
-              <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                 aria-label="Select scene type"
                 selectionMode="single"
                 selectedKeys={[scene.sceneType]}
@@ -185,39 +179,39 @@ export function SceneCard({
                 {SCENE_TYPES.map((type) => {
                   const typeConfig = SCENE_TYPE_CONFIG[type];
                   return (
-                    <DropdownItem
+                    <Dropdown.Item
                       key={type}
                       startContent={<Icon icon={typeConfig.icon} width={16} />}
-                      className="text-text-primary"
+                      className="text-text-accent"
                     >
                       {typeConfig.label}
-                    </DropdownItem>
+                    </Dropdown.Item>
                   );
                 })}
-              </DropdownMenu>
+              </Dropdown.Menu>
+</Dropdown.Popover>
             </Dropdown>
             {scene.mergedSceneTypes && scene.mergedSceneTypes.length > 1 && (
               <Tooltip
-                content={
-                  <div className="text-xs">
-                    <p className="font-medium mb-1">Combined beats:</p>
-                    {scene.mergedSceneTypes.map((type, i) => (
-                      <p key={i} className="flex items-center gap-1">
-                        <Icon icon={SCENE_TYPE_CONFIG[type].icon} width={12} />
-                        {SCENE_TYPE_CONFIG[type].label}
-                      </p>
-                    ))}
-                  </div>
-                }
-                placement="bottom"
-                classNames={{ content: "bg-surface-elevated border border-border-base" }}
-              >
+ content={
+ <div className="text-xs">
+ <p className="font-medium mb-1">Combined beats:</p>
+ {scene.mergedSceneTypes.map((type, i) => (
+ <p key={i} className="flex items-center gap-1">
+ <Icon icon={SCENE_TYPE_CONFIG[type].icon} width={12} />
+ {SCENE_TYPE_CONFIG[type].label}
+ </p>
+ ))}
+ </div>
+ }
+ placement="bottom"
+ >
                 <Chip
-                  size="sm"
-                  variant="flat"
-                  className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 cursor-help"
-                  startContent={<Icon icon="solar:layers-bold" width={12} />}
-                >
+ size="sm"
+ variant="tertiary"
+ className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 cursor-help"
+ >
+                  <Icon icon="solar:layers-bold" width={12} />
                   {scene.mergedSceneTypes.length} beats
                 </Chip>
               </Tooltip>
@@ -229,20 +223,20 @@ export function SceneCard({
 
           <div className="flex items-center gap-1">
             <Dropdown>
-              <DropdownTrigger>
-                <Chip
-                  size="sm"
-                  variant="flat"
-                  className={`cursor-pointer hover:opacity-80 ${
-                    scene.shotType === "a-roll"
-                      ? "bg-blue-500/20 text-blue-400"
-                      : "bg-amber-500/20 text-amber-400"
-                  }`}
-                >
+<Chip
+ size="sm"
+ variant="tertiary"
+ className={`cursor-pointer hover:opacity-80 ${
+ scene.shotType === "a-roll"
+ ? "bg-blue-500/20 text-blue-400"
+ : "bg-amber-500/20 text-amber-400"
+ }`}
+ >
                   {scene.shotType}
                 </Chip>
-              </DropdownTrigger>
-              <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                 aria-label="Select shot type"
                 selectionMode="single"
                 selectedKeys={[scene.shotType]}
@@ -262,26 +256,27 @@ export function SceneCard({
                 className="bg-surface-elevated"
               >
                 {SHOT_TYPES.map((shotType) => (
-                  <DropdownItem
+                  <Dropdown.Item
                     key={shotType}
                     className={
                       shotType === "a-roll" ? "text-blue-400" : "text-amber-400"
                     }
                   >
                     {shotType}
-                  </DropdownItem>
+                  </Dropdown.Item>
                 ))}
-              </DropdownMenu>
+              </Dropdown.Menu>
+</Dropdown.Popover>
             </Dropdown>
             <Tooltip content="Regenerate scene" placement="bottom">
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                onPress={onRegenerate}
-                isLoading={isRegenerating}
-                className="text-text-muted hover:text-accent-400"
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={onRegenerate}
+ isPending={isRegenerating}
+ className="text-text-muted hover:text-accent-400"
+ >
                 <Icon icon="solar:refresh-bold" width={16} />
               </Button>
             </Tooltip>
@@ -294,32 +289,32 @@ export function SceneCard({
               <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
               <span className="text-xs text-text-muted">Action</span>
             </div>
-            <Textarea
+            <TextArea
               value={editedAction}
               onChange={(e) => setEditedAction(e.target.value)}
               placeholder="Enter action..."
               minRows={1}
               classNames={{
-                input: "bg-surface-base text-text-primary text-sm",
+                input: "bg-surface-base text-text-accent text-sm",
                 inputWrapper: "bg-surface-base border-border-base",
               }}
             />
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="flat" onPress={handleCancelActionEdit}>
+              <Button size="sm" variant="tertiary" onPress={handleCancelActionEdit}>
                 Cancel
               </Button>
               <Button
-                size="sm"
-                className="bg-accent-400 text-white"
-                onPress={handleSaveAction}
-              >
+ size="sm"
+ className="bg-accent-400 text-white"
+ onPress={handleSaveAction}
+ >
                 Save
               </Button>
             </div>
           </div>
         ) : (
           <div
-            className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors group"
+            className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer hover:text-text-accent transition-colors group"
             onClick={() => setIsEditingAction(true)}
           >
             <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
@@ -331,38 +326,28 @@ export function SceneCard({
         {scene.shotType === "b-roll" && (
           <div className="flex items-center justify-between">
             <Switch
-              size="sm"
-              isSelected={!scene.dialogue}
-              onValueChange={(noVoiceover) => {
-                if (noVoiceover) {
-                  onUpdate({ dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 });
-                } else {
-                  onUpdate({ dialogue: "Add voiceover text here..." });
-                }
-              }}
-              classNames={{
-                wrapper: "group-data-[selected=true]:bg-amber-500",
-              }}
-            >
+ isSelected={!scene.dialogue}
+ onChange={(noVoiceover) => {
+ if (noVoiceover) {
+ onUpdate({ dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 });
+ } else {
+ onUpdate({ dialogue: "Add voiceover text here..." });
+ }
+ }}
+ >
               <span className="text-xs text-text-secondary">No voiceover</span>
             </Switch>
             {!scene.dialogue && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-text-muted">Duration:</span>
                 <Slider
-                  size="sm"
-                  step={1}
-                  minValue={3}
-                  maxValue={10}
-                  value={scene.estimatedDurationSeconds}
-                  onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
-                  className="w-24"
-                  classNames={{
-                    track: "bg-surface-base",
-                    filler: "bg-amber-500",
-                    thumb: "bg-amber-500",
-                  }}
-                />
+ step={1}
+ minValue={3}
+ maxValue={10}
+ value={scene.estimatedDurationSeconds}
+ onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
+ className="w-24"
+ />
                 <span className="text-xs text-amber-400 font-medium w-6 text-right">{scene.estimatedDurationSeconds}s</span>
               </div>
             )}
@@ -372,25 +357,25 @@ export function SceneCard({
         {(scene.shotType !== "b-roll" || scene.dialogue) && (
           isEditingDialogue ? (
             <div className="space-y-2">
-              <Textarea
+              <TextArea
                 value={editedDialogue}
                 onChange={(e) => setEditedDialogue(e.target.value)}
                 placeholder="Enter dialogue..."
                 minRows={2}
                 classNames={{
-                  input: "bg-surface-base text-text-primary",
+                  input: "bg-surface-base text-text-accent",
                   inputWrapper: "bg-surface-base border-border-base",
                 }}
               />
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="flat" onPress={handleCancelDialogueEdit}>
+                <Button size="sm" variant="tertiary" onPress={handleCancelDialogueEdit}>
                   Cancel
                 </Button>
                 <Button
-                  size="sm"
-                  className="bg-accent-400 text-white"
-                  onPress={handleSaveDialogue}
-                >
+ size="sm"
+ className="bg-accent-400 text-white"
+ onPress={handleSaveDialogue}
+ >
                   Save
                 </Button>
               </div>
@@ -401,7 +386,7 @@ export function SceneCard({
               onClick={() => setIsEditingDialogue(true)}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-text-primary text-sm leading-relaxed flex-1">
+                <p className="text-text-accent text-sm leading-relaxed flex-1">
                   &quot;{scene.dialogue}&quot;
                 </p>
                 <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
@@ -425,12 +410,12 @@ export function SceneCard({
                 <span className="text-xs font-medium text-text-secondary">B-Roll Shots</span>
               </div>
               <Button
-                size="sm"
-                variant="light"
-                className="text-amber-400 hover:bg-amber-400/10 h-6 px-2"
-                onPress={handleAddBRollShot}
-                startContent={<Icon icon="solar:add-circle-linear" width={14} />}
-              >
+ size="sm"
+ variant="tertiary"
+ className="text-amber-400 hover:bg-amber-400/10 h-6 px-2"
+ onPress={handleAddBRollShot}
+ >
+                <Icon icon="solar:add-circle-linear" width={14} />
                 Add Shot
               </Button>
             </div>
@@ -444,7 +429,7 @@ export function SceneCard({
                         <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
                         <div>
                           <label className="text-xs text-text-muted mb-1 block">Action</label>
-                          <Textarea
+                          <TextArea
                             value={editedBRollShot.action}
                             onChange={(e) =>
                               setEditedBRollShot({ ...editedBRollShot, action: e.target.value })
@@ -452,21 +437,21 @@ export function SceneCard({
                             placeholder="What happens in this shot..."
                             minRows={1}
                             classNames={{
-                              input: "bg-surface-base text-text-primary text-sm",
+                              input: "bg-surface-base text-text-accent text-sm",
                               inputWrapper: "bg-surface-base border-border-base",
                             }}
                           />
                         </div>
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="flat" onPress={handleCancelBRollEdit} isDisabled={savingBRollIndex === editingBRollIndex}>
+                          <Button size="sm" variant="tertiary" onPress={handleCancelBRollEdit} isDisabled={savingBRollIndex === editingBRollIndex}>
                             Cancel
                           </Button>
                           <Button
-                            size="sm"
-                            className="bg-amber-500 text-white"
-                            onPress={handleSaveBRoll}
-                            isLoading={savingBRollIndex === editingBRollIndex}
-                          >
+ size="sm"
+ className="bg-amber-500 text-white"
+ onPress={handleSaveBRoll}
+ isPending={savingBRollIndex === editingBRollIndex}
+ >
                             {savingBRollIndex === editingBRollIndex ? "Regenerating direction..." : "Save"}
                           </Button>
                         </div>
@@ -482,19 +467,19 @@ export function SceneCard({
                               <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
                               <span className="text-xs text-text-muted">{shot.durationSeconds}s</span>
                             </div>
-                            <p className="text-sm text-text-primary">{shot.action}</p>
+                            <p className="text-sm text-text-accent">{shot.action}</p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted" />
                             {scene.bRollShots && scene.bRollShots.length > 1 && (
                               <div onClick={(e) => e.stopPropagation()}>
                                 <Button
-                                  isIconOnly
-                                  size="sm"
-                                  variant="light"
-                                  onPress={() => handleRemoveBRollShot(idx)}
-                                  className="text-text-muted hover:text-red-400 min-w-5 w-5 h-5"
-                                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => handleRemoveBRollShot(idx)}
+ className="text-text-muted hover:text-red-400 min-w-5 w-5 h-5"
+ >
                                   <Icon icon="solar:trash-bin-minimalistic-linear" width={12} />
                                 </Button>
                               </div>
@@ -542,54 +527,54 @@ export function SceneCard({
           <div className="flex items-center gap-1">
             <Tooltip content="Move up" placement="top">
               <Button
-                isIconOnly
-                size="md"
-                variant="light"
-                onPress={onMoveUp}
-                isDisabled={index === 0}
-                className="text-text-muted hover:text-text-primary"
-              >
+ isIconOnly
+ size="md"
+ variant="tertiary"
+ onPress={onMoveUp}
+ isDisabled={index === 0}
+ className="text-text-muted hover:text-text-accent"
+ >
                 <Icon icon="solar:arrow-up-linear" width={20} />
               </Button>
             </Tooltip>
             <Tooltip content="Move down" placement="top">
               <Button
-                isIconOnly
-                size="md"
-                variant="light"
-                onPress={onMoveDown}
-                isDisabled={index === totalScenes - 1}
-                className="text-text-muted hover:text-text-primary"
-              >
+ isIconOnly
+ size="md"
+ variant="tertiary"
+ onPress={onMoveDown}
+ isDisabled={index === totalScenes - 1}
+ className="text-text-muted hover:text-text-accent"
+ >
                 <Icon icon="solar:arrow-down-linear" width={20} />
               </Button>
             </Tooltip>
             <Tooltip content="Add scene below" placement="top">
               <Button
-                isIconOnly
-                size="md"
-                variant="light"
-                onPress={onAddBelow}
-                className="text-text-muted hover:text-green-400"
-              >
+ isIconOnly
+ size="md"
+ variant="tertiary"
+ onPress={onAddBelow}
+ className="text-text-muted hover:text-green-400"
+ >
                 <Icon icon="solar:add-circle-linear" width={20} />
               </Button>
             </Tooltip>
             <Tooltip content={canRemove ? "Delete scene" : "Minimum 3 scenes required"} placement="top">
               <Button
-                isIconOnly
-                size="md"
-                variant="light"
-                onPress={onRemove}
-                isDisabled={!canRemove}
-                className="text-text-muted hover:text-red-400 disabled:opacity-30"
-              >
+ isIconOnly
+ size="md"
+ variant="tertiary"
+ onPress={onRemove}
+ isDisabled={!canRemove}
+ className="text-text-muted hover:text-red-400 disabled:opacity-30"
+ >
                 <Icon icon="solar:trash-bin-2-linear" width={20} />
               </Button>
             </Tooltip>
           </div>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

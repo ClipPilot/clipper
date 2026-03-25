@@ -3,7 +3,8 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
-import { Link, Spacer, addToast, Input, Button, Chip } from "@heroui/react";
+import { Link, Input, Button, Chip } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 
 import { tiers } from "./pricing-tiers";
@@ -36,32 +37,20 @@ function PricingContent() {
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
-      addToast({
-        title: "Payment successful!",
-        description: isPaidPlan(currentPlan)
+      toast.success("Payment successful!", { description: isPaidPlan(currentPlan)
           ? "Your clips have been added."
-          : "Your plan has been upgraded.",
-        color: "success",
-      });
+          : "Your plan has been upgraded." });
       fetchTeams();
       refetchUsage();
     }
     if (searchParams.get("canceled") === "true") {
-      addToast({
-        title: "Checkout canceled",
-        description: "Your subscription was not changed.",
-        color: "warning",
-      });
+      toast.warning("Checkout canceled", { description: "Your subscription was not changed." });
     }
   }, [searchParams, fetchTeams, refetchUsage, currentPlan]);
 
   const handleUpgrade = async (tier: Tier) => {
     if (!selectedTeam) {
-      addToast({
-        title: "No workspace selected",
-        description: "Please select a workspace to upgrade.",
-        color: "danger",
-      });
+      toast.danger("No workspace selected", { description: "Please select a workspace to upgrade." });
       return;
     }
 
@@ -78,11 +67,7 @@ function PricingContent() {
       );
       window.open(url, "_blank");
     } catch (error: any) {
-      addToast({
-        title: "Checkout failed",
-        description: error.message || "Failed to start checkout",
-        color: "danger",
-      });
+      toast.danger("Checkout failed", { description: error.message || "Failed to start checkout" });
     } finally {
       setLoadingTier(null);
     }
@@ -96,11 +81,7 @@ function PricingContent() {
       const { url } = await stripeAPI.createPortalSession(selectedTeam.id);
       window.open(url, "_blank");
     } catch (error: any) {
-      addToast({
-        title: "Portal failed",
-        description: error.message || "Failed to open billing portal",
-        color: "danger",
-      });
+      toast.danger("Portal failed", { description: error.message || "Failed to open billing portal" });
     } finally {
       setLoadingPortal(false);
     }
@@ -122,11 +103,7 @@ function PricingContent() {
       );
       window.open(url, "_blank");
     } catch (error: any) {
-      addToast({
-        title: "Checkout failed",
-        description: error.message || "Failed to start checkout",
-        color: "danger",
-      });
+      toast.danger("Checkout failed", { description: error.message || "Failed to start checkout" });
     } finally {
       setLoadingTier(null);
     }
@@ -145,19 +122,11 @@ function PricingContent() {
       setLoadingChangePlan(true);
       const result = await stripeAPI.changePlan(selectedTeam.id, newPriceId);
 
-      addToast({
-        title: "Plan change scheduled",
-        description: result.message,
-        color: "success",
-      });
+      toast.success("Plan change scheduled", { description: result.message });
 
       return { effectiveDate: result.effectiveDate };
     } catch (error: any) {
-      addToast({
-        title: "Failed to change plan",
-        description: error.message || "Failed to change plan",
-        color: "danger",
-      });
+      toast.danger("Failed to change plan", { description: error.message || "Failed to change plan" });
     } finally {
       setLoadingChangePlan(false);
     }
@@ -204,24 +173,12 @@ function PricingContent() {
 
         setAppliedReferral(validation.code);
         setShowReferralInput(false);
-        addToast({
-          title: `${validation.type === "affiliate" ? "Affiliate" : "Referral"} code applied!`,
-          description: "Your code has been linked successfully.",
-          color: "success",
-        });
+        toast.success(`${validation.type === "affiliate" ? "Affiliate" : "Referral"} code applied!`, { description: "Your code has been linked successfully." });
       } else {
-        addToast({
-          title: "Invalid code",
-          description: "Please check your code and try again.",
-          color: "danger",
-        });
+        toast.danger("Invalid code", { description: "Please check your code and try again." });
       }
     } catch (error: any) {
-      addToast({
-        title: "Error",
-        description: error.message || "Failed to apply code",
-        color: "danger",
-      });
+      toast.danger("Error", { description: error.message || "Failed to apply code" });
     } finally {
       setIsApplyingCode(false);
     }
@@ -279,17 +236,17 @@ function PricingContent() {
         <h2 className="text-accent-400 text-sm font-medium uppercase tracking-wider">
           Pricing
         </h2>
-        <Spacer y={2} />
+        <div className="h-2" />
         <h1 className="text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">
           Choose your plan
         </h1>
-        <Spacer y={4} />
+        <div className="h-4" />
         <p className="text-lg text-text-secondary">
           Generate unlimited clips. Only pay for what you save.
         </p>
       </motion.div>
 
-      <Spacer y={8} />
+      <div className="h-8" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -385,7 +342,7 @@ function PricingContent() {
         )}
       </motion.div>
 
-      <Spacer y={8} />
+      <div className="h-8" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -416,7 +373,7 @@ function PricingContent() {
         </div>
       </motion.div>
 
-      <Spacer y={6} />
+      <div className="h-6" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -447,7 +404,7 @@ function PricingContent() {
         onUpgrade={handleUpgrade}
       />
 
-      <Spacer y={12} />
+      <div className="h-12" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

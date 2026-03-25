@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Button,
-  addToast,
+  toast,
   Spinner,
-  useDisclosure,
+  useOverlayState,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
@@ -48,7 +48,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   const router = useRouter();
   const { selectedTeam } = useTeams();
   const { dateRange, setDateRange } = useViralityDateRange();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const [accounts, setAccounts] = useState<ViralityAccount[]>([]);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
@@ -71,7 +71,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
       reconcileSync(accts);
       setPostsByAccount(postsMap);
     } catch (err: any) {
-      addToast({ title: "Failed to load data", description: err.message, color: "danger" });
+      toast.danger("Failed to load data", { description: err.message });
     } finally {
       setIsLoading(false);
       setIsRecalculating(false);
@@ -121,9 +121,9 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     try {
       // Fire-and-forget: returns 202 instantly, kicks off background sync + Step Functions
       await userPerformanceAPI.syncAll(selectedTeam.id);
-      addToast({ title: "Sync started for all accounts", color: "primary" });
+      toast("Sync started for all accounts");
     } catch (err: any) {
-      addToast({ title: "Failed to start sync", description: err.message, color: "danger" });
+      toast.danger("Failed to start sync", { description: err.message });
     }
   };
 
@@ -131,10 +131,10 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     if (!selectedTeam?.id) return;
     try {
       await userPerformanceAPI.deletePost(selectedTeam.id, postId);
-      addToast({ title: "Post removed from tracking", color: "success" });
+      toast.success("Post removed from tracking");
       await fetchData(true);
     } catch (err: any) {
-      addToast({ title: "Failed to delete post", description: err.message, color: "danger" });
+      toast.danger("Failed to delete post", { description: err.message });
     }
   }, [selectedTeam?.id, fetchData]);
 
@@ -155,7 +155,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
       profileUrl,
       options.accountType
     );
-    addToast({ title: "Account added", color: "success" });
+    toast.success("Account added");
     await fetchData();
   };
 
@@ -312,16 +312,16 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
           <div className="flex items-center gap-3 min-w-0">
             {showBackButton && (
               <Button
-                isIconOnly
-                variant="light"
-                className="text-text-secondary flex-shrink-0"
-                onPress={() => router.push(backHref)}
-              >
+ isIconOnly
+ variant="tertiary"
+ className="text-text-secondary flex-shrink-0"
+ onPress={() => router.push(backHref)}
+ >
                 <Icon icon="solar:arrow-left-linear" width={20} />
               </Button>
             )}
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">Your Performance</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-text-accent truncate">Your Performance</h1>
               <p className="text-text-secondary text-[11px] sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">
                 Real-time performance metrics for your own accounts
               </p>
@@ -336,23 +336,21 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 overflow-x-auto">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
-              size="sm"
-              className="bg-accent-400 text-white flex-shrink-0"
-              startContent={<Icon icon="solar:add-circle-bold" width={16} />}
-              onPress={onOpen}
-            >
+ size="sm"
+ className="bg-accent-400 text-white flex-shrink-0"
+ onPress={onOpen}
+ >
+              <Icon icon="solar:add-circle-bold" width={16} />
               <span className="hidden sm:inline">Add Account</span>
               <span className="sm:hidden">Add</span>
             </Button>
             <Button
-              size="sm"
-              className="bg-surface-base text-text-primary border border-border-base flex-shrink-0"
-              startContent={
-                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={16} />
-              }
-              isDisabled={isSyncing || accounts.length === 0}
-              onPress={handleSyncAll}
-            >
+ size="sm"
+ className="bg-surface-base text-text-accent border border-border-base flex-shrink-0"
+ isDisabled={isSyncing || accounts.length === 0}
+ onPress={handleSyncAll}
+ >
+              {isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={16} />}
               {isSyncing ? "Syncing..." : "Sync All"}
             </Button>
           </div>
@@ -375,14 +373,14 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         {/* Syncing accounts banner */}
         {syncingAccountIds.length > 0 && (
           <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-3 sm:px-4 py-2.5 sm:py-3">
-            <Spinner size="sm" color="primary" />
+            <Spinner size="sm" color="accent" />
             <p className="text-sm text-text-secondary">
               Syncing{" "}
               {accounts
                 .filter((a) => syncingAccountIds.includes(a.id))
                 .map((a, i, arr) => (
                   <Fragment key={a.id}>
-                    <span className="font-medium text-text-primary">
+                    <span className="font-medium text-text-accent">
                       {a.account_type === "hashtag" ? "#" : "@"}{a.username}
                     </span>
                     {i < arr.length - 1 && ", "}

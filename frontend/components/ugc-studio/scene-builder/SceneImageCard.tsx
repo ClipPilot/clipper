@@ -1,17 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  Card,
-  CardBody,
+import { Card,
   Button,
   Chip,
-  Progress,
+  ProgressBar,
   Modal,
-  ModalContent,
-  ModalBody,
-  Input,
-} from "@heroui/react";
+  Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type UGCScene, type BRollShot } from "../script/types";
 import { EmotionSelector } from "../script/EmotionSelector";
@@ -472,49 +467,48 @@ export function SceneImageCard({
   if (!isExpanded && !isStoryboardMode) {
     return (
       <Card
-        isPressable
-        onPress={() => setIsExpanded(true)}
-        className={`bg-surface-elevated border transition-all ${
-          isCurrentlyGenerating
-            ? "border-blue-500 animate-pulse"
-            : hasImage
-              ? "border-accent-400/30 hover:border-accent-400/50"
-              : "border-border-base hover:border-accent-400/30"
-        }`}
-      >
-        <CardBody className="p-3">
+ onPress={() => setIsExpanded(true)}
+ className={`bg-surface-elevated border transition-all ${
+ isCurrentlyGenerating
+ ? "border-blue-500 animate-pulse"
+ : hasImage
+ ? "border-accent-400/30 hover:border-accent-400/50"
+ : "border-border-base hover:border-accent-400/30"
+ }`}
+ >
+        <Card.Content className="p-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className="text-xs font-medium text-text-muted shrink-0">
                 Scene {scene.sceneNumber}
               </span>
               <Chip
-                size="sm"
-                className={`${sceneConfig.color} shrink-0`}
-                startContent={<Icon icon={sceneConfig.icon} width={10} />}
-              >
+ size="sm"
+ className={`${sceneConfig.color} shrink-0`}
+ >
+                <Icon icon={sceneConfig.icon} width={10} />
                 {sceneConfig.label}
               </Chip>
               <Chip
-                size="sm"
-                variant="flat"
-                className={
-                  scene.shotType === "a-roll"
-                    ? "bg-blue-500/20 text-blue-400"
-                    : scene.shotType === "b-roll"
-                      ? "bg-amber-500/20 text-amber-400"
-                      : "bg-purple-500/20 text-purple-400"
-                }
-              >
+ size="sm"
+ variant="tertiary"
+ className={
+ scene.shotType === "a-roll"
+ ? "bg-blue-500/20 text-blue-400"
+ : scene.shotType === "b-roll"
+ ? "bg-amber-500/20 text-amber-400"
+ : "bg-purple-500/20 text-purple-400"
+ }
+ >
                 {scene.shotType}
               </Chip>
               {scene.bRollShots && scene.bRollShots.length > 0 && (
                 <Chip
-                  size="sm"
-                  variant="flat"
-                  className="bg-amber-500/30 text-amber-300"
-                  startContent={<Icon icon="solar:video-library-bold" width={10} />}
-                >
+ size="sm"
+ variant="tertiary"
+ className="bg-amber-500/30 text-amber-300"
+ >
+                  <Icon icon="solar:video-library-bold" width={10} />
                   {scene.bRollShots.length} shots
                 </Chip>
               )}
@@ -547,27 +541,18 @@ export function SceneImageCard({
           <p className="text-sm text-text-secondary line-clamp-1 mt-2">
             "{scene.dialogue}"
           </p>
-        </CardBody>
+        </Card.Content>
 
-        <Modal
-          isOpen={!!zoomImageUrl}
-          onClose={() => setZoomImageUrl(null)}
-          size="4xl"
-          classNames={{
-            backdrop: "bg-black/80",
-            base: "bg-transparent shadow-none",
-            body: "p-0",
-          }}
-        >
-          <ModalContent>
-            <ModalBody>
+        <Modal>
+          <Modal.Backdrop isOpen={!!zoomImageUrl} onOpenChange={() => setZoomImageUrl(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+            <Modal.Body>
               <div className="relative flex items-center justify-center">
                 <Button
-                  isIconOnly
-                  className="absolute top-2 right-2 z-10 bg-black/50 text-white"
-                  variant="flat"
-                  onPress={() => setZoomImageUrl(null)}
-                >
+ isIconOnly
+ className="absolute top-2 right-2 z-10 bg-black/50 text-white"
+ variant="tertiary"
+ onPress={() => setZoomImageUrl(null)}
+ >
                   <Icon icon="solar:close-circle-bold" width={24} />
                 </Button>
                 {zoomImageUrl && (
@@ -578,8 +563,8 @@ export function SceneImageCard({
                   />
                 )}
               </div>
-            </ModalBody>
-          </ModalContent>
+            </Modal.Body>
+          </Modal.Dialog></Modal.Container></Modal.Backdrop>
         </Modal>
       </Card>
     );
@@ -587,47 +572,47 @@ export function SceneImageCard({
 
   return (
     <Card
-      className={`bg-surface-elevated border ${
-        isCurrentlyGenerating
-          ? "border-blue-500 animate-pulse"
-          : scene.shotType === "a-roll" && !scene.dialogue?.trim()
-            ? "border-red-500/60"
-            : "border-accent-400/30"
-      }`}
-    >
-      <CardBody className="p-4 space-y-4">
+ className={`bg-surface-elevated border ${
+ isCurrentlyGenerating
+ ? "border-blue-500 animate-pulse"
+ : scene.shotType === "a-roll" && !scene.dialogue?.trim()
+ ? "border-red-500/60"
+ : "border-accent-400/30"
+ }`}
+ >
+      <Card.Content className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-text-primary">
+            <span className="text-sm font-semibold text-text-accent">
               Scene {scene.sceneNumber}
             </span>
             <Chip
-              size="sm"
-              className={sceneConfig.color}
-              startContent={<Icon icon={sceneConfig.icon} width={12} />}
-            >
+ size="sm"
+ className={sceneConfig.color}
+ >
+              <Icon icon={sceneConfig.icon} width={12} />
               {sceneConfig.label}
             </Chip>
             <Chip
-              size="sm"
-              variant="flat"
-              className={
-                scene.shotType === "a-roll"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : scene.shotType === "b-roll"
-                    ? "bg-amber-500/20 text-amber-400"
-                    : "bg-purple-500/20 text-purple-400"
-              }
-            >
+ size="sm"
+ variant="tertiary"
+ className={
+ scene.shotType === "a-roll"
+ ? "bg-blue-500/20 text-blue-400"
+ : scene.shotType === "b-roll"
+ ? "bg-amber-500/20 text-amber-400"
+ : "bg-purple-500/20 text-purple-400"
+ }
+ >
               {scene.shotType}
             </Chip>
             {scene.bRollShots && scene.bRollShots.length > 0 && (
               <Chip
-                size="sm"
-                variant="flat"
-                className="bg-amber-500/30 text-amber-300"
-                startContent={<Icon icon="solar:video-library-bold" width={10} />}
-              >
+ size="sm"
+ variant="tertiary"
+ className="bg-amber-500/30 text-amber-300"
+ >
+                <Icon icon="solar:video-library-bold" width={10} />
                 {scene.bRollShots.length} shots
               </Chip>
             )}
@@ -638,24 +623,24 @@ export function SceneImageCard({
           <div className="flex items-center gap-1">
             {onRegenerateScene && (
               <Button
-                size="sm"
-                variant="flat"
-                className="bg-purple-500/20 text-purple-400 h-7"
-                onPress={() => setShowRegenInput(!showRegenInput)}
-                isLoading={isRegeneratingScene}
-                startContent={!isRegeneratingScene ? <Icon icon="solar:magic-stick-3-bold" width={14} /> : undefined}
-              >
+ size="sm"
+ variant="tertiary"
+ className="bg-purple-500/20 text-purple-400 h-7"
+ onPress={() => setShowRegenInput(!showRegenInput)}
+ isPending={isRegeneratingScene}
+ >
+                {!isRegeneratingScene ? <Icon icon="solar:magic-stick-3-bold" width={14} /> : undefined}
                 Regen Scene
               </Button>
             )}
             {/* Hide collapse button in storyboard mode - use timeline for navigation */}
             {!isStoryboardMode && (
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                onPress={() => setIsExpanded(false)}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => setIsExpanded(false)}
+ >
                 <Icon icon="solar:alt-arrow-up-linear" width={16} />
               </Button>
             )}
@@ -675,15 +660,15 @@ export function SceneImageCard({
                 if (e.key === "Escape") { setShowRegenInput(false); setRegenPrompt(""); }
               }}
               placeholder="Custom direction (optional)..."
-              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+              className="flex-1 bg-transparent text-sm text-text-accent placeholder:text-text-muted outline-none"
               autoFocus
             />
             <Button
-              size="sm"
-              className="bg-purple-500 text-white h-7 min-w-0 px-3"
-              onPress={handleRegenerateScene}
-              isLoading={isRegeneratingScene}
-            >
+ size="sm"
+ className="bg-purple-500 text-white h-7 min-w-0 px-3"
+ onPress={handleRegenerateScene}
+ isPending={isRegeneratingScene}
+ >
               Regenerate
             </Button>
             <button
@@ -742,12 +727,12 @@ export function SceneImageCard({
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     onKeyDown={handleEditKeyDown}
-                    className="w-full bg-surface-base/50 text-text-primary text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
+                    className="w-full bg-surface-base/50 text-text-accent text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
                     style={{ fieldSizing: "content" } as React.CSSProperties}
                     rows={1}
                   />
                 ) : (
-                  <p className="text-text-primary text-sm leading-relaxed">
+                  <p className="text-text-accent text-sm leading-relaxed">
                     &ldquo;{scene.dialogue}&rdquo;
                   </p>
                 )}
@@ -870,17 +855,12 @@ export function SceneImageCard({
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <Input
-              value={localRefinement}
-              onChange={(e) => setLocalRefinement(e.target.value)}
-              onBlur={handleRefinementBlur}
-              placeholder="Custom prompt for this scene..."
-              size="sm"
-              startContent={<Icon icon="solar:pen-bold-duotone" className="text-text-muted" width={14} />}
-              classNames={{
-                input: "text-sm",
-                inputWrapper: "bg-surface-base border-border-base",
-              }}
-            />
+ value={localRefinement}
+ onChange={(e) => setLocalRefinement(e.target.value)}
+ onBlur={handleRefinementBlur}
+ placeholder="Custom prompt for this scene..."
+ startContent={<Icon icon="solar:pen-bold-duotone" className="text-text-muted" width={14} />}
+ />
           </div>
           <SupportingImageUploader
             teamId={teamId}
@@ -902,24 +882,21 @@ export function SceneImageCard({
                   {generation.progress}%
                 </span>
                 <Button
-                  size="sm"
-                  variant="flat"
-                  className="bg-red-500/20 text-red-400 h-6 min-w-0 px-2"
-                  onPress={handleCancel}
-                  startContent={<Icon icon="solar:close-circle-bold" width={12} />}
-                >
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/20 text-red-400 h-6 min-w-0 px-2"
+ onPress={handleCancel}
+ >
+                  <Icon icon="solar:close-circle-bold" width={12} />
                   Cancel
                 </Button>
               </div>
             </div>
-            <Progress
-              value={generation.progress}
-              size="sm"
-              classNames={{
-                track: "bg-surface-base",
-                indicator: "bg-accent-400",
-              }}
-            />
+            <ProgressBar
+ value={generation.progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
           </div>
         )}
 
@@ -930,12 +907,12 @@ export function SceneImageCard({
               <span>{generation.error || "Generation failed"}</span>
             </div>
             <Button
-              size="sm"
-              variant="flat"
-              className="bg-red-500/20 text-red-400 h-7"
-              onPress={() => handleGenerate()}
-              startContent={<Icon icon="solar:refresh-bold" width={14} />}
-            >
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/20 text-red-400 h-7"
+ onPress={() => handleGenerate()}
+ >
+              <Icon icon="solar:refresh-bold" width={14} />
               Try Again
             </Button>
           </div>
@@ -953,12 +930,12 @@ export function SceneImageCard({
                 <span className="text-[10px] text-text-muted">Click to select</span>
                 {onSceneUpdate && (
                   <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-amber-500/20 text-amber-400 h-6 min-w-0 px-2"
-                    onPress={handleAddBRollShot}
-                    startContent={<Icon icon="solar:add-circle-bold" width={12} />}
-                  >
+ size="sm"
+ variant="tertiary"
+ className="bg-amber-500/20 text-amber-400 h-6 min-w-0 px-2"
+ onPress={handleAddBRollShot}
+ >
+                    <Icon icon="solar:add-circle-bold" width={12} />
                     Add Shot
                   </Button>
                 )}
@@ -1125,64 +1102,64 @@ export function SceneImageCard({
                       <div className="flex gap-1 shrink-0">
                         {shotImage?.url && (
                           <Button
-                            isIconOnly
-                            size="sm"
-                            variant="flat"
-                            className="bg-amber-500/20 text-amber-400"
-                            onPress={() => setZoomImageUrl(shotImage.url)}
-                          >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="bg-amber-500/20 text-amber-400"
+ onPress={() => setZoomImageUrl(shotImage.url)}
+ >
                             <Icon icon="solar:magnifer-zoom-in-bold" width={14} />
                           </Button>
                         )}
                         {/* Upload custom image button */}
                         <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          className={isCustom ? "bg-green-500/20 text-green-400" : "bg-purple-500/20 text-purple-400"}
-                          isLoading={isUploadingThis}
-                          onPress={() => {
-                            const input = document.createElement("input");
-                            input.type = "file";
-                            input.accept = "image/*";
-                            input.onchange = (e) => handleBRollFileSelect(e as any, idx);
-                            input.click();
-                          }}
-                        >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className={isCustom ? "bg-green-500/20 text-green-400" : "bg-purple-500/20 text-purple-400"}
+ isPending={isUploadingThis}
+ onPress={() => {
+ const input = document.createElement("input");
+ input.type = "file";
+ input.accept = "image/*";
+ input.onchange = (e) => handleBRollFileSelect(e as any, idx);
+ input.click();
+ }}
+ >
                           <Icon icon="solar:upload-bold" width={14} />
                         </Button>
                         {/* Remove custom image button */}
                         {isCustom && onCustomBRollImageChange && (
                           <Button
-                            isIconOnly
-                            size="sm"
-                            variant="flat"
-                            className="bg-red-500/20 text-red-400"
-                            onPress={() => onCustomBRollImageChange(idx, undefined, undefined)}
-                          >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/20 text-red-400"
+ onPress={() => onCustomBRollImageChange(idx, undefined, undefined)}
+ >
                             <Icon icon="solar:trash-bin-trash-bold" width={14} />
                           </Button>
                         )}
                         <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          className="bg-blue-500/20 text-blue-400"
-                          isLoading={isShotRegenerating}
-                          isDisabled={isCurrentlyGenerating}
-                          onPress={() => handleGenerate(idx)}
-                        >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="bg-blue-500/20 text-blue-400"
+ isPending={isShotRegenerating}
+ isDisabled={isCurrentlyGenerating}
+ onPress={() => handleGenerate(idx)}
+ >
                           <Icon icon="solar:refresh-bold" width={14} />
                         </Button>
                         {/* Remove shot button */}
                         {onSceneUpdate && scene.bRollShots && scene.bRollShots.length > 1 && (
                           <Button
-                            isIconOnly
-                            size="sm"
-                            variant="flat"
-                            className="bg-red-500/20 text-red-400"
-                            onPress={() => handleRemoveBRollShot(idx)}
-                          >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/20 text-red-400"
+ onPress={() => handleRemoveBRollShot(idx)}
+ >
                             <Icon icon="solar:minus-circle-bold" width={14} />
                           </Button>
                         )}
@@ -1240,46 +1217,35 @@ export function SceneImageCard({
           </div>
 
           <Button
-            className={hasImage ? "border-border-base text-text-secondary" : "bg-accent-400 text-white"}
-            variant={hasImage ? "bordered" : "solid"}
-            size="sm"
-            onPress={() => handleGenerate()}
-            isLoading={isGenerating || generation?.status === "generating"}
-            isDisabled={generation?.status === "generating"}
-            startContent={
-              hasImage ? (
+ className={hasImage ? "border-border-base text-text-secondary" : "bg-accent-400 text-white"}
+ variant={hasImage ? "bordered" : "solid"}
+ size="sm"
+ onPress={() => handleGenerate()}
+ isPending={isGenerating || generation?.status === "generating"}
+ isDisabled={generation?.status === "generating"}
+ >
+            {hasImage ? (
                 <Icon icon="solar:refresh-bold" width={14} />
               ) : (
                 <Icon icon="solar:magic-stick-3-bold" width={14} />
-              )
-            }
-          >
+              )}
             {hasImage
               ? (scene.bRollShots ? "Regenerate All" : "Regenerate")
               : (scene.bRollShots ? "Generate Shots" : "Generate Image")}
           </Button>
         </div>
-      </CardBody>
+      </Card.Content>
 
-      <Modal
-        isOpen={!!zoomImageUrl}
-        onClose={() => setZoomImageUrl(null)}
-        size="4xl"
-        classNames={{
-          backdrop: "bg-black/80",
-          base: "bg-transparent shadow-none",
-          body: "p-0",
-        }}
-      >
-        <ModalContent>
-          <ModalBody>
+      <Modal>
+        <Modal.Backdrop isOpen={!!zoomImageUrl} onOpenChange={() => setZoomImageUrl(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+          <Modal.Body>
             <div className="relative flex items-center justify-center">
               <Button
-                isIconOnly
-                className="absolute top-2 right-2 z-10 bg-black/50 text-white"
-                variant="flat"
-                onPress={() => setZoomImageUrl(null)}
-              >
+ isIconOnly
+ className="absolute top-2 right-2 z-10 bg-black/50 text-white"
+ variant="tertiary"
+ onPress={() => setZoomImageUrl(null)}
+ >
                 <Icon icon="solar:close-circle-bold" width={24} />
               </Button>
               {zoomImageUrl && (
@@ -1290,8 +1256,8 @@ export function SceneImageCard({
                   />
               )}
             </div>
-          </ModalBody>
-        </ModalContent>
+          </Modal.Body>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </Card>
   );

@@ -95,7 +95,7 @@ export function ReferencesStep({
         <div className="w-14 h-14 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
           <Icon icon="solar:gallery-bold-duotone" className="text-accent-400" width={28} />
         </div>
-        <h3 className="text-xl font-semibold text-text-primary mb-2">Reference Images</h3>
+        <h3 className="text-xl font-semibold text-text-accent mb-2">Reference Images</h3>
         <p className="text-text-secondary text-sm">
           Optional: Add product photos or style references to guide the generation
         </p>
@@ -170,7 +170,7 @@ export function ReferencesStep({
         <div className="flex items-start gap-3">
           <Icon icon="solar:lightbulb-bold-duotone" className="text-amber-400 mt-0.5" width={20} />
           <div>
-            <p className="text-sm font-medium text-text-primary mb-1">Tips for great results</p>
+            <p className="text-sm font-medium text-text-accent mb-1">Tips for great results</p>
             <ul className="text-xs text-text-secondary space-y-1">
               <li>• Upload product images you want the actor to hold or showcase</li>
               <li>• Add brand mood board images to influence the style</li>

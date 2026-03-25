@@ -28,7 +28,7 @@ export function BasicInfoStep({
         <div className="w-14 h-14 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
           <Icon icon="solar:user-id-bold-duotone" className="text-accent-400" width={28} />
         </div>
-        <h3 className="text-xl font-semibold text-text-primary mb-2">Basic Information</h3>
+        <h3 className="text-xl font-semibold text-text-accent mb-2">Basic Information</h3>
         <p className="text-text-secondary text-sm">
           Give your actor a name and define their basic characteristics
         </p>
@@ -36,20 +36,15 @@ export function BasicInfoStep({
 
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Actor Name</label>
+          <label className="text-sm font-medium text-text-accent">Actor Name</label>
           <Input
-            value={name}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="e.g., Sarah, Alex, Jordan"
-            size="lg"
-            classNames={{
-              input: "bg-transparent",
-              inputWrapper: "bg-surface-elevated border border-border-base hover:border-accent-400/50",
-            }}
-            startContent={
-              <Icon icon="solar:user-rounded-bold" className="text-text-muted" width={18} />
-            }
-          />
+ value={name}
+ onChange={(e) => onNameChange(e.target.value)}
+ placeholder="e.g., Sarah, Alex, Jordan"
+ startContent={
+ <Icon icon="solar:user-rounded-bold" className="text-text-muted" width={18} />
+ }
+ />
         </div>
 
         <ChipSelector

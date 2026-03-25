@@ -76,18 +76,18 @@ function SceneCard({ scene, index, total }: { scene: any; index: number; total: 
           >
             <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={14} />
           </div>
-          <span className="text-[13px] font-semibold text-text-primary">
+          <span className="text-[13px] font-semibold text-text-accent">
             {scene.sceneNumber}. {slug || config?.label || storyBeat}
           </span>
           <Chip
-            size="sm"
-            variant="flat"
-            className={`text-[10px] h-5 ${
-              isARoll
-                ? "bg-blue-500/15 text-blue-400"
-                : "bg-emerald-500/15 text-emerald-400"
-            }`}
-          >
+ size="sm"
+ variant="tertiary"
+ className={`text-[10px] h-5 ${
+ isARoll
+ ? "bg-blue-500/15 text-blue-400"
+ : "bg-emerald-500/15 text-emerald-400"
+ }`}
+ >
             {shotType}
           </Chip>
           <span className="text-[11px] text-text-muted ml-auto font-medium">
@@ -192,29 +192,29 @@ export function ExistingScriptPreview({ script }: ExistingScriptPreviewProps) {
           <Icon icon="solar:document-text-bold" width={14} />
           Existing Script
         </div>
-        <h2 className="text-lg font-bold text-text-primary">{script.title}</h2>
+        <h2 className="text-lg font-bold text-text-accent">{script.title}</h2>
         {script.targetAudience && (
           <p className="text-xs text-text-muted">{script.targetAudience}</p>
         )}
         <div className="flex items-center gap-2 flex-wrap">
-          <Chip size="sm" variant="flat" color="primary" className="text-[11px]">
+          <Chip size="sm" variant="tertiary" color="accent" className="text-[11px]">
             {Math.round(totalDuration)}s
           </Chip>
-          <Chip size="sm" variant="flat" color="default" className="text-[11px]">
+          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
             {scenes.length} scenes
           </Chip>
           {aRollCount > 0 && (
-            <Chip size="sm" variant="flat" className="text-[11px] bg-blue-500/10 text-blue-400">
+            <Chip size="sm" variant="tertiary" className="text-[11px] bg-blue-500/10 text-blue-400">
               {aRollCount} a-roll
             </Chip>
           )}
           {bRollCount > 0 && (
-            <Chip size="sm" variant="flat" className="text-[11px] bg-emerald-500/10 text-emerald-400">
+            <Chip size="sm" variant="tertiary" className="text-[11px] bg-emerald-500/10 text-emerald-400">
               {bRollCount} b-roll
             </Chip>
           )}
           {script.viralScore > 0 && (
-            <Chip size="sm" variant="flat" color="success" className="text-[11px]">
+            <Chip size="sm" variant="tertiary" color="success" className="text-[11px]">
               {script.viralScore}/10
             </Chip>
           )}

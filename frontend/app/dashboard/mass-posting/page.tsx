@@ -44,7 +44,7 @@ export default function MassPostingPage() {
           />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-text-primary">
+          <h2 className="text-xl font-bold text-text-accent">
             Complete Setup First
           </h2>
           <p className="text-sm text-text-secondary leading-relaxed">
@@ -53,11 +53,11 @@ export default function MassPostingPage() {
           </p>
         </div>
         <Button
-          size="lg"
-          className="w-full bg-accent-400 text-white font-semibold"
-          onPress={() => router.push("/dashboard/publish-posts")}
-          startContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-        >
+ size="lg"
+ className="w-full bg-accent-400 text-white font-semibold"
+ onPress={() => router.push("/dashboard/publish-posts")}
+ >
+          <Icon icon="solar:arrow-right-bold" width={18} />
           Go to Publish Posts
         </Button>
       </div>

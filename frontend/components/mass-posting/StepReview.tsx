@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Button, Chip, Divider } from "@heroui/react";
+import { Button, Chip, Separator } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { IntakeFormData } from "@/api/intake";
 import { SOCIAL_PLATFORMS, getActiveTier } from "@/constants/massPosting";
@@ -19,7 +19,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-primary mb-1">
+        <h3 className="text-lg font-semibold text-text-accent mb-1">
           Review Your Application
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -50,7 +50,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         <ReviewSection title="Competitors" icon="solar:users-group-two-rounded-bold-duotone">
           {data.competitor_socials.map((c, i) => (
             <div key={i} className="mb-3 last:mb-0">
-              <p className="text-sm font-medium text-text-primary">
+              <p className="text-sm font-medium text-text-accent">
                 {c.companyName || "Unnamed"}
               </p>
               {c.accounts.map((a, j) => (
@@ -67,7 +67,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
       <ReviewSection title="Ideal Customer Profiles" icon="solar:users-group-rounded-bold-duotone">
         {data.icps?.map((icp, i) => (
           <div key={i} className="mb-4 last:mb-0">
-            <p className="text-sm font-semibold text-text-primary">
+            <p className="text-sm font-semibold text-text-accent">
               {icp.name || `ICP #${i + 1}`}
             </p>
             {icp.description && (
@@ -81,7 +81,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
             {icp.painPoints && icp.painPoints.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {icp.painPoints.map((pp, j) => (
-                  <Chip key={j} size="sm" variant="flat">
+                  <Chip key={j} size="sm" variant="tertiary">
                     {pp}
                   </Chip>
                 ))}
@@ -103,22 +103,19 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </ReviewSection>
       )}
 
-      <Divider />
+      <Separator />
 
-      <Button
-        fullWidth
-        size="lg"
-        color="primary"
-        isLoading={isSubmitting}
-        onPress={onSubmit}
-        startContent={
-          !isSubmitting && (
+      <Button variant="primary"
+ fullWidth
+ size="lg"
+ isPending={isSubmitting}
+ onPress={onSubmit}
+ >
+        {!isSubmitting && (
             <Icon
               icon={isAppeal ? "solar:pen-new-round-bold" : "solar:send-square-bold"}
             />
-          )
-        }
-      >
+          )}
         {isSubmitting
           ? "Submitting..."
           : isAppeal
@@ -144,7 +141,7 @@ function ReviewSection({
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Icon icon={icon} className="text-lg text-accent-400" />
-        <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
+        <h4 className="text-sm font-semibold text-text-accent">{title}</h4>
       </div>
       <div className="pl-7 space-y-2">{children}</div>
     </div>

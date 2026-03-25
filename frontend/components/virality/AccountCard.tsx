@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
+import { Card, Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -44,24 +44,19 @@ export function AccountCard({
 
   return (
     <Card
-      className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all"
-    >
-      <CardBody className="p-4">
+ className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all"
+ >
+      <Card.Content className="p-4">
         <div
           className="flex items-start gap-3 mb-4 cursor-pointer"
           onClick={onViewPosts}
         >
           <Avatar
-            src={account.avatar_url || undefined}
-            name={account.username.charAt(0).toUpperCase()}
-            size="lg"
-            classNames={{
-              base: "bg-surface-hover flex-shrink-0",
-            }}
-          />
+ size="lg"
+ />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="font-semibold text-text-primary truncate">
+              <p className="font-semibold text-text-accent truncate">
                 {account.display_name || account.username}
               </p>
               {account.is_verified && (
@@ -79,32 +74,29 @@ export function AccountCard({
             </div>
           </div>
           <Chip
-            size="sm"
-            variant="flat"
-            color={syncStatusColor(account.sync_status)}
-            classNames={{
-              base: "capitalize",
-            }}
-          >
+ size="sm"
+ variant="tertiary"
+ color={syncStatusColor(account.sync_status)}
+ >
             {account.sync_status}
           </Chip>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-primary">
+            <p className="text-lg font-bold text-text-accent">
               {formatNumber(account.follower_count)}
             </p>
             <p className="text-xs text-text-tertiary">Followers</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-primary">
+            <p className="text-lg font-bold text-text-accent">
               {formatNumber(account.total_likes)}
             </p>
             <p className="text-xs text-text-tertiary">Likes</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-primary">
+            <p className="text-lg font-bold text-text-accent">
               {formatNumber(account.post_count)}
             </p>
             <p className="text-xs text-text-tertiary">Posts</p>
@@ -129,43 +121,40 @@ export function AccountCard({
 
         {account.sync_status === "completed" && (
           <Button
-            size="sm"
-            variant="flat"
-            className="w-full mb-2 bg-accent-400/10 text-accent-400"
-            startContent={<Icon icon="solar:gallery-bold" width={14} />}
-            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
-            onPress={onViewPosts}
-          >
+ size="sm"
+ variant="tertiary"
+ className="w-full mb-2 bg-accent-400/10 text-accent-400"
+ onPress={onViewPosts}
+ >
+            <Icon icon="solar:gallery-bold" width={14} />
             View Posts
-          </Button>
+            <Icon icon="solar:arrow-right-linear" width={14} />
+</Button>
         )}
 
         <div className="flex gap-2">
           <Button
-            size="sm"
-            variant="flat"
-            className="flex-1"
-            startContent={
-              !isSyncing && <Icon icon="solar:refresh-bold" width={14} />
-            }
-            onPress={handleSync}
-            isLoading={isSyncing}
-            isDisabled={account.sync_status === "syncing"}
-          >
+ size="sm"
+ variant="tertiary"
+ className="flex-1"
+ onPress={handleSync}
+ isPending={isSyncing}
+ isDisabled={account.sync_status === "syncing"}
+ >
+            {!isSyncing && <Icon icon="solar:refresh-bold" width={14} />}
             {isSyncing ? "Syncing..." : "Refresh"}
           </Button>
           <Button
-            size="sm"
-            variant="flat"
-            color="danger"
-            isIconOnly
-            onPress={handleDelete}
-            isLoading={isDeleting}
-          >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ onPress={handleDelete}
+ isPending={isDeleting}
+ >
             {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
           </Button>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

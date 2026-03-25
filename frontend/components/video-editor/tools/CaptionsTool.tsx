@@ -64,7 +64,7 @@ export function CaptionsTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:subtitles-bold" className="text-accent-400" />
           Captions
         </h3>
@@ -84,18 +84,16 @@ export function CaptionsTool() {
                 width={24}
               />
               <div>
-                <p className="text-sm font-medium text-text-primary">Show Captions</p>
+                <p className="text-sm font-medium text-text-accent">Show Captions</p>
                 <p className="text-xs text-text-tertiary">
                   {captionsEnabled ? "Captions will appear on the video" : "Video will have no captions"}
                 </p>
               </div>
             </div>
             <Switch
-              isSelected={captionsEnabled}
-              onValueChange={setCaptionsEnabled}
-              color="success"
-              size="lg"
-            />
+ isSelected={captionsEnabled}
+ onChange={setCaptionsEnabled}
+ />
           </div>
         </div>
       )}
@@ -103,7 +101,7 @@ export function CaptionsTool() {
       {/* Caption Style */}
       {captions.length > 0 && captionsEnabled && (
         <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
-          <p className="text-sm font-medium text-text-primary">Caption Style</p>
+          <p className="text-sm font-medium text-text-accent">Caption Style</p>
 
           {/* Highlight Color */}
           <div>
@@ -136,7 +134,7 @@ export function CaptionsTool() {
                   className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
                     captionFont === font.name
                       ? "bg-accent-400 text-white border-accent-400 scale-105"
-                      : "bg-surface-base text-text-primary border-border-base hover:scale-105"
+                      : "bg-surface-base text-text-accent border-border-base hover:scale-105"
                   }`}
                   title={font.name}
                 >
@@ -171,12 +169,9 @@ export function CaptionsTool() {
                 <span className="text-xs text-text-tertiary">#{caption.index}</span>
               </div>
               <Input
-                value={caption.text}
-                onChange={(e) => handleCaptionTextChange(index, e.target.value)}
-                variant="bordered"
-                size="sm"
-                classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
-              />
+ value={caption.text}
+ onChange={(e) => handleCaptionTextChange(index, e.target.value)}
+ />
             </div>
           ))}
           {captions.length === 0 && (
@@ -184,13 +179,12 @@ export function CaptionsTool() {
               <Icon icon="solar:subtitles-outline" className="text-4xl text-text-tertiary mb-2 mx-auto" />
               <p className="text-text-secondary mb-4">No captions available</p>
               <Button
-                color="primary"
-                variant="flat"
-                size="sm"
-                isLoading={isGenerating}
-                onPress={handleGenerateCaptions}
-                startContent={!isGenerating ? <Icon icon="solar:magic-stick-3-bold" /> : undefined}
-              >
+ variant="tertiary"
+ size="sm"
+ isPending={isGenerating}
+ onPress={handleGenerateCaptions}
+ >
+                {!isGenerating ? <Icon icon="solar:magic-stick-3-bold" /> : undefined}
                 {isGenerating ? "Generating..." : "Generate Captions"}
               </Button>
               {generateError && (

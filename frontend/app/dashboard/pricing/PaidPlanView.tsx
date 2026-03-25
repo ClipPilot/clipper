@@ -2,23 +2,14 @@
 
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
   Chip,
-  Divider,
-  Progress,
+  Separator,
+  ProgressBar,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Link,
-  cn,
-} from "@heroui/react";
+  cn } from "@heroui/react";
 
 interface UsageStats {
   clipsCreated: number;
@@ -180,7 +171,7 @@ export function PaidPlanView({
 
       <div className="relative z-10 w-full space-y-8">
         <Card className="bg-surface-elevated/80 border border-border-base backdrop-blur-md">
-          <CardHeader className="flex flex-col gap-1 pb-0">
+          <Card.Header className="flex flex-col gap-1 pb-0">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <div
@@ -210,48 +201,29 @@ export function PaidPlanView({
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-text-primary">
+                  <h2 className="text-xl font-bold text-text-accent">
                     {getPlanDisplayName()} Plan
                   </h2>
                   <p className="text-sm text-text-secondary">{teamName}</p>
                 </div>
               </div>
               <Chip
-                color="primary"
-                variant="flat"
-                size="lg"
-                classNames={{
-                  base: isEnterprise
-                    ? "bg-emerald-500/20"
-                    : isScale
-                      ? "bg-purple-500/20"
-                      : isCreator
-                        ? "bg-orange-500/20"
-                        : "",
-                  content: cn(
-                    "font-semibold",
-                    isEnterprise
-                      ? "text-emerald-500"
-                      : isScale
-                        ? "text-purple-500"
-                        : isCreator
-                          ? "text-orange-500"
-                          : ""
-                  ),
-                }}
-              >
+ color="accent"
+ variant="tertiary"
+ size="lg"
+ >
                 {isEnterprise ? "Managed" : "Active"}
               </Chip>
             </div>
-          </CardHeader>
-          <Divider className="my-4" />
-          <CardBody className="gap-6">
+          </Card.Header>
+          <Separator className="my-4" />
+          <Card.Content className="gap-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
                   Plan
                 </span>
-                <span className="text-lg font-semibold text-text-primary capitalize">
+                <span className="text-lg font-semibold text-text-accent capitalize">
                   {currentPlan}
                 </span>
               </div>
@@ -259,7 +231,7 @@ export function PaidPlanView({
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
                   Monthly Limit
                 </span>
-                <span className="text-lg font-semibold text-text-primary">
+                <span className="text-lg font-semibold text-text-accent">
                   {usageStats?.baseLimit || 0} credits
                 </span>
               </div>
@@ -275,7 +247,7 @@ export function PaidPlanView({
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
                   Total Remaining
                 </span>
-                <span className="text-lg font-semibold text-text-primary">
+                <span className="text-lg font-semibold text-text-accent">
                   {usageStats?.totalRemaining || 0} credits
                 </span>
               </div>
@@ -286,28 +258,19 @@ export function PaidPlanView({
                 <span className="text-text-secondary">
                   Plan usage this period
                 </span>
-                <span className="text-text-primary font-medium">
+                <span className="text-text-accent font-medium">
                   {usageStats?.clipsCreated || 0} / {usageStats?.baseLimit || 0}
                 </span>
               </div>
-              <Progress
-                value={usagePercentage}
-                color={
-                  usagePercentage >= 100
-                    ? "danger"
-                    : usagePercentage >= 75
-                      ? "warning"
-                      : "primary"
-                }
-                size="md"
-                classNames={{
-                  indicator: "transition-all",
-                }}
-              />
+              <ProgressBar
+ value={usagePercentage}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
             </div>
-          </CardBody>
-          <Divider />
-          <CardFooter className="flex-col gap-3 items-stretch">
+          </Card.Content>
+          <Separator />
+          <Card.Footer className="flex-col gap-3 items-stretch">
             {pendingEffectiveDate && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                 <Icon icon="solar:clock-circle-bold" className="text-amber-500" width={18} />
@@ -324,33 +287,27 @@ export function PaidPlanView({
             <div className="flex gap-2 flex-wrap">
               {currentPlan !== "enterprise" && (
                 <Button
-                  variant="flat"
-                  color="default"
-                  startContent={
-                    <Icon icon="solar:settings-bold-duotone" width={20} />
-                  }
-                  onPress={onManageSubscription}
-                  isLoading={loadingPortal}
-                  className="text-text-secondary"
-                >
+ variant="tertiary"
+ onPress={onManageSubscription}
+ isPending={loadingPortal}
+ className="text-text-secondary"
+ >
+                  <Icon icon="solar:settings-bold-duotone" width={20} />
                   Manage Subscription
                 </Button>
               )}
               {canChangePlan && !pendingEffectiveDate && availableUpgrades.length > 0 && (
                 <Button
-                  variant="flat"
-                  color="default"
-                  startContent={
-                    <Icon icon="solar:arrow-up-bold-duotone" width={20} />
-                  }
-                  onPress={() => setIsChangePlanModalOpen(true)}
-                  className="text-text-secondary"
-                >
+ variant="tertiary"
+ onPress={() => setIsChangePlanModalOpen(true)}
+ className="text-text-secondary"
+ >
+                  <Icon icon="solar:arrow-up-bold-duotone" width={20} />
                   Upgrade Plan
                 </Button>
               )}
             </div>
-          </CardFooter>
+          </Card.Footer>
         </Card>
 
         {/* Addon credits section — hidden for now
@@ -374,16 +331,12 @@ export function PaidPlanView({
       </div>
 
       {/* Upgrade Plan Modal */}
-      <Modal
-        isOpen={isChangePlanModalOpen}
-        onClose={() => setIsChangePlanModalOpen(false)}
-        size="lg"
-      >
-        <ModalContent className="bg-surface-base border border-border-accent">
-          <ModalHeader className="pb-0">
-            <h3 className="text-xl font-bold text-text-primary">Upgrade Your Plan</h3>
-          </ModalHeader>
-          <ModalBody className="py-6">
+      <Modal>
+        <Modal.Backdrop isOpen={isChangePlanModalOpen} onOpenChange={() => setIsChangePlanModalOpen(false)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl bg-surface-base border border-border-accent">
+          <Modal.Header className="pb-0">
+            <h3 className="text-xl font-bold text-text-accent">Upgrade Your Plan</h3>
+          </Modal.Header>
+          <Modal.Body className="py-6">
             <div className="space-y-6">
               {/* Current Plan */}
               <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
@@ -392,7 +345,7 @@ export function PaidPlanView({
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", upgradeDetails[currentPlan].iconBg)}>
                     <Icon icon="solar:star-bold" className={upgradeDetails[currentPlan].iconText} width={16} />
                   </div>
-                  <span className="text-lg font-semibold text-text-primary">{getPlanDisplayName()}</span>
+                  <span className="text-lg font-semibold text-text-accent">{getPlanDisplayName()}</span>
                 </div>
                 <p className="text-sm text-text-secondary">{getCurrentPlanDetails().credits}</p>
               </div>
@@ -421,7 +374,7 @@ export function PaidPlanView({
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", details.iconBg)}>
                               <Icon icon="solar:star-bold" className={details.iconText} width={16} />
                             </div>
-                            <span className={cn("text-lg font-semibold", isSelected ? details.selectedText : "text-text-primary")}>
+                            <span className={cn("text-lg font-semibold", isSelected ? details.selectedText : "text-text-accent")}>
                               {details.name}
                             </span>
                           </div>
@@ -446,54 +399,54 @@ export function PaidPlanView({
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-dark/50">
                   <Icon icon="solar:clock-circle-bold" className="text-text-tertiary flex-shrink-0" width={20} />
                   <p className="text-sm text-text-secondary">
-                    Changes take effect at your <span className="text-text-primary font-medium">next billing cycle</span>.
+                    Changes take effect at your <span className="text-text-accent font-medium">next billing cycle</span>.
                     You'll keep your current plan until then.
                   </p>
                 </div>
               )}
 
-              <Divider className="bg-border-base" />
+              <Separator className="bg-border-base" />
 
               {/* Contact Links */}
               <div className="flex flex-col sm:flex-row gap-4 text-sm">
                 <Link
-                  href="https://cuttr.com/contact"
-                  target="_blank"
-                  className="flex items-center gap-2 text-accent-400/80 hover:text-accent-400 transition-colors"
-                >
+ href="https://cuttr.com/contact"
+ target="_blank"
+ className="flex items-center gap-2 text-accent-400/80 hover:text-accent-400 transition-colors"
+ >
                   <Icon icon="solar:letter-bold" width={16} />
                   <span>Need it immediately? Contact support</span>
                 </Link>
                 {selectedTarget !== "enterprise" && (
                   <Link
-                    href="https://cuttr.com/contact"
-                    target="_blank"
-                    className="flex items-center gap-2 text-emerald-500/80 hover:text-emerald-400 transition-colors"
-                  >
+ href="https://cuttr.com/contact"
+ target="_blank"
+ className="flex items-center gap-2 text-emerald-500/80 hover:text-emerald-400 transition-colors"
+ >
                     <Icon icon="solar:buildings-bold" width={16} />
                     <span>Looking for Enterprise?</span>
                   </Link>
                 )}
               </div>
             </div>
-          </ModalBody>
-          <ModalFooter className="border-t border-border-base pt-4">
+          </Modal.Body>
+          <Modal.Footer className="border-t border-border-base pt-4">
             <Button
-              variant="light"
-              onPress={() => setIsChangePlanModalOpen(false)}
-            >
+ variant="tertiary"
+ onPress={() => setIsChangePlanModalOpen(false)}
+ >
               Cancel
             </Button>
             <Button
-              className={cn("font-semibold text-white", upgradeDetails[selectedTarget].btnBg)}
-              onPress={handleChangePlan}
-              isLoading={loadingChangePlan}
-              startContent={!loadingChangePlan && <Icon icon={selectedTarget === "enterprise" ? "solar:buildings-bold" : "solar:check-circle-bold"} width={18} />}
-            >
+ className={cn("font-semibold text-white", upgradeDetails[selectedTarget].btnBg)}
+ onPress={handleChangePlan}
+ isPending={loadingChangePlan}
+ >
+              {!loadingChangePlan && <Icon icon={selectedTarget === "enterprise" ? "solar:buildings-bold" : "solar:check-circle-bold"} width={18} />}
               {selectedTarget === "enterprise" ? "Contact Sales" : `Upgrade to ${upgradeDetails[selectedTarget].name}`}
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </div>
   );

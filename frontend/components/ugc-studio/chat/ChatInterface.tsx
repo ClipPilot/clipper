@@ -268,15 +268,15 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
           >
             <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
           </button>
-          <h1 className="text-lg font-semibold text-text-primary">Create Video</h1>
+          <h1 className="text-lg font-semibold text-text-accent">Create Video</h1>
         </div>
         <Button
-          variant="bordered"
-          size="sm"
-          className="border-border-base text-text-secondary"
-          startContent={<Icon icon="solar:document-text-bold" width={16} />}
-          onPress={() => setShowExistingScripts(true)}
-        >
+ variant="outline"
+ size="sm"
+ className="border-border-base text-text-secondary"
+ onPress={() => setShowExistingScripts(true)}
+ >
+          <Icon icon="solar:document-text-bold" width={16} />
           Use Existing Script
         </Button>
       </div>

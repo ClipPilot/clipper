@@ -1,16 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+import { Modal,
   Button,
   Input,
-  Textarea,
-} from "@heroui/react";
+  TextArea, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { Folder } from "@/api/clips";
 
@@ -71,35 +65,30 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent className="bg-surface-base border border-border-accent">
-        {(onClose) => (
-          <form onSubmit={handleSubmit}>
-            <ModalHeader className="flex flex-col items-start border-b border-border-base">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md bg-surface-base border border-border-accent">
+<form onSubmit={handleSubmit}>
+            <Modal.Header className="flex flex-col items-start border-b border-border-base">
               <div className="flex gap-2 items-center">
                 <Icon icon="solar:folder-bold-duotone" className="text-2xl" style={{ color }} />
-                <h3 className="text-xl font-bold text-text-primary">
+                <h3 className="text-xl font-bold text-text-accent">
                   Edit Folder
                 </h3>
               </div>
-            </ModalHeader>
+            </Modal.Header>
 
-            <ModalBody className="py-6 space-y-4">
-              <Input
-                label="Folder Name"
-                placeholder="e.g., Product Demos, Social Media Clips"
-                value={name}
-                onValueChange={setName}
-                isRequired
-                classNames={{
-                  label: "text-sm font-medium text-text-primary",
-                  input: "text-text-primary",
-                  inputWrapper: "bg-surface-elevated border-border-base",
-                }}
-              />
+            <Modal.Body className="py-6 space-y-4">
+                            <TextField isRequired>
+                <Label>Folder Name</Label>
+                <Input onChange={(e) => (setName)(e.target.value)}
+ placeholder="e.g., Product Demos, Social Media Clips"
+ value={name}
+ />
+                <FieldError />
+              </TextField>
 
               <div>
-                <label className="text-sm font-medium text-text-primary mb-2 block">
+                <label className="text-sm font-medium text-text-accent mb-2 block">
                   Folder Color
                 </label>
                 <div className="grid grid-cols-8 gap-2">
@@ -119,40 +108,35 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
                 </div>
               </div>
 
-              <Textarea
-                label="Description (Optional)"
-                placeholder="Add a description for this folder..."
-                value={message}
-                onValueChange={setMessage}
-                minRows={3}
-                classNames={{
-                  label: "text-sm font-medium text-text-primary",
-                  input: "text-text-primary resize-none",
-                  inputWrapper: "bg-surface-elevated border-border-base",
-                }}
-              />
-            </ModalBody>
+                            <TextField>
+                <Label>Description (Optional)</Label>
+                <TextArea
+ placeholder="Add a for this folder..."
+ value={message}
+ onValueChange={setMessage}
+ minRows={3}
+ />
+                <FieldError />
+              </TextField>
+            </Modal.Body>
 
-            <ModalFooter className="border-t border-border-base">
+            <Modal.Footer className="border-t border-border-base">
               <Button
-                color="default"
-                variant="bordered"
-                onPress={onClose}
-              >
+ variant="outline"
+ onPress={onClose}
+ >
                 Cancel
               </Button>
-              <Button
-                color="primary"
-                type="submit"
-                isDisabled={!name.trim() || isLoading}
-                isLoading={isLoading}
-              >
+              <Button variant="primary"
+ type="submit"
+ isDisabled={!name.trim() || isLoading}
+ isPending={isLoading}
+ >
                 {isLoading ? "Saving..." : "Save Changes"}
               </Button>
-            </ModalFooter>
+            </Modal.Footer>
           </form>
-        )}
-      </ModalContent>
+</Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 };

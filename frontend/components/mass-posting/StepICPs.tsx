@@ -1,15 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
-  CardHeader,
   Chip,
   Input,
-  Textarea,
-} from "@heroui/react";
+  TextArea, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ICP } from "@/types/massPosting";
 import { emptyICP } from "@/constants/massPosting";
@@ -51,7 +47,7 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-primary mb-1">
+        <h3 className="text-lg font-semibold text-text-accent mb-1">
           Ideal Customer Profiles
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -63,59 +59,63 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
       <div className="space-y-6">
         {icps.map((icp, idx) => (
           <Card key={idx} className="bg-surface-elevated border border-border-base">
-            <CardHeader className="px-4 pt-4 pb-0 flex items-center justify-between">
+            <Card.Header className="px-4 pt-4 pb-0 flex items-center justify-between">
               <span className="text-sm font-medium text-text-secondary">
                 ICP #{idx + 1}
               </span>
               {icps.length > 1 && (
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  color="danger"
-                  onPress={() => removeICP(idx)}
-                >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ onPress={() => removeICP(idx)}
+ >
                   <Icon icon="solar:trash-bin-trash-bold" />
                 </Button>
               )}
-            </CardHeader>
-            <CardBody className="p-4 space-y-4">
-              <Input
-                label="Name / Label"
-                placeholder="e.g. Small Business Owner, Fitness Enthusiast"
-                value={icp.name}
-                onValueChange={(v) => updateICP(idx, "name", v)}
-                isRequired
-              />
-              <Textarea
-                label="Description"
-                placeholder="Describe this customer segment..."
-                value={icp.description}
-                onValueChange={(v) => updateICP(idx, "description", v)}
-                minRows={2}
-                isRequired
-              />
-              <Input
-                label="Demographics"
-                placeholder="e.g. 25-45, urban professionals, US-based"
-                value={icp.demographics ?? ""}
-                onValueChange={(v) => updateICP(idx, "demographics", v)}
-              />
+            </Card.Header>
+            <Card.Content className="p-4 space-y-4">
+                            <TextField isRequired>
+                <Label>Name / Label</Label>
+                <Input onChange={(e) => ((v) => updateICP(idx, "name", v))(e.target.value)}
+ placeholder="e.g. Small Business Owner, Fitness Enthusiast"
+ value={icp.name}
+ />
+                <FieldError />
+              </TextField>
+                            <TextField isRequired>
+                <Label>Description</Label>
+                <TextArea
+ placeholder="Describe this customer segment..."
+ value={icp.description}
+ onValueChange={(v) => updateICP(idx, "description", v)}
+ minRows={2}
+ />
+                <FieldError />
+              </TextField>
+                            <TextField>
+                <Label>Demographics</Label>
+                <Input onChange={(e) => ((v) => updateICP(idx, "demographics", v))(e.target.value)}
+ placeholder="e.g. 25-45, urban professionals, US-based"
+ value={icp.demographics ?? ""}
+ />
+                <FieldError />
+              </TextField>
               <PainPointsInput
                 painPoints={icp.painPoints ?? []}
                 onAdd={(point) => addPainPoint(idx, point)}
                 onRemove={(pointIdx) => removePainPoint(idx, pointIdx)}
               />
-            </CardBody>
+            </Card.Content>
           </Card>
         ))}
       </div>
 
       <Button
-        variant="flat"
-        onPress={addICP}
-        startContent={<Icon icon="solar:add-circle-bold" />}
-      >
+ variant="tertiary"
+ onPress={addICP}
+ >
+        <Icon icon="solar:add-circle-bold" />
         Add Another ICP
       </Button>
     </div>
@@ -150,21 +150,23 @@ function PainPointsInput({
   return (
     <div className="space-y-2">
       <div className="flex items-end gap-2">
-        <Input
-          label="Pain Points"
-          placeholder="Type a pain point and press Enter"
-          value={draft}
-          onValueChange={setDraft}
-          onKeyDown={handleKeyDown}
-          className="flex-1"
-        />
+                <TextField>
+          <Label>Pain Points</Label>
+          <Input onChange={(e) => (setDraft)(e.target.value)}
+ placeholder="Type a pain point and press Enter"
+ value={draft}
+ onKeyDown={handleKeyDown}
+ className="flex-1"
+ />
+          <FieldError />
+        </TextField>
         <Button
-          size="md"
-          variant="flat"
-          isDisabled={!draft.trim()}
-          onPress={handleAdd}
-          isIconOnly
-        >
+ size="md"
+ variant="tertiary"
+ isDisabled={!draft.trim()}
+ onPress={handleAdd}
+ isIconOnly
+ >
           <Icon icon="solar:add-circle-bold" className="text-lg" />
         </Button>
       </div>
@@ -172,10 +174,10 @@ function PainPointsInput({
         <div className="flex flex-wrap gap-1.5">
           {painPoints.map((point, idx) => (
             <Chip
-              key={idx}
-              variant="flat"
-              onClose={() => onRemove(idx)}
-            >
+ key={idx}
+ variant="tertiary"
+ onClose={() => onRemove(idx)}
+ >
               {point}
             </Chip>
           ))}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Button, Card, CardBody, CardHeader, Input, Tabs, Tab, addToast } from "@heroui/react";
+import { Button, Card, Input, Tabs, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EXAMPLE_CHARACTERS, SelectedCharacter } from "./types";
 import { savedFacesAPI, SavedFace } from "@/api/ugc/savedFaces";
@@ -226,9 +226,9 @@ export function CharacterSelector({
 
       URL.revokeObjectURL(savingFace.preview);
       setSavingFace(null);
-      addToast({ title: "Face saved!", color: "success" });
+      toast.success("Face saved!");
     } catch (err) {
-      addToast({ title: "Failed to save face", color: "danger" });
+      toast.danger("Failed to save face");
     } finally {
       setIsSaving(false);
     }
@@ -264,9 +264,9 @@ export function CharacterSelector({
     try {
       await savedFacesAPI.delete(face.id);
       setSavedFaces((prev) => prev.filter((f) => f.id !== face.id));
-      addToast({ title: "Face deleted", color: "success" });
+      toast.success("Face deleted");
     } catch {
-      addToast({ title: "Failed to delete", color: "danger" });
+      toast.danger("Failed to delete");
     }
   };
 
@@ -332,13 +332,13 @@ export function CharacterSelector({
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardHeader className="pb-0">
+      <Card.Header className="pb-0">
         <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
             <Icon icon="solar:user-circle-bold-duotone" className="text-purple-500" width={22} />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-text-primary">Character Faces</h3>
+            <h3 className="text-base font-semibold text-text-accent">Character Faces</h3>
             <p className="text-xs text-text-tertiary">
               {selectedCharacters.length > 0
                 ? `${selectedCharacters.length}/${maxSelections} faces selected`
@@ -346,13 +346,13 @@ export function CharacterSelector({
             </p>
           </div>
           {selectedCharacters.length > 0 && (
-            <Button size="sm" variant="flat" className="text-text-muted" onPress={handleClearAll}>
+            <Button size="sm" variant="tertiary" className="text-text-muted" onPress={handleClearAll}>
               Clear all
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardBody className="pt-4 space-y-4">
+      </Card.Header>
+      <Card.Content className="pt-4 space-y-4">
         {selectedCharacters.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-text-tertiary">Selected faces</p>
@@ -401,30 +401,28 @@ export function CharacterSelector({
             <div className="flex gap-3">
               <img src={savingFace.preview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
               <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-text-primary">Save this face?</p>
+                <p className="text-sm font-medium text-text-accent">Save this face?</p>
                 <Input
-                  size="sm"
-                  placeholder="Enter a name..."
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  classNames={{ inputWrapper: "bg-surface-elevated" }}
-                />
+ placeholder="Enter a name..."
+ value={saveName}
+ onChange={(e) => setSaveName(e.target.value)}
+ />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="flat" className="flex-1" onPress={handleAddWithoutSaving}>
+              <Button size="sm" variant="tertiary" className="flex-1" onPress={handleAddWithoutSaving}>
                 Just use once
               </Button>
               <Button
-                size="sm"
-                className="flex-1 bg-purple-500 text-white"
-                onPress={handleSaveAndAdd}
-                isLoading={isSaving}
-                isDisabled={!saveName.trim()}
-              >
+ size="sm"
+ className="flex-1 bg-purple-500 text-white"
+ onPress={handleSaveAndAdd}
+ isPending={isSaving}
+ isDisabled={!saveName.trim()}
+ >
                 Save & Use
               </Button>
-              <Button size="sm" variant="flat" isIconOnly onPress={handleCancelSave}>
+              <Button size="sm" variant="tertiary" isIconOnly onPress={handleCancelSave}>
                 <Icon icon="solar:close-circle-bold" />
               </Button>
             </div>
@@ -448,7 +446,7 @@ export function CharacterSelector({
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
                     activeTab === "saved"
                       ? "bg-purple-500 text-white"
-                      : "text-text-secondary hover:text-text-primary"
+                      : "text-text-secondary hover:text-text-accent"
                   }`}
                 >
                   <Icon icon="solar:heart-bold" width={14} />
@@ -467,7 +465,7 @@ export function CharacterSelector({
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
                   activeTab === "examples"
                     ? "bg-purple-500 text-white"
-                    : "text-text-secondary hover:text-text-primary"
+                    : "text-text-secondary hover:text-text-accent"
                 }`}
               >
                 <Icon icon="solar:gallery-bold" width={14} />
@@ -478,7 +476,7 @@ export function CharacterSelector({
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
                   activeTab === "upload"
                     ? "bg-purple-500 text-white"
-                    : "text-text-secondary hover:text-text-primary"
+                    : "text-text-secondary hover:text-text-accent"
                 }`}
               >
                 <Icon icon="solar:upload-bold" width={14} />
@@ -579,7 +577,7 @@ export function CharacterSelector({
                     <Icon icon="solar:gallery-add-bold-duotone" className="text-xl text-purple-500" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-text-primary">Upload your own</p>
+                    <p className="text-sm font-medium text-text-accent">Upload your own</p>
                     <p className="text-xs text-text-tertiary">JPG, PNG, WebP</p>
                   </div>
                   <input
@@ -594,12 +592,12 @@ export function CharacterSelector({
                     }}
                   />
                   <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-purple-500/20 text-purple-500"
-                    onPress={() => imageInputRef.current?.click()}
-                    startContent={<Icon icon="solar:folder-open-bold" />}
-                  >
+ size="sm"
+ variant="tertiary"
+ className="bg-purple-500/20 text-purple-500"
+ onPress={() => imageInputRef.current?.click()}
+ >
+                    <Icon icon="solar:folder-open-bold" />
                     Browse
                   </Button>
                 </div>
@@ -637,7 +635,7 @@ export function CharacterSelector({
                     <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={22} />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
+                    <h3 className="text-base font-semibold text-text-accent">Select Voice</h3>
                     <p className="text-xs text-text-tertiary">
                       {editingVoiceForIndex !== null
                         ? `Character ${editingVoiceForIndex + 1}`
@@ -645,7 +643,7 @@ export function CharacterSelector({
                     </p>
                   </div>
                 </div>
-                <Button isIconOnly variant="light" size="sm" onPress={closeVoiceSidebar}>
+                <Button isIconOnly variant="tertiary" size="sm" onPress={closeVoiceSidebar}>
                   <Icon icon="solar:close-circle-bold" className="text-text-muted" width={20} />
                 </Button>
               </div>
@@ -653,23 +651,20 @@ export function CharacterSelector({
               {teamId && (
                 <div className="px-4 pt-4">
                   <Button
-                    size="sm"
-                    className="bg-purple-500 text-white"
-                    startContent={<Icon icon="solar:microphone-3-bold" width={16} />}
-                    onPress={() => setIsCloneModalOpen(true)}
-                  >
+ size="sm"
+ className="bg-purple-500 text-white"
+ onPress={() => setIsCloneModalOpen(true)}
+ >
+                    <Icon icon="solar:microphone-3-bold" width={16} />
                     Clone Your Voice
                   </Button>
                 </div>
               )}
               <div className="flex-1 overflow-y-auto p-4">
                 <Tabs
-                  selectedKey={voiceFilter}
-                  onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}
-                  size="sm"
-                  variant="light"
-                  classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-accent-400/20" }}
-                >
+ selectedKey={voiceFilter}
+ onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}
+ >
                   <Tab key="all" title="All" />
                   <Tab key="male" title="Male" />
                   <Tab key="female" title="Female" />
@@ -705,7 +700,7 @@ export function CharacterSelector({
             onSuccess={refreshClonedVoices}
           />
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

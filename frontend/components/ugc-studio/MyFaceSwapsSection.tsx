@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
-import { Card, CardBody, Pagination, addToast } from "@heroui/react";
+import { Card, Pagination, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -208,19 +208,11 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         setIsModalOpen(false);
         setSelectedJob(null);
       }
-      addToast({
-        title: "Job deleted",
-        description: "The swap job has been deleted.",
-        color: "success",
-      });
+      toast.success("Job deleted", { description: "The swap job has been deleted." });
     } catch (err) {
       console.error("Failed to delete job:", err);
       const errorMessage = err instanceof Error ? err.message : "Failed to delete job.";
-      addToast({
-        title: "Delete failed",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Delete failed", { description: errorMessage });
     }
   }, [selectedJob]);
 
@@ -269,12 +261,12 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   if (isLoading) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8 flex items-center justify-center">
+        <Card.Content className="p-8 flex items-center justify-center">
           <Icon
             icon="solar:refresh-circle-bold-duotone"
             className="text-3xl text-accent-400 animate-spin"
           />
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -282,7 +274,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   if (totalWithOptimistic === 0) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8 text-center">
+        <Card.Content className="p-8 text-center">
           <Icon
             icon="solar:mask-happly-bold-duotone"
             className="text-4xl text-text-tertiary mx-auto mb-3"
@@ -291,7 +283,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
           <p className="text-xs text-text-tertiary mt-1">
             Create your first swap above
           </p>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -314,15 +306,13 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         {totalPages > 1 && (
           <div className="flex justify-center pt-4">
             <Pagination
-              total={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              color="primary"
-              size="sm"
-              showControls
-              siblings={2}
-              boundaries={1}
-            />
+ total={totalPages}
+ page={currentPage}
+ onChange={handlePageChange}
+ showControls
+ siblings={2}
+ boundaries={1}
+ />
           </div>
         )}
       </div>

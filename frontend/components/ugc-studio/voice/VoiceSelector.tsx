@@ -1,15 +1,10 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import {
-  Card,
-  CardBody,
-  CardHeader,
+import { Card,
   Tabs,
-  Tab,
   Button,
-  useDisclosure,
-} from "@heroui/react";
+  useOverlayState } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { voicesConfig, type Voice } from "@/config/voicesConfig";
 import { VoiceCard } from "./VoiceCard";
@@ -51,12 +46,12 @@ export function VoiceSelector({
     isOpen: isSidebarOpen,
     onOpen: openSidebar,
     onClose: closeSidebar,
-  } = useDisclosure();
+  } = useOverlayState();
   const {
     isOpen: isCloneModalOpen,
     onOpen: openCloneModal,
     onClose: closeCloneModal,
-  } = useDisclosure();
+  } = useOverlayState();
   const [isAnimating, setIsAnimating] = useState(false);
   const [clonedVoices, setClonedVoices] = useState<Voice[]>([]);
 
@@ -182,11 +177,11 @@ export function VoiceSelector({
 
   const cloneButton = teamId ? (
     <Button
-      size="sm"
-      className="bg-purple-500 text-white"
-      startContent={<Icon icon="solar:microphone-3-bold" width={16} />}
-      onPress={openCloneModal}
-    >
+ size="sm"
+ className="bg-purple-500 text-white"
+ onPress={openCloneModal}
+ >
+      <Icon icon="solar:microphone-3-bold" width={16} />
       Clone Your Voice
     </Button>
   ) : null;
@@ -203,16 +198,9 @@ export function VoiceSelector({
   const voiceListContent = (
     <>
       <Tabs
-        selectedKey={filter}
-        onSelectionChange={(key) => setFilter(key as GenderFilter)}
-        size="sm"
-        variant="light"
-        classNames={{
-          tabList: "gap-2",
-          tab: "px-3",
-          cursor: "bg-accent-400/20",
-        }}
-      >
+ selectedKey={filter}
+ onSelectionChange={(key) => setFilter(key as GenderFilter)}
+ >
         <Tab key="all" title="All" />
         <Tab key="male" title="Male" />
         <Tab key="female" title="Female" />
@@ -246,11 +234,10 @@ export function VoiceSelector({
     return (
       <>
         <Button
-          variant="bordered"
-          className="w-full justify-between border-border-base bg-surface-elevated h-12"
-          onPress={openSidebar}
-          startContent={
-            <div className="flex items-center gap-3">
+ variant="outline"
+ className="w-full justify-between border-border-base bg-surface-elevated h-12"
+ onPress={openSidebar}>
+          <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-accent-400/20 flex items-center justify-center">
                 <Icon
                   icon="solar:microphone-3-bold-duotone"
@@ -258,19 +245,16 @@ export function VoiceSelector({
                   width={18}
                 />
               </div>
-              <span className="text-text-primary">
+              <span className="text-text-accent">
                 {selectedVoice ? selectedVoice.name : "Select Voice (Optional)"}
               </span>
             </div>
-          }
-          endContent={
-            <Icon
+          <Icon
               icon="solar:alt-arrow-right-linear"
               className="text-text-muted"
               width={18}
             />
-          }
-        />
+        </Button>
 
         {/* Sidebar Overlay */}
         {isSidebarOpen && (
@@ -300,7 +284,7 @@ export function VoiceSelector({
                     />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-primary">
+                    <h3 className="text-base font-semibold text-text-accent">
                       Select Voice
                     </h3>
                     <p className="text-xs text-text-tertiary">
@@ -309,11 +293,11 @@ export function VoiceSelector({
                   </div>
                 </div>
                 <Button
-                  isIconOnly
-                  variant="light"
-                  size="sm"
-                  onPress={handleCloseSidebar}
-                >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ onPress={handleCloseSidebar}
+ >
                   <Icon
                     icon="solar:close-circle-bold"
                     className="text-text-muted"
@@ -345,7 +329,7 @@ export function VoiceSelector({
   return (
     <>
       <Card className="bg-surface-base border border-border-base">
-        <CardHeader className="pb-0 flex-col items-start gap-3">
+        <Card.Header className="pb-0 flex-col items-start gap-3">
           <div className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
               <Icon
@@ -355,7 +339,7 @@ export function VoiceSelector({
               />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-semibold text-text-primary">
+              <h3 className="text-base font-semibold text-text-accent">
                 Select Voice
               </h3>
               <p className="text-xs text-text-tertiary">
@@ -365,22 +349,15 @@ export function VoiceSelector({
             {cloneButton}
           </div>
           <Tabs
-            selectedKey={filter}
-            onSelectionChange={(key) => setFilter(key as GenderFilter)}
-            size="sm"
-            variant="light"
-            classNames={{
-              tabList: "gap-2",
-              tab: "px-3",
-              cursor: "bg-accent-400/20",
-            }}
-          >
+ selectedKey={filter}
+ onSelectionChange={(key) => setFilter(key as GenderFilter)}
+ >
             <Tab key="all" title="All" />
             <Tab key="male" title="Male" />
             <Tab key="female" title="Female" />
           </Tabs>
-        </CardHeader>
-        <CardBody className="pt-4">
+        </Card.Header>
+        <Card.Content className="pt-4">
           <div className="grid grid-cols-2 gap-2">
             {filteredVoices.map((voice) => (
               <VoiceCard
@@ -396,7 +373,7 @@ export function VoiceSelector({
             ))}
           </div>
           <audio ref={audioRef} className="hidden" preload="none" />
-        </CardBody>
+        </Card.Content>
       </Card>
 
       {cloneModal}

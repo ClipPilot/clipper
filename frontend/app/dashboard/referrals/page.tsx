@@ -2,21 +2,17 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import {
-  Card,
-  CardBody,
-  CardHeader,
+import { Card,
   Button,
   Chip,
-  addToast,
+  toast,
   Table,
   TableHeader,
   TableColumn,
   TableBody,
   TableRow,
   TableCell,
-  Spinner,
-} from "@heroui/react";
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -58,11 +54,7 @@ export default function ReferralsPage() {
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch referral data:", error);
-      addToast({
-        title: "Error",
-        description: "Failed to load referral data",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load referral data" });
     } finally {
       setIsLoading(false);
     }
@@ -81,18 +73,10 @@ export default function ReferralsPage() {
         method: "POST",
       });
       setReferralCode(response.code);
-      addToast({
-        title: "Code generated!",
-        description: "Your referral code is ready to share.",
-        color: "success",
-      });
+      toast.success("Code generated!", { description: "Your referral code is ready to share." });
     } catch (error) {
       console.error("Failed to generate code:", error);
-      addToast({
-        title: "Error",
-        description: "Failed to generate referral code",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to generate referral code" });
     } finally {
       setIsGenerating(false);
     }
@@ -101,11 +85,7 @@ export default function ReferralsPage() {
   const handleCopyCode = () => {
     if (referralCode) {
       navigator.clipboard.writeText(referralCode.code);
-      addToast({
-        title: "Copied!",
-        description: "Referral code copied to clipboard.",
-        color: "success",
-      });
+      toast.success("Copied!", { description: "Referral code copied to clipboard." });
     }
   };
 
@@ -136,7 +116,7 @@ export default function ReferralsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
@@ -154,7 +134,7 @@ export default function ReferralsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <h1 className="text-2xl font-bold text-text-primary">
+          <h1 className="text-2xl font-bold text-text-accent">
             Referral Program
           </h1>
           <p className="text-text-secondary mt-1">
@@ -169,7 +149,7 @@ export default function ReferralsPage() {
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+            <Card.Content className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-green-500/10">
                   <Icon
@@ -182,14 +162,14 @@ export default function ReferralsPage() {
                   Active Referrals
                 </span>
               </div>
-              <p className="text-2xl font-bold text-text-primary">
+              <p className="text-2xl font-bold text-text-accent">
                 {stats?.activeReferrals ?? 0}
               </p>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+            <Card.Content className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-accent-400/10">
                   <Icon
@@ -202,14 +182,14 @@ export default function ReferralsPage() {
                   Bonus Clips Earned
                 </span>
               </div>
-              <p className="text-2xl font-bold text-text-primary">
+              <p className="text-2xl font-bold text-text-accent">
                 +{stats?.totalBonusClips ?? 0}
               </p>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+            <Card.Content className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-amber-500/10">
                   <Icon
@@ -222,10 +202,10 @@ export default function ReferralsPage() {
                   Total Discount
                 </span>
               </div>
-              <p className="text-2xl font-bold text-text-primary">
+              <p className="text-2xl font-bold text-text-accent">
                 {stats?.totalPercentOff ?? 0}%
               </p>
-            </CardBody>
+            </Card.Content>
           </Card>
         </motion.div>
 
@@ -235,22 +215,22 @@ export default function ReferralsPage() {
           transition={{ duration: 0.4, delay: 0.3 }}
         >
         <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <Card.Header className="flex flex-row items-center gap-3 pb-0">
             <Icon
               icon="solar:gift-bold-duotone"
               className="text-amber-500"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">
+              <h2 className="text-lg font-semibold text-text-accent">
                 Your Rewards
               </h2>
               <p className="text-sm text-text-tertiary">
                 What you earn for each referral
               </p>
             </div>
-          </CardHeader>
-          <CardBody className="gap-4">
+          </Card.Header>
+          <Card.Content className="gap-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
                 <div className="flex items-center gap-2 mb-2">
@@ -258,7 +238,7 @@ export default function ReferralsPage() {
                     Enterprise
                   </Chip>
                 </div>
-                <p className="text-xl font-bold text-text-primary mb-1">
+                <p className="text-xl font-bold text-text-accent mb-1">
                   {REFERRAL_BENEFITS.enterprise.value}% Off
                 </p>
                 <p className="text-sm text-text-tertiary">
@@ -272,7 +252,7 @@ export default function ReferralsPage() {
                     Scale
                   </Chip>
                 </div>
-                <p className="text-xl font-bold text-text-primary mb-1">
+                <p className="text-xl font-bold text-text-accent mb-1">
                   +{REFERRAL_BENEFITS.scale.value} Credits
                 </p>
                 <p className="text-sm text-text-tertiary">
@@ -286,7 +266,7 @@ export default function ReferralsPage() {
                     Studio
                   </Chip>
                 </div>
-                <p className="text-xl font-bold text-text-primary mb-1">
+                <p className="text-xl font-bold text-text-accent mb-1">
                   +{REFERRAL_BENEFITS.studio.value} Credits
                 </p>
                 <p className="text-sm text-text-tertiary">
@@ -294,7 +274,7 @@ export default function ReferralsPage() {
                 </p>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
         </motion.div>
 
@@ -304,35 +284,35 @@ export default function ReferralsPage() {
           transition={{ duration: 0.4, delay: 0.4 }}
         >
         <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <Card.Header className="flex flex-row items-center gap-3 pb-0">
             <Icon
               icon="solar:link-bold-duotone"
               className="text-accent-400"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">
+              <h2 className="text-lg font-semibold text-text-accent">
                 Your Referral Code
               </h2>
               <p className="text-sm text-text-tertiary">
                 Share this code with others
               </p>
             </div>
-          </CardHeader>
-          <CardBody className="gap-4">
+          </Card.Header>
+          <Card.Content className="gap-4">
             {referralCode ? (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="flex-1 flex items-center justify-between p-4 rounded-lg bg-surface-elevated border border-border-base">
-                  <span className="text-lg font-mono font-bold text-text-primary tracking-wider">
+                  <span className="text-lg font-mono font-bold text-text-accent tracking-wider">
                     {referralCode.code}
                   </span>
                   <Button
-                    isIconOnly
-                    variant="flat"
-                    size="sm"
-                    className="bg-accent-400/10 text-accent-400"
-                    onPress={handleCopyCode}
-                  >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ className="bg-accent-400/10 text-accent-400"
+ onPress={handleCopyCode}
+ >
                     <Icon icon="solar:copy-bold-duotone" width={18} />
                   </Button>
                 </div>
@@ -347,7 +327,7 @@ export default function ReferralsPage() {
                   />
                 </div>
                 <div className="text-center">
-                  <p className="text-text-primary font-medium mb-1">
+                  <p className="text-text-accent font-medium mb-1">
                     No referral code yet
                   </p>
                   <p className="text-sm text-text-tertiary">
@@ -355,18 +335,16 @@ export default function ReferralsPage() {
                   </p>
                 </div>
                 <Button
-                  className="bg-accent-400 text-white font-medium"
-                  startContent={
-                    <Icon icon="solar:add-circle-bold-duotone" width={18} />
-                  }
-                  onPress={handleGenerateCode}
-                  isLoading={isGenerating}
-                >
+ className="bg-accent-400 text-white font-medium"
+ onPress={handleGenerateCode}
+ isPending={isGenerating}
+ >
+                  <Icon icon="solar:add-circle-bold-duotone" width={18} />
                   Generate Code
                 </Button>
               </div>
             )}
-          </CardBody>
+          </Card.Content>
         </Card>
         </motion.div>
 
@@ -376,29 +354,29 @@ export default function ReferralsPage() {
           transition={{ duration: 0.4, delay: 0.5 }}
         >
         <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <Card.Header className="flex flex-row items-center gap-3 pb-0">
             <Icon
               icon="solar:users-group-rounded-bold-duotone"
               className="text-accent-400"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-primary">
+              <h2 className="text-lg font-semibold text-text-accent">
                 Your Referrals
               </h2>
               <p className="text-sm text-text-tertiary">
                 People you&apos;ve referred to Cuttr
               </p>
             </div>
-          </CardHeader>
-          <CardBody>
+          </Card.Header>
+          <Card.Content>
             {referrals.length > 0 ? (
               <Table
                 aria-label="Referrals table"
                 classNames={{
                   wrapper: "bg-transparent shadow-none p-0",
                   th: "bg-surface-elevated text-text-secondary font-medium",
-                  td: "text-text-primary",
+                  td: "text-text-accent",
                 }}
               >
                 <TableHeader>
@@ -428,11 +406,11 @@ export default function ReferralsPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          size="sm"
-                          color={getStatusColor(referral.status)}
-                          variant="flat"
-                          className="capitalize"
-                        >
+ size="sm"
+ color={getStatusColor(referral.status)}
+ variant="tertiary"
+ className="capitalize"
+ >
                           {referral.status}
                         </Chip>
                       </TableCell>
@@ -456,7 +434,7 @@ export default function ReferralsPage() {
                   />
                 </div>
                 <div className="text-center">
-                  <p className="text-text-primary font-medium mb-1">
+                  <p className="text-text-accent font-medium mb-1">
                     No referrals yet
                   </p>
                   <p className="text-sm text-text-tertiary">
@@ -465,7 +443,7 @@ export default function ReferralsPage() {
                 </div>
               </div>
             )}
-          </CardBody>
+          </Card.Content>
         </Card>
         </motion.div>
       </div>

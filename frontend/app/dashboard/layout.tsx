@@ -3,20 +3,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
-import {
-  Avatar,
+import { Avatar,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
   Popover,
-  PopoverTrigger,
-  PopoverContent,
   Button,
   Tooltip,
-  ToastProvider,
-  cn,
-} from "@heroui/react";
+  Toast,
+  cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -153,13 +146,9 @@ export default function DashboardLayout({
             >
               {contentCollapsed ? (
                 <Tooltip
-                  content="Cuttr"
-                  placement="right"
-                  classNames={{
-                    content:
-                      "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-                  }}
-                >
+ content="Cuttr"
+ placement="right"
+ >
                   <div className="flex items-center justify-center w-8 h-8">
                     <Image
                       src={CuttrIcon}
@@ -184,14 +173,14 @@ export default function DashboardLayout({
                   <div className="flex items-center gap-1">
                     <NotificationBellButton />
                     <Button
-                      isIconOnly
-                      size="sm"
-                      variant="light"
-                      className="text-text-secondary hover:text-text-primary"
-                      onPress={() =>
-                        setTheme(theme === "dark" ? "light" : "dark")
-                      }
-                    >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="text-text-secondary hover:text-text-accent"
+ onPress={() =>
+ setTheme(theme === "dark" ? "light" : "dark")
+ }
+ >
                       <Icon
                         icon={
                           theme === "dark"
@@ -212,12 +201,12 @@ export default function DashboardLayout({
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
-                <PopoverTrigger>
+                <Popover.Trigger>
                   <button className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors">
                     {teamIconEl}
                   </button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0">
+                </Popover.Trigger>
+                <Popover.Content className="p-0">
                   <WorkspaceSelector
                     onCreateTeam={() => {
                       setIsWorkspaceOpen(false);
@@ -228,7 +217,7 @@ export default function DashboardLayout({
                       setIsManageTeamOpen(true);
                     }}
                   />
-                </PopoverContent>
+                </Popover.Content>
               </Popover>
             ) : (
               <Popover
@@ -236,15 +225,15 @@ export default function DashboardLayout({
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
-                <PopoverTrigger>
+                <Popover.Trigger>
                   <Button
-                    variant="flat"
-                    size="sm"
-                    className="w-full justify-start bg-surface-elevated hover:bg-surface-hover h-auto py-1.5"
-                  >
+ variant="tertiary"
+ size="sm"
+ className="w-full justify-start bg-surface-elevated hover:bg-surface-hover h-auto py-1.5"
+ >
                     <div className="flex items-center gap-2.5 w-full">
                       {teamIconEl}
-                      <span className="text-[13px] font-medium text-text-primary flex-1 text-left truncate">
+                      <span className="text-[13px] font-medium text-text-accent flex-1 text-left truncate">
                         {selectedTeam?.name || "Select Team"}
                       </span>
                       <Icon
@@ -254,8 +243,8 @@ export default function DashboardLayout({
                       />
                     </div>
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0">
+                </Popover.Trigger>
+                <Popover.Content className="p-0">
                   <WorkspaceSelector
                     onCreateTeam={() => {
                       setIsWorkspaceOpen(false);
@@ -266,7 +255,7 @@ export default function DashboardLayout({
                       setIsManageTeamOpen(true);
                     }}
                   />
-                </PopoverContent>
+                </Popover.Content>
               </Popover>
             )}
           </div>
@@ -292,30 +281,21 @@ export default function DashboardLayout({
             {contentCollapsed ? (
               <div className="flex flex-col items-center gap-2">
                 <Dropdown placement="right-start">
-                  <DropdownTrigger>
-                    <button className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
-                      <Avatar
-                        size="sm"
-                        name={getInitials(
-                          user?.firstName,
-                          user?.lastName,
-                          user?.email
-                        )}
-                        classNames={{
-                          base: "bg-accent-400 text-white",
-                          name: "text-xs font-semibold",
-                        }}
-                      />
+<button className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
+                      <Avatar size="sm" className="bg-accent-400 text-white">
+                        <Avatar.Fallback className="text-xs font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
+                      </Avatar>
                     </button>
-                  </DropdownTrigger>
-                  <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                     aria-label="Account actions"
                     classNames={{
                       base: "bg-surface-base border border-border-base",
                       list: "gap-1 p-2",
                     }}
                   >
-                    <DropdownItem
+                    <Dropdown.Item
                       key="settings"
                       startContent={
                         <Icon
@@ -327,12 +307,12 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/settings")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       Settings
-                    </DropdownItem>
-                    <DropdownItem
+                    </Dropdown.Item>
+                    <Dropdown.Item
                       key="api-platform"
                       startContent={
                         <Icon
@@ -344,12 +324,12 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/api-platform")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       API Platform
-                    </DropdownItem>
-                    <DropdownItem
+                    </Dropdown.Item>
+                    <Dropdown.Item
                       key="referrals"
                       startContent={
                         <Icon
@@ -361,13 +341,13 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/referrals")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       Referral Program
-                    </DropdownItem>
+                    </Dropdown.Item>
                     {canViewPricing ? (
-                      <DropdownItem
+                      <Dropdown.Item
                         key="pricing"
                         startContent={
                           <Icon
@@ -379,13 +359,13 @@ export default function DashboardLayout({
                         onPress={() => router.push("/dashboard/pricing")}
                         classNames={{
                           base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-primary font-medium",
+                          title: "text-text-accent font-medium",
                         }}
                       >
                         Pricing
-                      </DropdownItem>
+                      </Dropdown.Item>
                     ) : null}
-                    <DropdownItem
+                    <Dropdown.Item
                       key="logout"
                       color="danger"
                       startContent={
@@ -400,21 +380,18 @@ export default function DashboardLayout({
                       }}
                     >
                       Sign Out
-                    </DropdownItem>
-                  </DropdownMenu>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+</Dropdown.Popover>
                 </Dropdown>
 
                 <Tooltip
-                  content="Expand sidebar"
-                  placement="right"
-                  classNames={{
-                    content:
-                      "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-                  }}
-                >
+ content="Expand sidebar"
+ placement="right"
+ >
                   <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
+                    className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-accent"
                   >
                     <Icon
                       icon="solar:alt-arrow-right-bold-duotone"
@@ -426,26 +403,16 @@ export default function DashboardLayout({
             ) : (
               <>
                 <Dropdown placement="top-start">
-                  <DropdownTrigger>
-                    <Button
-                      variant="flat"
-                      className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
-                    >
+<Button
+ variant="tertiary"
+ className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
+ >
                       <div className="flex items-center gap-2.5 w-full">
-                        <Avatar
-                          size="sm"
-                          name={getInitials(
-                            user?.firstName,
-                            user?.lastName,
-                            user?.email
-                          )}
-                          classNames={{
-                            base: "bg-accent-400 text-white flex-shrink-0",
-                            name: "text-sm font-semibold",
-                          }}
-                        />
+                        <Avatar size="sm" className="bg-accent-400 text-white flex-shrink-0">
+                          <Avatar.Fallback className="text-sm font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
+                        </Avatar>
                         <div className="flex flex-col items-start flex-1 min-w-0">
-                          <span className="text-sm font-semibold text-text-primary truncate w-full">
+                          <span className="text-sm font-semibold text-text-accent truncate w-full">
                             {user?.firstName && user?.lastName
                               ? `${user.firstName} ${user.lastName}`
                               : user?.email?.split("@")[0] || "User"}
@@ -461,15 +428,16 @@ export default function DashboardLayout({
                         />
                       </div>
                     </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                     aria-label="Account actions"
                     classNames={{
                       base: "bg-surface-base border border-border-base",
                       list: "gap-1 p-2",
                     }}
                   >
-                    <DropdownItem
+                    <Dropdown.Item
                       key="settings"
                       startContent={
                         <Icon
@@ -481,12 +449,12 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/settings")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       Settings
-                    </DropdownItem>
-                    <DropdownItem
+                    </Dropdown.Item>
+                    <Dropdown.Item
                       key="api-platform"
                       startContent={
                         <Icon
@@ -498,12 +466,12 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/api-platform")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       API Platform
-                    </DropdownItem>
-                    <DropdownItem
+                    </Dropdown.Item>
+                    <Dropdown.Item
                       key="referrals"
                       startContent={
                         <Icon
@@ -515,13 +483,13 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/referrals")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
+                        title: "text-text-accent font-medium",
                       }}
                     >
                       Referral Program
-                    </DropdownItem>
+                    </Dropdown.Item>
                     {canViewPricing ? (
-                      <DropdownItem
+                      <Dropdown.Item
                         key="pricing"
                         startContent={
                           <Icon
@@ -533,13 +501,13 @@ export default function DashboardLayout({
                         onPress={() => router.push("/dashboard/pricing")}
                         classNames={{
                           base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-primary font-medium",
+                          title: "text-text-accent font-medium",
                         }}
                       >
                         Pricing
-                      </DropdownItem>
+                      </Dropdown.Item>
                     ) : null}
-                    <DropdownItem
+                    <Dropdown.Item
                       key="logout"
                       color="danger"
                       startContent={
@@ -554,21 +522,18 @@ export default function DashboardLayout({
                       }}
                     >
                       Sign Out
-                    </DropdownItem>
-                  </DropdownMenu>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+</Dropdown.Popover>
                 </Dropdown>
 
                 <Tooltip
-                  content="Collapse sidebar"
-                  placement="right"
-                  classNames={{
-                    content:
-                      "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-                  }}
-                >
+ content="Collapse sidebar"
+ placement="right"
+ >
                   <button
                     onClick={() => setIsCollapsed(true)}
-                    className="mt-2 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
+                    className="mt-2 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-accent"
                   >
                     <Icon
                       icon="solar:alt-arrow-left-bold-duotone"
@@ -596,10 +561,10 @@ export default function DashboardLayout({
                   </p>
                 </div>
                 <Button
-                  size="sm"
-                  className="bg-accent-400 text-white font-semibold flex-shrink-0"
-                  onPress={() => router.push("/dashboard/pricing")}
-                >
+ size="sm"
+ className="bg-accent-400 text-white font-semibold flex-shrink-0"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
                   Upgrade
                 </Button>
               </div>
@@ -607,7 +572,7 @@ export default function DashboardLayout({
           )}
           {children}
         </main>
-        <ToastProvider placement="top-right" />
+        <Toast.Provider placement="top-right" />
       </div>
 
       <AnnouncementInboxModal />

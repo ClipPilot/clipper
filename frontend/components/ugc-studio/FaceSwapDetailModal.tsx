@@ -1,18 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Button,
+import { Button,
   Chip,
   Input,
   Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Progress,
-  addToast,
-} from "@heroui/react";
+  ProgressBar,
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   FaceSwapJob,
@@ -74,14 +68,10 @@ export function FaceSwapDetailModal({
       await faceSwapAPI.updateJobTitle(job.id, editTitle);
       setIsEditingTitle(false);
       onTitleUpdate?.(job.id, editTitle);
-      addToast({ title: "Title updated", color: "success" });
+      toast.success("Title updated");
     } catch (error) {
       console.error("Failed to update title:", error);
-      addToast({
-        title: "Failed to update title",
-        description: error instanceof Error ? error.message : "Please try again",
-        color: "danger",
-      });
+      toast.danger("Failed to update title", { description: error instanceof Error ? error.message : "Please try again" });
     } finally {
       setIsSavingTitle(false);
     }
@@ -153,20 +143,9 @@ export function FaceSwapDetailModal({
   const hasClip = !!job.clipId;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="5xl"
-      scrollBehavior="inside"
-      classNames={{
-        base: "bg-surface-base border border-border-base max-h-[90vh]",
-        header: "border-b border-border-base px-4 sm:px-6",
-        body: "px-4 sm:px-6",
-        footer: "border-t border-border-base px-4 sm:px-6",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader>
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header>
           <div className="flex items-center gap-3">
             <Icon
               icon="solar:mask-happly-bold-duotone"
@@ -174,9 +153,9 @@ export function FaceSwapDetailModal({
             />
             <span className="text-base sm:text-lg">Character Swap Details</span>
           </div>
-        </ModalHeader>
+        </Modal.Header>
 
-        <ModalBody className="py-4 sm:py-6">
+        <Modal.Body className="py-4 sm:py-6">
           <div className="space-y-4 sm:space-y-6">
             {/* Video Player */}
             {isCompleted && job.outputUrl ? (
@@ -202,20 +181,18 @@ export function FaceSwapDetailModal({
                 {job.spliceSegments && job.spliceSegments.length > 0 && (
                   <div className="space-y-2">
                     <Button
-                      variant="flat"
-                      size="sm"
-                      onPress={() => {
-                        setShowSegments(!showSegments);
-                        if (!showSegments) setActiveSegmentIndex(null);
-                      }}
-                      startContent={
-                        <Icon
+ variant="tertiary"
+ size="sm"
+ onPress={() => {
+ setShowSegments(!showSegments);
+ if (!showSegments) setActiveSegmentIndex(null);
+ }}
+ className="w-full"
+ >
+                      <Icon
                           icon={showSegments ? "solar:alt-arrow-up-bold" : "solar:layers-bold"}
                           width={16}
                         />
-                      }
-                      className="w-full"
-                    >
                       {showSegments
                         ? "Hide Segments"
                         : `View ${job.spliceSegments.length} Individual Segments`}
@@ -232,7 +209,7 @@ export function FaceSwapDetailModal({
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <Icon icon="solar:video-frame-bold" className="text-accent-400" width={14} />
-                            <span className="text-xs font-medium text-text-primary">Final Video</span>
+                            <span className="text-xs font-medium text-text-accent">Final Video</span>
                           </div>
                           <p className="text-[10px] text-text-tertiary">Complete merged output</p>
                         </button>
@@ -252,16 +229,16 @@ export function FaceSwapDetailModal({
                                 className={segment.type === "processed" ? "text-green-400" : "text-blue-400"}
                                 width={14}
                               />
-                              <span className="text-xs font-medium text-text-primary">
+                              <span className="text-xs font-medium text-text-accent">
                                 Segment {idx + 1}
                               </span>
                             </div>
                             <Chip
-                              size="sm"
-                              variant="flat"
-                              color={segment.type === "processed" ? "success" : "primary"}
-                              className="text-[10px] h-4 mb-1"
-                            >
+ size="sm"
+ variant="tertiary"
+ color={segment.type === "processed" ? "success" : "primary"}
+ className="text-[10px] h-4 mb-1"
+ >
                               {segment.type === "processed" ? "Swapped" : "Original"}
                             </Chip>
                             <p className="text-[10px] text-text-tertiary">
@@ -290,7 +267,9 @@ export function FaceSwapDetailModal({
                   />
                   {job.status === "running" && (
                     <div className="space-y-2 max-w-sm mx-auto">
-                      <Progress value={job.progress || 0} size="md" color="primary" />
+                      <ProgressBar value={job.progress || 0} >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                       <p className="text-sm text-text-secondary">
                         {job.progressMessage || "Processing..."}
                       </p>
@@ -319,43 +298,36 @@ export function FaceSwapDetailModal({
                 <p className="text-xs text-text-tertiary mb-2">Title</p>
                 {isEditingTitle ? (
                   <div className="flex items-center gap-2">
-                    <Input
-                      size="sm"
-                      value={editTitle}
-                      onValueChange={setEditTitle}
-                      placeholder="Enter a title..."
-                      classNames={{
-                        input: "text-sm",
-                        inputWrapper: "h-9 bg-surface-base",
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveTitle();
-                        if (e.key === "Escape") {
-                          setIsEditingTitle(false);
-                          setEditTitle(job?.title || "");
-                        }
-                      }}
-                      autoFocus
-                    />
+                    <Input onChange={(e) => (setEditTitle)(e.target.value)}
+ value={editTitle}
+ placeholder="Enter a title..."
+ onKeyDown={(e) => {
+ if (e.key === "Enter") handleSaveTitle();
+ if (e.key === "Escape") {
+ setIsEditingTitle(false);
+ setEditTitle(job?.title || "");
+ }
+ }}
+ autoFocus
+ />
                     <Button
-                      isIconOnly
-                      size="sm"
-                      variant="flat"
-                      color="success"
-                      onPress={handleSaveTitle}
-                      isLoading={isSavingTitle}
-                    >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={handleSaveTitle}
+ isPending={isSavingTitle}
+ >
                       <Icon icon="solar:check-circle-bold" width={18} />
                     </Button>
                     <Button
-                      isIconOnly
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setIsEditingTitle(false);
-                        setEditTitle(job?.title || "");
-                      }}
-                    >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => {
+ setIsEditingTitle(false);
+ setEditTitle(job?.title || "");
+ }}
+ >
                       <Icon icon="solar:close-circle-bold" width={18} />
                     </Button>
                   </div>
@@ -364,7 +336,7 @@ export function FaceSwapDetailModal({
                     onClick={() => setIsEditingTitle(true)}
                     className="flex items-center gap-2 text-sm hover:text-accent-400 transition-colors group w-full"
                   >
-                    <span className={job?.title ? "text-text-primary font-medium" : "text-text-muted italic"}>
+                    <span className={job?.title ? "text-text-accent font-medium" : "text-text-muted italic"}>
                       {job?.title || "Click to add title..."}
                     </span>
                     <Icon
@@ -381,46 +353,45 @@ export function FaceSwapDetailModal({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Status</p>
-                <Chip size="sm" color={getStatusColor(job.status)} variant="flat">
+                <Chip size="sm" color={getStatusColor(job.status)} variant="tertiary">
                   {job.status}
                 </Chip>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Created</p>
-                <p className="text-xs sm:text-sm text-text-primary">
+                <p className="text-xs sm:text-sm text-text-accent">
                   {new Date(job.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Processing Time</p>
-                <p className="text-xs sm:text-sm text-text-primary">
+                <p className="text-xs sm:text-sm text-text-accent">
                   {formatDuration(job.createdAt, job.finishedAt)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Job ID</p>
-                <p className="text-xs sm:text-sm text-text-primary font-mono truncate" title={job.id}>
+                <p className="text-xs sm:text-sm text-text-accent font-mono truncate" title={job.id}>
                   {job.id.slice(0, 8)}...
                 </p>
               </div>
             </div>
           </div>
-        </ModalBody>
+        </Modal.Body>
 
-        <ModalFooter>
+        <Modal.Footer>
           {/* Mobile: Stack buttons vertically, Desktop: Horizontal */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full gap-3">
             {/* Delete button */}
             <div className="order-2 sm:order-1">
               {onDelete && (
                 <Button
-                  variant="flat"
-                  color="danger"
-                  onPress={handleDelete}
-                  isLoading={isDeleting}
-                  startContent={!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={18} />}
-                  className="w-full sm:w-auto"
-                >
+ variant="danger-soft"
+ onPress={handleDelete}
+ isPending={isDeleting}
+ className="w-full sm:w-auto"
+ >
+                  {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={18} />}
                   {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
               )}
@@ -446,24 +417,23 @@ export function FaceSwapDetailModal({
                         {getShareUrl()}
                       </div>
                       <Button
-                        variant="flat"
-                        color="success"
-                        onPress={handleShare}
-                        startContent={<Icon icon="solar:copy-bold" />}
-                        className="w-full sm:w-auto"
-                      >
+ variant="tertiary"
+ onPress={handleShare}
+ className="w-full sm:w-auto"
+ >
+                        <Icon icon="solar:copy-bold" />
                         <span className="sm:hidden">Copy Share Link</span>
                         <span className="hidden sm:inline">Copy</span>
                       </Button>
                     </div>
                   ) : (
                     <Button
-                      variant="flat"
-                      startContent={!isSharing && <Icon icon="solar:share-bold" />}
-                      isLoading={isSharing}
-                      onPress={handleShare}
-                      className="w-full sm:w-auto"
-                    >
+ variant="tertiary"
+ isPending={isSharing}
+ onPress={handleShare}
+ className="w-full sm:w-auto"
+ >
+                      {!isSharing && <Icon icon="solar:share-bold" />}
                       Share
                     </Button>
                   )}
@@ -474,33 +444,32 @@ export function FaceSwapDetailModal({
               <div className="flex items-center gap-2">
                 {isCompleted && hasClip && onEdit && (
                   <Button
-                    variant="flat"
-                    startContent={<Icon icon="solar:pen-bold" />}
-                    onPress={handleEdit}
-                    className="flex-1 sm:flex-none"
-                  >
+ variant="tertiary"
+ onPress={handleEdit}
+ className="flex-1 sm:flex-none"
+ >
+                    <Icon icon="solar:pen-bold" />
                     Edit
                   </Button>
                 )}
-                <Button variant="flat" onPress={handleClose} className="flex-1 sm:flex-none">
+                <Button variant="tertiary" onPress={handleClose} className="flex-1 sm:flex-none">
                   Close
                 </Button>
                 {isCompleted && job.outputUrl && (
-                  <Button
-                    color="primary"
-                    onPress={handleDownload}
-                    isLoading={isDownloading}
-                    startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
-                    className="flex-1 sm:flex-none"
-                  >
+                  <Button variant="primary"
+ onPress={handleDownload}
+ isPending={isDownloading}
+ className="flex-1 sm:flex-none"
+ >
+                    {!isDownloading && <Icon icon="solar:download-bold" width={18} />}
                     {isDownloading ? "..." : "Download"}
                   </Button>
                 )}
               </div>
             </div>
           </div>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

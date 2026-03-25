@@ -55,7 +55,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold text-text-primary">Head-to-Head Comparison</h2>
+      <h2 className="text-lg font-semibold text-text-accent">Head-to-Head Comparison</h2>
       <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -93,7 +93,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
                       >
                         {comp.name.slice(0, 2).toUpperCase()}
                       </div>
-                      <span className="text-sm font-medium text-text-primary truncate max-w-[140px]">
+                      <span className="text-sm font-medium text-text-accent truncate max-w-[140px]">
                         {comp.name}
                       </span>
                     </div>
@@ -106,7 +106,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
                         <span
                           className={cn(
                             "text-sm font-semibold",
-                            isWinner ? "text-green-500" : "text-text-primary"
+                            isWinner ? "text-green-500" : "text-text-accent"
                           )}
                         >
                           {metric.format(val)}

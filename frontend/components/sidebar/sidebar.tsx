@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Progress, Tooltip, cn } from "@heroui/react";
+import { ProgressBar, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
@@ -97,7 +97,7 @@ export default function Sidebar({
               ? "text-text-tertiary"
               : isActive
                 ? "text-accent-400"
-                : "text-text-primary"
+                : "text-text-accent"
           )}
         />
         <span
@@ -110,7 +110,7 @@ export default function Sidebar({
               ? "text-text-tertiary"
               : isActive
                 ? "text-accent-400"
-                : "text-text-primary"
+                : "text-text-accent"
           )}
         >
           {item.title}
@@ -131,15 +131,11 @@ export default function Sidebar({
         : item.title;
       return (
         <Tooltip
-          key={item.key}
-          content={tooltipContent}
-          placement="right"
-          delay={200}
-          classNames={{
-            content:
-              "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-          }}
-        >
+ key={item.key}
+ content={tooltipContent}
+ placement="right"
+ delay={200}
+ >
           {button}
         </Tooltip>
       );
@@ -182,27 +178,23 @@ export default function Sidebar({
         >
           {isCollapsed ? (
             <Tooltip
-              placement="right"
-              content={
-                <div className="space-y-1 py-1">
-                  <p className="font-medium">{selectedTeam.name}</p>
-                  <p className="text-text-tertiary">
-                    {getPlanName(plan)} — {usageStats.clipsCreated}/
-                    {usageStats.baseLimit} clips
-                  </p>
-                  {usageStats.totalRemaining > 0 && (
-                    <p className="text-text-tertiary">
-                      {usageStats.totalRemaining} credit
-                      {usageStats.totalRemaining !== 1 ? "s" : ""} remaining
-                    </p>
-                  )}
-                </div>
-              }
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-3 py-2",
-              }}
-            >
+ placement="right"
+ content={
+ <div className="space-y-1 py-1">
+ <p className="font-medium">{selectedTeam.name}</p>
+ <p className="text-text-tertiary">
+ {getPlanName(plan)} — {usageStats.clipsCreated}/
+ {usageStats.baseLimit} clips
+ </p>
+ {usageStats.totalRemaining > 0 && (
+ <p className="text-text-tertiary">
+ {usageStats.totalRemaining} credit
+ {usageStats.totalRemaining !== 1 ? "s" : ""} remaining
+ </p>
+ )}
+ </div>
+ }
+ >
               <div className="flex flex-col items-center gap-2">
                 <div
                   className={cn(
@@ -212,21 +204,11 @@ export default function Sidebar({
                 >
                   {getPlanName(plan)}
                 </div>
-                <Progress
-                  value={usagePercentage}
-                  color={
-                    usagePercentage >= 100
-                      ? "danger"
-                      : usagePercentage >= 75
-                        ? "warning"
-                        : "primary"
-                  }
-                  size="sm"
-                  classNames={{
-                    base: "w-full",
-                    indicator: "transition-all",
-                  }}
-                />
+                <ProgressBar
+ value={usagePercentage}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               </div>
             </Tooltip>
           ) : (
@@ -250,21 +232,11 @@ export default function Sidebar({
                   {usageStats.clipsCreated} / {usageStats.baseLimit}
                 </span>
               </div>
-              <Progress
-                value={usagePercentage}
-                color={
-                  usagePercentage >= 100
-                    ? "danger"
-                    : usagePercentage >= 75
-                      ? "warning"
-                      : "primary"
-                }
-                size="sm"
-                classNames={{
-                  base: "w-full",
-                  indicator: "transition-all",
-                }}
-              />
+              <ProgressBar
+ value={usagePercentage}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-text-tertiary">
                   {usageStats.totalRemaining > 0
@@ -341,13 +313,9 @@ export default function Sidebar({
 
           {isCollapsed && canViewPricing && !isPaidPlan(plan) && (
             <Tooltip
-              content="Upgrade workspace"
-              placement="right"
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-              }}
-            >
+ content="Upgrade workspace"
+ placement="right"
+ >
               <button
                 onClick={() => router.push("/dashboard/pricing")}
                 className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
@@ -363,13 +331,9 @@ export default function Sidebar({
 
           {isCollapsed && canViewPricing && isPaidPlan(plan) && (
             <Tooltip
-              content="Manage subscription"
-              placement="right"
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-              }}
-            >
+ content="Manage subscription"
+ placement="right"
+ >
               <button
                 onClick={() => router.push("/dashboard/pricing")}
                 className={cn(

@@ -163,11 +163,10 @@ export function DrivePicker(props: Props) {
 
   if (props.disabled) {
     return (
-      <Button
-        size="md"
-        color="secondary"
-        startContent={<Icon icon="logos:google-drive" />}
-      >
+      <Button variant="secondary"
+ size="md"
+ >
+        <Icon icon="logos:google-drive" />
         Upload from Google Drive
       </Button>
     );
@@ -175,13 +174,12 @@ export function DrivePicker(props: Props) {
 
   return (
     <Button
-      size="md"
-      variant="flat"
-      color="secondary"
-      isDisabled={props.downloading}
-      startContent={<Icon icon="logos:google-drive" />}
-      onPress={handleGDrive}
-    >
+ size="md"
+ variant="tertiary"
+ isDisabled={props.downloading}
+ onPress={handleGDrive}
+ >
+      <Icon icon="logos:google-drive" />
       Upload from Google Drive
     </Button>
   );

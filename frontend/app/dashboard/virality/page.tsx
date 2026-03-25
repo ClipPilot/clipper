@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button, Input, useDisclosure, addToast, Spinner } from "@heroui/react";
+import { Button, Input, useOverlayState, Spinner } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import {
   AccountsTable,
@@ -46,8 +47,8 @@ export default function ViralityPage() {
   const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
+  const { isOpen, open: onOpen, close: onClose } = useOverlayState();
+  const { isOpen: isSettingsOpen, open: onSettingsOpen, close: onSettingsClose } = useOverlayState();
   const [viralSettings, setViralSettings] = useState<ViralSettings | null>(null);
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
@@ -145,7 +146,7 @@ export default function ViralityPage() {
       setPostsByAccount(postsMap);
       setAllPostsByAccountUnfiltered(hasDateFilter ? unfilteredMap : postsMap);
     } catch (err: any) {
-      addToast({
+      toast({
         title: "Failed to load data",
         description: err.message,
         color: "danger",
@@ -313,10 +314,10 @@ export default function ViralityPage() {
       } else {
         await viralityAPI.deleteAccount(selectedTeam.id, accountId);
       }
-      addToast({ title: "Account deleted", color: "success" });
+      toast({ title: "Account deleted", color: "success" });
       await fetchData();
     } catch (err: any) {
-      addToast({ title: "Failed to delete account", description: err.message, color: "danger" });
+      toast({ title: "Failed to delete account", description: err.message, color: "danger" });
     }
   };
 
@@ -343,12 +344,12 @@ export default function ViralityPage() {
           }))
         );
       }
-      addToast({
+      toast({
         title: `Account ${newStatus === "active" ? "activated" : "deactivated"}`,
         color: "success",
       });
     } catch (err: any) {
-      addToast({ title: "Failed to update status", description: err.message, color: "danger" });
+      toast({ title: "Failed to update status", description: err.message, color: "danger" });
     }
   };
 
@@ -363,9 +364,9 @@ export default function ViralityPage() {
         prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
       );
       setEditingCompetitorId(null);
-      addToast({ title: "Competitor renamed", color: "success" });
+      toast({ title: "Competitor renamed", color: "success" });
     } catch (err: any) {
-      addToast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
+      toast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
     }
   };
 
@@ -390,7 +391,7 @@ export default function ViralityPage() {
         profileUrl,
         options.accountType
       );
-      addToast({ title: "Account added to My Performance", color: "success" });
+      toast({ title: "Account added to My Performance", color: "success" });
       await fetchData();
       return;
     }
@@ -422,7 +423,7 @@ export default function ViralityPage() {
       await viralityAPI.updateAlertEnabled(selectedTeam.id, account.id, true);
     }
 
-    addToast({ title: "Account added", color: "success" });
+    toast({ title: "Account added", color: "success" });
     await fetchData();
   };
 
@@ -438,9 +439,9 @@ export default function ViralityPage() {
           ),
         }))
       );
-      addToast({ title: `Alerts ${enabled ? "enabled" : "disabled"}`, color: "success" });
+      toast({ title: `Alerts ${enabled ? "enabled" : "disabled"}`, color: "success" });
     } catch (err: any) {
-      addToast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+      toast({ title: "Failed to update alerts", description: err.message, color: "danger" });
     }
   };
 
@@ -451,7 +452,7 @@ export default function ViralityPage() {
       setViralSettings(settings);
       onSettingsOpen();
     } catch (err: any) {
-      addToast({ title: "Failed to load settings", description: err.message, color: "danger" });
+      toast({ title: "Failed to load settings", description: err.message, color: "danger" });
     }
   };
 
@@ -462,9 +463,9 @@ export default function ViralityPage() {
       setViralSettings(saved);
       // Refresh competitors to reflect updated alert_enabled flags
       await fetchData();
-      addToast({ title: "Alert settings saved", color: "success" });
+      toast({ title: "Alert settings saved", color: "success" });
     } catch (err: any) {
-      addToast({ title: "Failed to save settings", description: err.message, color: "danger" });
+      toast({ title: "Failed to save settings", description: err.message, color: "danger" });
     }
   };
 
@@ -490,7 +491,7 @@ export default function ViralityPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">
+            <h1 className="text-2xl font-bold text-text-accent">
               Tracked Competitors
             </h1>
             <p className="text-text-secondary text-sm mt-1">
@@ -500,18 +501,18 @@ export default function ViralityPage() {
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              startContent={<Icon icon="solar:bell-bold" width={18} />}
-              onPress={handleOpenSettings}
-            >
+ variant="outline"
+ className="border-border-base text-text-secondary"
+ onPress={handleOpenSettings}
+ >
+              <Icon icon="solar:bell-bold" width={18} />
               Alert Settings
             </Button>
             <Button
-              className="bg-accent-400 text-white"
-              startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-              onPress={onOpen}
-            >
+ className="bg-accent-400 text-white"
+ onPress={onOpen}
+ >
+              <Icon icon="solar:add-circle-bold" width={18} />
               Add Account
             </Button>
           </div>

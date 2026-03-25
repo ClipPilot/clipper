@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
+import { Modal,
   Button,
   Input,
   Select,
-  SelectItem,
-  Spinner,
-} from "@heroui/react";
+  Spinner, TextField, Label, FieldError } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { voiceCloneAPI } from "@/api/voiceClone";
 
@@ -153,17 +147,9 @@ export function VoiceCloneModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="2xl"
-      classNames={{
-        base: "bg-surface-base border border-border-base",
-        header: "border-b border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-3">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
             <Icon
               icon="solar:microphone-3-bold-duotone"
@@ -172,21 +158,21 @@ export function VoiceCloneModal({
             />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-text-primary">
+            <h3 className="text-lg font-semibold text-text-accent">
               Clone Your Voice
             </h3>
             <p className="text-xs text-text-tertiary font-normal">
               Record yourself reading the paragraph below
             </p>
           </div>
-        </ModalHeader>
-        <ModalBody className="py-6 space-y-6">
+        </Modal.Header>
+        <Modal.Body className="py-6 space-y-6">
           {/* Paragraph to read */}
           <div className="bg-surface-elevated rounded-xl p-4 border border-border-base">
             <p className="text-xs text-text-muted mb-2 uppercase tracking-wider font-medium">
               Read this aloud:
             </p>
-            <p className="text-text-primary text-sm leading-relaxed">
+            <p className="text-text-accent text-sm leading-relaxed">
               {paragraph}
             </p>
           </div>
@@ -195,13 +181,11 @@ export function VoiceCloneModal({
           <div className="flex flex-col items-center gap-4">
             {state === "idle" && (
               <Button
-                size="lg"
-                className="bg-red-500 text-white font-semibold px-8"
-                startContent={
-                  <Icon icon="solar:microphone-3-bold" width={20} />
-                }
-                onPress={startRecording}
-              >
+ size="lg"
+ className="bg-red-500 text-white font-semibold px-8"
+ onPress={startRecording}
+ >
+                <Icon icon="solar:microphone-3-bold" width={20} />
                 Start Recording
               </Button>
             )}
@@ -221,11 +205,11 @@ export function VoiceCloneModal({
                   Recording...
                 </p>
                 <Button
-                  size="md"
-                  className="bg-surface-elevated text-text-primary"
-                  startContent={<Icon icon="solar:stop-bold" width={16} />}
-                  onPress={stopRecording}
-                >
+ size="md"
+ className="bg-surface-elevated text-text-accent"
+ onPress={stopRecording}
+ >
+                  <Icon icon="solar:stop-bold" width={16} />
                   Stop Recording
                 </Button>
               </div>
@@ -240,12 +224,12 @@ export function VoiceCloneModal({
                     className="flex-1 h-10"
                   />
                   <Button
-                    size="sm"
-                    variant="bordered"
-                    className="border-border-base"
-                    onPress={handleReRecord}
-                    isDisabled={state === "submitting"}
-                  >
+ size="sm"
+ variant="outline"
+ className="border-border-base"
+ onPress={handleReRecord}
+ isDisabled={state === "submitting"}
+ >
                     Re-record
                   </Button>
                 </div>
@@ -271,28 +255,24 @@ export function VoiceCloneModal({
           {/* Name and gender inputs */}
           {(state === "recorded" || state === "submitting") && (
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Voice Name"
-                placeholder="e.g. My Voice"
-                value={name}
-                onValueChange={setName}
-                isDisabled={state === "submitting"}
-                classNames={{
-                  inputWrapper: "bg-surface-elevated border-border-base",
-                }}
-              />
+                            <TextField>
+                <Label>Voice Name</Label>
+                <Input onChange={(e) => (setName)(e.target.value)}
+ placeholder="e.g. My Voice"
+ value={name}
+ isDisabled={state === "submitting"}
+ />
+                <FieldError />
+              </TextField>
               <Select
-                label="Gender"
-                placeholder="Select gender"
-                selectedKeys={gender ? [gender] : []}
-                onSelectionChange={(keys) =>
-                  setGender(Array.from(keys)[0] as string)
-                }
-                isDisabled={state === "submitting"}
-                classNames={{
-                  trigger: "bg-surface-elevated border-border-base",
-                }}
-              >
+ label="Gender"
+ placeholder="Select gender"
+ selectedKeys={gender ? [gender] : []}
+ onSelectionChange={(keys) =>
+ setGender(Array.from(keys)[0] as string)
+ }
+ isDisabled={state === "submitting"}
+ >
                 <SelectItem key="male">Male</SelectItem>
                 <SelectItem key="female">Female</SelectItem>
               </Select>
@@ -308,14 +288,12 @@ export function VoiceCloneModal({
           {state === "recorded" && (
             <div className="flex justify-center">
               <Button
-                size="lg"
-                className="bg-purple-500 text-white font-semibold px-8"
-                onPress={handleSubmit}
-                isDisabled={!name.trim() || !gender}
-                startContent={
-                  <Icon icon="solar:upload-minimalistic-bold" width={18} />
-                }
-              >
+ size="lg"
+ className="bg-purple-500 text-white font-semibold px-8"
+ onPress={handleSubmit}
+ isDisabled={!name.trim() || !gender}
+ >
+                <Icon icon="solar:upload-minimalistic-bold" width={18} />
                 Clone Voice
               </Button>
             </div>
@@ -323,14 +301,14 @@ export function VoiceCloneModal({
 
           {state === "submitting" && (
             <div className="flex flex-col items-center gap-3 py-2">
-              <Spinner size="lg" color="secondary" />
+              <Spinner size="lg" color="current" />
               <p className="text-text-secondary text-sm">
                 Cloning your voice... This may take a moment.
               </p>
             </div>
           )}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

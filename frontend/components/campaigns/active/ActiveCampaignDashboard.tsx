@@ -1,18 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
-import {
-  Button,
+import { Button,
   Chip,
   Tabs,
-  Tab,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  addToast,
-} from "@heroui/react";
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -258,19 +251,11 @@ export function ActiveCampaignDashboard({
         selectedTeam.id,
         campaign.id,
       );
-      addToast({
-        title: "Campaign ended",
-        description: "Campaign ended successfully.",
-        color: "success",
-      });
+      toast.success("Campaign ended", { description: "Campaign ended successfully." });
       setIsEndModalOpen(false);
       onCampaignUpdated(updated);
     } catch (err: any) {
-      addToast({
-        title: "Failed to end campaign",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to end campaign", { description: err.message || "Something went wrong" });
     } finally {
       setIsEnding(false);
     }
@@ -289,11 +274,7 @@ export function ActiveCampaignDashboard({
       setSetupSecret(cs);
       setIsSetupModalOpen(true);
     } catch (err: any) {
-      addToast({
-        title: "Failed to start card setup",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to start card setup", { description: err.message || "Something went wrong" });
     } finally {
       setIsSettingUp(false);
     }
@@ -316,18 +297,10 @@ export function ActiveCampaignDashboard({
       if (agreement?.presigned_pdf_url) {
         window.open(agreement.presigned_pdf_url, "_blank", "noopener,noreferrer");
       } else {
-        addToast({
-          title: "Contract not available",
-          description: "No PDF is attached to this contract yet.",
-          color: "warning",
-        });
+        toast.warning("Contract not available", { description: "No PDF is attached to this contract yet." });
       }
     } catch (err: any) {
-      addToast({
-        title: "Failed to load contract",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to load contract", { description: err.message || "Something went wrong" });
     }
   };
 
@@ -337,36 +310,35 @@ export function ActiveCampaignDashboard({
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Back nav */}
         <Button
-          variant="light"
-          size="sm"
-          className="text-text-secondary -ml-2"
-          onPress={onBack}
-          startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-        >
+ variant="tertiary"
+ size="sm"
+ className="text-text-secondary -ml-2"
+ onPress={onBack}
+ >
+          <Icon icon="solar:arrow-left-linear" width={16} />
           Back to Campaigns
         </Button>
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-2xl font-bold text-text-primary truncate">
+            <h1 className="text-2xl font-bold text-text-accent truncate">
               {campaign.name}
             </h1>
             <Chip
-              color={campaign.status === "started" ? "success" : "warning"}
-              variant="flat"
-              className="flex-shrink-0 capitalize"
-            >
+ color={campaign.status === "started" ? "success" : "warning"}
+ variant="tertiary"
+ className="flex-shrink-0 capitalize"
+ >
               {campaign.status === "started" ? "Live" : campaign.status}
             </Chip>
           </div>
           <Button
-            color="danger"
-            variant="flat"
-            size="sm"
-            onPress={() => setIsEndModalOpen(true)}
-            startContent={<Icon icon="solar:stop-circle-bold" width={16} />}
-          >
+ variant="danger-soft"
+ size="sm"
+ onPress={() => setIsEndModalOpen(true)}
+ >
+            <Icon icon="solar:stop-circle-bold" width={16} />
             End Campaign
           </Button>
         </div>
@@ -382,23 +354,13 @@ export function ActiveCampaignDashboard({
 
         {/* Tabs */}
         <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => {
-            setActiveTab(key as "queued" | "accounts" | "published" | "billing");
-            setPostsPage(1);
-            setVideoPage(1);
-          }}
-          variant="underlined"
-          classNames={{
-            base: "w-full",
-            tabList:
-              "gap-6 px-0 py-0 w-full relative rounded-none border-b border-border-base",
-            cursor: "w-full bg-accent-400",
-            tab: "max-w-fit px-2 h-12",
-            tabContent:
-              "text-text-secondary group-data-[selected=true]:text-accent-400",
-          }}
-        >
+ selectedKey={activeTab}
+ onSelectionChange={(key) => {
+ setActiveTab(key as "queued" | "accounts" | "published" | "billing");
+ setPostsPage(1);
+ setVideoPage(1);
+ }}
+ >
           <Tab
             key="queued"
             title={
@@ -406,13 +368,9 @@ export function ActiveCampaignDashboard({
                 <span>Queued Posts</span>
                 {activeTab === "queued" && videoTotalCount > 0 && (
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: "bg-accent-400/10 text-accent-400 h-5 min-w-5",
-                      content: "text-xs font-semibold px-1",
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ >
                     {videoTotalCount}
                   </Chip>
                 )}
@@ -427,13 +385,9 @@ export function ActiveCampaignDashboard({
                 <span>Published Posts</span>
                 {activeTab === "published" && videoGroups.length > 0 && (
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: "bg-success-500/10 text-success-500 h-5 min-w-5",
-                      content: "text-xs font-semibold px-1",
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ >
                     {totalPosts}
                   </Chip>
                 )}
@@ -470,21 +424,20 @@ export function ActiveCampaignDashboard({
                 <div className="flex items-center justify-end">
                   <div className="flex gap-2">
                     <Button
-                      size="sm"
-                      variant="flat"
-                      className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-                      onPress={() => setIsPickerOpen(true)}
-                      startContent={<Icon icon="solar:library-bold-duotone" width={14} />}
-                    >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+ onPress={() => setIsPickerOpen(true)}
+ >
+                      <Icon icon="solar:library-bold-duotone" width={14} />
                       Add from Library
                     </Button>
-                    <Button
-                      size="sm"
-                      color="primary"
-                      className="h-9"
-                      onPress={() => setIsUploadOpen(true)}
-                      startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
-                    >
+                    <Button variant="primary"
+ size="sm"
+ className="h-9"
+ onPress={() => setIsUploadOpen(true)}
+ >
+                      <Icon icon="solar:upload-bold-duotone" width={14} />
                       Upload Videos
                     </Button>
                   </div>
@@ -495,7 +448,7 @@ export function ActiveCampaignDashboard({
               <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
-                  <span className="text-sm font-medium text-text-primary">
+                  <span className="text-sm font-medium text-text-accent">
                     {postsTab === "queued" ? "Campaign Videos" : "Published Posts"}
                   </span>
                   <span className="text-xs text-text-secondary">
@@ -517,7 +470,7 @@ export function ActiveCampaignDashboard({
                     <thead className="bg-surface-elevated border-b border-border-base">
                       <tr>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
                           onClick={() => handleSort("title")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -527,7 +480,7 @@ export function ActiveCampaignDashboard({
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Platforms</th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
                           onClick={() => handleSort("post_count")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -536,7 +489,7 @@ export function ActiveCampaignDashboard({
                           </span>
                         </th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
                           onClick={() => handleSort("publish_status")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -545,7 +498,7 @@ export function ActiveCampaignDashboard({
                           </span>
                         </th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
                           onClick={() => handleSort("created_at")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -583,7 +536,7 @@ export function ActiveCampaignDashboard({
                                 ) : (
                                   <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
                                 )}
-                                <span className="text-sm text-text-primary truncate max-w-[200px]">
+                                <span className="text-sm text-text-accent truncate max-w-[200px]">
                                   {group.clipTitle || `Video #${group.clipId}`}
                                 </span>
                               </div>
@@ -647,37 +600,37 @@ export function ActiveCampaignDashboard({
                     <span className="text-xs text-text-secondary">Page {currentPage} of {currentTotalPages}</span>
                     <div className="flex gap-2">
                       <Button
-                        size="sm"
-                        variant="flat"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
-                        isDisabled={currentPage === 1}
-                        onPress={() => {
-                          const p = Math.max(1, currentPage - 1);
-                          if (activeTab === "queued") {
-                            setVideoPage(p);
-                          } else {
-                            setPostsPage(p);
-                            fetchPosts(p);
-                          }
-                        }}
-                      >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+ isDisabled={currentPage === 1}
+ onPress={() => {
+ const p = Math.max(1, currentPage - 1);
+ if (activeTab === "queued") {
+ setVideoPage(p);
+ } else {
+ setPostsPage(p);
+ fetchPosts(p);
+ }
+ }}
+ >
                         Prev
                       </Button>
                       <Button
-                        size="sm"
-                        variant="flat"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
-                        isDisabled={currentPage === currentTotalPages}
-                        onPress={() => {
-                          const p = Math.min(currentTotalPages, currentPage + 1);
-                          if (activeTab === "queued") {
-                            setVideoPage(p);
-                          } else {
-                            setPostsPage(p);
-                            fetchPosts(p);
-                          }
-                        }}
-                      >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+ isDisabled={currentPage === currentTotalPages}
+ onPress={() => {
+ const p = Math.min(currentTotalPages, currentPage + 1);
+ if (activeTab === "queued") {
+ setVideoPage(p);
+ } else {
+ setPostsPage(p);
+ fetchPosts(p);
+ }
+ }}
+ >
                         Next
                       </Button>
                     </div>
@@ -688,25 +641,20 @@ export function ActiveCampaignDashboard({
 
               {/* Video player modal */}
               {playingVideo && (
-                <Modal
-                  isOpen
-                  onClose={() => setPlayingVideo(null)}
-                  size="2xl"
-                  classNames={{ base: "bg-surface-base border border-border-base" }}
-                >
-                  <ModalContent>
-                    <ModalHeader className="border-b border-border-base text-text-primary">
+                <Modal>
+                  <Modal.Backdrop isOpen onOpenChange={() => setPlayingVideo(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+                    <Modal.Header className="border-b border-border-base text-text-accent">
                       {playingVideo.title}
-                    </ModalHeader>
-                    <ModalBody className="p-0">
+                    </Modal.Header>
+                    <Modal.Body className="p-0">
                       <video
                         src={playingVideo.url}
                         controls
                         autoPlay
                         className="w-full max-h-[70vh]"
                       />
-                    </ModalBody>
-                  </ModalContent>
+                    </Modal.Body>
+                  </Modal.Dialog></Modal.Container></Modal.Backdrop>
                 </Modal>
               )}
             </div>
@@ -753,42 +701,37 @@ export function ActiveCampaignDashboard({
       />
 
       {/* End campaign confirmation modal */}
-      <Modal
-        isOpen={isEndModalOpen}
-        onClose={() => setIsEndModalOpen(false)}
-        classNames={{ base: "bg-surface-base border border-border-base" }}
-      >
-        <ModalContent>
-          <ModalHeader className="border-b border-border-base">
+      <Modal>
+        <Modal.Backdrop isOpen={isEndModalOpen} onOpenChange={() => setIsEndModalOpen(false)}><Modal.Container><Modal.Dialog className="sm:max-w-md">
+          <Modal.Header className="border-b border-border-base">
             <div className="flex items-center gap-2">
               <Icon icon="solar:danger-triangle-bold-duotone" className="text-danger-500" width={20} />
-              <span className="text-text-primary">End Campaign</span>
+              <span className="text-text-accent">End Campaign</span>
             </div>
-          </ModalHeader>
-          <ModalBody className="py-4">
+          </Modal.Header>
+          <Modal.Body className="py-4">
             <p className="text-sm text-text-secondary">
               Are you sure you want to end this campaign? This action will stop all posting
               and mark the campaign as completed. This cannot be undone.
             </p>
-          </ModalBody>
-          <ModalFooter className="border-t border-border-base">
+          </Modal.Body>
+          <Modal.Footer className="border-t border-border-base">
             <Button
-              variant="flat"
-              className="bg-surface-elevated text-text-secondary"
-              onPress={() => setIsEndModalOpen(false)}
-              isDisabled={isEnding}
-            >
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary"
+ onPress={() => setIsEndModalOpen(false)}
+ isDisabled={isEnding}
+ >
               Cancel
             </Button>
-            <Button
-              color="danger"
-              onPress={handleEndCampaign}
-              isLoading={isEnding}
-            >
+            <Button variant="danger"
+ onPress={handleEndCampaign}
+ isPending={isEnding}
+ >
               End Campaign
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
 
       {/* Card setup modal (billing change) */}

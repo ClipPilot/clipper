@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button, addToast } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
@@ -157,11 +157,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} ${swapType === "face" ? "face swap" : "swap"}${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take ${swapType === "face" ? "5-10" : "20-40"} minutes each. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} ${swapType === "face" ? "face swap" : "swap"}${characterCount > 1 ? "s" : ""} started!`, { description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take ${swapType === "face" ? "5-10" : "20-40"} minutes each. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (err) {
@@ -173,11 +169,7 @@ function FaceSwapContent({
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
 
-      addToast({
-        title: "Failed to start swaps",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed to start swaps", { description: errorMessage });
     }
   };
 
@@ -226,11 +218,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. Face detection and swap will run in background. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} swap${characterCount > 1 ? "s" : ""} started!`, { description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. Face detection and swap will run in background. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (error) {
@@ -240,11 +228,7 @@ function FaceSwapContent({
       tempIds.forEach((tempId) => {
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
-      addToast({
-        title: "Failed",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed", { description: errorMessage });
     }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 
@@ -289,11 +273,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} face swap${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing... This typically takes 5-10 minutes. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} face swap${characterCount > 1 ? "s" : ""} started!`, { description: `Processing... This typically takes 5-10 minutes. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (error) {
@@ -303,11 +283,7 @@ function FaceSwapContent({
       tempIds.forEach((tempId) => {
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
-      addToast({
-        title: "Failed to start face swap",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed to start face swap", { description: errorMessage });
     }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 

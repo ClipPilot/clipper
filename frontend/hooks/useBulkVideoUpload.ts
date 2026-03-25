@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { addToast } from "@heroui/react";
+import {  } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { campaignAPI, type CampaignVideo } from "@/api/campaign";
 
 export type UploadFileStatus = "queued" | "uploading" | "completing" | "done" | "error";
@@ -112,7 +113,7 @@ export function useBulkVideoUpload(
       const raw = Array.from(inputFiles);
       const allFiles = raw.filter(isVideoFile);
       if (allFiles.length === 0) {
-        addToast({
+        toast({
           title: "No video files found",
           description: `${raw.length} file${raw.length !== 1 ? "s" : ""} selected but none are supported video formats.`,
           color: "warning",

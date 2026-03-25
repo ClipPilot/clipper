@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardBody, Button, addToast } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { intakeAPI, IntakeFormData } from "@/api/intake";
 import { campaignAPI } from "@/api/campaign";
@@ -204,19 +205,19 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
           company_socials: companySocials,
           competitor_socials: competitorSocials,
         });
-        addToast({ title: "Campaign created", description: `"${campaign.name}" has been submitted for review.`, color: "success" });
+        toast({ title: "Campaign created", description: `"${campaign.name}" has been submitted for review.`, color: "success" });
         onSubmitted(campaign.id);
       } else if (isAppeal) {
         await intakeAPI.submitAppeal(teamId, data);
-        addToast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
+        toast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
         onSubmitted();
       } else {
         await intakeAPI.submitApplication(teamId, data);
-        addToast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
+        toast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
         onSubmitted();
       }
     } catch (err: any) {
-      addToast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
+      toast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
     } finally {
       setIsSubmitting(false);
     }
@@ -234,7 +235,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-accent mb-1">
             {mode === "create" ? "New Campaign" : isAppeal ? "Update Your Application" : "Mass Posting Application"}
           </h1>
           <p className="text-sm sm:text-base text-text-secondary">
@@ -283,30 +284,29 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
 
         {/* Step Content — driven by STEP_RENDER_MAP */}
         <Card className="bg-surface-base border border-border-base">
-          <CardBody className="p-4 sm:p-6 lg:p-8">
+          <Card.Content className="p-4 sm:p-6 lg:p-8">
             {renderCurrentStep ? renderCurrentStep(stepCtx) : null}
-          </CardBody>
+          </Card.Content>
         </Card>
 
         {/* Navigation */}
         {currentStep < LAST_STEP && (
           <div className="flex justify-between mt-6">
             <Button
-              variant="flat"
-              isDisabled={currentStep === 0}
-              onPress={handleBack}
-              startContent={<Icon icon="solar:arrow-left-linear" />}
-            >
+ variant="tertiary"
+ isDisabled={currentStep === 0}
+ onPress={handleBack}
+ >
+              <Icon icon="solar:arrow-left-linear" />
               Back
             </Button>
-            <Button
-              color="primary"
-              isDisabled={!canProceed}
-              onPress={handleNext}
-              endContent={<Icon icon="solar:arrow-right-linear" />}
-            >
+            <Button variant="primary"
+ isDisabled={!canProceed}
+ onPress={handleNext}
+ >
               Continue
-            </Button>
+              <Icon icon="solar:arrow-right-linear" />
+</Button>
           </div>
         )}
       </div>

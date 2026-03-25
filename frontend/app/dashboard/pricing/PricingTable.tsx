@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import { Button, Chip, Divider, Tooltip, cn } from "@heroui/react";
+import { Button, Chip, Separator, Tooltip, cn } from "@heroui/react";
 import { Tier, TiersEnum } from "./pricing-types";
 import { PricingFeatures } from "./pricing-comparison-types";
 
@@ -62,16 +62,12 @@ export function PricingTable({
                 >
                   {tier.mostPopular && (
                     <Chip
-                      classNames={{
-                        base: "absolute top-2 right-2 bg-accent-400",
-                        content: "text-white text-xs font-semibold",
-                      }}
-                      size="sm"
-                    >
+ size="sm"
+ >
                       Most Popular
                     </Chip>
                   )}
-                  <div className="text-xl font-semibold text-text-primary">
+                  <div className="text-xl font-semibold text-text-accent">
                     {tier.title}
                   </div>
                   <p className="mt-1 text-sm text-text-secondary">
@@ -88,7 +84,7 @@ export function PricingTable({
                 <td key={tier.key} className="relative px-6 py-4 xl:px-8">
                   <div className="min-h-[72px]">
                     <div className="flex items-baseline gap-1 min-h-[48px]">
-                      <span className="text-4xl font-bold text-text-primary">
+                      <span className="text-4xl font-bold text-text-accent">
                         {tier.price}
                       </span>
                       <span className="text-sm text-text-tertiary min-w-[70px]">
@@ -114,27 +110,27 @@ export function PricingTable({
                   </div>
 
                   <Button
-                    fullWidth
-                    className={cn("mt-6", {
-                      "bg-accent-400 text-white font-semibold shadow-lg shadow-accent-400/25":
-                        tier.mostPopular && !isButtonDisabled(tier),
-                    })}
-                    color={
-                      tier.mostPopular && !isButtonDisabled(tier)
-                        ? "primary"
-                        : "default"
-                    }
-                    variant={isButtonDisabled(tier) ? "flat" : tier.buttonVariant}
-                    isDisabled={isButtonDisabled(tier)}
-                    isLoading={loadingTier === tier.key}
-                    onPress={() => {
-                      if (tier.key === TiersEnum.Enterprise) {
-                        window.open("https://cuttr.com/contact", "_blank");
-                      } else {
-                        onUpgrade(tier);
-                      }
-                    }}
-                  >
+ fullWidth
+ className={cn("mt-6", {
+ "bg-accent-400 text-white font-semibold shadow-lg shadow-accent-400/25":
+ tier.mostPopular && !isButtonDisabled(tier),
+ })}
+ color={
+ tier.mostPopular && !isButtonDisabled(tier)
+ ? "primary"
+ : "default"
+ }
+ variant={isButtonDisabled(tier) ? "flat" : tier.buttonVariant}
+ isDisabled={isButtonDisabled(tier)}
+ isPending={loadingTier === tier.key}
+ onPress={() => {
+ if (tier.key === TiersEnum.Enterprise) {
+ window.open("https://cuttr.com/contact", "_blank");
+ } else {
+ onUpgrade(tier);
+ }
+ }}
+ >
                     {getButtonText(tier)}
                   </Button>
                 </td>
@@ -147,7 +143,7 @@ export function PricingTable({
                 <tr>
                   <th
                     className={cn(
-                      "pt-12 pb-4 text-lg font-semibold text-text-primary",
+                      "pt-12 pb-4 text-lg font-semibold text-text-accent",
                       {
                         "pt-16": featIndex === 0,
                       }
@@ -156,7 +152,7 @@ export function PricingTable({
                     scope="colgroup"
                   >
                     {feat.title}
-                    <Divider className="absolute -inset-x-4 mt-2 bg-border-base/50" />
+                    <Separator className="absolute -inset-x-4 mt-2 bg-border-base/50" />
                   </th>
                   {tiers.map((tier) => (
                     <td key={tier.key} className="relative py-4" />
@@ -172,10 +168,10 @@ export function PricingTable({
                         <div className="flex items-center gap-1">
                           <span>{tierFeature.title}</span>
                           <Tooltip
-                            className="max-w-[240px] bg-surface-elevated text-text-primary"
-                            content={tierFeature.helpText}
-                            placement="right"
-                          >
+ className="max-w-[240px] bg-surface-elevated text-text-accent"
+ content={tierFeature.helpText}
+ placement="right"
+ >
                             <span className="cursor-help">
                               <Icon
                                 className="text-text-tertiary"

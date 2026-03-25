@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { formatNumber } from "@/lib/formatters";
 
@@ -63,10 +63,10 @@ export function StatsOverview({
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {statCards.map((stat) => (
         <Card
-          key={stat.title}
-          className="bg-surface-base border border-border-base"
-        >
-          <CardBody className="p-5">
+ key={stat.title}
+ className="bg-surface-base border border-border-base"
+ >
+          <Card.Content className="p-5">
             <div className="flex items-center gap-4">
               <div className={`p-3 rounded-xl ${stat.iconBg}`}>
                 <Icon icon={stat.icon} width={24} className={stat.iconColor} />
@@ -75,12 +75,12 @@ export function StatsOverview({
                 <p className="text-xs text-text-tertiary font-medium tracking-wide mb-1 min-h-[2rem] flex items-end">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold text-text-primary">
+                <p className="text-2xl font-bold text-text-accent">
                   {stat.value}
                 </p>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       ))}
     </div>

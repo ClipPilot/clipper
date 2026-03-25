@@ -23,18 +23,18 @@ export function ViralityUpgradeWall() {
           </div>
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
+          <h2 className="text-xl font-bold text-text-accent">Virality Tracker</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
             Track competitor performance, monitor viral trends, and benchmark your content against the competition.
           </p>
         </div>
         <div className="flex flex-col items-center gap-3 w-full">
           <Button
-            size="lg"
-            className="w-full bg-purple-500 text-white font-semibold"
-            onPress={() => router.push("/dashboard/pricing")}
-            startContent={<Icon icon="solar:rocket-bold" width={18} />}
-          >
+ size="lg"
+ className="w-full bg-purple-500 text-white font-semibold"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+            <Icon icon="solar:rocket-bold" width={18} />
             Upgrade to Studio
           </Button>
           <p className="text-xs text-text-tertiary">

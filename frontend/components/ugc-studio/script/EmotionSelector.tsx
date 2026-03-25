@@ -1,6 +1,6 @@
 "use client";
 
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button } from "@heroui/react";
+import { Dropdown, Button } from "@heroui/react";
 import { EMOTIONS, EMOTION_CONFIG, type Emotion } from "./types";
 
 interface EmotionSelectorProps {
@@ -14,17 +14,17 @@ export function EmotionSelector({ value, onChange, compact }: EmotionSelectorPro
 
   return (
     <Dropdown>
-      <DropdownTrigger>
-        <Button
-          variant="flat"
-          size={compact ? "sm" : "md"}
-          className={`${config.color} min-w-[100px]`}
-        >
+<Button
+ variant="tertiary"
+ size={compact ? "sm" : "md"}
+ className={`${config.color} min-w-[100px]`}
+ >
           <span className="mr-1">{config.emoji}</span>
           {config.label}
         </Button>
-      </DropdownTrigger>
-      <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
         aria-label="Select emotion"
         selectionMode="single"
         selectedKeys={[value]}
@@ -34,16 +34,17 @@ export function EmotionSelector({ value, onChange, compact }: EmotionSelectorPro
         {EMOTIONS.map((emotion) => {
           const emotionConfig = EMOTION_CONFIG[emotion];
           return (
-            <DropdownItem
+            <Dropdown.Item
               key={emotion}
               startContent={<span>{emotionConfig.emoji}</span>}
-              className="text-text-primary"
+              className="text-text-accent"
             >
               {emotionConfig.label}
-            </DropdownItem>
+            </Dropdown.Item>
           );
         })}
-      </DropdownMenu>
+      </Dropdown.Menu>
+</Dropdown.Popover>
     </Dropdown>
   );
 }

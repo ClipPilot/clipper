@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  Table,
+import { Table,
   TableHeader,
   TableColumn,
   TableBody,
@@ -14,11 +13,7 @@ import {
   Pagination,
   Spinner,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Tooltip,
-} from "@heroui/react";
+  Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -137,9 +132,8 @@ export function AccountsTable({
             <div className="flex items-center gap-1">
               STATUS
               <Tooltip
-                content="Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed."
-                classNames={{ content: "max-w-[220px] text-xs m-2" }}
-              >
+ content="Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed."
+ >
                 <span className="cursor-help">
                   <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
                 </span>
@@ -150,9 +144,8 @@ export function AccountsTable({
             <div className="flex items-center gap-1">
               ALERTS
               <Tooltip
-                content="When enabled, you'll receive email alerts when this account's posts go viral based on your alert settings."
-                classNames={{ content: "max-w-[220px] text-xs m-2" }}
-              >
+ content="When enabled, you'll receive email alerts when this account's posts go viral based on your alert settings."
+ >
                 <span className="cursor-help">
                   <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
                 </span>
@@ -185,14 +178,11 @@ export function AccountsTable({
                       </div>
                     ) : (
                       <Avatar
-                        src={fa.account.avatar_url || undefined}
-                        name={fa.account.username.charAt(0).toUpperCase()}
-                        size="sm"
-                        classNames={{ base: "bg-surface-hover flex-shrink-0" }}
-                      />
+ size="sm"
+ />
                     )}
                     <div>
-                      <p className="font-medium text-text-primary">
+                      <p className="font-medium text-text-accent">
                         {fa.account.account_type === "hashtag"
                           ? `#${fa.account.username}`
                           : fa.account.account_type === "keyword"
@@ -222,17 +212,17 @@ export function AccountsTable({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {formatNumber(views)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {formatNumber(avgViews)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {formatNumber(postCount)}
                   </span>
                 </TableCell>
@@ -241,14 +231,9 @@ export function AccountsTable({
                     const status = accountStatuses?.[fa.account.id] ?? "active";
                     return (
                       <Chip
-                        size="sm"
-                        variant="flat"
-                        classNames={{
-                          base: status === "active"
-                            ? "bg-green-500/10 text-green-500 h-6 px-2"
-                            : "bg-default-100 text-text-tertiary h-6 px-2",
-                        }}
-                      >
+ size="sm"
+ variant="tertiary"
+ >
                         <span className="text-xs">{status === "active" ? "Active" : "Inactive"}</span>
                       </Chip>
                     );
@@ -256,32 +241,27 @@ export function AccountsTable({
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    className="cursor-pointer"
-                    classNames={{
-                      base: fa.account.alert_enabled
-                        ? "bg-accent-400/10 text-accent-400 h-6 px-2"
-                        : "bg-default-100 text-text-tertiary h-6 px-2",
-                    }}
-                    onClick={() => onToggleAlert?.(fa.account.id, !fa.account.alert_enabled)}
-                  >
+ size="sm"
+ variant="tertiary"
+ className="cursor-pointer"
+ onClick={() => onToggleAlert?.(fa.account.id, !fa.account.alert_enabled)}
+ >
                     <span className="text-xs">{fa.account.alert_enabled ? "On" : "Off"}</span>
                   </Chip>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="text-text-tertiary data-[hover=true]:bg-surface-elevated data-[hover=true]:text-text-primary"
-                      >
+<Button
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="text-text-tertiary data-[hover=true]:bg-surface-elevated data-[hover=true]:text-text-accent"
+ >
                         <Icon icon="solar:menu-dots-bold" width={18} className="rotate-90" />
                       </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                       aria-label="Account actions"
                       onAction={(key) => {
                         if (key === "delete") {
@@ -294,7 +274,7 @@ export function AccountsTable({
                         }
                       }}
                     >
-                      <DropdownItem
+                      <Dropdown.Item
                         key="toggle-alerts"
                         startContent={
                           <Icon
@@ -304,8 +284,8 @@ export function AccountsTable({
                         }
                       >
                         {fa.account.alert_enabled ? "Disable Alerts" : "Enable Alerts"}
-                      </DropdownItem>
-                      <DropdownItem
+                      </Dropdown.Item>
+                      <Dropdown.Item
                         key="toggle-status"
                         startContent={
                           <Icon
@@ -315,16 +295,17 @@ export function AccountsTable({
                         }
                       >
                         {(accountStatuses?.[fa.account.id] ?? "active") === "active" ? "Set Inactive" : "Set Active"}
-                      </DropdownItem>
-                      <DropdownItem
+                      </Dropdown.Item>
+                      <Dropdown.Item
                         key="delete"
                         className="text-danger"
                         color="danger"
                         startContent={<Icon icon="solar:trash-bin-trash-linear" width={16} />}
                       >
                         Delete
-                      </DropdownItem>
-                    </DropdownMenu>
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+</Dropdown.Popover>
                   </Dropdown>
                 </TableCell>
               </TableRow>
@@ -341,15 +322,10 @@ export function AccountsTable({
         </p>
         {totalPages > 1 && (
           <Pagination
-            total={totalPages}
-            page={page}
-            onChange={setPage}
-            size="sm"
-            classNames={{
-              item: "bg-surface-elevated text-text-secondary",
-              cursor: "bg-accent-400 text-white",
-            }}
-          />
+ total={totalPages}
+ page={page}
+ onChange={setPage}
+ />
         )}
       </div>
     </div>

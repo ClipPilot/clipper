@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, TextField, Label, FieldError } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface ResetPasswordFormProps {
@@ -28,7 +28,7 @@ export default function ResetPasswordForm({
   return (
     <>
       <div>
-        <h2 className="text-2xl font-bold text-text-primary">Set New Password</h2>
+        <h2 className="text-2xl font-bold text-text-accent">Set New Password</h2>
         <p className="text-sm text-text-secondary mt-1">Enter your new password below</p>
       </div>
 
@@ -39,10 +39,9 @@ export default function ResetPasswordForm({
       )}
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">New Password</label>
+        <TextField isRequired>
+          <Label>New Password</Label>
           <Input
-            isRequired
             endContent={
               <button type="button" onClick={() => setIsVisible(!isVisible)} className="focus:outline-none">
                 <Icon
@@ -54,21 +53,15 @@ export default function ResetPasswordForm({
             name="newPassword"
             placeholder="Enter your new password"
             type={isVisible ? "text" : "password"}
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
-        </div>
+          <FieldError />
+        </TextField>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Confirm Password</label>
+        <TextField isRequired>
+          <Label>Confirm Password</Label>
           <Input
-            isRequired
             endContent={
               <button type="button" onClick={() => setIsConfirmVisible(!isConfirmVisible)} className="focus:outline-none">
                 <Icon
@@ -80,18 +73,18 @@ export default function ResetPasswordForm({
             name="confirmNewPassword"
             placeholder="Confirm your new password"
             type={isConfirmVisible ? "text" : "password"}
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-        </div>
+          <FieldError />
+        </TextField>
 
-        <Button className="bg-accent-400 text-white font-semibold mt-2 rounded-xl" type="submit" size="lg" isLoading={isLoading}>
+        <Button
+          className="bg-accent-400 text-white font-semibold mt-2 rounded-xl"
+          type="submit"
+          size="lg"
+          isPending={isLoading}
+        >
           Reset Password
         </Button>
       </form>

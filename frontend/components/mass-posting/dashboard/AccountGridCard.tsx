@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { platformIcon, platformIconColor, platformDisplayName } from "@/lib/platformUtils";
 import type { MassPostingAccount } from "@/types/massPosting";
@@ -12,7 +12,7 @@ interface AccountGridCardProps {
 export function AccountGridCard({ account }: AccountGridCardProps) {
   return (
     <Card className="bg-surface-base border border-border-base hover:border-border-base/80 transition-all cursor-pointer">
-      <CardBody className="p-4">
+      <Card.Content className="p-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0">
             <Icon
@@ -22,7 +22,7 @@ export function AccountGridCard({ account }: AccountGridCardProps) {
             />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-text-primary truncate">
+            <p className="text-sm font-semibold text-text-accent truncate">
               {account.handle}
             </p>
             <p className="text-xs text-text-tertiary">
@@ -41,7 +41,7 @@ export function AccountGridCard({ account }: AccountGridCardProps) {
             {account.totalReposts.toLocaleString()}
           </p>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

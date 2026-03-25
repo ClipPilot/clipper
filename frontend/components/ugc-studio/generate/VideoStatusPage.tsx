@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, Button, Spinner } from "@heroui/react";
+import { Card, Button, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { VideoJobState } from "@/hooks/useVideoJobStatus";
 
@@ -66,11 +66,11 @@ export function VideoStatusPage({
 
   const backButton = (
     <Button
-      variant="light"
-      className="text-text-secondary mb-6"
-      startContent={<Icon icon="solar:arrow-left-linear" width={18} />}
-      onPress={handleBack}
-    >
+ variant="tertiary"
+ className="text-text-secondary mb-6"
+ onPress={handleBack}
+ >
+      <Icon icon="solar:arrow-left-linear" width={18} />
       {backLabel}
     </Button>
   );
@@ -89,14 +89,14 @@ export function VideoStatusPage({
         <div className="max-w-4xl mx-auto">
           {backButton}
           <Card className="bg-red-500/10 border border-red-500/30">
-            <CardBody className="p-8 text-center">
+            <Card.Content className="p-8 text-center">
               <Icon icon="solar:danger-triangle-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-primary mb-2">Error Loading Project</h2>
+              <h2 className="text-xl font-bold text-text-accent mb-2">Error Loading Project</h2>
               <p className="text-text-secondary text-sm mb-6">{error}</p>
-              <Button variant="bordered" className="border-red-500/30 text-red-400" onPress={handleBack}>
+              <Button variant="outline" className="border-red-500/30 text-red-400" onPress={handleBack}>
                 Go Back
               </Button>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
@@ -109,16 +109,16 @@ export function VideoStatusPage({
         <div className="max-w-4xl mx-auto">
           {backButton}
           <Card className="bg-red-500/10 border border-red-500/30">
-            <CardBody className="p-8 text-center">
+            <Card.Content className="p-8 text-center">
               <Icon icon="solar:video-frame-cut-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-primary mb-2">Video Generation Failed</h2>
+              <h2 className="text-xl font-bold text-text-accent mb-2">Video Generation Failed</h2>
               <p className="text-text-secondary text-sm mb-6">
                 {status.error || "An error occurred during video generation."}
               </p>
-              <Button variant="bordered" className="border-border-base text-text-secondary" onPress={handleBack}>
+              <Button variant="outline" className="border-border-base text-text-secondary" onPress={handleBack}>
                 Go Back
               </Button>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
@@ -151,18 +151,18 @@ export function VideoStatusPage({
           {backButton}
           {error ? (
             <Card className="bg-red-500/10 border border-red-500/30">
-              <CardBody className="p-8 text-center">
+              <Card.Content className="p-8 text-center">
                 <Icon icon="solar:danger-triangle-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-                <h2 className="text-xl font-bold text-text-primary mb-2">Failed to Save Video</h2>
+                <h2 className="text-xl font-bold text-text-accent mb-2">Failed to Save Video</h2>
                 <p className="text-text-secondary text-sm mb-6">{error}</p>
                 <Button className={colors.buttonClass} onPress={onRetryFinalize}>
                   Try Again
                 </Button>
-              </CardBody>
+              </Card.Content>
             </Card>
           ) : (
             <Card className="bg-surface-base border border-border-base">
-              <CardBody className="p-8 text-center">
+              <Card.Content className="p-8 text-center">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
                     <div className={`w-20 h-20 rounded-full ${colors.bgGlow} flex items-center justify-center`}>
@@ -173,11 +173,11 @@ export function VideoStatusPage({
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-text-primary mb-2">{completedLabel}</h2>
+                    <h2 className="text-xl font-bold text-text-accent mb-2">{completedLabel}</h2>
                     <p className="text-text-secondary">Saving to your library and preparing the editor...</p>
                   </div>
                 </div>
-              </CardBody>
+              </Card.Content>
             </Card>
           )}
         </div>
@@ -201,16 +201,16 @@ export function VideoStatusPage({
       <div className="max-w-4xl mx-auto">
         {backButton}
         <Card className="bg-surface-base border border-border-base">
-          <CardBody className="p-8 text-center">
+          <Card.Content className="p-8 text-center">
             <Icon icon="solar:video-frame-play-bold-duotone" className="text-text-tertiary mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-bold text-text-primary mb-2">Project Not Found</h2>
+            <h2 className="text-xl font-bold text-text-accent mb-2">Project Not Found</h2>
             <p className="text-text-secondary text-sm mb-6">
               The project you&apos;re looking for doesn&apos;t exist or has been deleted.
             </p>
             <Button className={colors.buttonClass} onPress={handleBack}>
               Go Back
             </Button>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     </div>

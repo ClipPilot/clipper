@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { Card, CardBody, Button, Spinner, Progress } from "@heroui/react";
+import { Card, Button, Spinner, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
@@ -61,16 +61,16 @@ export default function AdCloneProjectPage() {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
         <Card className="bg-surface-base border border-border-base max-w-md">
-          <CardBody className="p-8 text-center">
+          <Card.Content className="p-8 text-center">
             <Icon icon="solar:lock-bold-duotone" className="text-amber-400 mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-bold text-text-primary mb-2">Access Required</h2>
+            <h2 className="text-xl font-bold text-text-accent mb-2">Access Required</h2>
             <p className="text-text-secondary text-sm mb-6">
               You need a Scale plan or higher to access this feature.
             </p>
             <Button className="bg-orange-500 text-white font-semibold" onPress={() => router.push("/dashboard/pricing")}>
               View Plans
             </Button>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     );
@@ -80,19 +80,19 @@ export default function AdCloneProjectPage() {
     ["script_generated", "analysis_complete"].includes(status?.status || "")
       ? (
           <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-8 text-center">
+            <Card.Content className="p-8 text-center">
               <Icon icon="solar:document-text-bold-duotone" className="text-orange-500 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-primary mb-2">Project In Progress</h2>
+              <h2 className="text-xl font-bold text-text-accent mb-2">Project In Progress</h2>
               <p className="text-text-secondary text-sm mb-6">
                 This project is waiting for you to continue. Go back to the wizard to complete it.
               </p>
               <Button
-                className="bg-orange-500 text-white font-semibold"
-                onPress={() => router.push(`/dashboard/ugc-studio/ad-clone/create?projectId=${projectId}`)}
-              >
+ className="bg-orange-500 text-white font-semibold"
+ onPress={() => router.push(`/dashboard/ugc-studio/ad-clone/create?projectId=${projectId}`)}
+ >
                 Continue in Wizard
               </Button>
-            </CardBody>
+            </Card.Content>
           </Card>
         )
       : null;
@@ -108,7 +108,7 @@ export default function AdCloneProjectPage() {
 
   const generatingContent = (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-8">
+      <Card.Content className="p-8">
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="relative">
             <div className="w-24 h-24 rounded-full bg-orange-500/20 flex items-center justify-center animate-pulse">
@@ -120,24 +120,23 @@ export default function AdCloneProjectPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-text-primary">{getStatusLabel()}...</h2>
+            <h2 className="text-xl font-semibold text-text-accent">{getStatusLabel()}...</h2>
             <p className="text-text-secondary">
               {(status?.progressMessage as string) || "Please wait while we process your ad clone"}
             </p>
           </div>
 
           <div className="w-full max-w-md space-y-2">
-            <Progress
-              value={status?.progress || 0}
-              size="md"
-              color="warning"
-              classNames={{ track: "bg-surface-elevated", indicator: "bg-orange-500" }}
-            />
+            <ProgressBar
+ value={status?.progress || 0}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
             <p className="text-sm text-text-tertiary">{status?.progress || 0}% complete</p>
           </div>
 
           <Card className="bg-surface-elevated border border-border-base w-full max-w-md">
-            <CardBody className="p-4">
+            <Card.Content className="p-4">
               <div className="space-y-3">
                 {[
                   { label: "Analyzing reference video", active: "analyzing", done: ["generating_script", "generating_video"] },
@@ -162,10 +161,10 @@ export default function AdCloneProjectPage() {
                   );
                 })}
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 

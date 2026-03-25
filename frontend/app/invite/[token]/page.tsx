@@ -99,16 +99,15 @@ export default function InvitePage({
             />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary mb-2">
+            <h1 className="text-2xl font-semibold text-text-accent mb-2">
               Invalid Invite
             </h1>
             <p className="text-text-secondary">{error}</p>
           </div>
-          <Button
-            color="primary"
-            className="bg-accent-400"
-            onPress={() => router.push("/auth")}
-          >
+          <Button variant="primary"
+ className="bg-accent-400"
+ onPress={() => router.push("/auth")}
+ >
             Go to Sign In
           </Button>
         </div>
@@ -128,7 +127,7 @@ export default function InvitePage({
             />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary mb-2">
+            <h1 className="text-2xl font-semibold text-text-accent mb-2">
               Welcome to {invite?.team.name}!
             </h1>
             <p className="text-text-secondary">
@@ -164,7 +163,7 @@ export default function InvitePage({
             </div>
 
             <div>
-              <h1 className="text-2xl font-semibold text-text-primary mb-2">
+              <h1 className="text-2xl font-semibold text-text-accent mb-2">
                 You're invited to join
               </h1>
               <p className="text-xl font-medium text-accent-400">
@@ -175,7 +174,7 @@ export default function InvitePage({
             <div className="w-full bg-surface-elevated rounded-lg p-4 border border-border-base">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-text-secondary text-sm">Invited by</span>
-                <span className="text-text-primary text-sm font-medium">
+                <span className="text-text-accent text-sm font-medium">
                   {invite?.invitedBy.firstName} {invite?.invitedBy.lastName}
                 </span>
               </div>
@@ -189,7 +188,7 @@ export default function InvitePage({
                 <span className="text-text-secondary text-sm">
                   Workspace plan
                 </span>
-                <span className="text-text-primary text-sm font-medium capitalize">
+                <span className="text-text-accent text-sm font-medium capitalize">
                   {invite?.team.plan}
                 </span>
               </div>
@@ -205,17 +204,16 @@ export default function InvitePage({
               <div className="w-full space-y-3">
                 <p className="text-text-secondary text-sm">
                   Signed in as{" "}
-                  <span className="text-text-primary font-medium">
+                  <span className="text-text-accent font-medium">
                     {user.email}
                   </span>
                 </p>
-                <Button
-                  color="primary"
-                  className="w-full bg-accent-400"
-                  size="lg"
-                  isLoading={isAccepting}
-                  onPress={handleAcceptInvite}
-                >
+                <Button variant="primary"
+ className="w-full bg-accent-400"
+ size="lg"
+ isPending={isAccepting}
+ onPress={handleAcceptInvite}
+ >
                   Accept Invitation
                 </Button>
               </div>
@@ -224,12 +222,11 @@ export default function InvitePage({
                 <p className="text-text-secondary text-sm">
                   Sign in or create an account to accept this invitation
                 </p>
-                <Button
-                  color="primary"
-                  className="w-full bg-accent-400"
-                  size="lg"
-                  onPress={handleSignIn}
-                >
+                <Button variant="primary"
+ className="w-full bg-accent-400"
+ size="lg"
+ onPress={handleSignIn}
+ >
                   Sign In to Accept
                 </Button>
               </div>

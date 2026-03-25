@@ -1,15 +1,9 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+import { Modal,
   Button,
-  Progress,
-} from "@heroui/react";
+  ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useVideoStream } from "@/hooks/useVideoStream";
 
@@ -123,35 +117,22 @@ export default function PreviewClipViewModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="4xl"
-      scrollBehavior="inside"
-      classNames={{
-        wrapper: "z-[9999] isolate",
-        backdrop: "z-[9998]",
-        base: "bg-surface-base border border-border-base z-[9999]",
-        header: "border-b border-border-base",
-        body: "py-6",
-        footer: "border-t border-border-base",
-      }}
-    >
-      <ModalContent onContextMenu={handleContextMenu}>
-        <ModalHeader className="flex flex-col gap-1">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl" onContextMenu={handleContextMenu}>
+        <Modal.Header className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Icon
                 icon="solar:eye-bold-duotone"
                 className="text-xl text-warning-500"
               />
-              <h2 className="text-xl font-bold text-text-primary">
+              <h2 className="text-xl font-bold text-text-accent">
                 Preview Clip
               </h2>
             </div>
           </div>
-        </ModalHeader>
-        <ModalBody>
+        </Modal.Header>
+        <Modal.Body>
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Video Player - takes 3 columns */}
             <div className="lg:col-span-3 flex items-center justify-center isolate">
@@ -255,16 +236,17 @@ export default function PreviewClipViewModal({
                     Virality Score
                   </h3>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl font-bold text-text-primary">
+                    <span className="text-3xl font-bold text-text-accent">
                       {clip.clip_score}
                     </span>
                     <span className="text-text-tertiary">/100</span>
                   </div>
-                  <Progress
-                    value={clip.clip_score}
-                    color={getScoreColor(clip.clip_score)}
-                    className="h-2"
-                  />
+                  <ProgressBar
+ value={clip.clip_score}
+ className="h-2"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                 </div>
               )}
 
@@ -278,7 +260,7 @@ export default function PreviewClipViewModal({
                     />
                     AI Analysis
                   </h3>
-                  <p className="text-sm text-text-primary leading-relaxed">
+                  <p className="text-sm text-text-accent leading-relaxed">
                     {clip.message}
                   </p>
                 </div>
@@ -294,7 +276,7 @@ export default function PreviewClipViewModal({
                     />
                     Prompt Used
                   </h3>
-                  <p className="text-sm text-text-primary leading-relaxed italic">
+                  <p className="text-sm text-text-accent leading-relaxed italic">
                     &quot;{clip.prompt}&quot;
                   </p>
                 </div>
@@ -325,50 +307,46 @@ export default function PreviewClipViewModal({
                   />
                   Created
                 </h3>
-                <p className="text-sm text-text-primary">
+                <p className="text-sm text-text-accent">
                   {new Date(clip.created_at).toLocaleString()}
                 </p>
               </div>
             </div>
           </div>
-        </ModalBody>
-        <ModalFooter className="flex justify-between">
-          <Button variant="flat" onPress={onClose}>
+        </Modal.Body>
+        <Modal.Footer className="flex justify-between">
+          <Button variant="tertiary" onPress={onClose}>
             Close
           </Button>
           <div className="flex gap-2">
             {onReject && (
               <Button
-                variant="flat"
-                color="danger"
-                onPress={handleReject}
-                isDisabled={isSaving}
-                startContent={<Icon icon="solar:close-circle-bold" />}
-              >
+ variant="danger-soft"
+ onPress={handleReject}
+ isDisabled={isSaving}
+ >
+                <Icon icon="solar:close-circle-bold" />
                 Reject
               </Button>
             )}
             {onSave && (
-              <Button
-                color="primary"
-                onPress={handleSave}
-                isLoading={isSaving}
-                isDisabled={isSaving}
-                startContent={!isSaving && <Icon icon="solar:diskette-bold" />}
-                endContent={
-                  !isSaving && (
+              <Button variant="primary"
+ onPress={handleSave}
+ isPending={isSaving}
+ isDisabled={isSaving}
+ >
+                {!isSaving && <Icon icon="solar:diskette-bold" />}
+                {isSaving ? "Saving..." : "Save Clip"}
+                {!isSaving && (
                     <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
                       1 Credit
                     </span>
-                  )
-                }
-              >
-                {isSaving ? "Saving..." : "Save Clip"}
-              </Button>
+                  )}
+</Button>
             )}
           </div>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

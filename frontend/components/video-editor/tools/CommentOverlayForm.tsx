@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Input, Textarea, Button } from "@heroui/react";
+import { Input, TextArea, Button, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import {
@@ -168,11 +168,11 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   if (!showForm) {
     return (
       <Button
-        variant="bordered"
-        className="w-full"
-        onPress={() => setShowForm(true)}
-        startContent={<Icon icon="solar:chat-round-dots-bold" />}
-      >
+ variant="outline"
+ className="w-full"
+ onPress={() => setShowForm(true)}
+ >
+        <Icon icon="solar:chat-round-dots-bold" />
         Add Comment Overlay
       </Button>
     );
@@ -181,17 +181,17 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   return (
     <div className="space-y-4 bg-surface-elevated rounded-lg p-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
+        <div className="flex items-center gap-2 text-sm font-medium text-text-accent">
           <Icon icon="simple-icons:tiktok" className="text-accent-400" />
           {isEditing ? "Edit TikTok Comment" : "New TikTok Comment"}
         </div>
         {!isEditing && (
           <Button
-            size="sm"
-            variant="light"
-            isIconOnly
-            onPress={() => { resetForm(); setShowForm(false); }}
-          >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ onPress={() => { resetForm(); setShowForm(false); }}
+ >
             <Icon icon="solar:close-circle-bold" />
           </Button>
         )}
@@ -228,47 +228,49 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
             onChange={handleProfilePicSelect}
           />
           <Button
-            size="sm"
-            variant="flat"
-            onPress={() => fileInputRef.current?.click()}
-            isLoading={uploadingPfp}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={() => fileInputRef.current?.click()}
+ isPending={uploadingPfp}
+ >
             {profilePictureUrl ? "Change" : "Upload"}
           </Button>
         </div>
       </div>
 
       {/* Username */}
-      <Input
-        label="Username"
-        placeholder="username"
-        value={username}
-        onValueChange={setUsername}
-        size="sm"
-        maxLength={30}
-        startContent={<span className="text-text-tertiary text-sm">@</span>}
-      />
+            <TextField>
+        <Label>Username</Label>
+        <Input onChange={(e) => (setUsername)(e.target.value)}
+ placeholder="username"
+ value={username}
+ maxLength={30}
+ startContent={<span className="text-text-tertiary text-sm">@</span>}
+ />
+        <FieldError />
+      </TextField>
 
       {/* Comment Text */}
-      <Textarea
-        label="Comment"
-        placeholder="Type your comment..."
-        value={commentText}
-        onValueChange={setCommentText}
-        size="sm"
-        maxLength={200}
-        minRows={2}
-        maxRows={4}
-      />
+            <TextField>
+        <Label>Comment</Label>
+        <TextArea
+ placeholder="Type your comment..."
+ value={commentText}
+ onValueChange={setCommentText}
+ maxLength={200}
+ minRows={2}
+ maxRows={4}
+ />
+        <FieldError />
+      </TextField>
 
       {/* Add/Update Button */}
-      <Button
-        color="primary"
-        className="w-full"
-        onPress={handleAddComment}
-        isDisabled={!username.trim() || !commentText.trim()}
-        startContent={<Icon icon={isEditing ? "solar:pen-bold" : "solar:add-circle-bold"} />}
-      >
+      <Button variant="primary"
+ className="w-full"
+ onPress={handleAddComment}
+ isDisabled={!username.trim() || !commentText.trim()}
+ >
+        <Icon icon={isEditing ? "solar:pen-bold" : "solar:add-circle-bold"} />
         {isEditing ? "Update Comment" : "Add to Video"}
       </Button>
     </div>

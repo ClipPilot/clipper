@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardBody,
+import { Card,
   Button,
   Chip,
   Avatar,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+  Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -217,23 +211,19 @@ export function DashboardGrid() {
               <div
                 className={`absolute inset-0 bg-gradient-to-b ${getPlanGradient(plan)} pointer-events-none`}
               />
-              <CardBody className="p-5 relative">
+              <Card.Content className="p-5 relative">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
                     Credits
                   </span>
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: "border-0",
-                      content: "text-xs font-semibold capitalize",
-                    }}
-                    style={{
-                      backgroundColor: `${getPlanAccent(plan)}18`,
-                      color: getPlanAccent(plan),
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ style={{
+ backgroundColor: `${getPlanAccent(plan)}18`,
+ color: getPlanAccent(plan),
+ }}
+ >
                     {plan}
                   </Chip>
                 </div>
@@ -248,7 +238,7 @@ export function DashboardGrid() {
                       <div className="relative shrink-0">
                         <CreditArc percent={usagePercent} size={88} />
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xl font-bold text-text-primary leading-none">
+                          <span className="text-xl font-bold text-text-accent leading-none">
                             {usageStats?.remaining ?? 0}
                           </span>
                           <span className="text-[10px] text-text-tertiary mt-0.5">left</span>
@@ -257,13 +247,13 @@ export function DashboardGrid() {
                       <div className="flex-1 space-y-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-text-tertiary">Used</span>
-                          <span className="text-text-primary font-medium tabular-nums">
+                          <span className="text-text-accent font-medium tabular-nums">
                             {usageStats?.clipsCreated ?? 0}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-text-tertiary">Limit</span>
-                          <span className="text-text-primary font-medium tabular-nums">
+                          <span className="text-text-accent font-medium tabular-nums">
                             {usageStats?.limit ?? 0}
                           </span>
                         </div>
@@ -282,42 +272,41 @@ export function DashboardGrid() {
 
                     {plan === "free" && (
                       <Button
-                        size="sm"
-                        variant="flat"
-                        className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
-                        onPress={() => router.push("/dashboard/pricing")}
-                        startContent={<Icon icon="solar:arrow-up-bold" width={14} />}
-                      >
+ size="sm"
+ variant="tertiary"
+ className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+                        <Icon icon="solar:arrow-up-bold" width={14} />
                         Upgrade Plan
                       </Button>
                     )}
                   </>
                 )}
-              </CardBody>
+              </Card.Content>
             </Card>
 
             {/* Workspace */}
             <Card className="bg-surface-base border border-border-base">
-              <CardBody className="p-5">
+              <Card.Content className="p-5">
                 <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary mb-4 block">
                   Workspace
                 </span>
 
                 <div className="flex items-center gap-3 mb-4">
                   <div className="relative">
-                    <Avatar
-                      src={selectedTeam?.logo_url}
-                      name={selectedTeam?.name?.charAt(0) || "T"}
-                      size="lg"
-                      classNames={{
-                        base: "bg-accent-400/10 ring-2 ring-accent-400/30",
-                        name: "text-accent-400 font-bold text-lg",
-                      }}
-                    />
+                    <Avatar size="lg" className="bg-accent-400/10 ring-2 ring-accent-400/30">
+                      {selectedTeam?.logo_url ? (
+                        <Avatar.Image src={selectedTeam.logo_url} alt={selectedTeam?.name || "Team"} />
+                      ) : null}
+                      <Avatar.Fallback className="text-accent-400 font-bold text-lg">
+                        {selectedTeam?.name?.charAt(0) || "T"}
+                      </Avatar.Fallback>
+                    </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-surface-base" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-text-primary truncate text-sm">
+                    <p className="font-semibold text-text-accent truncate text-sm">
                       {selectedTeam?.name || "No Team"}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -341,17 +330,17 @@ export function DashboardGrid() {
 
                 {userTeams.length > 1 && (
                   <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="w-full bg-surface-elevated"
-                        endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-                      >
+<Button
+ size="sm"
+ variant="tertiary"
+ className="w-full bg-surface-elevated"
+ >
                         Switch Workspace
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
+                        <Icon icon="solar:alt-arrow-down-linear" width={14} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
                       aria-label="Switch team"
                       onAction={(key) => {
                         const team = userTeams.find((t) => t.id.toString() === key);
@@ -359,18 +348,19 @@ export function DashboardGrid() {
                       }}
                     >
                       {userTeams.map((team) => (
-                        <DropdownItem
+                        <Dropdown.Item
                           key={team.id.toString()}
-                          startContent={<Avatar src={team.logo_url} name={team.name.charAt(0)} size="sm" className="w-6 h-6" />}
+                          startContent={<Avatar size="sm" className="w-6 h-6"><Avatar.Fallback>{team.name.charAt(0)}</Avatar.Fallback></Avatar>}
                           className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
                         >
                           {team.name}
-                        </DropdownItem>
+                        </Dropdown.Item>
                       ))}
-                    </DropdownMenu>
+                    </Dropdown.Menu>
+</Dropdown.Popover>
                   </Dropdown>
                 )}
-              </CardBody>
+              </Card.Content>
             </Card>
           </div>
 
@@ -398,7 +388,7 @@ export function DashboardGrid() {
                   >
                     <Icon icon={action.icon} width={22} style={{ color: action.color }} />
                   </div>
-                  <p className="text-sm font-medium text-text-primary">{action.label}</p>
+                  <p className="text-sm font-medium text-text-accent">{action.label}</p>
                   <p className="text-xs text-text-tertiary mt-0.5">{action.description}</p>
                 </div>
                 <Icon
@@ -414,7 +404,7 @@ export function DashboardGrid() {
         {/* ═══ Right column: Activity ═══ */}
         <div className="col-span-12 lg:col-span-5">
           <Card className="bg-surface-base border border-border-base overflow-hidden">
-            <CardBody className="p-5 relative">
+            <Card.Content className="p-5 relative">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
                   Activity
@@ -438,7 +428,7 @@ export function DashboardGrid() {
                   <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center mb-3">
                     <Icon icon="solar:check-circle-bold-duotone" width={28} className="text-green-500" />
                   </div>
-                  <p className="text-sm font-medium text-text-primary">All clear</p>
+                  <p className="text-sm font-medium text-text-accent">All clear</p>
                   <p className="text-xs text-text-tertiary mt-0.5">No active jobs</p>
                 </div>
               ) : (
@@ -488,7 +478,7 @@ export function DashboardGrid() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-text-primary truncate leading-tight">
+                            <p className="text-xs font-medium text-text-accent truncate leading-tight">
                               {item.title}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -537,14 +527,14 @@ export function DashboardGrid() {
                   )}
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
 
       {/* ── Recent Clips: full width ────────────────────────────── */}
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+        <Card.Content className="p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
               Recent Clips
@@ -569,13 +559,13 @@ export function DashboardGrid() {
               <div className="w-14 h-14 rounded-2xl bg-surface-elevated flex items-center justify-center mb-3">
                 <Icon icon="solar:video-library-bold-duotone" width={28} className="text-text-tertiary" />
               </div>
-              <p className="text-sm font-medium text-text-primary mb-1">No clips yet</p>
+              <p className="text-sm font-medium text-text-accent mb-1">No clips yet</p>
               <p className="text-xs text-text-tertiary mb-4">Create your first clip to get started</p>
               <Button
-                size="sm"
-                className="bg-accent-400 text-white font-medium"
-                onPress={() => router.push("/dashboard/create-clip")}
-              >
+ size="sm"
+ className="bg-accent-400 text-white font-medium"
+ onPress={() => router.push("/dashboard/create-clip")}
+ >
                 Create Clip
               </Button>
             </div>
@@ -617,7 +607,7 @@ export function DashboardGrid() {
               ))}
             </div>
           )}
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );

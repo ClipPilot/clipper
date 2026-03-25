@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { addToast } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 
 interface DownloadOptions {
@@ -53,11 +53,7 @@ export function useDownloadVideo() {
       return true;
     } catch (error) {
       console.error("Failed to download video:", error);
-      addToast({
-        title: "Download failed",
-        description: "Failed to download the video. Please try again.",
-        color: "danger",
-      });
+      toast.danger("Download failed", { description: "Failed to download the video. Please try again." });
       return false;
     } finally {
       setIsDownloading(false);

@@ -30,7 +30,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   isUgcVideo = false,
 }) => {
   const { isDownloading, download } = useDownloadVideo();
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -133,7 +133,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return (
       <div
         ref={cardRef}
-        style={{ contentVisibility: "auto", containIntrinsicSize: "auto 58px" }}
         className={`flex items-center gap-4 p-3 bg-surface-base border border-border-accent rounded-lg hover:bg-surface-elevated transition-all cursor-pointer ${
           isDragging ? "opacity-50" : ""
         }`}
@@ -143,7 +142,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         onClick={handleListClick}
       >
         <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden relative z-0">
-          {clip.clipUrl && isVisible && !isSelected ? (
+          {clip.clipUrl && !isSelected ? (
             <video
               src={clip.clipUrl}
               className="w-full h-full object-cover relative z-0"
@@ -162,7 +161,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <h3 className="text-sm font-medium text-text-primary truncate">
+          <h3 className="text-sm font-medium text-text-accent truncate">
             {clip.title || `Clip #${clip.id}`}
           </h3>
           {isEditing && (
@@ -206,12 +205,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         <div className="flex items-center gap-1">
           <Tooltip content="View">
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="w-8 h-8 min-w-8"
-              onPress={handleView}
-            >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-8 h-8 min-w-8"
+ onPress={handleView}
+ >
               <Icon
                 icon="solar:eye-bold"
                 className="text-lg text-text-secondary"
@@ -222,12 +221,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           {onEdit && clip.captions_data && (
             <Tooltip content="Edit">
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-8 h-8 min-w-8"
-                onPress={handleEdit}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-8 h-8 min-w-8"
+ onPress={handleEdit}
+ >
                 <Icon
                   icon="solar:pen-bold"
                   className="text-lg text-text-secondary"
@@ -238,13 +237,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
           <Tooltip content="Download">
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="w-8 h-8 min-w-8"
-              onPress={handleDownload}
-              isDisabled={!clip.clipUrl || isDownloading}
-            >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-8 h-8 min-w-8"
+ onPress={handleDownload}
+ isDisabled={!clip.clipUrl || isDownloading}
+ >
               <Icon
                 icon={
                   isDownloading
@@ -259,13 +258,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           {onAdPosting && (
             <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-8 h-8 min-w-8"
-                onPress={isInCampaign ? undefined : onAdPosting}
-                isDisabled={isInCampaign}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-8 h-8 min-w-8"
+ onPress={isInCampaign ? undefined : onAdPosting}
+ isDisabled={isInCampaign}
+ >
                 <Icon
                   icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
                   className={`text-lg ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
@@ -277,13 +276,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           {onDelete && (
             <Tooltip content="Delete">
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                color="danger"
-                className="w-8 h-8 min-w-8"
-                onPress={handleDelete}
-              >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ className="w-8 h-8 min-w-8"
+ onPress={handleDelete}
+ >
                 <Icon icon="mdi:delete-outline" className="text-lg" />
               </Button>
             </Tooltip>
@@ -303,7 +301,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
-      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
       className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer min-h-[180px] relative z-0 overflow-visible ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
@@ -313,7 +310,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     >
       <div className="flex flex-col sm:flex-row h-full" onClick={handleCardClick}>
         <div className="w-full sm:w-24 h-32 sm:h-full sm:min-h-[180px] flex-shrink-0 bg-surface-dark relative z-0">
-          {clip.clipUrl && isVisible && !isSelected ? (
+          {clip.clipUrl && !isSelected ? (
             <video
               src={clip.clipUrl}
               className="w-full h-full object-cover relative z-0"
@@ -333,7 +330,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
         <div className="flex-1 flex flex-col min-w-0 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-sm font-semibold text-text-primary truncate flex-1">
+            <h3 className="text-sm font-semibold text-text-accent truncate flex-1">
               {clip.title || `Clip #${clip.id}`}
             </h3>
             {clip.clip_score !== undefined && clip.clip_score !== null && (
@@ -389,12 +386,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           <div className="mt-auto flex items-center gap-0.5 flex-wrap">
             <Tooltip content="View">
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-7 h-7 min-w-7"
-                onPress={handleView}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-7 h-7 min-w-7"
+ onPress={handleView}
+ >
                 <Icon
                   icon="solar:eye-bold"
                   className="text-base text-text-secondary"
@@ -405,12 +402,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             {onEdit && clip.captions_data && (
               <Tooltip content="Edit">
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  className="w-7 h-7 min-w-7"
-                  onPress={handleEdit}
-                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-7 h-7 min-w-7"
+ onPress={handleEdit}
+ >
                   <Icon
                     icon="solar:pen-bold"
                     className="text-base text-text-secondary"
@@ -421,13 +418,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
             <Tooltip content={isDownloading ? "Downloading..." : "Download"}>
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-7 h-7 min-w-7"
-                onPress={handleDownload}
-                isDisabled={!clip.clipUrl || isDownloading}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-7 h-7 min-w-7"
+ onPress={handleDownload}
+ isDisabled={!clip.clipUrl || isDownloading}
+ >
                 <Icon
                   icon={
                     isDownloading
@@ -442,13 +439,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             {onAdPosting && (
               <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  className="w-7 h-7 min-w-7"
-                  onPress={isInCampaign ? undefined : onAdPosting}
-                  isDisabled={isInCampaign}
-                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-7 h-7 min-w-7"
+ onPress={isInCampaign ? undefined : onAdPosting}
+ isDisabled={isInCampaign}
+ >
                   <Icon
                     icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
                     className={`text-base ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
@@ -460,13 +457,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             {onDelete && (
               <Tooltip content="Delete">
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  color="danger"
-                  className="w-7 h-7 min-w-7"
-                  onPress={handleDelete}
-                >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ className="w-7 h-7 min-w-7"
+ onPress={handleDelete}
+ >
                   <Icon icon="mdi:delete-outline" className="text-base" />
                 </Button>
               </Tooltip>

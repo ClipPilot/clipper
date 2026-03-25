@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface CreditCostCardProps {
@@ -32,14 +32,14 @@ export function CreditCostCard({
 }: CreditCostCardProps) {
   return (
     <Card className={`bg-gradient-to-br ${gradientClasses} border ${borderClass}`}>
-      <CardBody className="p-5">
+      <Card.Content className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl ${iconBgClass} flex items-center justify-center`}>
               <Icon icon="solar:stars-bold-duotone" className={iconTextClass} width={28} />
             </div>
             <div>
-              <p className="text-lg font-bold text-text-primary">
+              <p className="text-lg font-bold text-text-accent">
                 {creditCost} Credits
               </p>
               <p className="text-sm text-text-secondary">
@@ -53,17 +53,17 @@ export function CreditCostCard({
             </div>
           </div>
           <Button
-            size="lg"
-            className={`${buttonClass} px-8`}
-            onPress={onGenerate}
-            isDisabled={isDisabled}
-            isLoading={isGenerating}
-            startContent={!isGenerating ? <Icon icon="solar:play-bold" width={20} /> : undefined}
-          >
+ size="lg"
+ className={`${buttonClass} px-8`}
+ onPress={onGenerate}
+ isDisabled={isDisabled}
+ isPending={isGenerating}
+ >
+            {!isGenerating ? <Icon icon="solar:play-bold" width={20} /> : undefined}
             {isGenerating ? "Starting..." : "Generate Video"}
           </Button>
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

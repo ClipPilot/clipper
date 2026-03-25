@@ -6,7 +6,7 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { Button, Input, addToast } from "@heroui/react";
+import { Button, Input, toast, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -159,18 +159,10 @@ export function ContractGate({
       if (a?.presigned_pdf_url) {
         window.open(a.presigned_pdf_url, "_blank", "noopener,noreferrer");
       } else {
-        addToast({
-          title: "Agreement not available",
-          description: "No PDF is attached to this agreement yet.",
-          color: "warning",
-        });
+        toast.warning("Agreement not available", { description: "No PDF is attached to this agreement yet." });
       }
     } catch (err: any) {
-      addToast({
-        title: "Failed to load agreement",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to load agreement", { description: err.message || "Something went wrong" });
     } finally {
       setIsLoadingPdf(false);
     }
@@ -182,20 +174,12 @@ export function ContractGate({
     if (!canvas) return;
 
     if (!legalEntityName.trim() || !signerName.trim() || !signerTitle.trim() || !signerEmail.trim()) {
-      addToast({
-        title: "All fields required",
-        description: "Please fill in all fields before signing.",
-        color: "danger",
-      });
+      toast.danger("All fields required", { description: "Please fill in all fields before signing." });
       return;
     }
 
     if (!hasDrawn) {
-      addToast({
-        title: "Signature required",
-        description: "Please draw your signature in the canvas below.",
-        color: "danger",
-      });
+      toast.danger("Signature required", { description: "Please draw your signature in the canvas below." });
       return;
     }
 
@@ -212,18 +196,10 @@ export function ContractGate({
           signatureDataUrl,
         }
       );
-      addToast({
-        title: "Agreement signed",
-        description: "Your agreement has been signed successfully.",
-        color: "success",
-      });
+      toast.success("Agreement signed", { description: "Your agreement has been signed successfully." });
       onAgreementSigned(signed);
     } catch (err: any) {
-      addToast({
-        title: "Failed to sign agreement",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to sign agreement", { description: err.message || "Something went wrong" });
     } finally {
       setIsSigning(false);
     }
@@ -262,15 +238,15 @@ export function ContractGate({
 
         {agreement.presigned_pdf_url && (
           <Button
-            variant="flat"
-            size="sm"
-            className="bg-surface-elevated text-text-secondary"
-            as="a"
-            href={agreement.presigned_pdf_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            startContent={<Icon icon="solar:file-download-bold-duotone" width={16} />}
-          >
+ variant="tertiary"
+ size="sm"
+ className="bg-surface-elevated text-text-secondary"
+ as="a"
+ href={agreement.presigned_pdf_url}
+ target="_blank"
+ rel="noopener noreferrer"
+ >
+            <Icon icon="solar:file-download-bold-duotone" width={16} />
             Download Agreement PDF
           </Button>
         )}
@@ -297,75 +273,56 @@ export function ContractGate({
             className="text-text-secondary"
             width={20}
           />
-          <span className="text-sm text-text-primary">Cuttr Campaign Services Agreement</span>
+          <span className="text-sm text-text-accent">Cuttr Campaign Services Agreement</span>
         </div>
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-default-100 text-text-secondary"
-          onPress={handleViewAgreement}
-          isLoading={isLoadingPdf}
-          startContent={
-            !isLoadingPdf && (
+ size="sm"
+ variant="tertiary"
+ className="bg-default-100 text-text-secondary"
+ onPress={handleViewAgreement}
+ isPending={isLoadingPdf}
+ >
+          {!isLoadingPdf && (
               <Icon icon="solar:eye-bold-duotone" width={14} />
-            )
-          }
-        >
+            )}
           View PDF
         </Button>
       </div>
 
       {/* Signer info form */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Input
-          label="Legal entity name"
-          placeholder="Company / LLC name"
-          value={legalEntityName}
-          onValueChange={setLegalEntityName}
-          variant="bordered"
-          classNames={{
-            inputWrapper: "border-border-base bg-surface-elevated",
-            input: "text-text-primary",
-            label: "text-text-secondary",
-          }}
-        />
-        <Input
-          label="Signatory name"
-          placeholder="Your full name"
-          value={signerName}
-          onValueChange={setSignerName}
-          variant="bordered"
-          classNames={{
-            inputWrapper: "border-border-base bg-surface-elevated",
-            input: "text-text-primary",
-            label: "text-text-secondary",
-          }}
-        />
-        <Input
-          label="Title"
-          placeholder="CEO, Managing Member, etc."
-          value={signerTitle}
-          onValueChange={setSignerTitle}
-          variant="bordered"
-          classNames={{
-            inputWrapper: "border-border-base bg-surface-elevated",
-            input: "text-text-primary",
-            label: "text-text-secondary",
-          }}
-        />
-        <Input
-          label="Email"
-          placeholder="signer@company.com"
-          type="email"
-          value={signerEmail}
-          onValueChange={setSignerEmail}
-          variant="bordered"
-          classNames={{
-            inputWrapper: "border-border-base bg-surface-elevated",
-            input: "text-text-primary",
-            label: "text-text-secondary",
-          }}
-        />
+                <TextField>
+          <Label>Legal entity name</Label>
+          <Input onChange={(e) => (setLegalEntityName)(e.target.value)}
+ placeholder="Company / LLC name"
+ value={legalEntityName}
+ />
+          <FieldError />
+        </TextField>
+                <TextField>
+          <Label>Signatory name</Label>
+          <Input onChange={(e) => (setSignerName)(e.target.value)}
+ placeholder="Your full name"
+ value={signerName}
+ />
+          <FieldError />
+        </TextField>
+                <TextField>
+          <Label>Title</Label>
+          <Input onChange={(e) => (setSignerTitle)(e.target.value)}
+ placeholder="CEO, Managing Member, etc."
+ value={signerTitle}
+ />
+          <FieldError />
+        </TextField>
+                <TextField type="email">
+          <Label>Email</Label>
+          <Input onChange={(e) => (setSignerEmail)(e.target.value)}
+ placeholder="signer@company.com"
+ value={signerEmail}
+ />
+          <FieldError />
+        </TextField>
       </div>
 
       {/* Signature canvas */}
@@ -373,11 +330,11 @@ export function ContractGate({
         <div className="flex items-center justify-between">
           <label className="text-sm text-text-secondary">Signature</label>
           <Button
-            size="sm"
-            variant="light"
-            className="text-text-tertiary h-7 text-xs"
-            onPress={handleClear}
-          >
+ size="sm"
+ variant="tertiary"
+ className="text-text-tertiary h-7 text-xs"
+ onPress={handleClear}
+ >
             Clear
           </Button>
         </div>
@@ -405,16 +362,13 @@ export function ContractGate({
       </div>
 
       {/* Sign button */}
-      <Button
-        color="primary"
-        onPress={handleSign}
-        isLoading={isSigning}
-        isDisabled={!isFormValid}
-        startContent={
-          !isSigning && <Icon icon="solar:pen-bold-duotone" width={16} />
-        }
-        className="w-full"
-      >
+      <Button variant="primary"
+ onPress={handleSign}
+ isPending={isSigning}
+ isDisabled={!isFormValid}
+ className="w-full"
+ >
+        {!isSigning && <Icon icon="solar:pen-bold-duotone" width={16} />}
         Sign Agreement
       </Button>
     </div>

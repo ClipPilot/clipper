@@ -1,14 +1,11 @@
 "use client";
 
 import { memo, useRef, useState } from "react";
-import {
-  Button,
+import { Button,
   Card,
-  CardBody,
   Chip,
-  Progress,
-  Tooltip,
-} from "@heroui/react";
+  ProgressBar,
+  Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, getStatusColor, getStatusIcon } from "./types";
 import { useDownloadVideo } from "@/hooks/useDownloadVideo";
@@ -86,7 +83,7 @@ export const FaceSwapJobCard = memo(
       return (
         <div onClick={onClick} className="cursor-pointer h-full">
           <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors overflow-hidden h-full">
-            <CardBody className="p-4 flex flex-col h-full min-h-[140px]">
+            <Card.Content className="p-4 flex flex-col h-full min-h-[140px]">
               {/* Top section: Icon + Info */}
               <div className="flex items-start gap-3 flex-1">
                 {/* Centered icon - no background */}
@@ -108,15 +105,15 @@ export const FaceSwapJobCard = memo(
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-medium text-text-primary truncate">
+                    <h3 className="text-sm font-medium text-text-accent truncate">
                       {job.title || "Face Swap"}
                     </h3>
                     <Chip
-                      size="sm"
-                      color={getStatusColor(job.status)}
-                      variant="flat"
-                      className="text-[10px] h-5 flex-shrink-0"
-                    >
+ size="sm"
+ color={getStatusColor(job.status)}
+ variant="tertiary"
+ className="text-[10px] h-5 flex-shrink-0"
+ >
                       {job.status === "pending_upload" ? "uploading" : job.status}
                     </Chip>
                   </div>
@@ -128,7 +125,9 @@ export const FaceSwapJobCard = memo(
                   <div className="mt-2">
                     {job.status === "running" && (
                       <div className="space-y-1">
-                        <Progress value={job.progress || 0} size="sm" color="primary" />
+                        <ProgressBar value={job.progress || 0} >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                         <p className="text-xs text-text-tertiary truncate">
                           {job.progressMessage || "Processing..."} ({job.progress || 0}%)
                         </p>
@@ -156,13 +155,13 @@ export const FaceSwapJobCard = memo(
                 <div className="flex justify-end mt-3" onClick={(e) => e.stopPropagation()}>
                   <Tooltip content="Delete">
                     <Button
-                      size="sm"
-                      variant="flat"
-                      isIconOnly
-                      className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
-                      onPress={handleDelete}
-                      isLoading={isDeleting}
-                    >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
+ onPress={handleDelete}
+ isPending={isDeleting}
+ >
                       {!isDeleting && (
                         <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
                       )}
@@ -170,7 +169,7 @@ export const FaceSwapJobCard = memo(
                   </Tooltip>
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       );
@@ -180,7 +179,7 @@ export const FaceSwapJobCard = memo(
     return (
       <div onClick={onClick} className="cursor-pointer h-full">
         <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors overflow-hidden h-full">
-          <CardBody className="p-0">
+          <Card.Content className="p-0">
             {/* Stacked layout on mobile, horizontal on sm+ */}
             <div className="flex flex-col sm:flex-row">
               {/* Thumbnail */}
@@ -203,11 +202,11 @@ export const FaceSwapJobCard = memo(
                 {/* Status badge overlay on thumbnail */}
                 <div className="absolute top-2 left-2">
                   <Chip
-                    size="sm"
-                    color={getStatusColor(job.status)}
-                    variant="flat"
-                    className="text-[10px] h-5 backdrop-blur-sm"
-                  >
+ size="sm"
+ color={getStatusColor(job.status)}
+ variant="tertiary"
+ className="text-[10px] h-5 backdrop-blur-sm"
+ >
                     {job.status}
                   </Chip>
                 </div>
@@ -217,7 +216,7 @@ export const FaceSwapJobCard = memo(
               <div className="flex-1 p-3 flex flex-col min-w-0">
                 {/* Title & Date */}
                 <div className="mb-2">
-                  <h3 className="text-sm font-medium text-text-primary truncate">
+                  <h3 className="text-sm font-medium text-text-accent truncate">
                     {job.title || "Untitled Swap"}
                   </h3>
                   <span className="text-xs text-text-tertiary">
@@ -238,13 +237,13 @@ export const FaceSwapJobCard = memo(
                   {hasClip && onShare && (
                     <Tooltip content={showCopied ? "Copied!" : (job.shareToken ? "Copy link" : "Share")}>
                       <Button
-                        size="sm"
-                        variant="flat"
-                        isIconOnly
-                        className="bg-blue-500/20 text-blue-500 min-w-7 w-7 h-7"
-                        onPress={handleShare}
-                        isLoading={isSharing}
-                      >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-blue-500/20 text-blue-500 min-w-7 w-7 h-7"
+ onPress={handleShare}
+ isPending={isSharing}
+ >
                         {!isSharing && (
                           <Icon
                             icon={job.shareToken ? "solar:link-bold" : "solar:share-bold"}
@@ -257,12 +256,12 @@ export const FaceSwapJobCard = memo(
                   {hasClip && onEdit && (
                     <Tooltip content="Edit">
                       <Button
-                        size="sm"
-                        variant="flat"
-                        isIconOnly
-                        className="bg-purple-500/20 text-purple-500 min-w-7 w-7 h-7"
-                        onPress={handleEdit}
-                      >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-purple-500/20 text-purple-500 min-w-7 w-7 h-7"
+ onPress={handleEdit}
+ >
                         <Icon icon="solar:pen-bold" className="text-sm" />
                       </Button>
                     </Tooltip>
@@ -270,13 +269,13 @@ export const FaceSwapJobCard = memo(
                   {job.outputUrl && (
                     <Tooltip content="Download">
                       <Button
-                        size="sm"
-                        variant="flat"
-                        isIconOnly
-                        className="bg-accent-400/20 text-accent-400 min-w-7 w-7 h-7"
-                        onPress={handleDownload}
-                        isLoading={isDownloading}
-                      >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-accent-400/20 text-accent-400 min-w-7 w-7 h-7"
+ onPress={handleDownload}
+ isPending={isDownloading}
+ >
                         {!isDownloading && (
                           <Icon icon="solar:download-bold" className="text-sm" />
                         )}
@@ -286,13 +285,13 @@ export const FaceSwapJobCard = memo(
                   {onDelete && (
                     <Tooltip content="Delete">
                       <Button
-                        size="sm"
-                        variant="flat"
-                        isIconOnly
-                        className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
-                        onPress={handleDelete}
-                        isLoading={isDeleting}
-                      >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
+ onPress={handleDelete}
+ isPending={isDeleting}
+ >
                         {!isDeleting && (
                           <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
                         )}
@@ -302,7 +301,7 @@ export const FaceSwapJobCard = memo(
                 </div>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     );

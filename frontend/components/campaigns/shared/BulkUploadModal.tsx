@@ -1,16 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  Button,
+import { Button,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Progress,
-  Spinner,
-} from "@heroui/react";
+  ProgressBar,
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { UploadFileEntry } from "@/hooks/useBulkVideoUpload";
 
@@ -91,25 +85,18 @@ export function BulkUploadModal({
 
   return (
     <>
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        isDismissable={!isActive}
-        size="2xl"
-        scrollBehavior="inside"
-        classNames={{ base: "bg-surface-base border border-border-base" }}
-      >
-        <ModalContent>
-          <ModalHeader className="border-b border-border-base">
+      <Modal>
+        <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose} isDismissable={!isActive}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
+          <Modal.Header className="border-b border-border-base">
             <div className="flex items-center gap-2">
               <Icon icon="solar:upload-bold-duotone" className="text-accent-400" width={22} />
-              <span className="text-text-primary">
+              <span className="text-text-accent">
                 {isDone ? "Upload Complete" : isActive ? "Uploading Videos..." : "Upload Videos"}
               </span>
             </div>
-          </ModalHeader>
+          </Modal.Header>
 
-          <ModalBody className="py-4 gap-4">
+          <Modal.Body className="py-4 gap-4">
             {!showProgress ? (
               <div className="flex flex-col items-center gap-4 py-8">
                 <Icon icon="solar:cloud-upload-bold-duotone" className="text-text-tertiary" width={48} />
@@ -117,26 +104,25 @@ export function BulkUploadModal({
                   Select video files or an entire folder to upload.
                 </p>
                 <div className="flex gap-3">
-                  <Button
-                    color="primary"
-                    onPress={() => fileInputRef.current?.click()}
-                    startContent={<Icon icon="solar:file-bold-duotone" width={16} />}
-                  >
+                  <Button variant="primary"
+ onPress={() => fileInputRef.current?.click()}
+ >
+                    <Icon icon="solar:file-bold-duotone" width={16} />
                     Select Files
                   </Button>
                   <Button
-                    variant="flat"
-                    className="bg-surface-elevated text-text-secondary"
-                    onPress={() => folderInputRef.current?.click()}
-                    startContent={<Icon icon="solar:folder-bold-duotone" width={16} />}
-                  >
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary"
+ onPress={() => folderInputRef.current?.click()}
+ >
+                    <Icon icon="solar:folder-bold-duotone" width={16} />
                     Select Folder
                   </Button>
                 </div>
               </div>
             ) : totalFiles === 0 && pendingFileCount > 0 ? (
               <div className="flex flex-col items-center gap-3 py-8">
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
                 <p className="text-sm text-text-secondary">
                   Preparing {pendingFileCount} file{pendingFileCount !== 1 ? "s" : ""}...
                 </p>
@@ -150,14 +136,13 @@ export function BulkUploadModal({
                         ? `Uploading ${inProgressCount} · ${completedFiles}/${totalFiles} done`
                         : `${completedFiles} uploaded${failedFiles > 0 ? ` · ${failedFiles} failed` : ""}`}
                     </span>
-                    <span className="font-semibold text-text-primary">{overallProgress}%</span>
+                    <span className="font-semibold text-text-accent">{overallProgress}%</span>
                   </div>
-                  <Progress
-                    value={overallProgress}
-                    color={isDone && failedFiles === 0 ? "success" : isDone ? "warning" : "primary"}
-                    size="md"
-                    classNames={{ base: "w-full" }}
-                  />
+                  <ProgressBar
+ value={overallProgress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                 </div>
 
                 <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
@@ -167,28 +152,27 @@ export function BulkUploadModal({
                       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-elevated/50"
                     >
                       {statusIcon(item.status)}
-                      <span className="text-xs text-text-primary truncate flex-1 min-w-0">
+                      <span className="text-xs text-text-accent truncate flex-1 min-w-0">
                         {item.name}
                       </span>
                       <span className="text-xs text-text-secondary flex-shrink-0 w-20 text-right">
                         {statusLabel(item)}
                       </span>
                       {item.status === "uploading" && (
-                        <Progress
-                          value={item.progress}
-                          size="sm"
-                          color="primary"
-                          classNames={{ base: "w-16 flex-shrink-0" }}
-                        />
+                        <ProgressBar
+ value={item.progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                       )}
                     </div>
                   ))}
                 </div>
               </>
             )}
-          </ModalBody>
+          </Modal.Body>
 
-          <ModalFooter className="border-t border-border-base">
+          <Modal.Footer className="border-t border-border-base">
             {isDone ? (
               <Button className="bg-accent-400 text-white" onPress={handleClose}>
                 Done
@@ -198,12 +182,12 @@ export function BulkUploadModal({
                 Do not close this tab while uploading
               </span>
             ) : (
-              <Button variant="flat" className="bg-surface-elevated text-text-secondary" onPress={handleClose}>
+              <Button variant="tertiary" className="bg-surface-elevated text-text-secondary" onPress={handleClose}>
                 Cancel
               </Button>
             )}
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
 
       <input

@@ -1,14 +1,9 @@
 "use client";
 
 import React, { useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
+import { Modal,
   Button,
-  Spinner,
-} from "@heroui/react";
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import AnnouncementItem from "./AnnouncementItem";
@@ -33,20 +28,10 @@ export default function AnnouncementInboxModal() {
   }, [isOpen, fetchAll]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
-      size="2xl"
-      scrollBehavior="inside"
-      classNames={{
-        base: "bg-surface-dark",
-        header: "border-b border-border-base",
-        body: "p-0",
-      }}
-    >
-      <ModalContent>
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={() => setIsOpen(false)}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-4xl">
         {/* Header */}
-        <ModalHeader className="flex justify-between items-center px-6 py-4">
+        <Modal.Header className="flex justify-between items-center px-6 py-4">
           <div className="flex items-center gap-2">
             <Icon icon="solar:bell-bold-duotone" width={24} className="text-primary-500" />
             <span className="text-lg font-semibold">Announcements</span>
@@ -56,18 +41,18 @@ export default function AnnouncementInboxModal() {
           </div>
           {unreadCount > 0 && (
             <Button
-              size="sm"
-              variant="light"
-              onPress={dismissAll}
-              startContent={<Icon icon="solar:check-read-linear" width={18} />}
-            >
+ size="sm"
+ variant="tertiary"
+ onPress={dismissAll}
+ >
+              <Icon icon="solar:check-read-linear" width={18} />
               Mark all as read
             </Button>
           )}
-        </ModalHeader>
+        </Modal.Header>
 
         {/* Body */}
-        <ModalBody className="max-h-[500px]">
+        <Modal.Body className="max-h-[500px]">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Spinner size="lg" />
@@ -81,7 +66,7 @@ export default function AnnouncementInboxModal() {
                   className="text-text-tertiary"
                 />
               </div>
-              <h3 className="text-text-primary font-medium mb-1">
+              <h3 className="text-text-accent font-medium mb-1">
                 No announcements yet
               </h3>
               <p className="text-text-secondary text-sm text-center">
@@ -99,8 +84,8 @@ export default function AnnouncementInboxModal() {
               ))}
             </div>
           )}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

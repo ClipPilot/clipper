@@ -2,12 +2,9 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardBody,
+import { Card,
   Button,
-  Spinner,
-} from "@heroui/react";
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
@@ -60,7 +57,7 @@ export function VideoPreview({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary mb-1">
+          <h2 className="text-2xl font-bold text-text-accent mb-1">
             Video Preview
           </h2>
           <p className="text-text-secondary text-sm">
@@ -71,14 +68,12 @@ export function VideoPreview({
         </div>
         <div className="flex items-center gap-3">
           <Button
-            className="bg-accent-400 text-white font-semibold"
-            onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : () => onFinalize(selectedFolderId)}
-            isLoading={isFinalizing}
-            isDisabled={isFinalizing}
-            startContent={
-              !isFinalizing && <Icon icon={isFinalized ? "solar:pen-bold" : "solar:check-circle-bold"} width={16} />
-            }
-          >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : () => onFinalize(selectedFolderId)}
+ isPending={isFinalizing}
+ isDisabled={isFinalizing}
+ >
+            {!isFinalizing && <Icon icon={isFinalized ? "solar:pen-bold" : "solar:check-circle-bold"} width={16} />}
             {isFinalizing ? "Finalizing..." : isFinalized ? "Edit" : "Finalize & Save"}
           </Button>
         </div>
@@ -86,7 +81,7 @@ export function VideoPreview({
 
       {/* Main video player */}
       <Card className="bg-surface-elevated border border-border-base overflow-hidden">
-        <CardBody className="p-0">
+        <Card.Content className="p-0">
           <div className="relative aspect-[9/16] max-h-[70vh] mx-auto bg-black">
             {videoStatus.finalVideoUrl ? (
               <>
@@ -123,7 +118,7 @@ export function VideoPreview({
               </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
               </div>
             )}
           </div>
@@ -181,20 +176,20 @@ export function VideoPreview({
               )}
             </div>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
 
       {/* Script used */}
       {scenes.length > 0 && (
         <Card className="bg-surface-elevated border border-border-base">
-          <CardBody className="p-4">
+          <Card.Content className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Icon
                 icon="solar:document-text-bold-duotone"
                 className="text-accent-400"
                 width={20}
               />
-              <h3 className="text-lg font-semibold text-text-primary">
+              <h3 className="text-lg font-semibold text-text-accent">
                 Script Used
               </h3>
             </div>
@@ -222,7 +217,7 @@ export function VideoPreview({
                         {scene.estimatedDurationSeconds || (scene as any).durationSeconds || 5}s
                       </span>
                     </div>
-                    <p className="text-sm text-text-primary leading-relaxed">
+                    <p className="text-sm text-text-accent leading-relaxed">
                       "{scene.dialogue}"
                     </p>
                     {scene.action && (
@@ -234,7 +229,7 @@ export function VideoPreview({
                 </motion.div>
               ))}
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       )}
 
@@ -242,7 +237,7 @@ export function VideoPreview({
         <>
           {/* Folder Selection */}
           <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-4">
+            <Card.Content className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -252,7 +247,7 @@ export function VideoPreview({
                   />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-text-primary mb-2">
+                  <p className="text-sm font-medium text-text-accent mb-2">
                     Save to folder (optional)
                   </p>
                   <FolderSelector
@@ -264,11 +259,11 @@ export function VideoPreview({
                   />
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
 
           <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-4">
+            <Card.Content className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -278,7 +273,7 @@ export function VideoPreview({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-primary mb-1">
+                  <p className="text-sm font-medium text-text-accent mb-1">
                     What happens when you finalize?
                   </p>
                   <p className="text-xs text-text-secondary">
@@ -287,7 +282,7 @@ export function VideoPreview({
                   </p>
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         </>
       )}

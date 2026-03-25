@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
-import { Button, Spinner, addToast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI } from "@/api/clips";
 import {
@@ -63,12 +63,7 @@ export function VideoEditor() {
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Failed to apply changes:", error);
-      addToast({
-        title: "Failed to apply",
-        description:
-          error instanceof Error ? error.message : "Something went wrong. Please try again.",
-        color: "danger",
-      });
+      toast.danger("Failed to apply", { description: error instanceof Error ? error.message : "Something went wrong. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -82,7 +77,7 @@ export function VideoEditor() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
@@ -93,15 +88,14 @@ export function VideoEditor() {
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
           <Icon icon="solar:lock-keyhole-bold-duotone" className="text-red-500" width={32} />
         </div>
-        <h2 className="text-xl font-semibold text-text-primary mb-2">Access Denied</h2>
+        <h2 className="text-xl font-semibold text-text-accent mb-2">Access Denied</h2>
         <p className="text-text-secondary mb-6">
           You don&apos;t have permission to edit this clip.
         </p>
-        <Button
-          color="primary"
-          onPress={() => router.push("/dashboard/clips")}
-          startContent={<Icon icon="solar:arrow-left-outline" />}
-        >
+        <Button variant="primary"
+ onPress={() => router.push("/dashboard/clips")}
+ >
+          <Icon icon="solar:arrow-left-outline" />
           Back to Clips
         </Button>
       </div>
@@ -125,22 +119,21 @@ export function VideoEditor() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <Button
-              variant="light"
-              isIconOnly
-              onPress={() => router.push("/dashboard/clips")}
-            >
+ variant="tertiary"
+ isIconOnly
+ onPress={() => router.push("/dashboard/clips")}
+ >
               <Icon icon="solar:arrow-left-outline" className="text-xl" />
             </Button>
-            <h1 className="text-xl font-bold text-text-primary">
+            <h1 className="text-xl font-bold text-text-accent">
               {clip.title || `Clip #${clip.id}`}
             </h1>
           </div>
-          <Button
-            color="primary"
-            onPress={handleApplyChanges}
-            isDisabled={saving}
-            startContent={saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
-          >
+          <Button variant="primary"
+ onPress={handleApplyChanges}
+ isDisabled={saving}
+ >
+            {saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
             {saving ? "Applying..." : "Apply Changes"}
           </Button>
         </div>

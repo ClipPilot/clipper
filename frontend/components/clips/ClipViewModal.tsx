@@ -1,21 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+import { Modal,
   Button,
   Chip,
-  Progress,
+  ProgressBar,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Input,
-} from "@heroui/react";
+  Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useDownloadVideo } from "@/hooks/useDownloadVideo";
 import { adPostingAPI, ClipPost } from "@/api/adPosting";
@@ -299,92 +290,74 @@ export default function ClipViewModal({
   const currentFolder = folders.find((f) => f.id === clip.folder_id);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="5xl"
-      scrollBehavior="inside"
-      classNames={{
-        wrapper: "z-[9999] isolate",
-        backdrop: "z-[9998]",
-        base: "bg-surface-base border border-border-base z-[9999]",
-        header: "border-b border-border-base",
-        body: "py-6",
-        footer: "border-t border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-2">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-4xl">
+        <Modal.Header className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {isEditingTitle ? (
                 <div className="flex items-center gap-2">
                   <Input
-                    size="sm"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    placeholder="Enter title..."
-                    className="w-64"
-                    classNames={{
-                      input: "text-text-primary",
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveTitle();
-                      if (e.key === "Escape") {
-                        setEditedTitle(clip.title || "");
-                        setIsEditingTitle(false);
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    color="primary"
-                    isLoading={isSavingTitle}
-                    onPress={handleSaveTitle}
-                    className="bg-accent-400"
-                  >
+ value={editedTitle}
+ onChange={(e) => setEditedTitle(e.target.value)}
+ placeholder="Enter title..."
+ className="w-64 rounded-lg border border-border-base bg-surface-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-400/40 focus:border-accent-400"
+ onKeyDown={(e) => {
+ if (e.key === "Enter") handleSaveTitle();
+ if (e.key === "Escape") {
+ setEditedTitle(clip.title || "");
+ setIsEditingTitle(false);
+ }
+ }}
+ autoFocus
+ />
+                  <Button variant="primary"
+ size="sm"
+ isPending={isSavingTitle}
+ onPress={handleSaveTitle}
+ className="bg-accent-400"
+ >
                     Save
                   </Button>
                   <Button
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      setEditedTitle(clip.title || "");
-                      setIsEditingTitle(false);
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ onPress={() => {
+ setEditedTitle(clip.title || "");
+ setIsEditingTitle(false);
+ }}
+ >
                     Cancel
                   </Button>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-bold text-text-primary">
+                  <h2 className="text-xl font-bold text-text-accent">
                     {editedTitle || `Clip #${clip.id}`}
                   </h2>
                   {onUpdateTitle && (
                     <Button
-                      size="sm"
-                      variant="light"
-                      isIconOnly
-                      onPress={() => setIsEditingTitle(true)}
-                    >
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ onPress={() => setIsEditingTitle(true)}
+ >
                       <Icon icon="solar:pen-bold" className="text-text-secondary" />
                     </Button>
                   )}
                 </>
               )}
               <Chip
-                size="sm"
-                color={getSourceLabel().color as any}
-                variant="flat"
-              >
+ size="sm"
+ color={getSourceLabel().color as any}
+ variant="tertiary"
+ >
                 {getSourceLabel().label}
               </Chip>
             </div>
           </div>
-        </ModalHeader>
-        <ModalBody>
+        </Modal.Header>
+        <Modal.Body>
           {clip.status === "failed" && clip.error_message && (
             <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500">
               <div className="flex items-center gap-2 mb-2">
@@ -428,7 +401,7 @@ export default function ClipViewModal({
 
             <div className="space-y-4 overflow-y-auto max-h-[600px]">
               {onMoveToFolder && folders.length > 0 && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:folder-bold-duotone"
@@ -437,7 +410,7 @@ export default function ClipViewModal({
                     Organization
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-text-primary">
+                    <span className="text-sm text-text-accent">
                       {currentFolder ? (
                         <span className="flex items-center gap-2">
                           <Icon
@@ -451,19 +424,17 @@ export default function ClipViewModal({
                       )}
                     </span>
                     <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          size="sm"
-                          variant="flat"
-                          isLoading={isMoving}
-                          startContent={
-                            !isMoving && <Icon icon="solar:folder-send-bold" />
-                          }
-                        >
+<Button
+ size="sm"
+ variant="tertiary"
+ isPending={isMoving}
+ >
+                          {!isMoving && <Icon icon="solar:folder-send-bold" />}
                           Move to...
                         </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                         aria-label="Move to folder"
                         items={[
                           ...(clip.folder_id !== null
@@ -492,7 +463,7 @@ export default function ClipViewModal({
                         }}
                       >
                         {(item) => (
-                          <DropdownItem
+                          <Dropdown.Item
                             key={item.id}
                             startContent={
                               item.id === "unorganized" ? (
@@ -509,16 +480,17 @@ export default function ClipViewModal({
                             }
                           >
                             {item.name}
-                          </DropdownItem>
+                          </Dropdown.Item>
                         )}
-                      </DropdownMenu>
+                      </Dropdown.Menu>
+</Dropdown.Popover>
                     </Dropdown>
                   </div>
                 </div>
               )}
 
               {onTagsChange && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:tag-bold-duotone"
@@ -620,15 +592,15 @@ export default function ClipViewModal({
                             e.key === "Enter" && handleCreateTag()
                           }
                           placeholder="Tag name..."
-                          className="flex-1 min-w-0 px-2 py-1 text-sm bg-surface-dark border border-border-base rounded text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-400"
+                          className="flex-1 min-w-0 px-2 py-1 text-sm bg-surface-dark border border-border-base rounded text-text-accent placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-400"
                         />
                         <Button
-                          size="sm"
-                          isDisabled={!newTagName.trim() || isCreatingTag}
-                          isLoading={isCreatingTag}
-                          onPress={handleCreateTag}
-                          className="bg-accent-400 text-white shrink-0"
-                        >
+ size="sm"
+ isDisabled={!newTagName.trim() || isCreatingTag}
+ isPending={isCreatingTag}
+ onPress={handleCreateTag}
+ className="bg-accent-400 text-white shrink-0"
+ >
                           Add
                         </Button>
                       </div>
@@ -644,26 +616,27 @@ export default function ClipViewModal({
               )}
 
               {clip.clip_score !== null && clip.clip_score !== undefined && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3">
                     Clip Score
                   </h3>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl font-bold text-text-primary">
+                    <span className="text-3xl font-bold text-text-accent">
                       {clip.clip_score}
                     </span>
                     <span className="text-text-tertiary">/100</span>
                   </div>
-                  <Progress
-                    value={clip.clip_score}
-                    color={getScoreColor(clip.clip_score)}
-                    className="h-2"
-                  />
+                  <ProgressBar
+ value={clip.clip_score}
+ className="h-2"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                 </div>
               )}
 
               {clip.message && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
                     <Icon
                       icon="solar:chat-square-bold-duotone"
@@ -671,14 +644,14 @@ export default function ClipViewModal({
                     />
                     AI Analysis
                   </h3>
-                  <p className="text-sm text-text-primary leading-relaxed">
+                  <p className="text-sm text-text-accent leading-relaxed">
                     {clip.message}
                   </p>
                 </div>
               )}
 
               {clip.prompt && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
                     <Icon
                       icon="solar:pen-bold-duotone"
@@ -686,14 +659,14 @@ export default function ClipViewModal({
                     />
                     Prompt Used
                   </h3>
-                  <p className="text-sm text-text-primary leading-relaxed italic">
+                  <p className="text-sm text-text-accent leading-relaxed italic">
                     "{clip.prompt}"
                   </p>
                 </div>
               )}
 
               {clip.input_metadata && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:file-bold-duotone"
@@ -707,7 +680,7 @@ export default function ClipViewModal({
                         <span className="text-xs text-text-tertiary min-w-[50px]">
                           File:
                         </span>
-                        <p className="text-sm text-text-primary break-all">
+                        <p className="text-sm text-text-accent break-all">
                           {clip.input_metadata.originalFileName}
                         </p>
                       </div>
@@ -717,7 +690,7 @@ export default function ClipViewModal({
                         <span className="text-xs text-text-tertiary min-w-[50px]">
                           Size:
                         </span>
-                        <p className="text-sm text-text-primary">
+                        <p className="text-sm text-text-accent">
                           {(
                             clip.input_metadata.fileSize /
                             (1024 * 1024)
@@ -731,7 +704,7 @@ export default function ClipViewModal({
               )}
 
               {clip.clip_metadata?.parameters && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:settings-bold-duotone"
@@ -743,7 +716,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.length && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Length</p>
-                        <p className="text-sm text-text-primary font-medium">
+                        <p className="text-sm text-text-accent font-medium">
                           {clip.clip_metadata.parameters.length}s
                         </p>
                       </div>
@@ -751,7 +724,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.hookLength && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Hook</p>
-                        <p className="text-sm text-text-primary font-medium">
+                        <p className="text-sm text-text-accent font-medium">
                           {clip.clip_metadata.parameters.hookLength}s
                         </p>
                       </div>
@@ -759,7 +732,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.promptType && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Type</p>
-                        <p className="text-sm text-text-primary font-medium capitalize">
+                        <p className="text-sm text-text-accent font-medium capitalize">
                           {clip.clip_metadata.parameters.promptType}
                         </p>
                       </div>
@@ -785,11 +758,11 @@ export default function ClipViewModal({
                 };
 
                 return (
-                  <div className="p-4 rounded-lg bg-surface-elevated">
+                  <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                     <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                       <Icon icon="mdi:megaphone" className="text-accent-400" />
                       Ad Posts
-                      <Chip size="sm" variant="flat">{clipPosts.length}</Chip>
+                      <Chip size="sm" variant="tertiary">{clipPosts.length}</Chip>
                     </h3>
                     <div className="space-y-3">
                       {Object.entries(grouped).map(([platform, platformPosts]) => {
@@ -805,7 +778,7 @@ export default function ClipViewModal({
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Icon icon={meta.icon} className="text-lg" />
-                                <span className="text-sm font-medium text-text-primary">
+                                <span className="text-sm font-medium text-text-accent">
                                   {meta.name}
                                 </span>
                                 <span className="text-xs text-text-tertiary">
@@ -814,17 +787,17 @@ export default function ClipViewModal({
                               </div>
                               <div className="flex items-center gap-1.5">
                                 {postedCount > 0 && (
-                                  <Chip size="sm" variant="flat" color="success">
+                                  <Chip size="sm" variant="tertiary" color="success">
                                     {postedCount} posted
                                   </Chip>
                                 )}
                                 {scheduledCount > 0 && (
-                                  <Chip size="sm" variant="flat" color="warning">
+                                  <Chip size="sm" variant="tertiary" color="warning">
                                     {scheduledCount} scheduled
                                   </Chip>
                                 )}
                                 {failedCount > 0 && (
-                                  <Chip size="sm" variant="flat" color="danger">
+                                  <Chip size="sm" variant="tertiary" color="danger">
                                     {failedCount} failed
                                   </Chip>
                                 )}
@@ -841,23 +814,23 @@ export default function ClipViewModal({
                                     <div className="flex items-center gap-2 text-text-tertiary">
                                       <span className="text-text-secondary font-mono">#{post.id}</span>
                                       <Chip
-                                        size="sm"
-                                        variant="flat"
-                                        color={
-                                          post.status === "posted"
-                                            ? "success"
-                                            : post.status === "scheduled"
-                                            ? "warning"
-                                            : "danger"
-                                        }
-                                      >
+ size="sm"
+ variant="tertiary"
+ color={
+ post.status === "posted"
+ ? "success"
+ : post.status === "scheduled"
+ ? "warning"
+ : "danger"
+ }
+ >
                                         {post.status}
                                       </Chip>
                                       <span>{formatTimeAgo(post.created_at)}</span>
                                     </div>
                                     {post.status === "posted" && post.post_url && (
                                       <a href={post.post_url} target="_blank" rel="noopener noreferrer">
-                                        <Button size="sm" variant="light" isIconOnly>
+                                        <Button size="sm" variant="tertiary" isIconOnly>
                                           <Icon icon="solar:square-top-down-bold" className="text-accent-400" />
                                         </Button>
                                       </a>
@@ -869,18 +842,18 @@ export default function ClipViewModal({
 
                             {showToggle && (
                               <Button
-                                size="sm"
-                                variant="light"
-                                className="mt-2 text-xs text-accent-400"
-                                onPress={() => {
-                                  setExpandedPlatforms(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(platform)) next.delete(platform);
-                                    else next.add(platform);
-                                    return next;
-                                  });
-                                }}
-                              >
+ size="sm"
+ variant="tertiary"
+ className="mt-2 text-xs text-accent-400"
+ onPress={() => {
+ setExpandedPlatforms(prev => {
+ const next = new Set(prev);
+ if (next.has(platform)) next.delete(platform);
+ else next.add(platform);
+ return next;
+ });
+ }}
+ >
                                 {isExpanded ? "Show less" : `Show all ${platformPosts.length}`}
                               </Button>
                             )}
@@ -892,7 +865,7 @@ export default function ClipViewModal({
                 );
               })()}
 
-              <div className="p-4 rounded-lg bg-surface-elevated">
+              <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                   <Icon
                     icon="solar:calendar-bold-duotone"
@@ -900,15 +873,15 @@ export default function ClipViewModal({
                   />
                   Created
                 </h3>
-                <p className="text-sm text-text-primary">
+                <p className="text-sm text-text-accent">
                   {new Date(clip.created_at).toLocaleString()}
                 </p>
               </div>
             </div>
           </div>
-        </ModalBody>
-        <ModalFooter className="flex justify-between">
-          <Button variant="flat" onPress={onClose}>
+        </Modal.Body>
+        <Modal.Footer className="flex justify-between">
+          <Button variant="tertiary" onPress={onClose}>
             Close
           </Button>
           <div className="flex items-center gap-2">
@@ -929,34 +902,30 @@ export default function ClipViewModal({
                       {getShareUrl()}
                     </div>
                     <Button
-                      variant="flat"
-                      color="success"
-                      isIconOnly
-                      onPress={handleCopyShareLink}
-                      title="Copy link"
-                    >
+ variant="tertiary"
+ isIconOnly
+ onPress={handleCopyShareLink}
+ title="Copy link"
+ >
                       <Icon icon="solar:copy-bold" />
                     </Button>
                     <Button
-                      variant="flat"
-                      color="danger"
-                      isIconOnly
-                      isLoading={isSharing}
-                      onPress={handleRemoveShare}
-                      title="Disable sharing"
-                    >
+ variant="danger-soft"
+ isIconOnly
+ isPending={isSharing}
+ onPress={handleRemoveShare}
+ title="Disable sharing"
+ >
                       <Icon icon="solar:link-broken-bold" />
                     </Button>
                   </div>
                 ) : (
                   <Button
-                    variant="flat"
-                    startContent={
-                      !isSharing && <Icon icon="solar:share-bold" />
-                    }
-                    isLoading={isSharing}
-                    onPress={handleShare}
-                  >
+ variant="tertiary"
+ isPending={isSharing}
+ onPress={handleShare}
+ >
+                    {!isSharing && <Icon icon="solar:share-bold" />}
                     Share
                   </Button>
                 )}
@@ -964,37 +933,34 @@ export default function ClipViewModal({
             )}
             {onEdit && clip.clipUrl && clip.clip_metadata?.type !== "face-swap" && (
               <Button
-                variant="flat"
-                startContent={<Icon icon="solar:pen-bold" />}
-                onPress={onEdit}
-              >
+ variant="tertiary"
+ onPress={onEdit}
+ >
+                <Icon icon="solar:pen-bold" />
                 Edit
               </Button>
             )}
             {onAdPosting && clip.clipUrl && (
               <Button
-                variant="flat"
-                startContent={<Icon icon="solar:video-library-bold-duotone" />}
-                onPress={onAdPosting}
-              >
+ variant="tertiary"
+ onPress={onAdPosting}
+ >
+                <Icon icon="solar:video-library-bold-duotone" />
                 Add to Campaign
               </Button>
             )}
             {clip.clipUrl && (
-              <Button
-                color="primary"
-                isLoading={isDownloading}
-                startContent={
-                  !isDownloading && <Icon icon="solar:download-bold" />
-                }
-                onPress={handleDownload}
-              >
+              <Button variant="primary"
+ isPending={isDownloading}
+ onPress={handleDownload}
+ >
+                {!isDownloading && <Icon icon="solar:download-bold" />}
                 {isDownloading ? "Processing..." : "Download"}
               </Button>
             )}
           </div>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

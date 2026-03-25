@@ -17,7 +17,7 @@ export default function CreateAdPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
         </div>
       }
     >

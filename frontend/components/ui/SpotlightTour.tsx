@@ -277,14 +277,14 @@ export default function SpotlightTour({
               </span>
               <button
                 onClick={onClose}
-                className="text-text-tertiary hover:text-text-primary transition-colors"
+                className="text-text-tertiary hover:text-text-accent transition-colors"
               >
                 <Icon icon="solar:close-circle-bold" width={20} />
               </button>
             </div>
 
             {/* Title & description */}
-            <h3 className="text-base font-semibold text-text-primary mb-1">
+            <h3 className="text-base font-semibold text-text-accent mb-1">
               {step.title}
             </h3>
             <p className="text-sm text-text-secondary leading-relaxed mb-4">
@@ -296,20 +296,20 @@ export default function SpotlightTour({
             {/* Navigation */}
             <div className="flex items-center justify-between">
               <Button
-                size="sm"
-                variant="light"
-                onPress={onClose}
-                className="text-text-tertiary"
-              >
+ size="sm"
+ variant="tertiary"
+ onPress={onClose}
+ className="text-text-tertiary"
+ >
                 Skip
               </Button>
               <div className="flex gap-2">
                 {currentStep > 0 && (
-                  <Button size="sm" variant="bordered" onPress={goBack}>
+                  <Button size="sm" variant="outline" onPress={goBack}>
                     Back
                   </Button>
                 )}
-                <Button size="sm" color="primary" onPress={goNext}>
+                <Button variant="primary" size="sm" onPress={goNext}>
                   {currentStep === steps.length - 1 ? "Done" : "Next"}
                 </Button>
               </div>

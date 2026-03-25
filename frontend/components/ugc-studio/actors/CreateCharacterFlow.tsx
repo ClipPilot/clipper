@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button, Progress } from "@heroui/react";
+import { Button, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import { BasicInfoStep } from "./create-steps/BasicInfoStep";
@@ -270,15 +270,11 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
         })}
       </div>
 
-      <Progress
-        value={progress}
-        size="sm"
-        classNames={{
-          base: "hidden",
-          track: "bg-surface-elevated",
-          indicator: "bg-accent-400",
-        }}
-      />
+      <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
 
       <div className="bg-surface-elevated/30 rounded-3xl border border-border-base p-6 sm:p-8 min-h-[450px]">
         {currentStep === "basic-info" && (
@@ -333,12 +329,12 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
 
       <div className="flex items-center justify-between">
         <Button
-          variant="light"
-          className="text-text-secondary hover:text-text-primary"
-          onPress={handleBack}
-          isDisabled={currentStepIndex === 0}
-          startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-        >
+ variant="tertiary"
+ className="text-text-secondary hover:text-text-accent"
+ onPress={handleBack}
+ isDisabled={currentStepIndex === 0}
+ >
+          <Icon icon="solar:arrow-left-linear" width={16} />
           Back
         </Button>
 
@@ -350,21 +346,19 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
             </div>
           )}
           <Button
-            size="lg"
-            className="bg-accent-400 text-white font-semibold px-8 shadow-lg shadow-accent-400/20"
-            onPress={handleNext}
-            isDisabled={!canProceed()}
-            isLoading={isSaving}
-            endContent={
-              currentStep === "generate" ? (
+ size="lg"
+ className="bg-accent-400 text-white font-semibold px-8 shadow-lg shadow-accent-400/20"
+ onPress={handleNext}
+ isDisabled={!canProceed()}
+ isPending={isSaving}
+ >
+            {currentStep === "generate" ? "Save Actor" : "Continue"}
+            {currentStep === "generate" ? (
                 <Icon icon="solar:check-circle-bold" width={18} />
               ) : (
                 <Icon icon="solar:arrow-right-linear" width={18} />
-              )
-            }
-          >
-            {currentStep === "generate" ? "Save Actor" : "Continue"}
-          </Button>
+              )}
+</Button>
         </div>
       </div>
     </div>

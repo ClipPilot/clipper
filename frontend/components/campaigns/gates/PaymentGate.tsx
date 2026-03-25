@@ -13,7 +13,7 @@ import {
   ModalFooter,
   Slider,
   Spinner,
-  addToast,
+  toast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
@@ -81,11 +81,7 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
     });
 
     if (error) {
-      addToast({
-        title: "Card setup failed",
-        description: error.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Card setup failed", { description: error.message || "Something went wrong" });
       setIsSubmitting(false);
       return;
     }
@@ -100,15 +96,11 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
 
         const { card } = await campaignAPI.saveCard(teamId, campaignId, pmId);
 
-        addToast({ title: "Payment method saved", color: "success" });
+        toast.success("Payment method saved");
         if (card) onSaved(card);
         onClose();
       } catch (err: any) {
-        addToast({
-          title: "Failed to save card",
-          description: err.message || "Something went wrong",
-          color: "danger",
-        });
+        toast.danger("Failed to save card", { description: err.message || "Something went wrong" });
       }
     }
 
@@ -194,11 +186,7 @@ function PaymentForm({
         );
         if (credited) {
           onSuccess();
-          addToast({
-            title: "Wallet funded",
-            description: `${formatCents(amountCents)} added to your campaign wallet.`,
-            color: "success",
-          });
+          toast.success("Wallet funded", { description: `${formatCents(amountCents)} added to your campaign wallet.` });
           onClose();
           return;
         }
@@ -207,12 +195,7 @@ function PaymentForm({
       }
     }
 
-    addToast({
-      title: "Still processing",
-      description:
-        "Your payment succeeded but funds are still being credited. They'll appear shortly.",
-      color: "warning",
-    });
+    toast.warning("Still processing", { description: "Your payment succeeded but funds are still being credited. They'll appear shortly." });
     onClose();
   };
 
@@ -229,11 +212,7 @@ function PaymentForm({
     });
 
     if (error) {
-      addToast({
-        title: "Payment failed",
-        description: error.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Payment failed", { description: error.message || "Something went wrong" });
       setIsSubmitting(false);
       return;
     }
@@ -503,11 +482,7 @@ export function PaymentGate({
       setSetupSecret(cs);
       setIsSetupModalOpen(true);
     } catch (err: any) {
-      addToast({
-        title: "Failed to start card setup",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to start card setup", { description: err.message || "Something went wrong" });
     } finally {
       setIsSettingUp(false);
     }
@@ -526,21 +501,13 @@ export function PaymentGate({
     try {
       const { balanceCents, creditsUsed, amountCents } =
         await campaignAPI.fundWithCredits(selectedTeam.id, campaignId, creditCount);
-      addToast({
-        title: "Credits applied",
-        description: `${creditsUsed} credit${creditsUsed > 1 ? "s" : ""} converted to ${formatCents(amountCents)} campaign dollars.`,
-        color: "success",
-      });
+      toast.success("Credits applied", { description: `${creditsUsed} credit${creditsUsed > 1 ? "s" : ""} converted to ${formatCents(amountCents)} campaign dollars.` });
       setCreditCount(0);
       onPaymentComplete(balanceCents);
       refetchUsage();
       triggerRefresh();
     } catch (err: any) {
-      addToast({
-        title: "Failed to apply credits",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to apply credits", { description: err.message || "Something went wrong" });
     } finally {
       setIsFundingWithCredits(false);
     }
@@ -562,11 +529,7 @@ export function PaymentGate({
           piId,
         );
         if (credited) {
-          addToast({
-            title: "Wallet funded",
-            description: `${formatCents(amountCents)} added to your campaign wallet.`,
-            color: "success",
-          });
+          toast.success("Wallet funded", { description: `${formatCents(amountCents)} added to your campaign wallet.` });
           setAmountInput("");
           setIsPolling(false);
           onPaymentComplete(gate.balanceCents + amountCents);
@@ -577,11 +540,7 @@ export function PaymentGate({
       }
     }
 
-    addToast({
-      title: "Still processing",
-      description: "Your payment succeeded but funds are still being credited. They'll appear shortly.",
-      color: "warning",
-    });
+    toast.warning("Still processing", { description: "Your payment succeeded but funds are still being credited. They'll appear shortly." });
     setIsPolling(false);
   };
 
@@ -596,21 +555,13 @@ export function PaymentGate({
       if (confirmed) {
         // Card was charged AND wallet credited server-side — instant
         setIsCreatingIntent(false);
-        addToast({
-          title: "Wallet funded",
-          description: `${formatCents(cents)} added to your campaign wallet.`,
-          color: "success",
-        });
+        toast.success("Wallet funded", { description: `${formatCents(cents)} added to your campaign wallet.` });
         setAmountInput("");
         onPaymentComplete(gate.balanceCents + cents);
       } else if (processing) {
         // ACH bank transfer — payment initiated, takes 3-5 business days
         setIsCreatingIntent(false);
-        addToast({
-          title: "Bank transfer initiated",
-          description: "Your bank transfer is processing. Funds will be credited in 3-5 business days.",
-          color: "warning",
-        });
+        toast.warning("Bank transfer initiated", { description: "Your bank transfer is processing. Funds will be credited in 3-5 business days." });
         setAmountInput("");
       } else {
         // No saved payment method — open payment modal
@@ -621,11 +572,7 @@ export function PaymentGate({
         setIsCreatingIntent(false);
       }
     } catch (err: any) {
-      addToast({
-        title: "Failed to initiate payment",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to initiate payment", { description: err.message || "Something went wrong" });
       setIsCreatingIntent(false);
     }
   };

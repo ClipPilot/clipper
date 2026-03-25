@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Card, CardBody, Popover, PopoverTrigger, PopoverContent } from "@heroui/react";
+import { Card, Popover } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { isEditModeAtom, WIDGET_COLOR_OPTIONS } from "@/store/dashboard";
@@ -47,11 +47,11 @@ export function WidgetWrapper({
           >
             <Icon icon={icon} width={16} className="text-white" />
           </div>
-          <span className="font-medium text-text-primary text-sm">{title}</span>
+          <span className="font-medium text-text-accent text-sm">{title}</span>
         </div>
         {isEditMode && onColorChange && (
           <Popover placement="bottom-end">
-            <PopoverTrigger>
+            <Popover.Trigger>
               <button className="p-1 rounded hover:bg-surface-hover transition-colors">
                 <Icon
                   icon="solar:palette-linear"
@@ -59,8 +59,8 @@ export function WidgetWrapper({
                   className="text-text-tertiary"
                 />
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="bg-surface-elevated border border-border-base p-3">
+            </Popover.Trigger>
+            <Popover.Content className="bg-surface-elevated border border-border-base p-3">
               <div className="flex gap-2">
                 {WIDGET_COLOR_OPTIONS.map((option) => (
                   <button
@@ -74,11 +74,11 @@ export function WidgetWrapper({
                   />
                 ))}
               </div>
-            </PopoverContent>
+            </Popover.Content>
           </Popover>
         )}
       </div>
-      <CardBody className="p-4 overflow-auto">{children}</CardBody>
+      <Card.Content className="p-4 overflow-auto">{children}</Card.Content>
     </Card>
   );
 }

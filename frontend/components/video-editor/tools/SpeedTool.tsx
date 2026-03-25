@@ -71,7 +71,7 @@ export function SpeedTool() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
           <Icon icon="solar:speedometer-bold" className="text-accent-400" />
           Playback Speed
         </h3>
@@ -96,7 +96,7 @@ export function SpeedTool() {
       <div className="bg-surface-elevated rounded-lg p-6 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
           <Icon icon={getSpeedIcon()} className="text-3xl text-accent-400" />
-          <span className="text-4xl font-bold text-text-primary">{currentSpeed}x</span>
+          <span className="text-4xl font-bold text-text-accent">{currentSpeed}x</span>
         </div>
         <p className="text-sm text-text-secondary">{getSpeedLabel()}</p>
       </div>
@@ -105,19 +105,13 @@ export function SpeedTool() {
       <div>
         <label className="text-sm text-text-secondary mb-2 block">Fine Adjustment</label>
         <Slider
-          value={currentSpeed}
-          onChange={(val) => handleSpeedChange(val as number)}
-          minValue={0.25}
-          maxValue={4}
-          step={0.05}
-          color="secondary"
-          size="md"
-          showTooltip
-          formatOptions={{ style: "decimal", minimumFractionDigits: 2 }}
-          classNames={{
-            track: "bg-surface-elevated",
-          }}
-        />
+ value={currentSpeed}
+ onChange={(val) => handleSpeedChange(val as number)}
+ minValue={0.25}
+ maxValue={4}
+ step={0.05}
+ formatOptions={{ style: "decimal", minimumFractionDigits: 2 }}
+ />
         <div className="flex justify-between text-xs text-text-tertiary mt-1">
           <span>0.25x</span>
           <span>1x</span>
@@ -132,13 +126,13 @@ export function SpeedTool() {
         <div className="grid grid-cols-3 gap-2">
           {SPEED_PRESETS.map((preset) => (
             <Button
-              key={preset.value}
-              size="sm"
-              variant={currentSpeed === preset.value ? "solid" : "flat"}
-              color={currentSpeed === preset.value ? "primary" : "default"}
-              onPress={() => handleSpeedChange(preset.value)}
-              className="font-mono"
-            >
+ key={preset.value}
+ size="sm"
+ variant={currentSpeed === preset.value ? "solid" : "flat"}
+ color={currentSpeed === preset.value ? "primary" : "default"}
+ onPress={() => handleSpeedChange(preset.value)}
+ className="font-mono"
+ >
               {preset.label}
             </Button>
           ))}
@@ -154,7 +148,7 @@ export function SpeedTool() {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-text-secondary">Original Duration</span>
-            <span className="text-sm text-text-primary font-mono">
+            <span className="text-sm text-text-accent font-mono">
               {formatTime(selectedSegment.endTime - selectedSegment.startTime)}
             </span>
           </div>
@@ -178,7 +172,7 @@ export function SpeedTool() {
         <div className="bg-surface-elevated rounded-lg p-4 space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-text-secondary">Total Duration</span>
-            <span className="text-sm text-text-primary font-mono">{formatTime(trimmedDuration)}</span>
+            <span className="text-sm text-text-accent font-mono">{formatTime(trimmedDuration)}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-text-secondary">After Speed Changes</span>
@@ -223,7 +217,7 @@ export function SpeedTool() {
                 </span>
                 <span
                   className={`font-mono ${
-                    segment.speed !== 1.0 ? "text-accent-400" : "text-text-primary"
+                    segment.speed !== 1.0 ? "text-accent-400" : "text-text-accent"
                   }`}
                 >
                   {segment.speed}x

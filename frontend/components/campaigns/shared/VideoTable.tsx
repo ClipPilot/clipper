@@ -96,31 +96,27 @@ export function VideoTable({
           );
         case "title":
           return (
-            <p className="text-sm text-text-primary truncate max-w-[200px]">
+            <p className="text-sm text-text-accent truncate max-w-[200px]">
               {video.title ?? video.file_name ?? `Video #${video.id}`}
             </p>
           );
         case "source":
           return video.clip_id ? (
             <Chip
-              size="sm"
-              variant="flat"
-              className="bg-accent-400/10 text-accent-400"
-              startContent={
-                <Icon icon="solar:library-bold-duotone" width={12} className="ml-1" />
-              }
-            >
+ size="sm"
+ variant="tertiary"
+ className="bg-accent-400/10 text-accent-400"
+ >
+              <Icon icon="solar:library-bold-duotone" width={12} className="ml-1" />
               Library
             </Chip>
           ) : (
             <Chip
-              size="sm"
-              variant="flat"
-              className="bg-warning-500/10 text-warning-600"
-              startContent={
-                <Icon icon="solar:upload-bold-duotone" width={12} className="ml-1" />
-              }
-            >
+ size="sm"
+ variant="tertiary"
+ className="bg-warning-500/10 text-warning-600"
+ >
+              <Icon icon="solar:upload-bold-duotone" width={12} className="ml-1" />
               Upload
             </Chip>
           );
@@ -135,12 +131,12 @@ export function VideoTable({
             <div className="flex items-center justify-end gap-1">
               <Tooltip content="Preview">
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={() => onPreview(video)}
-                  aria-label="Preview video"
-                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onPreview(video)}
+ aria-label="Preview video"
+ >
                   <Icon
                     icon="solar:eye-bold"
                     className="text-text-secondary"
@@ -150,14 +146,14 @@ export function VideoTable({
               </Tooltip>
               <Tooltip content="Remove">
                 <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  className="text-danger-500"
-                  onPress={() => onRemove(video.id)}
-                  isLoading={removingId === video.id}
-                  aria-label="Remove video"
-                >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="text-danger-500"
+ onPress={() => onRemove(video.id)}
+ isPending={removingId === video.id}
+ aria-label="Remove video"
+ >
                   <Icon icon="solar:trash-bin-trash-bold" width={16} />
                 </Button>
               </Tooltip>
@@ -174,18 +170,17 @@ export function VideoTable({
     if (totalPages <= 1) return null;
     return (
       <div className="flex items-center justify-between px-2 py-2">
-        <span className="text-small text-text-tertiary">
+        <span className="text-sm text-text-tertiary">
           {videos.length} video{videos.length !== 1 ? "s" : ""} total
         </span>
         <Pagination
-          isCompact
-          showControls
-          showShadow
-          color="primary"
-          page={page}
-          total={totalPages}
-          onChange={onPageChange}
-        />
+ isCompact
+ showControls
+ showShadow
+ page={page}
+ total={totalPages}
+ onChange={onPageChange}
+ />
       </div>
     );
   }, [page, totalPages, videos.length, onPageChange]);

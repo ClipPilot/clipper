@@ -1,14 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal,
+  Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { Announcement } from "@/store/announcements";
@@ -88,38 +82,8 @@ export default function AnnouncementPopupModal() {
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
-      size="3xl"
-      backdrop="blur"
-      classNames={{
-        backdrop: "bg-black/80 backdrop-blur-md",
-        base: "border border-border-light shadow-2xl",
-        closeButton: "hover:bg-white/10 text-white",
-      }}
-      motionProps={{
-        variants: {
-          enter: {
-            scale: 1,
-            opacity: 1,
-            transition: {
-              duration: 0.4,
-              ease: "easeOut",
-            },
-          },
-          exit: {
-            scale: 0.9,
-            opacity: 0,
-            transition: {
-              duration: 0.2,
-              ease: "easeIn",
-            },
-          },
-        },
-      }}
-    >
-      <ModalContent className="overflow-hidden">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={() => setIsOpen(false)} variant="blur"><Modal.Container><Modal.Dialog className="sm:max-w-4xl overflow-hidden">
         {/* Gradient Header */}
         <div className={`bg-gradient-to-br ${getPriorityGradient(currentAnnouncement.priority)} p-8 relative overflow-hidden`}>
           {/* Animated background pattern */}
@@ -151,22 +115,21 @@ export default function AnnouncementPopupModal() {
         </div>
 
         {/* Body */}
-        <ModalBody className="p-8 bg-surface-base">
+        <Modal.Body className="p-8 bg-surface-base">
           <div
-            className="text-text-primary text-base announcement-content leading-relaxed prose prose-sm max-w-none"
+            className="text-text-accent text-base announcement-content leading-relaxed prose prose-sm max-w-none"
             dangerouslySetInnerHTML={{ __html: currentAnnouncement.content }}
           />
 
           {currentAnnouncement.action_url && (
-            <Button
-              size="lg"
-              color="primary"
-              className="mt-6 w-full font-bold shadow-lg text-base"
-              onPress={() => window.open(currentAnnouncement.action_url, "_blank")}
-              endContent={<Icon icon="solar:arrow-right-up-linear" width={20} />}
-            >
+            <Button variant="primary"
+ size="lg"
+ className="mt-6 w-full font-bold shadow-lg text-base"
+ onPress={() => window.open(currentAnnouncement.action_url, "_blank")}
+ >
               {currentAnnouncement.action_label || "Learn More"}
-            </Button>
+              <Icon icon="solar:arrow-right-up-linear" width={20} />
+</Button>
           )}
 
           <div className="flex items-center justify-center gap-2 mt-6 text-sm text-text-tertiary">
@@ -181,41 +144,40 @@ export default function AnnouncementPopupModal() {
               })}
             </span>
           </div>
-        </ModalBody>
+        </Modal.Body>
 
         {/* Footer */}
-        <ModalFooter className="bg-surface-elevated border-t border-border-base p-6">
+        <Modal.Footer className="bg-surface-elevated border-t border-border-base p-6">
           <Button
-            variant="light"
-            onPress={handleDismiss}
-            className="font-semibold"
-            startContent={<Icon icon="solar:check-circle-bold-duotone" width={20} />}
-          >
+ variant="tertiary"
+ onPress={handleDismiss}
+ className="font-semibold"
+ >
+            <Icon icon="solar:check-circle-bold-duotone" width={20} />
             Mark as Read
           </Button>
           {unread.length > 1 && (
             <>
               <Button
-                variant="flat"
-                onPress={handleDismissAll}
-                className="font-semibold"
-                startContent={<Icon icon="solar:check-read-linear" width={20} />}
-              >
+ variant="tertiary"
+ onPress={handleDismissAll}
+ className="font-semibold"
+ >
+                <Icon icon="solar:check-read-linear" width={20} />
                 Mark All as Read ({unread.length})
               </Button>
               <Button
-                color="primary"
-                variant="flat"
-                onPress={handleViewAll}
-                className="font-semibold"
-                endContent={<Icon icon="solar:inbox-line-bold-duotone" width={20} />}
-              >
+ variant="tertiary"
+ onPress={handleViewAll}
+ className="font-semibold"
+ >
                 View All ({unread.length})
-              </Button>
+                <Icon icon="solar:inbox-line-bold-duotone" width={20} />
+</Button>
             </>
           )}
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

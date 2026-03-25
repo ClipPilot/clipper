@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button, Chip, Progress, Spinner } from "@heroui/react";
+import { Button, Chip, ProgressBar, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { sceneImagesAtom, sceneRefAtom, type SceneImageState } from "@/store/ugc";
@@ -280,7 +280,7 @@ function SceneCard({
         >
           <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={13} />
         </div>
-        <span className="text-sm font-semibold text-text-primary">
+        <span className="text-sm font-semibold text-text-accent">
           {scene.sceneNumber}. {config?.label ?? scene.sceneType}
         </span>
         <button
@@ -335,7 +335,7 @@ function SceneCard({
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 {isGenerating ? (
-                  <Spinner size="sm" color="primary" />
+                  <Spinner size="sm" color="accent" />
                 ) : (
                   <Icon
                     icon="solar:gallery-add-bold-duotone"
@@ -411,7 +411,7 @@ function SceneCard({
           <div className="space-y-2 pt-1">
             <div className="flex items-center gap-1.5">
               <Icon icon="solar:camera-bold-duotone" width={13} className="text-amber-400" />
-              <span className="text-[11px] font-semibold text-text-primary">
+              <span className="text-[11px] font-semibold text-text-accent">
                 B-Roll Shots
               </span>
             </div>
@@ -442,12 +442,12 @@ function SceneCard({
                           />
                           {shotGenerating && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                              <Spinner size="sm" color="primary" />
+                              <Spinner size="sm" color="accent" />
                             </div>
                           )}
                         </>
                       ) : shotGenerating ? (
-                        <Spinner size="sm" color="primary" />
+                        <Spinner size="sm" color="accent" />
                       ) : (
                         <Icon
                           icon={SHOT_TYPE_ICONS[shot.shotType || "PRODUCT"] || "solar:gallery-bold-duotone"}
@@ -460,7 +460,7 @@ function SceneCard({
                     {/* Shot details */}
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold text-text-primary">
+                        <span className="text-[11px] font-semibold text-text-accent">
                           Shot {idx + 1}
                         </span>
                         {shot.shotType && (
@@ -541,7 +541,7 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-accent-400/20 flex items-center justify-center">
               {anyGenerating ? (
-                <Spinner size="sm" color="primary" />
+                <Spinner size="sm" color="accent" />
               ) : (
                 <Icon
                   icon="solar:check-circle-bold-duotone"
@@ -551,7 +551,7 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
               )}
             </div>
             <div>
-              <p className="text-sm font-bold text-text-primary">
+              <p className="text-sm font-bold text-text-accent">
                 {completedCount} of {totalScenes} scenes{" "}
                 {anyGenerating ? "generating..." : "complete"}
               </p>
@@ -567,12 +567,12 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
           <div className="flex items-center gap-2">
             {onGenerateImages && !allComplete && !anyGenerating && (
               <Button
-                size="sm"
-                variant="flat"
-                className="bg-accent-400/10 text-accent-400 font-medium"
-                startContent={<Icon icon="solar:gallery-add-bold" width={14} />}
-                onPress={onGenerateImages}
-              >
+ size="sm"
+ variant="tertiary"
+ className="bg-accent-400/10 text-accent-400 font-medium"
+ onPress={onGenerateImages}
+ >
+                <Icon icon="solar:gallery-add-bold" width={14} />
                 Generate Images
               </Button>
             )}
@@ -581,24 +581,21 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
                 {calculateCreditCost(script.scenes)} credits
               </span>
             )}
-            <Button
-              size="sm"
-              color="primary"
-              isDisabled={!allComplete || !onContinue || isContinueLoading}
-              isLoading={isContinueLoading}
-              onPress={onContinue}
-              endContent={!isContinueLoading ? <Icon icon="solar:arrow-right-linear" width={14} /> : undefined}
-            >
+            <Button variant="primary"
+ size="sm"
+ isDisabled={!allComplete || !onContinue || isContinueLoading}
+ isPending={isContinueLoading}
+ onPress={onContinue}
+ >
               {isContinueLoading ? "Starting..." : "Generate Video"}
-            </Button>
+              {!isContinueLoading ? <Icon icon="solar:arrow-right-linear" width={14} /> : undefined}
+</Button>
           </div>
         </div>
-        <Progress
-          value={totalScenes > 0 ? (completedCount / totalScenes) * 100 : 0}
-          size="sm"
-          color="primary"
-          className="mt-1"
-        />
+        <ProgressBar
+ value={totalScenes > 0 ? (completedCount / totalScenes) * 100 : 0}
+ className="mt-1"
+ />
       </div>
 
       {/* Reference hint */}
@@ -611,17 +608,17 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
 
       {/* Title + meta */}
       <div className="space-y-1.5 px-1">
-        <h2 className="text-base font-bold text-text-primary">{script.title}</h2>
+        <h2 className="text-base font-bold text-text-accent">{script.title}</h2>
         {script.targetAudience && (
           <p className="text-[11px] text-text-muted leading-relaxed">
             {script.targetAudience}
           </p>
         )}
         <div className="flex items-center gap-2 pt-1">
-          <Chip size="sm" variant="flat" className="text-[11px] bg-accent-400/10 text-accent-400">
+          <Chip size="sm" variant="tertiary" className="text-[11px] bg-accent-400/10 text-accent-400">
             {Math.round(script.totalEstimatedDuration)}s
           </Chip>
-          <Chip size="sm" variant="flat" color="default" className="text-[11px]">
+          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
             {totalScenes} scenes
           </Chip>
         </div>

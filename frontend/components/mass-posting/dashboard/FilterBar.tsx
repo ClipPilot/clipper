@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  Input,
+import { Input,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Button,
-} from "@heroui/react";
+  Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface FilterBarProps {
@@ -66,36 +61,28 @@ export function FilterBar({
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border-base flex-wrap">
-      <Input
-        size="sm"
-        variant="flat"
-        placeholder={searchPlaceholder}
-        value={searchValue}
-        onValueChange={onSearchChange}
-        startContent={
-          <Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />
-        }
-        classNames={{
-          base: "max-w-[220px]",
-          input: "bg-transparent text-sm",
-          inputWrapper: "bg-surface-elevated border border-border-base h-9",
-        }}
-      />
+      <Input onChange={(e) => (onSearchChange)(e.target.value)}
+ placeholder={searchPlaceholder}
+ value={searchValue}
+ startContent={
+ <Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />
+ }
+ />
 
       {showDateRange && (
         <Dropdown>
-          <DropdownTrigger>
-            <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:calendar-linear" width={14} />}
-              endContent={<Icon icon="solar:alt-arrow-down-linear" width={10} />}
-            >
+<Button
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+ >
+              <Icon icon="solar:calendar-linear" width={14} />
               {selectedDateLabel}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu
+              <Icon icon="solar:alt-arrow-down-linear" width={10} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
             aria-label="Date range"
             selectionMode="single"
             selectedKeys={new Set([dateRangeValue])}
@@ -105,26 +92,27 @@ export function FilterBar({
             }}
           >
             {dateOptions.map((opt) => (
-              <DropdownItem key={opt.key}>{opt.label}</DropdownItem>
+              <Dropdown.Item key={opt.key}>{opt.label}</Dropdown.Item>
             ))}
-          </DropdownMenu>
+          </Dropdown.Menu>
+</Dropdown.Popover>
         </Dropdown>
       )}
 
       {showPlatformFilter && (
         <Dropdown>
-          <DropdownTrigger>
-            <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:filter-linear" width={14} />}
-              endContent={<Icon icon="solar:alt-arrow-down-linear" width={10} />}
-            >
+<Button
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+ >
+              <Icon icon="solar:filter-linear" width={14} />
               {selectedPlatformLabel}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu
+              <Icon icon="solar:alt-arrow-down-linear" width={10} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
             aria-label="Platform filter"
             selectionMode="single"
             selectedKeys={new Set([platformValue])}
@@ -134,9 +122,10 @@ export function FilterBar({
             }}
           >
             {PLATFORM_OPTIONS.map((opt) => (
-              <DropdownItem key={opt.key}>{opt.label}</DropdownItem>
+              <Dropdown.Item key={opt.key}>{opt.label}</Dropdown.Item>
             ))}
-          </DropdownMenu>
+          </Dropdown.Menu>
+</Dropdown.Popover>
         </Dropdown>
       )}
 

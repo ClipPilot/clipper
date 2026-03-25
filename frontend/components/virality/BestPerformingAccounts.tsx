@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardBody, Avatar } from "@heroui/react";
+import { Card, Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -32,7 +32,7 @@ export function BestPerformingAccounts({
   if (ranked.length === 0) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+        <Card.Content className="p-5">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             BEST PERFORMING ACCOUNTS
           </p>
@@ -46,14 +46,14 @@ export function BestPerformingAccounts({
               No accounts to rank yet
             </p>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-5">
+      <Card.Content className="p-5">
         <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
           BEST PERFORMING ACCOUNTS
         </p>
@@ -67,11 +67,8 @@ export function BestPerformingAccounts({
                 {index + 1}
               </span>
               <Avatar
-                src={account.avatar_url || undefined}
-                name={account.username[0]?.toUpperCase()}
-                size="sm"
-                classNames={{ base: "bg-surface-hover flex-shrink-0" }}
-              />
+ size="sm"
+ />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Icon
@@ -79,13 +76,13 @@ export function BestPerformingAccounts({
                     width={14}
                     className={platformIconColor(account.platform)}
                   />
-                  <span className="text-sm text-text-primary truncate">
+                  <span className="text-sm text-text-accent truncate">
                     @{account.username}
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-text-primary">
+                <p className="text-sm font-semibold text-text-accent">
                   {formatNumber(totalViews)}
                 </p>
                 <p className="text-xs text-text-tertiary">views</p>
@@ -93,7 +90,7 @@ export function BestPerformingAccounts({
             </div>
           ))}
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

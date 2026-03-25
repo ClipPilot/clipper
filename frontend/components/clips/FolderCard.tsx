@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardBody, CardHeader, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Folder, Clip } from "@/api/clips";
 import { ClipCard } from "./ClipCard";
@@ -46,16 +46,16 @@ export const FolderCard: React.FC<FolderCardProps> = ({
 
   return (
     <Card 
-      className={`bg-surface-base border-2 transition-all ${
-        isDragOver 
-          ? "border-accent-400 bg-accent-400/5" 
-          : "border-border-accent hover:border-accent-400/50"
-      }`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <CardHeader className="flex items-center justify-between p-4 border-b border-border-base">
+ className={`bg-surface-base border-2 transition-all ${
+ isDragOver 
+ ? "border-accent-400 bg-accent-400/5" 
+ : "border-border-accent hover:border-accent-400/50"
+ }`}
+ onDragOver={handleDragOver}
+ onDragLeave={handleDragLeave}
+ onDrop={handleDrop}
+ >
+      <Card.Header className="flex items-center justify-between p-4 border-b border-border-base">
         <div className="flex items-center gap-3">
           <div 
             className="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -68,7 +68,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             />
           </div>
           <div>
-            <h3 className="text-base font-bold text-text-primary">{folder.name}</h3>
+            <h3 className="text-base font-bold text-text-accent">{folder.name}</h3>
             <p className="text-xs text-text-tertiary">{clips.length} clips</p>
           </div>
         </div>
@@ -76,30 +76,28 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         <div className="flex items-center gap-2">
           {onDownload && clips.length > 0 && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="primary"
-              onPress={() => onDownload(folder.id)}
-            >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onDownload(folder.id)}
+ >
               <Icon icon="solar:download-minimalistic-outline" className="text-lg" />
             </Button>
           )}
           {onDelete && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="danger"
-              onPress={() => onDelete(folder.id)}
-            >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ onPress={() => onDelete(folder.id)}
+ >
               <Icon icon="solar:trash-bin-outline" className="text-lg" />
             </Button>
           )}
         </div>
-      </CardHeader>
+      </Card.Header>
       
-      <CardBody className="p-4">
+      <Card.Content className="p-4">
         {folder.message && (
           <p className="text-sm text-text-secondary mb-4">{folder.message}</p>
         )}
@@ -118,7 +116,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             </p>
           </div>
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 };

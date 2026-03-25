@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Card, CardBody, Button, Spinner, Progress } from "@heroui/react";
+import { Card, Button, Spinner, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   scriptsAtom,
@@ -506,7 +506,7 @@ export function SceneBuilderStep({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
@@ -514,19 +514,19 @@ export function SceneBuilderStep({
   if (!currentScript || scenes.length === 0) {
     return (
       <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+        <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
             width={48}
           />
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
+          <h3 className="text-lg font-semibold text-text-accent mb-2">
             No Script Found
           </h3>
           <p className="text-text-secondary text-sm">
             Please go back and generate a script first
           </p>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -534,7 +534,7 @@ export function SceneBuilderStep({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-text-primary mb-2">
+        <h2 className="text-2xl font-bold text-text-accent mb-2">
           Storyboard
         </h2>
         <p className="text-text-secondary">
@@ -543,7 +543,7 @@ export function SceneBuilderStep({
       </div>
 
       <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-4">
+        <Card.Content className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div
@@ -564,7 +564,7 @@ export function SceneBuilderStep({
                 />
               </div>
               <div>
-                <p className="text-sm font-medium text-text-primary">
+                <p className="text-sm font-medium text-text-accent">
                   {completedScenes} of {totalScenes} scenes complete
                 </p>
                 <p className="text-xs text-text-muted">
@@ -577,33 +577,30 @@ export function SceneBuilderStep({
             <div className="flex items-center gap-2">
               {onContinue && (
                 <Button
-                  className="bg-accent-400 text-white font-semibold"
-                  size="sm"
-                  isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene || hasArollWithoutDialogue}
-                  onPress={onContinue}
-                  endContent={<Icon icon="solar:arrow-right-bold" width={16} />}
-                >
+ className="bg-accent-400 text-white font-semibold"
+ size="sm"
+ isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene || hasArollWithoutDialogue}
+ onPress={onContinue}
+ >
                   Continue
-                </Button>
+                  <Icon icon="solar:arrow-right-bold" width={16} />
+</Button>
               )}
             </div>
           </div>
-          <Progress
-            value={progressPercent}
-            size="sm"
-            classNames={{
-              track: "bg-surface-base",
-              indicator: allComplete ? "bg-accent-400" : "bg-accent-400/70",
-            }}
-          />
-        </CardBody>
+          <ProgressBar
+ value={progressPercent}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
+        </Card.Content>
       </Card>
 
       {/* Horizontal Storyboard Timeline */}
       <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
         <div className="flex items-center gap-2 mb-4">
           <Icon icon="solar:video-frame-play-horizontal-bold-duotone" className="text-accent-400" width={18} />
-          <span className="text-sm font-medium text-text-primary">Timeline</span>
+          <span className="text-sm font-medium text-text-accent">Timeline</span>
           <span className="text-xs text-text-muted ml-auto">
             Click a scene to edit
           </span>
@@ -768,14 +765,14 @@ export function SceneBuilderStep({
       {allComplete && !hasArollWithoutDialogue && onContinue && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-dark/95 backdrop-blur-sm border-t border-border-base sm:hidden">
           <Button
-            className="w-full bg-accent-400 text-white font-semibold"
-            size="lg"
-            isDisabled={isSavingBRoll || isRegeneratingScene}
-            onPress={onContinue}
-            endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-          >
+ className="w-full bg-accent-400 text-white font-semibold"
+ size="lg"
+ isDisabled={isSavingBRoll || isRegeneratingScene}
+ onPress={onContinue}
+ >
             Continue to Generate Video
-          </Button>
+            <Icon icon="solar:arrow-right-bold" width={18} />
+</Button>
         </div>
       )}
     </div>

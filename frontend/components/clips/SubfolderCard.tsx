@@ -134,7 +134,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-text-primary truncate">
+          <h3 className="text-sm font-medium text-text-accent truncate">
             {folder.name}
           </h3>
         </div>
@@ -145,14 +145,14 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
         <div className="flex items-center gap-1">
           <Tooltip content="Open">
-            <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleOpen}>
+            <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
               <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
             </Button>
           </Tooltip>
 
           {onEdit && (
             <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
                 <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
               </Button>
             </Tooltip>
@@ -160,7 +160,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
           {onDownload && (
             <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" isLoading={isDownloading} onPress={() => onDownload(folder.id)}>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
                 {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
               </Button>
             </Tooltip>
@@ -168,7 +168,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
           {onDelete && (
             <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
+              <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
                 <Icon icon="mdi:delete-outline" className="text-lg" />
               </Button>
             </Tooltip>
@@ -180,7 +180,6 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
   return (
     <Card
-      isPressable
       className={`bg-surface-base transition-all cursor-pointer h-[180px] ${
         isDragging ? "opacity-50 scale-95" : ""
       } ${
@@ -194,7 +193,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
       onDragOver={handleFolderDragOver}
       onDragLeave={handleFolderDragLeave}
       onDrop={handleFolderDrop}
-      onPress={() => onOpen(folder.id)}
+      onClick={() => onOpen(folder.id)}
     >
       <div className="flex flex-col h-full p-4">
         <div className="flex-1 flex items-center justify-center">
@@ -206,7 +205,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="mt-2">
-          <h3 className="text-sm font-semibold text-text-primary truncate text-center">
+          <h3 className="text-sm font-semibold text-text-accent truncate text-center">
             {folder.name}
           </h3>
 
@@ -219,14 +218,14 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
         <div className="mt-2 flex items-center justify-center gap-1">
           <Tooltip content="Open">
-            <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleOpen}>
+            <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
               <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
             </Button>
           </Tooltip>
 
           {onEdit && (
             <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
                 <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
               </Button>
             </Tooltip>
@@ -234,7 +233,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
           {onDownload && (
             <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" isLoading={isDownloading} onPress={() => onDownload(folder.id)}>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
                 {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
               </Button>
             </Tooltip>
@@ -242,7 +241,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
           {onDelete && (
             <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
+              <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
                 <Icon icon="mdi:delete-outline" className="text-lg" />
               </Button>
             </Tooltip>

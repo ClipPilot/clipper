@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Input } from "@heroui/react";
+import { Input, TextField, Label, FieldError, Description} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { CPM_TIERS, getActiveTier } from "@/constants/massPosting";
 
@@ -16,7 +16,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-primary mb-1">
+        <h3 className="text-lg font-semibold text-text-accent mb-1">
           Monthly Budget
         </h3>
         <p className="text-sm text-text-secondary">
@@ -25,18 +25,18 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
       </div>
 
       {/* Budget Input */}
-      <Input
-        type="number"
-        label="Monthly Budget"
-        placeholder="e.g. 25000"
-        startContent={<span className="text-text-tertiary text-sm">$</span>}
-        value={budget?.toString() ?? ""}
-        onValueChange={(v) => setBudget(v ? parseFloat(v) : null)}
-        min={0}
-        step={500}
-        description="Minimum $5,000 required"
-        isRequired
-      />
+            <TextField type="number" isRequired>
+        <Label>Monthly Budget</Label>
+        <Input onChange={(e) => ((v) => setBudget(v ? parseFloat(v) : null))(e.target.value)}
+ placeholder="e.g. 25000"
+ startContent={<span className="text-text-tertiary text-sm">$</span>}
+ value={budget?.toString() ?? ""}
+ min={0}
+ step={500}
+ />
+        <Description>Minimum $5,000 required</Description>
+        <FieldError />
+      </TextField>
 
       {/* CPM Tier Cards */}
       <div className="grid grid-cols-2 gap-3">
@@ -61,7 +61,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
                 )}
               </div>
 
-              <p className={`text-lg font-bold mb-0.5 ${isActive ? "text-accent-400" : "text-text-primary"}`}>
+              <p className={`text-lg font-bold mb-0.5 ${isActive ? "text-accent-400" : "text-text-accent"}`}>
                 ${tier.cpm.toFixed(2)} <span className="text-sm font-normal">CPM</span>
               </p>
 

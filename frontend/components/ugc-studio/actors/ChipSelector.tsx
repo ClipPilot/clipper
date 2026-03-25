@@ -53,20 +53,20 @@ export function ChipSelector({
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-text-primary">{label}</label>
+      <label className="text-sm font-medium text-text-accent">{label}</label>
       <div className={`grid ${gridCols} gap-2`}>
         {options.map((option) => (
           <Button
-            key={option.value}
-            size="sm"
-            variant={isSelected(option.value) ? "solid" : "bordered"}
-            className={`justify-start px-3 h-10 ${
-              isSelected(option.value)
-                ? "bg-accent-400 text-white border-accent-400"
-                : "bg-transparent border-border-base text-text-secondary hover:border-accent-400/50 hover:text-text-primary"
-            }`}
-            onPress={() => handleSelect(option.value)}
-          >
+ key={option.value}
+ size="sm"
+ variant={isSelected(option.value) ? "solid" : "bordered"}
+ className={`justify-start px-3 h-10 ${
+ isSelected(option.value)
+ ? "bg-accent-400 text-white border-accent-400"
+ : "bg-transparent border-border-base text-text-secondary hover:border-accent-400/50 hover:text-text-accent"
+ }`}
+ onPress={() => handleSelect(option.value)}
+ >
             {showColorPreview && option.color && (
               <span
                 className="w-4 h-4 rounded-full mr-2 flex-shrink-0 border border-white/20"

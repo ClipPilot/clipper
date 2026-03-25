@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { Character } from "../../actors/types";
 
@@ -19,7 +19,7 @@ export function CharacterPreviewCard({
 
   return (
     <Card className="bg-surface-elevated border border-border-base">
-      <CardBody className="p-4">
+      <Card.Content className="p-4">
         <div className="flex items-center gap-4">
           <div className="relative w-20 h-24 rounded-xl overflow-hidden bg-surface-base flex-shrink-0">
             {actorImages[selectedImageIndex] ? (
@@ -35,7 +35,7 @@ export function CharacterPreviewCard({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-text-primary truncate">
+            <h3 className="font-semibold text-text-accent truncate">
               {character.name}
             </h3>
             <p className="text-sm text-text-secondary capitalize">
@@ -75,7 +75,7 @@ export function CharacterPreviewCard({
             ))}
           </div>
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

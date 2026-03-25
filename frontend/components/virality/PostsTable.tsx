@@ -12,10 +12,8 @@ import {
   Pagination,
   Button,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
   Chip,
+  Label,
   cn,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -122,33 +120,35 @@ function FilterDropdown<T extends string>({
 
   return (
     <Dropdown>
-      <DropdownTrigger>
-        <button
-          className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
-            isFiltered
-              ? "bg-accent-400/10 text-accent-400 border border-accent-400/30"
-              : "bg-surface-elevated text-text-secondary hover:text-text-primary border border-transparent"
-          )}
-        >
-          <Icon icon={icon} width={13} />
-          {selectedLabel}
-          <Icon icon="solar:alt-arrow-down-linear" width={10} />
-        </button>
-      </DropdownTrigger>
-      <DropdownMenu
-        aria-label="Filter options"
-        selectionMode="single"
-        selectedKeys={new Set([selected])}
-        onSelectionChange={(keys) => {
-          const key = Array.from(keys)[0] as T;
-          if (key) onChange(key);
-        }}
+      <button
+        className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
+          isFiltered
+            ? "bg-accent-400/10 text-accent-400 border border-accent-400/30"
+            : "bg-surface-elevated text-text-secondary hover:text-text-accent border border-transparent"
+        )}
       >
-        {options.map((opt) => (
-          <DropdownItem key={opt.key}>{opt.label}</DropdownItem>
-        ))}
-      </DropdownMenu>
+        <Icon icon={icon} width={13} />
+        {selectedLabel}
+        <Icon icon="solar:alt-arrow-down-linear" width={10} />
+      </button>
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label="Filter options"
+          selectionMode="single"
+          selectedKeys={new Set([selected])}
+          onSelectionChange={(keys) => {
+            const key = Array.from(keys)[0] as T;
+            if (key) onChange(key);
+          }}
+        >
+          {options.map((opt) => (
+            <Dropdown.Item key={opt.key} id={opt.key} textValue={opt.label}>
+              <Label>{opt.label}</Label>
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
     </Dropdown>
   );
 }
@@ -175,7 +175,6 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
   const filteredAndSortedPosts = useMemo(() => {
     let result = posts.slice();
 
-    // Apply filters
     const viewMin = VIEW_FILTER_OPTIONS.find((o) => o.key === viewsFilter)?.min ?? 0;
     if (viewMin > 0) {
       result = result.filter((p) => (p.video_play_count ?? 0) >= viewMin);
@@ -186,7 +185,6 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
       result = result.filter((p) => p.like_count >= likeMin);
     }
 
-    // Apply sorting
     if (sortKey) {
       result.sort((a, b) => {
         let aVal = 0;
@@ -247,7 +245,6 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
 
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-border-base">
         <div className="flex items-center gap-2">
           <span className="text-xs text-text-tertiary whitespace-nowrap">Calculate % change:</span>
@@ -280,20 +277,15 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
       <div className="overflow-x-auto">
       <Table
         aria-label="Posts table"
-        removeWrapper
-        classNames={{
-          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap",
-          td: "py-4 px-4 border-t border-border-base",
-          table: "min-w-[700px]",
-        }}
+        className="min-w-[700px]"
       >
         <TableHeader>
-          <TableColumn>POST</TableColumn>
-          <TableColumn>PLATFORM</TableColumn>
-          <TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">POST</TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">PLATFORM</TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
             <SortableHeader label="VIEWS" sortKey="views" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
-          <TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
             <SortableHeader
               label="ENG RATE"
               sortKey="eng_rate"
@@ -302,17 +294,17 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
               onSort={handleSort}
             />
           </TableColumn>
-          <TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
             <SortableHeader label="LIKES" sortKey="likes" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
-          <TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
             <SortableHeader label="COMMENTS" sortKey="comments" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
-          <TableColumn>TYPE</TableColumn>
-          <TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">TYPE</TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
             <SortableHeader label="PUBLISHED" sortKey="published" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
-          <TableColumn>{""}</TableColumn>
+          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">{""}</TableColumn>
         </TableHeader>
         <TableBody>
           {paginatedPosts.map((post) => (
@@ -321,7 +313,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
               className="cursor-pointer hover:bg-surface-hover transition-colors"
               onClick={() => window.open(post.post_url, "_blank")}
             >
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <div className="flex items-center gap-3 max-w-sm">
                   {!post.thumbnail_url || accountPlatformMap[post.account_id] === "instagram" ? (
                     <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
@@ -332,27 +324,22 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                       />
                     </div>
                   ) : (
-                    <Avatar
-                      src={post.thumbnail_url}
-                      name="P"
-                      size="sm"
-                      radius="sm"
-                      classNames={{
-                        base: "bg-surface-hover flex-shrink-0",
-                      }}
-                    />
+                    <Avatar size="sm" className="bg-surface-hover flex-shrink-0 rounded-sm">
+                      <Avatar.Image src={post.thumbnail_url} alt="Post thumbnail" />
+                      <Avatar.Fallback>P</Avatar.Fallback>
+                    </Avatar>
                   )}
                   <div className="min-w-0">
-                    <p className="text-sm text-text-primary truncate">
+                    <p className="text-sm text-text-accent truncate">
                       {post.caption || "No caption"}
                     </p>
                     {post.mass_post_id != null && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                        <Chip size="sm" variant="tertiary" className="bg-violet-500/10 text-violet-500 h-5 px-1.5 text-[10px] font-medium">
                           Managed by Cuttr
                         </Chip>
                         {post.campaign_name && (
-                          <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                          <Chip size="sm" variant="tertiary" className="bg-amber-500/10 text-amber-500 h-5 px-1.5 text-[10px] font-medium">
                             {post.campaign_name}
                           </Chip>
                         )}
@@ -361,16 +348,16 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <Icon
                   icon={platformIcon(accountPlatformMap[post.account_id])}
                   width={16}
                   className={platformIconColor(accountPlatformMap[post.account_id])}
                 />
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <div className="flex flex-col">
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {post.video_play_count != null
                       ? formatNumber(post.video_play_count)
                       : "—"}
@@ -378,9 +365,9 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   <MetricChangeIndicator change={getPostMetricChange(post, "views", comparisonDate)} />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <div className="flex flex-col">
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {post.video_play_count
                       ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
                       : "—"}
@@ -388,23 +375,23 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} absolute />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <div className="flex flex-col">
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {formatNumber(post.like_count)}
                   </span>
                   <MetricChangeIndicator change={getPostMetricChange(post, "likes", comparisonDate)} />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <div className="flex flex-col">
-                  <span className="font-medium text-text-primary">
+                  <span className="font-medium text-text-accent">
                     {formatNumber(post.comment_count)}
                   </span>
                   <MetricChangeIndicator change={getPostMetricChange(post, "comments", comparisonDate)} />
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 {post.post_type ? (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-text-secondary">
                     {post.post_type}
@@ -413,12 +400,12 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   <span className="text-text-tertiary">—</span>
                 )}
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 <span className="text-sm text-text-secondary">
                   {post.posted_at ? formatDate(post.posted_at) : "—"}
                 </span>
               </TableCell>
-              <TableCell>
+              <TableCell className="py-4 px-4 border-t border-border-base">
                 {onDeletePost && (
                   <button
                     className="p-1 rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-500/10 transition-colors"
@@ -448,34 +435,30 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
             <span className="text-sm text-text-tertiary">Show:</span>
             {[25, 50, 100].map((size) => (
               <Button
-                key={size}
-                size="sm"
-                variant={rowsPerPage === size ? "solid" : "flat"}
-                className={
-                  rowsPerPage === size
-                    ? "bg-accent-400 text-white min-w-[40px]"
-                    : "bg-surface-elevated text-text-secondary min-w-[40px]"
-                }
-                onPress={() => {
-                  setRowsPerPage(size);
-                  setPage(1);
-                }}
-              >
+ key={size}
+ size="sm"
+ variant={rowsPerPage === size ? "primary" : "tertiary"}
+ className={
+ rowsPerPage === size
+ ? "bg-accent-400 text-white min-w-[40px]"
+ : "bg-surface-elevated text-text-secondary min-w-[40px]"
+ }
+ onPress={() => {
+ setRowsPerPage(size);
+ setPage(1);
+ }}
+ >
                 {size}
               </Button>
             ))}
           </div>
           {totalPages > 1 && (
             <Pagination
-              total={totalPages}
-              page={page}
-              onChange={setPage}
-              size="sm"
-              classNames={{
-                item: "bg-surface-elevated text-text-secondary",
-                cursor: "bg-accent-400 text-white",
-              }}
-            />
+ total={totalPages}
+ page={page}
+ onChange={setPage}
+ className="[&_button]:bg-surface-elevated [&_button]:text-text-secondary [&_.active]:bg-accent-400 [&_.active]:text-white"
+ />
           )}
         </div>
       </div>

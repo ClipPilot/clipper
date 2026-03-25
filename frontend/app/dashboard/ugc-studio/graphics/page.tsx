@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Textarea, Select, SelectItem, Card, CardBody, Spinner, addToast } from "@heroui/react";
+import { Button, TextArea, Select, SelectItem, Card, Spinner } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
@@ -52,18 +53,10 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
       });
 
       setResults(response.images);
-      addToast({
-        title: "Graphics generated",
-        description: `${response.images.length} images created successfully`,
-        color: "success",
-      });
+      toast.success("Graphics generated", { description: `${response.images.length} images created successfully` });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Generation failed";
-      addToast({
-        title: "Generation failed",
-        description: message,
-        color: "danger",
-      });
+      toast.danger("Generation failed", { description: message });
     } finally {
       setGenerating(false);
     }
@@ -71,11 +64,11 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
 
   const handleUseAsReference = async (image: GeneratedGraphic) => {
     if (productImages.some((img) => img.key === image.s3Key)) {
-      addToast({ title: "Already added as reference", color: "warning" });
+      toast.warning("Already added as reference");
       return;
     }
     if (productImages.length >= 4) {
-      addToast({ title: "Max 4 reference images", description: "Remove one to add another", color: "warning" });
+      toast.warning("Max 4 reference images", { description: "Remove one to add another" });
       return;
     }
     try {
@@ -83,9 +76,9 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
       const blob = await response.blob();
       const localUrl = URL.createObjectURL(blob);
       setProductImages((prev) => [...prev, { key: image.s3Key, url: localUrl }]);
-      addToast({ title: "Added as reference image", color: "success" });
+      toast.success("Added as reference image");
     } catch {
-      addToast({ title: "Failed to add reference", color: "danger" });
+      toast.danger("Failed to add reference");
     }
   };
 
@@ -102,7 +95,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      addToast({ title: "Download failed", color: "danger" });
+      toast.danger("Download failed");
     }
   };
 
@@ -134,7 +127,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
               <label className="block text-sm font-medium text-text-secondary mb-2">
                 Describe your graphic
               </label>
-              <Textarea
+              <TextArea
                 placeholder="E.g. A sleek product photo of wireless earbuds on a gradient background with bold typography saying 'Sound Reimagined'..."
                 value={prompt}
                 onValueChange={setPrompt}
@@ -266,7 +259,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
                       key={image.s3Key}
                       className="bg-surface-base border border-border-base overflow-hidden group hover:border-pink-400/40 transition-all"
                     >
-                      <CardBody className="p-0 relative">
+                      <Card.Content className="p-0 relative">
                         <img
                           src={image.presignedUrl}
                           alt={`Generated graphic ${index + 1}`}
@@ -290,7 +283,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
                             Use as Reference
                           </Button>
                         </div>
-                      </CardBody>
+                      </Card.Content>
                     </Card>
                   ))}
                 </div>

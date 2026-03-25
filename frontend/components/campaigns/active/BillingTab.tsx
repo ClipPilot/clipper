@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Card, CardBody, Spinner } from "@heroui/react";
+import { Card, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -193,15 +193,15 @@ export function BillingTab({ campaign }: BillingTabProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {summaryCards.map((stat) => (
           <Card
-            key={stat.title}
-            className="bg-surface-base border border-border-base"
-          >
-            <CardBody className="p-4">
+ key={stat.title}
+ className="bg-surface-base border border-border-base"
+ >
+            <Card.Content className="p-4">
               <p className="text-[11px] text-text-tertiary font-medium tracking-wide mb-2">
                 {stat.title}
               </p>
               <div className="flex items-end justify-between gap-2">
-                <p className="text-xl font-bold text-text-primary">
+                <p className="text-xl font-bold text-text-accent">
                   {stat.value}
                 </p>
                 <div
@@ -210,7 +210,7 @@ export function BillingTab({ campaign }: BillingTabProps) {
                   <Icon icon={stat.icon} width={18} className={stat.iconColor} />
                 </div>
               </div>
-            </CardBody>
+            </Card.Content>
           </Card>
         ))}
       </div>
@@ -218,7 +218,7 @@ export function BillingTab({ campaign }: BillingTabProps) {
       <div className="bg-surface-base border border-border-base rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-text-primary">
+            <h3 className="text-sm font-medium text-text-accent">
               Daily Charges
             </h3>
             <span className="text-xs text-text-secondary">
@@ -260,20 +260,20 @@ export function BillingTab({ campaign }: BillingTabProps) {
                 tickFormatter={(v) => `$${v}`}
               />
               <Tooltip
-                cursor={{ fill: "hsl(var(--heroui-default-100))" }}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--heroui-content1))",
-                  border: "1px solid hsl(var(--heroui-default-200))",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  padding: "8px 12px",
-                }}
-                formatter={(value, _name, props) => [
-                  `$${Number(value).toFixed(2)}`,
-                  `${(props as any).payload.views.toLocaleString()} views`,
-                ]}
-                labelFormatter={(label) => label}
-              />
+ cursor={{ fill: "hsl(var(--heroui-default-100))" }}
+ contentStyle={{
+ backgroundColor: "hsl(var(--heroui-content1))",
+ border: "1px solid hsl(var(--heroui-default-200))",
+ borderRadius: "8px",
+ fontSize: "12px",
+ padding: "8px 12px",
+ }}
+ formatter={(value, _name, props) => [
+ `$${Number(value).toFixed(2)}`,
+ `${(props as any).payload.views.toLocaleString()} views`,
+ ]}
+ labelFormatter={(label) => label}
+ />
               <Bar
                 dataKey="charge"
                 fill="#6366F1"
@@ -291,7 +291,7 @@ export function BillingTab({ campaign }: BillingTabProps) {
 
       <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
         <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
-          <span className="text-sm font-medium text-text-primary">
+          <span className="text-sm font-medium text-text-accent">
             Billing History
           </span>
           <span className="text-xs text-text-secondary">
@@ -367,7 +367,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
               width={12}
               className="text-text-tertiary"
             />
-            <span className="text-sm text-text-primary">
+            <span className="text-sm text-text-accent">
               {new Date(charge.chargeDate).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -382,7 +382,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
           </span>
         </td>
         <td className="px-6 py-3">
-          <span className="text-sm font-medium text-text-primary">
+          <span className="text-sm font-medium text-text-accent">
             ${(charge.chargeCents / 100).toFixed(2)}
           </span>
         </td>
@@ -452,7 +452,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
                       <td className="px-4 py-1.5 text-xs text-text-secondary">
                         +{post.delta_views.toLocaleString()}
                       </td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-text-primary">
+                      <td className="px-4 py-1.5 text-xs font-medium text-text-accent">
                         ${(post.charge_cents / 100).toFixed(2)}
                       </td>
                     </tr>

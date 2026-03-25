@@ -46,17 +46,17 @@ export function PlanUpgradeWall({
           </div>
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-text-primary">{title}</h2>
+          <h2 className="text-xl font-bold text-text-accent">{title}</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
             {description}
           </p>
         </div>
         <Button
-          size="lg"
-          className="w-full bg-accent-400 text-white font-semibold"
-          onPress={() => router.push("/dashboard/pricing")}
-          startContent={<Icon icon="solar:rocket-bold" width={18} />}
-        >
+ size="lg"
+ className="w-full bg-accent-400 text-white font-semibold"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+          <Icon icon="solar:rocket-bold" width={18} />
           {buttonLabel}
         </Button>
       </div>

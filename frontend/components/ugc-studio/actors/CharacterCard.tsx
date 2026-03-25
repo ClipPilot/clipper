@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardBody, Chip, Switch, Tooltip } from "@heroui/react";
+import { Card, Chip, Switch, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import type { Character } from "./types";
@@ -26,15 +26,14 @@ export function CharacterCard({
 
   return (
     <Card
-      isPressable
-      onPress={() => onSelect(character)}
-      className={`bg-surface-base border-2 transition-all duration-200 group overflow-hidden rounded-2xl ${
-        isSelected
-          ? "border-accent-400 ring-2 ring-accent-400/30 shadow-lg shadow-accent-400/10"
-          : "border-border-base hover:border-accent-400/50 hover:shadow-md"
-      }`}
-    >
-      <CardBody className="p-0">
+ onPress={() => onSelect(character)}
+ className={`bg-surface-base border-2 transition-all duration-200 group overflow-hidden rounded-2xl ${
+ isSelected
+ ? "border-accent-400 ring-2 ring-accent-400/30 shadow-lg shadow-accent-400/10"
+ : "border-border-base hover:border-accent-400/50 hover:shadow-md"
+ }`}
+ >
+      <Card.Content className="p-0">
         <div className="relative aspect-[3/4] overflow-hidden">
           {imageUrl ? (
             <img
@@ -59,13 +58,9 @@ export function CharacterCard({
           {character.public && (
             <div className="absolute top-3 left-3">
               <Chip
-                size="sm"
-                variant="flat"
-                classNames={{
-                  base: "bg-green-500/90 backdrop-blur-sm h-6",
-                  content: "text-xs font-medium text-white px-1.5",
-                }}
-              >
+ size="sm"
+ variant="tertiary"
+ >
                 Public
               </Chip>
             </div>
@@ -109,37 +104,33 @@ export function CharacterCard({
               <Tooltip content={character.public ? "Make private" : "Share with community"}>
                 <div>
                   <Switch
-                    size="sm"
-                    isSelected={character.public}
-                    isDisabled={isUpdating}
-                    onValueChange={async () => {
-                      if (isUpdating) return;
-                      setIsUpdating(true);
-                      try {
-                        const response = await actorsAPI.update(character.id, { isPublic: !character.public });
-                        // Preserve image URLs from original character since API response may not include computed fields
-                        const updatedCharacter = {
-                          ...response.character,
-                          imageUrls: response.character.imageUrls || character.imageUrls,
-                          primaryImageUrl: response.character.primaryImageUrl || character.primaryImageUrl,
-                        };
-                        onShareToggle?.(updatedCharacter, !character.public);
-                      } catch (error) {
-                        console.error("Failed to update character:", error);
-                      } finally {
-                        setIsUpdating(false);
-                      }
-                    }}
-                    classNames={{
-                      wrapper: "group-data-[selected=true]:bg-green-500",
-                    }}
-                  />
+ isSelected={character.public}
+ isDisabled={isUpdating}
+ onChange={async () => {
+ if (isUpdating) return;
+ setIsUpdating(true);
+ try {
+ const response = await actorsAPI.update(character.id, { isPublic: !character.public });
+ // Preserve image URLs from original character since API response may not include computed fields
+ const updatedCharacter = {
+ ...response.character,
+ imageUrls: response.character.imageUrls || character.imageUrls,
+ primaryImageUrl: response.character.primaryImageUrl || character.primaryImageUrl,
+ };
+ onShareToggle?.(updatedCharacter, !character.public);
+ } catch (error) {
+ console.error("Failed to update character:", error);
+ } finally {
+ setIsUpdating(false);
+ }
+ }}
+ />
                 </div>
               </Tooltip>
             </div>
           </div>
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

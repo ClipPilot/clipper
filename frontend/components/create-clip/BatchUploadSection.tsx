@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Button, Card, CardBody, Progress } from "@heroui/react";
+import { Button, Card, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   videoAPI,
@@ -372,7 +372,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-primary truncate">
+              <p className="text-sm font-medium text-text-accent truncate">
                 {fileState.file.name}
               </p>
               <p className="text-xs text-text-tertiary">
@@ -395,20 +395,18 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             {fileState.status === "failed" && (
               <div className="flex items-center gap-2">
                 <Button
-                  size="sm"
-                  color="primary"
-                  variant="flat"
-                  onPress={() => retryUpload(fileState.videoIndex)}
-                >
+ size="sm"
+ variant="tertiary"
+ onPress={() => retryUpload(fileState.videoIndex)}
+ >
                   Retry
                 </Button>
                 <Button
-                  size="sm"
-                  color="danger"
-                  variant="flat"
-                  isIconOnly
-                  onPress={() => removeFile(fileState.videoIndex)}
-                >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ onPress={() => removeFile(fileState.videoIndex)}
+ >
                   <Icon icon="solar:trash-bin-trash-bold" />
                 </Button>
               </div>
@@ -417,12 +415,12 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 
           {fileState.status === "uploading" && fileState.progress && (
             <div className="mt-3">
-              <Progress
-                value={fileState.progress.percentage}
-                color="primary"
-                size="sm"
-                className="mb-1"
-              />
+              <ProgressBar
+ value={fileState.progress.percentage}
+ className="mb-1"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <div className="flex justify-between text-xs text-text-tertiary">
                 <span>
                   {formatBytes(fileState.progress.loaded)} /{" "}
@@ -465,7 +463,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         </div>
 
         <div className="text-center">
-          <h3 className="text-lg font-bold text-text-primary mb-1">
+          <h3 className="text-lg font-bold text-text-accent mb-1">
             Drag & Drop Videos
           </h3>
           <p className="text-sm text-text-secondary">
@@ -484,15 +482,14 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 
         <div className="flex gap-3">
           <Button
-            as="label"
-            htmlFor="batch-video-upload"
-            size="md"
-            isDisabled={downloading}
-            color="primary"
-            variant="flat"
-            startContent={<Icon icon="solar:folder-open-bold" />}
-            className="cursor-pointer"
-          >
+ as="label"
+ htmlFor="batch-video-upload"
+ size="md"
+ isDisabled={downloading}
+ variant="tertiary"
+ className="cursor-pointer"
+ >
+            <Icon icon="solar:folder-open-bold" />
             Browse Files
           </Button>
 
@@ -514,7 +511,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
   if (isDisabled) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8">
+        <Card.Content className="p-8">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="w-20 h-20 bg-surface-elevated rounded-full flex items-center justify-center">
               <Icon
@@ -531,14 +528,14 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
               </p>
             </div>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-6">
+      <Card.Content className="p-6">
         {isUploading && (
           <div className="mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
             <Icon
@@ -555,7 +552,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         {files.length > 0 && (
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-text-primary">
+              <span className="text-sm font-medium text-text-accent">
                 {files.length} / {maxVideos} videos
               </span>
               {allCompleted && (
@@ -567,11 +564,10 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             </div>
             {!isUploading && (
               <Button
-                size="sm"
-                color="danger"
-                variant="light"
-                onPress={clearAll}
-              >
+ size="sm"
+ variant="danger-soft"
+ onPress={clearAll}
+ >
                 Clear All
               </Button>
             )}
@@ -591,7 +587,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             Some uploads failed. Please retry or remove them before proceeding.
           </p>
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 };
