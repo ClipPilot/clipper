@@ -150,38 +150,39 @@ function CharactersPageContent() {
  selectedKey={activeTab}
  onSelectionChange={(key) => setActiveTab(key as "create" | "my-actors")}
  >
-          <Tab
-            key="create"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:magic-stick-3-bold-duotone" width={18} />
-                <span>Create New</span>
-                <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">1 Credit</span>
-              </div>
-            }
-          >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Characters">
+              <Tabs.Tab id="create">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:magic-stick-3-bold-duotone" width={18} />
+                  <span>Create New</span>
+                  <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">1 Credit</span>
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="my-actors">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:user-circle-bold-duotone" width={18} />
+                  <span>My Actors</span>
+                  {myActorsTotal > 0 && (
+                    <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                      {myActorsTotal}
+                    </span>
+                  )}
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
+          <Tabs.Panel id="create">
             <div className="pt-8">
               <CreateCharacterFlow
                 teamId={teamId!}
                 onCharacterCreated={handleCharacterCreated}
               />
             </div>
-          </Tab>
-
-          <Tab
-            key="my-actors"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:user-circle-bold-duotone" width={18} />
-                <span>My Actors</span>
-                {myActorsTotal > 0 && (
-                  <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
-                    {myActorsTotal}
-                  </span>
-                )}
-              </div>
-            }
-          >
+          </Tabs.Panel>
+          <Tabs.Panel id="my-actors">
             <div className="pt-8 space-y-6">
               {loading ? (
                 <div className="flex items-center justify-center py-20">
@@ -238,7 +239,7 @@ function CharactersPageContent() {
                 </Card>
               )}
             </div>
-          </Tab>
+          </Tabs.Panel>
         </Tabs>
 
         {teamId && (

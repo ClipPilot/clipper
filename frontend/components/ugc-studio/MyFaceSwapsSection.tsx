@@ -309,7 +309,6 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
  total={totalPages}
  page={currentPage}
  onChange={handlePageChange}
- showControls
  siblings={2}
  boundaries={1}
  />

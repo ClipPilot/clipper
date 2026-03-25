@@ -160,33 +160,33 @@ export function GeneratePanel({
           {/* Face Swap mode — auto-detect button (no editor) */}
           {swapType === "face" && !showEditor && onFaceSwapGenerate && (
             <Button
- className="w-full bg-accent-400 text-white font-semibold"
- size="lg"
- isDisabled={!canFaceSwap}
- onPress={onFaceSwapGenerate}
- >
-              <Icon icon="solar:magic-stick-3-bold-duotone" width={20} />
-              Generate Face Swap
-              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
-                  {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
-                </span>
-</Button>
+              className="w-full bg-accent-400 text-white font-semibold whitespace-nowrap"
+              size="lg"
+              isDisabled={!canFaceSwap}
+              onPress={onFaceSwapGenerate}
+            >
+              <Icon icon="solar:magic-stick-3-bold-duotone" width={18} className="flex-shrink-0" />
+              <span className="truncate">Generate Face Swap</span>
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full flex-shrink-0">
+                {creditCost > 0 ? `${creditCost}cr` : "5cr"}
+              </span>
+            </Button>
           )}
 
           {/* Full Body mode — auto-detect button (no editor) */}
           {swapType === "fullbody" && !showEditor && onAutoDetectAndGenerate && (
             <Button
- className="w-full bg-purple-500 text-white font-semibold"
- size="lg"
- isDisabled={!canAutoGenerate}
- onPress={onAutoDetectAndGenerate}
- >
-              <Icon icon="solar:face-scan-circle-bold" width={20} />
-              Auto-detect & Generate
-              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
-                  {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
-                </span>
-</Button>
+              className="w-full bg-purple-500 text-white font-semibold whitespace-nowrap"
+              size="lg"
+              isDisabled={!canAutoGenerate}
+              onPress={onAutoDetectAndGenerate}
+            >
+              <Icon icon="solar:face-scan-circle-bold" width={18} className="flex-shrink-0" />
+              <span className="truncate">Auto-detect &amp; Generate</span>
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full flex-shrink-0">
+                {creditCost > 0 ? `${creditCost}cr` : "5cr"}
+              </span>
+            </Button>
           )}
 
           {/* Both modes — back to auto-detect (editor open) */}
@@ -205,17 +205,17 @@ export function GeneratePanel({
           {/* Both modes — manual generate (editor open) */}
           {showEditor && (
             <Button
- className="w-full bg-accent-400 text-white font-semibold"
- size="lg"
- isDisabled={!isValid}
- onPress={onGenerate}
- >
-              <Icon icon="solar:magic-stick-3-bold-duotone" width={20} />
-              {swapType === "face" ? "Generate Face Swap" : "Generate"}
-              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
-                  {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
-                </span>
-</Button>
+              className="w-full bg-accent-400 text-white font-semibold whitespace-nowrap"
+              size="lg"
+              isDisabled={!isValid}
+              onPress={onGenerate}
+            >
+              <Icon icon="solar:magic-stick-3-bold-duotone" width={18} className="flex-shrink-0" />
+              <span className="truncate">{swapType === "face" ? "Generate Face Swap" : "Generate"}</span>
+              <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full flex-shrink-0">
+                {creditCost > 0 ? `${creditCost}cr` : "5cr"}
+              </span>
+            </Button>
           )}
         </div>
       </Card.Content>

@@ -294,7 +294,7 @@ export function FaceSwapDetailModal({
 
             {/* Title Section */}
             {isCompleted && (
-              <div className="p-3 sm:p-4 rounded-lg bg-surface-elevated">
+              <div className="p-3 sm:p-4 rounded-lg bg-surface-elevated border border-border-base">
                 <p className="text-xs text-text-tertiary mb-2">Title</p>
                 {isEditingTitle ? (
                   <div className="flex items-center gap-2">

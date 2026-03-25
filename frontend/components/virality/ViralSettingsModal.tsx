@@ -463,9 +463,22 @@ export function ViralSettingsModal({
  selectedKey={timeFrame}
  onSelectionChange={(key) => setTimeFrame(key as TimeFrame)}
  >
-                <Tab key="12" title="12 hours" />
-                <Tab key="24" title="24 hours" />
-                <Tab key="48" title="48 hours" />
+                <Tabs.ListContainer>
+                  <Tabs.List aria-label="Detection window">
+                    <Tabs.Tab id="12">
+                      12 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="24">
+                      24 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="48">
+                      48 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
               </Tabs>
             </section>
 

@@ -175,7 +175,6 @@ export function VideoTable({
         </span>
         <Pagination
  isCompact
- showControls
  showShadow
  page={page}
  total={totalPages}

@@ -201,9 +201,22 @@ export function VoiceSelector({
  selectedKey={filter}
  onSelectionChange={(key) => setFilter(key as GenderFilter)}
  >
-        <Tab key="all" title="All" />
-        <Tab key="male" title="Male" />
-        <Tab key="female" title="Female" />
+        <Tabs.ListContainer>
+          <Tabs.List aria-label="Voice gender filter">
+            <Tabs.Tab id="all">
+              All
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="male">
+              Male
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="female">
+              Female
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
       </Tabs>
       <div
         className={
@@ -352,9 +365,22 @@ export function VoiceSelector({
  selectedKey={filter}
  onSelectionChange={(key) => setFilter(key as GenderFilter)}
  >
-            <Tab key="all" title="All" />
-            <Tab key="male" title="Male" />
-            <Tab key="female" title="Female" />
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="Voice gender filter">
+                <Tabs.Tab id="all">
+                  All
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="male">
+                  Male
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="female">
+                  Female
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
           </Tabs>
         </Card.Header>
         <Card.Content className="pt-4">

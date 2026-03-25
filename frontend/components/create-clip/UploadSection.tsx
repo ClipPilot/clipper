@@ -619,28 +619,30 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         <Tabs
  aria-label="Upload method"
  >
-          <Tab
-            key="file"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:upload-bold" />
-                <span>Upload File</span>
-              </div>
-            }
-          >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Upload method">
+              <Tabs.Tab id="file">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:upload-bold" />
+                  <span>Upload File</span>
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="url">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:link-bold" />
+                  <span>Paste URL</span>
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
+          <Tabs.Panel id="file">
             {renderFileUpload()}
-          </Tab>
-          <Tab
-            key="url"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:link-bold" />
-                <span>Paste URL</span>
-              </div>
-            }
-          >
+          </Tabs.Panel>
+          <Tabs.Panel id="url">
             {renderUrlDownload()}
-          </Tab>
+          </Tabs.Panel>
         </Tabs>
       </Card.Content>
     </Card>

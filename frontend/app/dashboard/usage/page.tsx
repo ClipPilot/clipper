@@ -340,9 +340,22 @@ export default function UsagePage() {
  selectedKey={period}
  onSelectionChange={(key) => setPeriod(key as Period)}
  >
-                <Tab key="day" title="Daily" />
-                <Tab key="week" title="Weekly" />
-                <Tab key="month" title="Monthly" />
+                <Tabs.ListContainer>
+                  <Tabs.List aria-label="Usage period">
+                    <Tabs.Tab id="day">
+                      Daily
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="week">
+                      Weekly
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="month">
+                      Monthly
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
               </Tabs>
             </div>
 
