@@ -267,7 +267,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
  >
                 <Icon
                   icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
-                  className={`text-lg ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
+                  className={`text-lg ${isInCampaign ? "text-green-500" : "text-text-secondary"}`}
                 />
               </Button>
             </Tooltip>
@@ -381,7 +381,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             {onAdPosting && (
               <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
                 <Button isIconOnly size="sm" variant="tertiary" className="w-7 h-7 min-w-7" onPress={isInCampaign ? undefined : onAdPosting} isDisabled={isInCampaign}>
-                  <Icon icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"} className={`text-base ${isInCampaign ? "text-success-500" : "text-text-secondary"}`} />
+                  <Icon icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"} className={`text-base ${isInCampaign ? "text-green-500" : "text-text-secondary"}`} />
                 </Button>
               </Tooltip>
             )}

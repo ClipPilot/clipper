@@ -182,11 +182,10 @@ export const MyVideoJobsSection = forwardRef<
       {totalPages > 1 && (
         <div className="flex justify-center pt-4">
           <Pagination
- total={totalPages}
- page={currentPage}
- onChange={setCurrentPage}
- showControls
- />
+            total={totalPages}
+            page={currentPage}
+            onChange={setCurrentPage}
+          />
         </div>
       )}
 

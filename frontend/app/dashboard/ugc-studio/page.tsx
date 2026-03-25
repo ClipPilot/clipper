@@ -96,11 +96,10 @@ export default function UGCStudioPage() {
           transition={{ duration: 0.4, delay: 0.3 }}
           className="mt-10"
         >
-          <Card
- className="bg-surface-base border border-border-base overflow-hidden hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
- onPress={() => router.push("/dashboard/ugc-studio/characters")}
- >
-            <Card.Content className="p-0">
+          <div
+            className="bg-surface-base border border-border-base overflow-hidden rounded-xl hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
+            onClick={() => router.push("/dashboard/ugc-studio/characters")}
+          >
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-48 h-32 md:h-auto bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-transparent flex items-center justify-center">
                   <div className="w-16 h-16 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -142,8 +141,7 @@ export default function UGCStudioPage() {
                   </div>
                 </div>
               </div>
-            </Card.Content>
-          </Card>
+          </div>
         </motion.div>
 
         <motion.div
@@ -181,15 +179,14 @@ function FeatureCard({
   onPress: () => void;
 }) {
   return (
-    <Card
- className={`bg-surface-base border border-border-base overflow-hidden transition-all duration-300 ${
- comingSoon
- ? "opacity-70 cursor-not-allowed"
- : "hover:border-accent-400/40 hover:shadow-lg hover:shadow-accent-400/5 cursor-pointer group"
- }`}
- onPress={onPress}
- >
-      <Card.Content className="p-0">
+    <div
+      className={`bg-surface-base border border-border-base rounded-xl overflow-hidden transition-all duration-300 ${
+        comingSoon
+          ? "opacity-70 cursor-not-allowed"
+          : "hover:border-accent-400/40 hover:shadow-lg hover:shadow-accent-400/5 cursor-pointer group"
+      }`}
+      onClick={comingSoon ? undefined : onPress}
+    >
         <div
           className={`h-32 bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
         >
@@ -253,7 +250,6 @@ function FeatureCard({
             </div>
           )}
         </div>
-      </Card.Content>
-    </Card>
+    </div>
   );
 }
