@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, ProgressBar, Button } from "@heroui/react";
+import { ProgressBar, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
@@ -52,8 +52,8 @@ export function VideoLoadingAnimation({
           </div>
 
           {/* Central card */}
-          <Card className="bg-surface-elevated/90 backdrop-blur-xl border border-border-base relative z-10">
-            <Card.Content className="p-8">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated/90 backdrop-blur-xl relative z-10">
+            <div className="p-8">
               {/* Animated Cuttr logo */}
               <div className="flex justify-center mb-6">
                 <motion.div
@@ -121,7 +121,7 @@ export function VideoLoadingAnimation({
               </div>
 
               {/* Title */}
-              <h2 className="text-xl font-bold text-text-accent text-center mb-2">
+              <h2 className="text-xl font-bold text-text-primary text-center mb-2">
                 Creating Your Video
               </h2>
 
@@ -156,8 +156,8 @@ export function VideoLoadingAnimation({
               <p className="text-xs text-text-muted text-center">
                 {progressMessage}
               </p>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </div>
 
 

@@ -2,8 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Card,
-  Button,
+import { Button,
   Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
@@ -57,7 +56,7 @@ export function VideoPreview({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text-accent mb-1">
+          <h2 className="text-2xl font-bold text-text-primary mb-1">
             Video Preview
           </h2>
           <p className="text-text-secondary text-sm">
@@ -80,8 +79,8 @@ export function VideoPreview({
       </div>
 
       {/* Main video player */}
-      <Card className="bg-surface-elevated border border-border-base overflow-hidden">
-        <Card.Content className="p-0">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div>
           <div className="relative aspect-[9/16] max-h-[70vh] mx-auto bg-black">
             {videoStatus.finalVideoUrl ? (
               <>
@@ -176,20 +175,20 @@ export function VideoPreview({
               )}
             </div>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
 
       {/* Script used */}
       {scenes.length > 0 && (
-        <Card className="bg-surface-elevated border border-border-base">
-          <Card.Content className="p-4">
+        <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+          <div className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Icon
                 icon="solar:document-text-bold-duotone"
                 className="text-accent-400"
                 width={20}
               />
-              <h3 className="text-lg font-semibold text-text-accent">
+              <h3 className="text-lg font-semibold text-text-primary">
                 Script Used
               </h3>
             </div>
@@ -217,7 +216,7 @@ export function VideoPreview({
                         {scene.estimatedDurationSeconds || (scene as any).durationSeconds || 5}s
                       </span>
                     </div>
-                    <p className="text-sm text-text-accent leading-relaxed">
+                    <p className="text-sm text-text-primary leading-relaxed">
                       "{scene.dialogue}"
                     </p>
                     {scene.action && (
@@ -229,15 +228,15 @@ export function VideoPreview({
                 </motion.div>
               ))}
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       )}
 
       {!isFinalized && (
         <>
           {/* Folder Selection */}
-          <Card className="bg-surface-elevated border border-border-base">
-            <Card.Content className="p-4">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+            <div className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -247,7 +246,7 @@ export function VideoPreview({
                   />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-text-accent mb-2">
+                  <p className="text-sm font-medium text-text-primary mb-2">
                     Save to folder (optional)
                   </p>
                   <FolderSelector
@@ -259,11 +258,11 @@ export function VideoPreview({
                   />
                 </div>
               </div>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-surface-elevated border border-border-base">
-            <Card.Content className="p-4">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+            <div className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -273,7 +272,7 @@ export function VideoPreview({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-accent mb-1">
+                  <p className="text-sm font-medium text-text-primary mb-1">
                     What happens when you finalize?
                   </p>
                   <p className="text-xs text-text-secondary">
@@ -282,8 +281,8 @@ export function VideoPreview({
                   </p>
                 </div>
               </div>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </>
       )}
 

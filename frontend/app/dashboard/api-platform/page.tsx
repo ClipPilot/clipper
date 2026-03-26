@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import type { Key } from "@heroui/react";
 import { Card,
   Input,
   Button,
@@ -11,6 +12,8 @@ import { Card,
   Skeleton,
   Switch,
   Select,
+  Label,
+  ListBox,
   toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
@@ -242,7 +245,7 @@ export default function ApiPlatformPage() {
               className="text-green-500"
               width={24}
             />
-            <span className="text-text-accent">API Key Created</span>
+            <span className="text-text-primary">API Key Created</span>
           </div>
         </Modal.Header>
         <Modal.Body className="py-6 gap-4">
@@ -260,7 +263,7 @@ export default function ApiPlatformPage() {
           <div className="p-4 rounded-lg bg-surface-elevated space-y-4">
             <div>
               <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Key Name</p>
-              <p className="text-text-accent font-medium">{createdKeyName}</p>
+              <p className="text-text-primary font-medium">{createdKeyName}</p>
             </div>
             <div>
               <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">API Key</p>
@@ -275,7 +278,7 @@ export default function ApiPlatformPage() {
  className={
  copied
  ? "bg-green-500/20 text-green-500"
- : "bg-surface-dark text-text-secondary hover:text-text-accent"
+ : "bg-surface-dark text-text-secondary hover:text-text-primary"
  }
  onPress={() => {
  navigator.clipboard.writeText(createdKeyRaw);
@@ -324,7 +327,7 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <h1 className="text-2xl font-bold text-text-accent">API Platform</h1>
+          <h1 className="text-2xl font-bold text-text-primary">API Platform</h1>
           <p className="text-text-secondary mt-1">
             Manage your API keys and wallet balance
           </p>
@@ -367,7 +370,7 @@ export default function ApiPlatformPage() {
                 width={24}
               />
               <div>
-                <h2 className="text-lg font-semibold text-text-accent">
+                <h2 className="text-lg font-semibold text-text-primary">
                   Wallet
                 </h2>
                 <p className="text-sm text-text-tertiary">
@@ -395,7 +398,7 @@ export default function ApiPlatformPage() {
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Spent
                       </p>
-                      <p className="text-2xl font-bold text-text-accent">
+                      <p className="text-2xl font-bold text-text-primary">
                         {formatCents(wallet.total_spent_cents)}
                       </p>
                     </div>
@@ -403,7 +406,7 @@ export default function ApiPlatformPage() {
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Funded
                       </p>
-                      <p className="text-2xl font-bold text-text-accent">
+                      <p className="text-2xl font-bold text-text-primary">
                         {formatCents(wallet.total_topped_up_cents)}
                       </p>
                     </div>
@@ -424,7 +427,7 @@ export default function ApiPlatformPage() {
  className={
  topUpAmount === (preset / 100).toString()
  ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
- : "bg-surface-elevated text-text-secondary hover:text-text-accent"
+ : "bg-surface-elevated text-text-secondary hover:text-text-primary"
  }
  onPress={() =>
  setTopUpAmount((preset / 100).toString())
@@ -479,7 +482,7 @@ export default function ApiPlatformPage() {
                 width={24}
               />
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-text-accent">
+                <h2 className="text-lg font-semibold text-text-primary">
                   Auto-Refill
                 </h2>
                 <p className="text-sm text-text-tertiary">
@@ -494,7 +497,7 @@ export default function ApiPlatformPage() {
                 <>
                   <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
                     <div>
-                      <p className="text-text-accent font-medium">
+                      <p className="text-text-primary font-medium">
                         Enable Auto-Refill
                       </p>
                       <p className="text-sm text-text-tertiary">
@@ -519,17 +522,24 @@ export default function ApiPlatformPage() {
                           Refill when balance drops below
                         </p>
                         <Select
- selectedKeys={[autoRefill.refill_threshold_cents.toString()]}
- onSelectionChange={(keys) => {
- const val = Array.from(keys)[0] as string;
- if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val) });
+ value={autoRefill.refill_threshold_cents.toString()}
+ onChange={(val: Key | null) => {
+ if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val as string) });
  }}
  isDisabled={autoRefillSaving}
  >
-                          <SelectItem key="500">$5.00</SelectItem>
-                          <SelectItem key="1000">$10.00</SelectItem>
-                          <SelectItem key="2500">$25.00</SelectItem>
-                          <SelectItem key="5000">$50.00</SelectItem>
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item id="500" textValue="$5.00">$5.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="1000" textValue="$10.00">$10.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="2500" textValue="$25.00">$25.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="5000" textValue="$50.00">$50.00<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
                         </Select>
                       </div>
                       <div>
@@ -537,17 +547,24 @@ export default function ApiPlatformPage() {
                           Amount to refill
                         </p>
                         <Select
- selectedKeys={[autoRefill.refill_amount_cents.toString()]}
- onSelectionChange={(keys) => {
- const val = Array.from(keys)[0] as string;
- if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val) });
+ value={autoRefill.refill_amount_cents.toString()}
+ onChange={(val: Key | null) => {
+ if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val as string) });
  }}
  isDisabled={autoRefillSaving}
  >
-                          <SelectItem key="1000">$10.00</SelectItem>
-                          <SelectItem key="2500">$25.00</SelectItem>
-                          <SelectItem key="5000">$50.00</SelectItem>
-                          <SelectItem key="10000">$100.00</SelectItem>
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item id="1000" textValue="$10.00">$10.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="2500" textValue="$25.00">$25.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="5000" textValue="$50.00">$50.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="10000" textValue="$100.00">$100.00<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
                         </Select>
                       </div>
                     </div>
@@ -574,7 +591,7 @@ export default function ApiPlatformPage() {
                 width={24}
               />
               <div>
-                <h2 className="text-lg font-semibold text-text-accent">
+                <h2 className="text-lg font-semibold text-text-primary">
                   API Keys
                 </h2>
                 <p className="text-sm text-text-tertiary">
@@ -642,7 +659,7 @@ export default function ApiPlatformPage() {
                           width={20}
                         />
                         <div className="min-w-0">
-                          <p className="text-text-accent font-medium truncate">
+                          <p className="text-text-primary font-medium truncate">
                             {key.name}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -701,7 +718,7 @@ export default function ApiPlatformPage() {
                               width={20}
                             />
                             <div className="min-w-0">
-                              <p className="text-text-accent font-medium truncate">
+                              <p className="text-text-primary font-medium truncate">
                                 {key.name}
                               </p>
                               <code className="text-xs text-text-tertiary font-mono">
@@ -739,7 +756,7 @@ export default function ApiPlatformPage() {
                 width={24}
               />
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-text-accent">
+                <h2 className="text-lg font-semibold text-text-primary">
                   Recent Usage
                 </h2>
                 <p className="text-sm text-text-tertiary">
@@ -828,7 +845,7 @@ export default function ApiPlatformPage() {
  >
                                 {log.method}
                               </Chip>
-                              <span className="text-text-accent font-mono text-xs truncate max-w-[200px]">
+                              <span className="text-text-primary font-mono text-xs truncate max-w-[200px]">
                                 {log.endpoint}
                               </span>
                             </div>
@@ -878,7 +895,7 @@ export default function ApiPlatformPage() {
                               </div>
                             ) : "—"}
                           </td>
-                          <td className="py-2.5 px-3 text-right text-text-accent">
+                          <td className="py-2.5 px-3 text-right text-text-primary">
                             {log.cost_cents > 0
                               ? formatCents(log.cost_cents)
                               : "—"}
@@ -916,7 +933,7 @@ export default function ApiPlatformPage() {
       {/* Job Result Modal */}
       <Modal>
         <Modal.Backdrop isOpen={jobModalOpen} onOpenChange={() => setJobModalOpen(false)}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
-          <Modal.Header className="text-text-accent">
+          <Modal.Header className="text-text-primary">
             {jobModalType === "clip" ? "Clip Job Results" : "Face Swap Job Results"}
           </Modal.Header>
           <Modal.Body>
@@ -946,7 +963,7 @@ export default function ApiPlatformPage() {
                     <Card.Content className="gap-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-text-accent font-medium text-sm">
+                          <p className="text-text-primary font-medium text-sm">
                             {clip.title || `Clip #${clip.clip_id}`}
                           </p>
                           {clip.heading && (

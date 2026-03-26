@@ -6,16 +6,11 @@ import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
-import { ScalePlanRequired } from "@/components/ugc-studio";
+import {} from "@/lib/plans";
 
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
-
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
 
   return (
     <motion.div
@@ -31,7 +26,7 @@ export default function UGCStudioPage() {
           transition={{ duration: 0.4, delay: 0.1 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl lg:text-5xl font-bold text-text-accent mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold text-text-primary mb-4">
             UGC Studio
           </h1>
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
@@ -112,7 +107,7 @@ export default function UGCStudioPage() {
                 </div>
                 <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-text-accent mb-1">
+                    <h3 className="text-xl font-semibold text-text-primary mb-1">
                       Characters
                     </h3>
                     <p className="text-sm text-text-secondary max-w-lg">
@@ -167,8 +162,7 @@ function FeatureCard({
   iconColor,
   features,
   comingSoon,
-  onPress,
-}: {
+  onPress }: {
   icon: string;
   title: string;
   description: string;
@@ -211,7 +205,7 @@ function FeatureCard({
         <div className="p-6 space-y-4">
           <div>
             <h3
-              className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-accent"}`}
+              className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-primary"}`}
             >
               {title}
             </h3>

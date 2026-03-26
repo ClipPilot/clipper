@@ -176,7 +176,7 @@ export default function DashboardLayout({
  isIconOnly
  size="sm"
  variant="tertiary"
- className="text-text-secondary hover:text-text-accent"
+ className="text-text-secondary hover:text-text-primary"
  onPress={() =>
  setTheme(theme === "dark" ? "light" : "dark")
  }
@@ -202,9 +202,9 @@ export default function DashboardLayout({
                 onOpenChange={setIsWorkspaceOpen}
               >
                 <Popover.Trigger>
-                  <button className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors">
+                  <Button variant="tertiary" className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors">
                     {teamIconEl}
-                  </button>
+                  </Button>
                 </Popover.Trigger>
                 <Popover.Content className="p-0">
                   <WorkspaceSelector
@@ -233,7 +233,7 @@ export default function DashboardLayout({
  >
                     <div className="flex items-center gap-2.5 w-full">
                       {teamIconEl}
-                      <span className="text-[13px] font-medium text-text-accent flex-1 text-left truncate">
+                      <span className="text-[13px] font-medium text-text-primary flex-1 text-left truncate">
                         {selectedTeam?.name || "Select Team"}
                       </span>
                       <Icon
@@ -281,11 +281,11 @@ export default function DashboardLayout({
             {contentCollapsed ? (
               <div className="flex flex-col items-center gap-2">
                 <Dropdown placement="right-start">
-<button className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
+<Button variant="tertiary" className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
                       <Avatar size="sm" className="bg-accent-400 text-white">
                         <Avatar.Fallback className="text-xs font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
                       </Avatar>
-                    </button>
+                    </Button>
 <Dropdown.Popover>
 
 <Dropdown.Menu
@@ -307,7 +307,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/settings")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       Settings
@@ -324,7 +324,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/api-platform")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       API Platform
@@ -341,7 +341,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/referrals")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       Referral Program
@@ -359,7 +359,7 @@ export default function DashboardLayout({
                         onPress={() => router.push("/dashboard/pricing")}
                         classNames={{
                           base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-accent font-medium",
+                          title: "text-text-primary font-medium",
                         }}
                       >
                         Pricing
@@ -389,15 +389,18 @@ export default function DashboardLayout({
  content="Expand sidebar"
  placement="right"
  >
-                  <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-accent"
+                  <Button
+                    isIconOnly
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => setIsCollapsed(!isCollapsed)}
+                    className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
                   >
                     <Icon
                       icon="solar:alt-arrow-right-bold-duotone"
                       width={18}
                     />
-                  </button>
+                  </Button>
                 </Tooltip>
               </div>
             ) : (
@@ -412,7 +415,7 @@ export default function DashboardLayout({
                           <Avatar.Fallback className="text-sm font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
                         </Avatar>
                         <div className="flex flex-col items-start flex-1 min-w-0">
-                          <span className="text-sm font-semibold text-text-accent truncate w-full">
+                          <span className="text-sm font-semibold text-text-primary truncate w-full">
                             {user?.firstName && user?.lastName
                               ? `${user.firstName} ${user.lastName}`
                               : user?.email?.split("@")[0] || "User"}
@@ -449,7 +452,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/settings")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       Settings
@@ -466,7 +469,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/api-platform")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       API Platform
@@ -483,7 +486,7 @@ export default function DashboardLayout({
                       onPress={() => router.push("/dashboard/referrals")}
                       classNames={{
                         base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-accent font-medium",
+                        title: "text-text-primary font-medium",
                       }}
                     >
                       Referral Program
@@ -501,7 +504,7 @@ export default function DashboardLayout({
                         onPress={() => router.push("/dashboard/pricing")}
                         classNames={{
                           base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-accent font-medium",
+                          title: "text-text-primary font-medium",
                         }}
                       >
                         Pricing
@@ -531,15 +534,18 @@ export default function DashboardLayout({
  content="Collapse sidebar"
  placement="right"
  >
-                  <button
-                    onClick={() => setIsCollapsed(true)}
-                    className="mt-2 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-accent"
+                  <Button
+                    isIconOnly
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => setIsCollapsed(true)}
+                    className="mt-2 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
                   >
                     <Icon
                       icon="solar:alt-arrow-left-bold-duotone"
                       width={18}
                     />
-                  </button>
+                  </Button>
                 </Tooltip>
               </>
             )}
@@ -572,8 +578,8 @@ export default function DashboardLayout({
           )}
           {children}
         </main>
-        <Toast.Provider placement="top-right" />
       </div>
+      <Toast.Provider placement="top-right" />
 
       <AnnouncementInboxModal />
       <AnnouncementPopupModal />

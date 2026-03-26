@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Button, Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { VideoJobState } from "@/hooks/useVideoJobStatus";
 
@@ -88,16 +88,16 @@ export function VideoStatusPage({
       <div className="min-h-screen bg-surface-dark p-6">
         <div className="max-w-4xl mx-auto">
           {backButton}
-          <Card className="bg-red-500/10 border border-red-500/30">
-            <Card.Content className="p-8 text-center">
+          <div className="rounded-xl border border-red-500/30 overflow-hidden bg-red-500/10">
+            <div className="p-8 text-center">
               <Icon icon="solar:danger-triangle-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-accent mb-2">Error Loading Project</h2>
+              <h2 className="text-xl font-bold text-text-primary mb-2">Error Loading Project</h2>
               <p className="text-text-secondary text-sm mb-6">{error}</p>
               <Button variant="outline" className="border-red-500/30 text-red-400" onPress={handleBack}>
                 Go Back
               </Button>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -108,18 +108,18 @@ export function VideoStatusPage({
       <div className="min-h-screen bg-surface-dark p-6">
         <div className="max-w-4xl mx-auto">
           {backButton}
-          <Card className="bg-red-500/10 border border-red-500/30">
-            <Card.Content className="p-8 text-center">
+          <div className="rounded-xl border border-red-500/30 overflow-hidden bg-red-500/10">
+            <div className="p-8 text-center">
               <Icon icon="solar:video-frame-cut-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-accent mb-2">Video Generation Failed</h2>
+              <h2 className="text-xl font-bold text-text-primary mb-2">Video Generation Failed</h2>
               <p className="text-text-secondary text-sm mb-6">
                 {status.error || "An error occurred during video generation."}
               </p>
               <Button variant="outline" className="border-border-base text-text-secondary" onPress={handleBack}>
                 Go Back
               </Button>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -150,19 +150,19 @@ export function VideoStatusPage({
         <div className="max-w-4xl mx-auto">
           {backButton}
           {error ? (
-            <Card className="bg-red-500/10 border border-red-500/30">
-              <Card.Content className="p-8 text-center">
+            <div className="rounded-xl border border-red-500/30 overflow-hidden bg-red-500/10">
+              <div className="p-8 text-center">
                 <Icon icon="solar:danger-triangle-bold-duotone" className="text-red-400 mx-auto mb-4" width={48} />
-                <h2 className="text-xl font-bold text-text-accent mb-2">Failed to Save Video</h2>
+                <h2 className="text-xl font-bold text-text-primary mb-2">Failed to Save Video</h2>
                 <p className="text-text-secondary text-sm mb-6">{error}</p>
                 <Button className={colors.buttonClass} onPress={onRetryFinalize}>
                   Try Again
                 </Button>
-              </Card.Content>
-            </Card>
+              </div>
+            </div>
           ) : (
-            <Card className="bg-surface-base border border-border-base">
-              <Card.Content className="p-8 text-center">
+            <div className="rounded-xl border border-border-base overflow-hidden bg-surface-base">
+              <div className="p-8 text-center">
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
                     <div className={`w-20 h-20 rounded-full ${colors.bgGlow} flex items-center justify-center`}>
@@ -173,12 +173,12 @@ export function VideoStatusPage({
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-text-accent mb-2">{completedLabel}</h2>
+                    <h2 className="text-xl font-bold text-text-primary mb-2">{completedLabel}</h2>
                     <p className="text-text-secondary">Saving to your library and preparing the editor...</p>
                   </div>
                 </div>
-              </Card.Content>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -200,18 +200,18 @@ export function VideoStatusPage({
     <div className="min-h-screen bg-surface-dark p-6">
       <div className="max-w-4xl mx-auto">
         {backButton}
-        <Card className="bg-surface-base border border-border-base">
-          <Card.Content className="p-8 text-center">
+        <div className="rounded-xl border border-border-base overflow-hidden bg-surface-base">
+          <div className="p-8 text-center">
             <Icon icon="solar:video-frame-play-bold-duotone" className="text-text-tertiary mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-bold text-text-accent mb-2">Project Not Found</h2>
+            <h2 className="text-xl font-bold text-text-primary mb-2">Project Not Found</h2>
             <p className="text-text-secondary text-sm mb-6">
               The project you&apos;re looking for doesn&apos;t exist or has been deleted.
             </p>
             <Button className={colors.buttonClass} onPress={handleBack}>
               Go Back
             </Button>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

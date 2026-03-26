@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Modal,
-  Button,
-  Input,
-  Select,
-  Spinner, TextField, Label, FieldError } from "@heroui/react";
+import { Modal, Button, Input, Select, ListBox, Spinner, TextField, Label, FieldError } from "@heroui/react";
+import type { Key } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { voiceCloneAPI } from "@/api/voiceClone";
 
@@ -158,7 +155,7 @@ export function VoiceCloneModal({
             />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-text-accent">
+            <h3 className="text-lg font-semibold text-text-primary">
               Clone Your Voice
             </h3>
             <p className="text-xs text-text-tertiary font-normal">
@@ -172,7 +169,7 @@ export function VoiceCloneModal({
             <p className="text-xs text-text-muted mb-2 uppercase tracking-wider font-medium">
               Read this aloud:
             </p>
-            <p className="text-text-accent text-sm leading-relaxed">
+            <p className="text-text-primary text-sm leading-relaxed">
               {paragraph}
             </p>
           </div>
@@ -192,23 +189,16 @@ export function VoiceCloneModal({
 
             {state === "recording" && (
               <div className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse">
+                <div
+                  onClick={stopRecording}
+                  className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse cursor-pointer hover:bg-red-500/30 transition-colors"
+                >
                   <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
-                    <Icon
-                      icon="solar:microphone-3-bold"
-                      className="text-white"
-                      width={22}
-                    />
+                    <Icon icon="solar:stop-bold" className="text-white" width={22} />
                   </div>
                 </div>
-                <p className="text-sm text-red-400 font-medium">
-                  Recording...
-                </p>
-                <Button
- size="md"
- className="bg-surface-elevated text-text-accent"
- onPress={stopRecording}
- >
+                <p className="text-sm text-red-400 font-medium">Recording... tap to stop</p>
+                <Button size="md" className="bg-surface-elevated text-text-primary" onPress={stopRecording}>
                   <Icon icon="solar:stop-bold" width={16} />
                   Stop Recording
                 </Button>
@@ -255,26 +245,34 @@ export function VoiceCloneModal({
           {/* Name and gender inputs */}
           {(state === "recorded" || state === "submitting") && (
             <div className="grid grid-cols-2 gap-4">
-                            <TextField>
+              <TextField fullWidth variant="secondary">
                 <Label>Voice Name</Label>
-                <Input onChange={(e) => (setName)(e.target.value)}
- placeholder="e.g. My Voice"
- value={name}
- isDisabled={state === "submitting"}
- />
+                <Input
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. My Voice"
+                  value={name}
+                  disabled={state === "submitting"}
+                />
                 <FieldError />
               </TextField>
               <Select
- label="Gender"
- placeholder="Select gender"
- selectedKeys={gender ? [gender] : []}
- onSelectionChange={(keys) =>
- setGender(Array.from(keys)[0] as string)
- }
- isDisabled={state === "submitting"}
- >
-                <SelectItem key="male">Male</SelectItem>
-                <SelectItem key="female">Female</SelectItem>
+                value={gender || null}
+                onChange={(val: Key | null) => { if (val) setGender(val as string); }}
+                placeholder="Select gender"
+                isDisabled={state === "submitting"}
+                variant="secondary"
+              >
+                <Label>Gender</Label>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="male" textValue="Male">Male<ListBox.ItemIndicator /></ListBox.Item>
+                    <ListBox.Item id="female" textValue="Female">Female<ListBox.ItemIndicator /></ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
               </Select>
             </div>
           )}

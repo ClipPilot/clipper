@@ -10,19 +10,6 @@ interface EditorSuccessModalProps {
   onClose: () => void;
 }
 
-/**
- * EditorSuccessModal
- *
- * Shown after the user successfully submits a video edit job.
- * Closing the modal (via the button or backdrop) triggers onClose,
- * which the parent uses to redirect to the clips dashboard.
- *
- * Usage:
- *   <EditorSuccessModal
- *     isOpen={showSuccessModal}
- *     onClose={handleSuccessModalClose}
- *   />
- */
 export function EditorSuccessModal({ isOpen, onClose }: EditorSuccessModalProps) {
   return (
     <Modal>
@@ -32,7 +19,7 @@ export function EditorSuccessModal({ isOpen, onClose }: EditorSuccessModalProps)
             <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
               <Icon icon="solar:check-circle-bold" className="text-primary-400 text-xl" />
             </div>
-            <span className="text-text-accent">Changes Submitted</span>
+            <span className="text-text-primary">Changes Submitted</span>
           </div>
         </Modal.Header>
         <Modal.Body>
@@ -44,9 +31,10 @@ export function EditorSuccessModal({ isOpen, onClose }: EditorSuccessModalProps)
           </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="primary"
- onPress={onClose}
- >
+          <Button
+            variant="primary"
+            onPress={onClose}
+          >
             <Icon icon="solar:arrow-right-outline" />
             View My Clips
           </Button>

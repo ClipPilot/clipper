@@ -332,7 +332,7 @@ export default function ClipViewModal({
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-bold text-text-accent">
+                  <h2 className="text-xl font-bold text-text-primary">
                     {editedTitle || `Clip #${clip.id}`}
                   </h2>
                   {onUpdateTitle && (
@@ -401,7 +401,7 @@ export default function ClipViewModal({
 
             <div className="space-y-4 overflow-y-auto max-h-[600px]">
               {onMoveToFolder && folders.length > 0 && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:folder-bold-duotone"
@@ -410,7 +410,7 @@ export default function ClipViewModal({
                     Organization
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-text-accent">
+                    <span className="text-sm text-text-primary">
                       {currentFolder ? (
                         <span className="flex items-center gap-2">
                           <Icon
@@ -490,7 +490,7 @@ export default function ClipViewModal({
               )}
 
               {onTagsChange && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:tag-bold-duotone"
@@ -517,9 +517,11 @@ export default function ClipViewModal({
                               color: tag.color,
                             }}
                           >
-                            <button
-                              onClick={() => handleTagToggle(tag.id)}
-                              disabled={isUpdatingTags || isDeleting}
+                            <Button
+                              variant="tertiary"
+                              size="sm"
+                              onPress={() => handleTagToggle(tag.id)}
+                              isDisabled={isUpdatingTags || isDeleting}
                               className="inline-flex items-center gap-1.5"
                             >
                               <span
@@ -533,11 +535,14 @@ export default function ClipViewModal({
                                   className="text-sm"
                                 />
                               )}
-                            </button>
+                            </Button>
                             {onDeleteTag && (
-                              <button
-                                onClick={(e) => handleDeleteTag(tag.id, e)}
-                                disabled={isDeleting}
+                              <Button
+                                isIconOnly
+                                variant="tertiary"
+                                size="sm"
+                                onPress={(e) => handleDeleteTag(tag.id, e as any)}
+                                isDisabled={isDeleting}
                                 className="opacity-0 group-hover:opacity-100 hover:scale-110 transition-all ml-0.5"
                                 title="Delete tag"
                               >
@@ -552,7 +557,7 @@ export default function ClipViewModal({
                                     className="text-sm"
                                   />
                                 )}
-                              </button>
+                              </Button>
                             )}
                           </div>
                         );
@@ -567,10 +572,10 @@ export default function ClipViewModal({
                       </p>
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {TAG_COLORS.map((color) => (
-                          <button
+                          <div
                             key={color}
                             onClick={() => setNewTagColor(color)}
-                            className={`w-5 h-5 rounded-full transition-all ${
+                            className={`w-5 h-5 rounded-full transition-all cursor-pointer ${
                               newTagColor === color
                                 ? "ring-2 ring-offset-1 ring-offset-surface-elevated scale-110"
                                 : "opacity-60 hover:opacity-100"
@@ -584,7 +589,7 @@ export default function ClipViewModal({
                         ))}
                       </div>
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           type="text"
                           value={newTagName}
                           onChange={(e) => setNewTagName(e.target.value)}
@@ -592,7 +597,7 @@ export default function ClipViewModal({
                             e.key === "Enter" && handleCreateTag()
                           }
                           placeholder="Tag name..."
-                          className="flex-1 min-w-0 px-2 py-1 text-sm bg-surface-dark border border-border-base rounded text-text-accent placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-400"
+                          className="flex-1 min-w-0 px-2 py-1 text-sm bg-surface-dark border border-border-base rounded text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-400"
                         />
                         <Button
  size="sm"
@@ -616,12 +621,12 @@ export default function ClipViewModal({
               )}
 
               {clip.clip_score !== null && clip.clip_score !== undefined && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3">
                     Clip Score
                   </h3>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl font-bold text-text-accent">
+                    <span className="text-3xl font-bold text-text-primary">
                       {clip.clip_score}
                     </span>
                     <span className="text-text-tertiary">/100</span>
@@ -636,7 +641,7 @@ export default function ClipViewModal({
               )}
 
               {clip.message && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
                     <Icon
                       icon="solar:chat-square-bold-duotone"
@@ -644,14 +649,14 @@ export default function ClipViewModal({
                     />
                     AI Analysis
                   </h3>
-                  <p className="text-sm text-text-accent leading-relaxed">
+                  <p className="text-sm text-text-primary leading-relaxed">
                     {clip.message}
                   </p>
                 </div>
               )}
 
               {clip.prompt && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
                     <Icon
                       icon="solar:pen-bold-duotone"
@@ -659,14 +664,14 @@ export default function ClipViewModal({
                     />
                     Prompt Used
                   </h3>
-                  <p className="text-sm text-text-accent leading-relaxed italic">
+                  <p className="text-sm text-text-primary leading-relaxed italic">
                     "{clip.prompt}"
                   </p>
                 </div>
               )}
 
               {clip.input_metadata && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:file-bold-duotone"
@@ -680,7 +685,7 @@ export default function ClipViewModal({
                         <span className="text-xs text-text-tertiary min-w-[50px]">
                           File:
                         </span>
-                        <p className="text-sm text-text-accent break-all">
+                        <p className="text-sm text-text-primary break-all">
                           {clip.input_metadata.originalFileName}
                         </p>
                       </div>
@@ -690,7 +695,7 @@ export default function ClipViewModal({
                         <span className="text-xs text-text-tertiary min-w-[50px]">
                           Size:
                         </span>
-                        <p className="text-sm text-text-accent">
+                        <p className="text-sm text-text-primary">
                           {(
                             clip.input_metadata.fileSize /
                             (1024 * 1024)
@@ -704,7 +709,7 @@ export default function ClipViewModal({
               )}
 
               {clip.clip_metadata?.parameters && (
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="p-4 rounded-lg bg-white/[0.04]">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                     <Icon
                       icon="solar:settings-bold-duotone"
@@ -716,7 +721,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.length && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Length</p>
-                        <p className="text-sm text-text-accent font-medium">
+                        <p className="text-sm text-text-primary font-medium">
                           {clip.clip_metadata.parameters.length}s
                         </p>
                       </div>
@@ -724,7 +729,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.hookLength && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Hook</p>
-                        <p className="text-sm text-text-accent font-medium">
+                        <p className="text-sm text-text-primary font-medium">
                           {clip.clip_metadata.parameters.hookLength}s
                         </p>
                       </div>
@@ -732,7 +737,7 @@ export default function ClipViewModal({
                     {clip.clip_metadata.parameters.promptType && (
                       <div className="p-2 rounded bg-surface-dark">
                         <p className="text-xs text-text-tertiary">Type</p>
-                        <p className="text-sm text-text-accent font-medium capitalize">
+                        <p className="text-sm text-text-primary font-medium capitalize">
                           {clip.clip_metadata.parameters.promptType}
                         </p>
                       </div>
@@ -758,7 +763,7 @@ export default function ClipViewModal({
                 };
 
                 return (
-                  <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+                  <div className="p-4 rounded-lg bg-white/[0.04]">
                     <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                       <Icon icon="mdi:megaphone" className="text-accent-400" />
                       Ad Posts
@@ -778,7 +783,7 @@ export default function ClipViewModal({
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Icon icon={meta.icon} className="text-lg" />
-                                <span className="text-sm font-medium text-text-accent">
+                                <span className="text-sm font-medium text-text-primary">
                                   {meta.name}
                                 </span>
                                 <span className="text-xs text-text-tertiary">
@@ -865,7 +870,7 @@ export default function ClipViewModal({
                 );
               })()}
 
-              <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+              <div className="p-4 rounded-lg bg-white/[0.04]">
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                   <Icon
                     icon="solar:calendar-bold-duotone"
@@ -873,7 +878,7 @@ export default function ClipViewModal({
                   />
                   Created
                 </h3>
-                <p className="text-sm text-text-accent">
+                <p className="text-sm text-text-primary">
                   {new Date(clip.created_at).toLocaleString()}
                 </p>
               </div>

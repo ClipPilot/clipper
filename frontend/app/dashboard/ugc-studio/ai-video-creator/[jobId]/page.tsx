@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 import { Card, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
+import {} from "@/lib/plans";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { ugcScriptAPI } from "@/api/ugc";
 import { useUGCVideoSocket } from "@/hooks/useUGCVideoSocket";
@@ -56,40 +56,18 @@ export default function VideoJobPage() {
     isFinalizing,
     isGenerating,
     handleSocketUpdate,
-    retryFinalize,
-  } = useVideoJobStatus<VideoGenerationStatus>({
+    retryFinalize } = useVideoJobStatus<VideoGenerationStatus>({
     jobId,
     teamId: selectedTeam?.id,
     fetchStatus,
     finalizeVideo,
     generatingStatuses: UGC_GENERATING_STATUSES,
-    onInitialFetch,
-  });
+    onInitialFetch });
 
   useUGCVideoSocket({
     teamId: selectedTeam?.id,
     jobId: isGenerating ? jobId : null,
-    onUpdate: handleSocketUpdate as (status: VideoGenerationStatus) => void,
-  });
-
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
-        <Card className="bg-surface-base border border-border-base max-w-md">
-          <Card.Content className="p-8 text-center">
-            <Icon icon="solar:lock-bold-duotone" className="text-amber-400 mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-bold text-text-accent mb-2">Access Required</h2>
-            <p className="text-text-secondary text-sm mb-6">
-              You need a Scale plan or higher to access this feature.
-            </p>
-            <Button className="bg-accent-400 text-white font-semibold" onPress={() => router.push("/dashboard/pricing")}>
-              View Plans
-            </Button>
-          </Card.Content>
-        </Card>
-      </div>
-    );
-  }
+    onUpdate: handleSocketUpdate as (status: VideoGenerationStatus) => void });
 
   const handleBack = useCallback(
     () => router.push("/dashboard/ugc-studio/ai-video-creator"),

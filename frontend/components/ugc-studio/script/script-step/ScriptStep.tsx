@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
-import { Card, Button, Input, TextArea, Tooltip, TextField, Label, FieldError} from "@heroui/react";
+import { Button, Input, TextArea, Tooltip, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "../ProductImageUploader";
 import { ugcScriptAPI } from "@/api/ugc";
@@ -336,7 +336,7 @@ export function ScriptStep({
       />
 
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-text-accent mb-2">
+        <h2 className="text-2xl font-bold text-text-primary mb-2">
           Product Images <span className="text-text-muted font-normal text-lg">(Optional)</span>
         </h2>
         <p className="text-text-secondary">
@@ -363,9 +363,8 @@ export function ScriptStep({
         isAutoSilent={isAutoSilent}
       />
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="space-y-4">
-                    <TextField>
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated p-4 space-y-4">
+          <TextField>
             <Label>Product Name (Optional)</Label>
             <Input
  placeholder="e.g., GlowSkin Serum"
@@ -374,7 +373,7 @@ export function ScriptStep({
  />
             <FieldError />
           </TextField>
-                    <TextField isRequired>
+          <TextField isRequired>
             <Label>Script Direction</Label>
             <TextArea
  placeholder="Describe what you want... e.g., Make it funny, focus on the before/after, target skeptics"
@@ -394,7 +393,7 @@ export function ScriptStep({
  >
             <Button
  size="sm"
- variant={isAutoSilent ? "solid" : "bordered"}
+ variant={isAutoSilent ? "primary" : "outline"}
  isDisabled={!isAutoSilent && customPattern.some((s) => s.shot === "a-roll")}
  className={
  isAutoSilent
@@ -416,8 +415,7 @@ export function ScriptStep({
               {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
             </Button>
           </Tooltip>
-        </Card.Content>
-      </Card>
+      </div>
 
       <div className="flex justify-center gap-3">
         {selectedStructureId === "auto" && !hasAutoStructure && (

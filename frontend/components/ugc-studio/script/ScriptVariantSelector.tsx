@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Tooltip } from "@heroui/react";
+import { Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { UGCScript } from "./types";
 
@@ -18,23 +18,22 @@ export function ScriptVariantSelector({
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {scripts.map((script, index) => (
-        <Card
+        <div
  key={index}
- onPress={() => onSelect(index)}
- className={`flex-shrink-0 w-64 border transition-all ${
+ onClick={() => onSelect(index)}
+ className={`flex-shrink-0 w-64 rounded-xl border cursor-pointer transition-all overflow-hidden p-3 space-y-2 ${
  selectedIndex === index
  ? "border-accent-400 bg-accent-400/10"
  : "border-border-base bg-surface-elevated hover:border-border-hover"
  }`}
  >
-          <Card.Content className="p-3 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-text-secondary">
                 Variant {index + 1}
               </span>
               <div className="flex items-center gap-1">
                 <Icon icon="solar:star-bold" className="text-yellow-400" width={12} />
-                <span className="text-xs font-semibold text-text-accent">
+                <span className="text-xs font-semibold text-text-primary">
                   {script.viralScore}
                 </span>
               </div>
@@ -44,7 +43,7 @@ export function ScriptVariantSelector({
  delay={500}
  closeDelay={0}
  >
-              <p className="text-sm font-medium text-text-accent line-clamp-1 cursor-default">
+              <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
                 {script.title}
               </p>
             </Tooltip>
@@ -62,8 +61,7 @@ export function ScriptVariantSelector({
               <span>•</span>
               <span>{script.totalEstimatedDuration}s</span>
             </div>
-          </Card.Content>
-        </Card>
+        </div>
       ))}
     </div>
   );

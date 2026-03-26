@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai";
 import { Card, Button, Spinner, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
+import {} from "@/lib/plans";
 import { adCloneAPI } from "@/api/adClone";
 import { useAdCloneSocket } from "@/hooks/useAdClone";
 import { useVideoJobStatus } from "@/hooks/useVideoJobStatus";
@@ -42,14 +42,12 @@ export default function AdCloneProjectPage() {
     isFinalizing,
     isGenerating,
     handleSocketUpdate,
-    retryFinalize,
-  } = useVideoJobStatus({
+    retryFinalize } = useVideoJobStatus({
     jobId: projectId,
     teamId: selectedTeam?.id,
     fetchStatus,
     finalizeVideo,
-    generatingStatuses: AD_CLONE_GENERATING_STATUSES,
-  });
+    generatingStatuses: AD_CLONE_GENERATING_STATUSES });
 
   useAdCloneSocket(
     selectedTeam?.id,
@@ -57,32 +55,13 @@ export default function AdCloneProjectPage() {
     handleSocketUpdate
   );
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
-        <Card className="bg-surface-base border border-border-base max-w-md">
-          <Card.Content className="p-8 text-center">
-            <Icon icon="solar:lock-bold-duotone" className="text-amber-400 mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-bold text-text-accent mb-2">Access Required</h2>
-            <p className="text-text-secondary text-sm mb-6">
-              You need a Scale plan or higher to access this feature.
-            </p>
-            <Button className="bg-orange-500 text-white font-semibold" onPress={() => router.push("/dashboard/pricing")}>
-              View Plans
-            </Button>
-          </Card.Content>
-        </Card>
-      </div>
-    );
-  }
-
   const extraStates =
     ["script_generated", "analysis_complete"].includes(status?.status || "")
       ? (
           <Card className="bg-surface-base border border-border-base">
             <Card.Content className="p-8 text-center">
               <Icon icon="solar:document-text-bold-duotone" className="text-orange-500 mx-auto mb-4" width={48} />
-              <h2 className="text-xl font-bold text-text-accent mb-2">Project In Progress</h2>
+              <h2 className="text-xl font-bold text-text-primary mb-2">Project In Progress</h2>
               <p className="text-text-secondary text-sm mb-6">
                 This project is waiting for you to continue. Go back to the wizard to complete it.
               </p>
@@ -120,7 +99,7 @@ export default function AdCloneProjectPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-text-accent">{getStatusLabel()}...</h2>
+            <h2 className="text-xl font-semibold text-text-primary">{getStatusLabel()}...</h2>
             <p className="text-text-secondary">
               {(status?.progressMessage as string) || "Please wait while we process your ad clone"}
             </p>

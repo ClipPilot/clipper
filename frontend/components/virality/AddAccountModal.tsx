@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { Key } from "@heroui/react";
 import { Modal,
   Button,
   Input,
   Switch,
-  Select } from "@heroui/react";
+  Select,
+  Label,
+  ListBox } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
 import { MY_PERFORMANCE_NAME } from "@/lib/viralityConstants";
@@ -202,15 +205,15 @@ export function AddAccountModal({
             <label className="text-sm text-gray-400">Platform Selection</label>
             <div className="grid grid-cols-3 gap-3">
               {platforms.map((platform) => (
-                <button
+                <div
                   key={platform.value}
                   onClick={() => platform.enabled && setSelectedPlatform(platform.value)}
                   className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
                     !platform.enabled
                       ? "bg-[#0d0f1a] border-[#2a2d3e] opacity-50 cursor-not-allowed"
                       : selectedPlatform === platform.value
-                        ? "bg-[#1e2140] border-accent-400"
-                        : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
+                        ? "bg-[#1e2140] border-accent-400 cursor-pointer"
+                        : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e] cursor-pointer"
                   }`}
                 >
                   <Icon
@@ -236,7 +239,7 @@ export function AddAccountModal({
                       Soon
                     </span>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -246,18 +249,24 @@ export function AddAccountModal({
             <div className="space-y-2">
               <label className="text-sm text-gray-400">Competitor Group</label>
               <Select
- items={[
- { key: "my-performance", label: MY_PERFORMANCE_NAME },
- { key: "new", label: "Create New Competitor" },
- ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
- ]}
- selectedKeys={[competitorSelection]}
- onSelectionChange={(keys) => {
- const val = Array.from(keys)[0] as string;
- if (val) setCompetitorSelection(val);
+ value={competitorSelection}
+ onChange={(val: Key | null) => {
+ if (val) setCompetitorSelection(val as string);
  }}
  >
-                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="my-performance" textValue={MY_PERFORMANCE_NAME}>{MY_PERFORMANCE_NAME}<ListBox.ItemIndicator /></ListBox.Item>
+                    <ListBox.Item id="new" textValue="Create New Competitor">Create New Competitor<ListBox.ItemIndicator /></ListBox.Item>
+                    {competitors.map((c) => (
+                      <ListBox.Item key={String(c.id)} id={String(c.id)} textValue={c.name}>{c.name}<ListBox.ItemIndicator /></ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
               </Select>
               {competitorSelection === "new" && (
                 <Input onChange={(e) => (setNewCompetitorName)(e.target.value)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Select, Tooltip, Spinner } from "@heroui/react";
+import { Button, Select, ListBox, Tooltip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCRIPT_STRUCTURES, SCENE_TYPES, SceneType, ShotType } from "../types";
 import type { CustomPatternStep } from "./types";
@@ -52,16 +52,16 @@ export function ScriptStructureSelector({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
+      <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
         <Icon icon="solar:video-frame-bold-duotone" width={20} className="text-accent-400" />
         Script Structure
       </h3>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {SCRIPT_STRUCTURES.map((structure) => (
-          <button
+          <div
             key={structure.id}
             onClick={() => onStructureChange(structure.id)}
-            className={`p-4 rounded-xl border-2 text-left transition-all ${
+            className={`p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
               selectedStructureId === structure.id
                 ? "border-accent-400 bg-accent-400/10"
                 : "border-border-base bg-surface-elevated hover:border-accent-400/50"
@@ -73,7 +73,7 @@ export function ScriptStructureSelector({
                 width={20}
                 className={selectedStructureId === structure.id ? "text-accent-400" : "text-text-muted"}
               />
-              <span className="font-medium text-text-accent text-sm">{structure.name}</span>
+              <span className="font-medium text-text-primary text-sm">{structure.name}</span>
             </div>
             <p className="text-xs text-text-secondary mb-2">{structure.description}</p>
             <div className="flex flex-wrap gap-1">
@@ -86,7 +86,7 @@ export function ScriptStructureSelector({
                 </span>
               ))}
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -126,7 +126,7 @@ export function ScriptStructureSelector({
         <div className="bg-surface-base rounded-lg p-4 border border-border-base space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-text-accent">Build your structure:</p>
+              <p className="text-sm font-medium text-text-primary">Build your structure:</p>
               <Tooltip
  content={
  <div className="max-w-xs p-2 text-xs space-y-2">
@@ -161,53 +161,67 @@ export function ScriptStructureSelector({
                 <span className="text-xs text-text-muted w-5">{i + 1}.</span>
                 <Select
  aria-label="Scene type"
- selectedKeys={[step.type]}
- onSelectionChange={(keys) => {
- const value = Array.from(keys)[0] as SceneType;
- if (value) updateSceneType(i, value);
+ value={step.type}
+ onChange={(val) => {
+ if (val) updateSceneType(i, val as SceneType);
  }}
  className="flex-1"
  >
-                  {SCENE_TYPES.map((type) => (
-                    <SelectItem key={type} textValue={type} className="capitalize">
-                      {type}
-                    </SelectItem>
-                  ))}
+                  <Select.Trigger>
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
+                      {SCENE_TYPES.map((type) => (
+                        <ListBox.Item key={type} id={type} textValue={type} className="capitalize">
+                          {type}
+                        </ListBox.Item>
+                      ))}
+                    </ListBox>
+                  </Select.Popover>
                 </Select>
                 <Select
  aria-label="Shot type"
- selectedKeys={[step.shot]}
+ value={step.shot}
  isDisabled={isAutoSilent}
- onSelectionChange={(keys) => {
- const value = Array.from(keys)[0] as ShotType | "visual";
- if (value) updateShotType(i, value);
+ onChange={(val) => {
+ if (val) updateShotType(i, val as ShotType | "visual");
  }}
  className="w-28"
  >
-                  <SelectItem key="a-roll" textValue="A-roll" className="text-green-400">
-                    <div className="flex items-center gap-2">
-                      <Icon icon="solar:user-speak-bold" width={14} />
-                      <span>A-roll</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem key="b-roll" textValue="B-roll" className="text-blue-400">
-                    <div className="flex items-center gap-2">
-                      <Icon icon="solar:videocamera-record-bold" width={14} />
-                      <span>B-roll</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem key="mixed" textValue="Mixed" className="text-purple-400">
-                    <div className="flex items-center gap-2">
-                      <Icon icon="solar:layers-bold" width={14} />
-                      <span>Mixed</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem key="visual" textValue="Visual" className="text-amber-400">
-                    <div className="flex items-center gap-2">
-                      <Icon icon="solar:gallery-minimalistic-bold" width={14} />
-                      <span>Visual</span>
-                    </div>
-                  </SelectItem>
+                  <Select.Trigger>
+                    <Select.Value />
+                    <Select.Indicator />
+                  </Select.Trigger>
+                  <Select.Popover>
+                    <ListBox>
+                      <ListBox.Item id="a-roll" textValue="A-roll" className="text-green-400">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="solar:user-speak-bold" width={14} />
+                          <span>A-roll</span>
+                        </div>
+                      </ListBox.Item>
+                      <ListBox.Item id="b-roll" textValue="B-roll" className="text-blue-400">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="solar:videocamera-record-bold" width={14} />
+                          <span>B-roll</span>
+                        </div>
+                      </ListBox.Item>
+                      <ListBox.Item id="mixed" textValue="Mixed" className="text-purple-400">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="solar:layers-bold" width={14} />
+                          <span>Mixed</span>
+                        </div>
+                      </ListBox.Item>
+                      <ListBox.Item id="visual" textValue="Visual" className="text-amber-400">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="solar:gallery-minimalistic-bold" width={14} />
+                          <span>Visual</span>
+                        </div>
+                      </ListBox.Item>
+                    </ListBox>
+                  </Select.Popover>
                 </Select>
                 <Button
  isIconOnly
@@ -234,7 +248,7 @@ export function ScriptStructureSelector({
                 className="flex items-center gap-1.5 text-xs bg-surface-elevated px-2 py-1 rounded"
               >
                 <span className="text-text-muted">{i + 1}.</span>
-                <span className="text-text-accent capitalize">{step.type}</span>
+                <span className="text-text-primary capitalize">{step.type}</span>
                 <span className={`text-[10px] px-1 rounded ${
                   step.shot === "a-roll" ? "bg-green-500/20 text-green-400" :
                   step.shot === "b-roll" ? "bg-blue-500/20 text-blue-400" :

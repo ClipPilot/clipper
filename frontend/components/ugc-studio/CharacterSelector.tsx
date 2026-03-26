@@ -338,7 +338,7 @@ export function CharacterSelector({
             <Icon icon="solar:user-circle-bold-duotone" className="text-purple-500" width={22} />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-text-accent">Character Faces</h3>
+            <h3 className="text-base font-semibold text-text-primary">Character Faces</h3>
             <p className="text-xs text-text-tertiary">
               {selectedCharacters.length > 0
                 ? `${selectedCharacters.length}/${maxSelections} faces selected`
@@ -364,20 +364,25 @@ export function CharacterSelector({
                 >
                   <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-elevated group">
                     <img src={character.src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => handleRemoveCharacter(index)}
+                    <Button
+                      isIconOnly
+                      variant="tertiary"
+                      size="sm"
+                      onPress={() => handleRemoveCharacter(index)}
                       className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Icon icon="solar:close-circle-bold" width={14} />
-                    </button>
+                    </Button>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
                       <span className="text-[10px] text-white font-medium">
                         {character.type === "uploaded" ? "Custom" : character.type === "saved" ? "Saved" : "Example"}
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => openVoiceSidebar(index)}
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => openVoiceSidebar(index)}
                     className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all border ${
                       character.voiceId
                         ? "border-accent-400/50 bg-accent-400/10 text-accent-400"
@@ -389,7 +394,7 @@ export function CharacterSelector({
                       {character.voiceName || "Voice"}
                     </span>
                     <Icon icon="solar:alt-arrow-right-linear" width={12} className="text-text-tertiary shrink-0" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -401,7 +406,7 @@ export function CharacterSelector({
             <div className="flex gap-3">
               <img src={savingFace.preview} alt="Preview" className="w-16 h-16 rounded-lg object-cover" />
               <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-text-accent">Save this face?</p>
+                <p className="text-sm font-medium text-text-primary">Save this face?</p>
                 <Input
  placeholder="Enter a name..."
  value={saveName}
@@ -441,12 +446,12 @@ export function CharacterSelector({
 
             <div className="flex p-1 bg-surface-elevated rounded-lg border border-border-base">
               {teamId && (
-                <button
+                <div
                   onClick={() => setActiveTab("saved")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     activeTab === "saved"
                       ? "bg-purple-500 text-white"
-                      : "text-text-secondary hover:text-text-accent"
+                      : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
                   <Icon icon="solar:heart-bold" width={14} />
@@ -458,30 +463,30 @@ export function CharacterSelector({
                       {savedFaces.length}
                     </span>
                   )}
-                </button>
+                </div>
               )}
-              <button
+              <div
                 onClick={() => setActiveTab("examples")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "examples"
                     ? "bg-purple-500 text-white"
-                    : "text-text-secondary hover:text-text-accent"
+                    : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 <Icon icon="solar:gallery-bold" width={14} />
                 <span className="hidden sm:inline">Examples</span>
-              </button>
-              <button
+              </div>
+              <div
                 onClick={() => setActiveTab("upload")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "upload"
                     ? "bg-purple-500 text-white"
-                    : "text-text-secondary hover:text-text-accent"
+                    : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 <Icon icon="solar:upload-bold" width={14} />
                 <span className="hidden sm:inline">Upload</span>
-              </button>
+              </div>
             </div>
 
             {activeTab === "saved" && teamId && (
@@ -501,11 +506,10 @@ export function CharacterSelector({
                     {savedFaces.map((face) => {
                       const selected = isSavedFaceSelected(face.id);
                       return (
-                        <button
+                        <div
                           key={face.id}
-                          onClick={() => handleSavedFaceSelect(face)}
-                          disabled={loadingCharacterId !== null || selected}
-                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none group ${
+                          onClick={() => !(loadingCharacterId !== null || selected) && handleSavedFaceSelect(face)}
+                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all cursor-pointer group ${
                             selected
                               ? "border-green-500 opacity-50 cursor-not-allowed"
                               : loadingCharacterId === String(face.id)
@@ -518,14 +522,14 @@ export function CharacterSelector({
                             <span className="text-[10px] text-white font-medium truncate block">{face.name}</span>
                           </div>
                           {!selected && (
-                            <button
+                            <div
                               onClick={(e) => handleDeleteSavedFace(face, e)}
-                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             >
                               <Icon icon="solar:trash-bin-trash-bold" width={12} />
-                            </button>
+                            </div>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -538,20 +542,19 @@ export function CharacterSelector({
                 {EXAMPLE_CHARACTERS.map((char) => {
                   const selected = isExampleSelected(char.src);
                   return (
-                    <button
+                    <div
                       key={char.id}
-                      onClick={() => handleExampleSelect(String(char.id), char.src)}
-                      disabled={loadingCharacterId !== null || selected}
-                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                      onClick={() => !(loadingCharacterId !== null || selected) && handleExampleSelect(String(char.id), char.src)}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                         selected
                           ? "border-green-500 opacity-50 cursor-not-allowed"
                           : loadingCharacterId === String(char.id)
                             ? "border-purple-500 opacity-50"
-                            : "border-transparent hover:border-purple-500 hover:scale-105"
+                            : "border-transparent hover:border-purple-500 hover:scale-105 cursor-pointer"
                       }`}
                     >
                       <img src={char.src} alt={`Character ${char.id}`} className="w-full h-full object-cover" />
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -577,7 +580,7 @@ export function CharacterSelector({
                     <Icon icon="solar:gallery-add-bold-duotone" className="text-xl text-purple-500" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium text-text-accent">Upload your own</p>
+                    <p className="text-sm font-medium text-text-primary">Upload your own</p>
                     <p className="text-xs text-text-tertiary">JPG, PNG, WebP</p>
                   </div>
                   <input
@@ -635,7 +638,7 @@ export function CharacterSelector({
                     <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={22} />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-accent">Select Voice</h3>
+                    <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
                     <p className="text-xs text-text-tertiary">
                       {editingVoiceForIndex !== null
                         ? `Character ${editingVoiceForIndex + 1}`
@@ -661,13 +664,14 @@ export function CharacterSelector({
                 </div>
               )}
               <div className="flex-1 overflow-y-auto p-4">
-                <Tabs
- selectedKey={voiceFilter}
- onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}
- >
-                  <Tab key="all" title="All" />
-                  <Tab key="male" title="Male" />
-                  <Tab key="female" title="Female" />
+                <Tabs selectedKey={voiceFilter} onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}>
+                  <Tabs.ListContainer>
+                    <Tabs.List aria-label="Voice filter">
+                      <Tabs.Tab id="all">All<Tabs.Indicator /></Tabs.Tab>
+                      <Tabs.Tab id="male">Male<Tabs.Indicator /></Tabs.Tab>
+                      <Tabs.Tab id="female">Female<Tabs.Indicator /></Tabs.Tab>
+                    </Tabs.List>
+                  </Tabs.ListContainer>
                 </Tabs>
                 <div className="flex flex-col gap-2 mt-4">
                   {filteredVoices.map((voice) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Button, Card } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 
@@ -95,7 +95,7 @@ export function ReferencesStep({
         <div className="w-14 h-14 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
           <Icon icon="solar:gallery-bold-duotone" className="text-accent-400" width={28} />
         </div>
-        <h3 className="text-xl font-semibold text-text-accent mb-2">Reference Images</h3>
+        <h3 className="text-xl font-semibold text-text-primary mb-2">Reference Images</h3>
         <p className="text-text-secondary text-sm">
           Optional: Add product photos or style references to guide the generation
         </p>
@@ -103,30 +103,33 @@ export function ReferencesStep({
 
       <div className="grid grid-cols-3 gap-4">
         {referenceImages.map((image, index) => (
-          <Card
+          <div
             key={image.key}
-            className="aspect-square bg-surface-elevated border border-border-base relative group overflow-hidden"
+            className="aspect-square border border-border-base rounded-xl relative group overflow-hidden"
           >
             <img
               src={image.previewUrl}
               alt={`Reference ${index + 1}`}
               className="w-full h-full object-cover"
             />
-            <button
-              onClick={() => handleRemove(index)}
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            <Button
+              isIconOnly
+              size="sm"
+              variant="tertiary"
+              onPress={() => handleRemove(index)}
+              className="absolute top-2 right-2 w-7 h-7 min-w-7 rounded-full bg-red-500/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <Icon icon="solar:trash-bin-2-bold" className="text-white" width={14} />
-            </button>
-          </Card>
+              <Icon icon="solar:trash-bin-2-bold" width={14} />
+            </Button>
+          </div>
         ))}
 
         {referenceImages.length < MAX_REFERENCES && (
           <div
-            className={`aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${
+            className={`aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
               isDragging
                 ? "border-accent-400 bg-accent-400/10"
-                : "border-border-base hover:border-accent-400/50 bg-surface-elevated/50"
+                : "border-border-light hover:border-accent-400/50 bg-surface-base"
             }`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -170,7 +173,7 @@ export function ReferencesStep({
         <div className="flex items-start gap-3">
           <Icon icon="solar:lightbulb-bold-duotone" className="text-amber-400 mt-0.5" width={20} />
           <div>
-            <p className="text-sm font-medium text-text-accent mb-1">Tips for great results</p>
+            <p className="text-sm font-medium text-text-primary mb-1">Tips for great results</p>
             <ul className="text-xs text-text-secondary space-y-1">
               <li>• Upload product images you want the actor to hold or showcase</li>
               <li>• Add brand mood board images to influence the style</li>

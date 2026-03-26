@@ -6,19 +6,17 @@ import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
+import {} from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
 import {
   UploadedFile,
   VideoSegment,
-  ScalePlanRequired,
   VideoUploadCard,
   CharacterSelector,
   GeneratePanel,
   MyFaceSwapsSection,
-  MyFaceSwapsSectionRef,
-} from "@/components/ugc-studio";
+  MyFaceSwapsSectionRef } from "@/components/ugc-studio";
 import SpotlightTour, { type TourStep } from "@/components/ui/SpotlightTour";
 import TourHelpButton from "@/components/ui/TourHelpButton";
 
@@ -27,43 +25,34 @@ const FACE_SWAP_TOUR_STEPS: TourStep[] = [
     target: "faceswap-upload",
     title: "Upload Your Video",
     description: "Upload a video up to 5 minutes. This is the video whose face will be swapped.",
-    placement: "right",
-  },
+    placement: "right" },
   {
     target: "faceswap-characters",
     title: "Select Characters",
     description: "Choose from saved faces, example characters, or upload a new face image.",
-    placement: "left",
-  },
+    placement: "left" },
   {
     target: "faceswap-generate",
     title: "Choose Mode & Generate",
     description: "Pick Face Swap (faster) or Full Body mode, then hit Generate. Costs 5 credits per character.",
-    placement: "left",
-  },
+    placement: "left" },
   {
     target: "faceswap-my-swaps",
     title: "My Swaps",
     description: "Track your swap jobs here. Processing typically takes 5\u201340 minutes depending on mode.",
-    placement: "top",
-  },
+    placement: "top" },
 ];
 
 export default function FaceSwapPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
-
   return <FaceSwapContent selectedTeam={selectedTeam} router={router} />;
 }
 
 function FaceSwapContent({
   selectedTeam,
-  router,
-}: {
+  router }: {
   selectedTeam: { id: number; plan?: string };
   router: ReturnType<typeof useRouter>;
 }) {
@@ -148,8 +137,7 @@ function FaceSwapContent({
         spliceWithOriginal: true,
         folderId: selectedFolderId,
         voiceIds,
-        swapType,
-      });
+        swapType });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {
@@ -209,8 +197,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
-        voiceIds,
-      });
+        voiceIds });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {
@@ -264,8 +251,7 @@ function FaceSwapContent({
         spliceWithOriginal: true,
         folderId: selectedFolderId,
         voiceIds,
-        swapType: "face",
-      });
+        swapType: "face" });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {

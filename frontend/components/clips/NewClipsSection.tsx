@@ -29,7 +29,7 @@ export default function NewClipsSection({
 
   return (
     <div className="mb-8">
-      <h2 className="text-xl font-bold text-text-accent mb-4 flex items-center gap-2">
+      <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
         <Icon icon="solar:star-circle-bold-duotone" className="text-2xl text-accent-400" />
         New ({clips.length})
       </h2>

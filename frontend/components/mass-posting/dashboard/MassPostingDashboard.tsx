@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, Chip, Spinner } from "@heroui/react";
+import { Tabs, Chip } from "@heroui/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { adPostingAPI, type GetTeamPostsParams } from "@/api/adPosting";
@@ -71,55 +71,64 @@ export function MassPostingDashboard() {
         <DashboardHeader />
 
         <Tabs
- selectedKey={activeTab}
- onSelectionChange={(key) => setActiveTab(key as TabKey)}
- >
-          <Tab
-            key="queued"
-            title={
-              <div className="flex items-center gap-2">
-                <span>Queued Posts</span>
-                {queuedCount > 0 && (
-                  <Chip
- size="sm"
- variant="tertiary"
- >
-                    {queuedCount}
-                  </Chip>
-                )}
-              </div>
-            }
-          />
-          <Tab key="accounts" title="Accounts" />
-          <Tab key="published" title="Published Posts" />
-        </Tabs>
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as TabKey)}
+        >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Mass posting tabs">
+              <Tabs.Tab id="queued">
+                <div className="flex items-center gap-2">
+                  <span>Queued Posts</span>
+                  {queuedCount > 0 && (
+                    <Chip size="sm" variant="tertiary">
+                      {queuedCount}
+                    </Chip>
+                  )}
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="accounts">
+                Accounts
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="published">
+                Published Posts
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
 
-        <div className="mt-6">
-          {activeTab === "queued" && (
-            <QueuedPostsTab
-              posts={queuedPosts}
-              pagination={queuedPagination}
-              isLoading={queuedLoading}
-              onParamsChange={(params) => fetchPosts("queued", params)}
-            />
-          )}
-          {activeTab === "accounts" && (
-            <AccountsTab
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
-          )}
-          {activeTab === "published" && (
-            <PublishedPostsTab
-              posts={publishedPosts}
-              pagination={publishedPagination}
-              isLoading={publishedLoading}
-              onParamsChange={(params) => fetchPosts("published", params)}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
-          )}
-        </div>
+          <Tabs.Panel id="queued">
+            <div className="mt-6">
+              <QueuedPostsTab
+                posts={queuedPosts}
+                pagination={queuedPagination}
+                isLoading={queuedLoading}
+                onParamsChange={(params) => fetchPosts("queued", params)}
+              />
+            </div>
+          </Tabs.Panel>
+          <Tabs.Panel id="accounts">
+            <div className="mt-6">
+              <AccountsTab
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
+          </Tabs.Panel>
+          <Tabs.Panel id="published">
+            <div className="mt-6">
+              <PublishedPostsTab
+                posts={publishedPosts}
+                pagination={publishedPagination}
+                isLoading={publishedLoading}
+                onParamsChange={(params) => fetchPosts("published", params)}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
+          </Tabs.Panel>
+        </Tabs>
       </div>
     </div>
   );

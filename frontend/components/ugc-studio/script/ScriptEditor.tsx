@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SceneCard } from "./SceneCard";
 import type { UGCScript, UGCScene } from "./types";
@@ -51,11 +51,10 @@ export function ScriptEditor({
 
   return (
     <div className="space-y-6">
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="p-4">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-semibold text-text-accent">
+              <h3 className="text-lg font-semibold text-text-primary">
                 {script.title}
               </h3>
               <p className="text-sm text-text-secondary mt-1">
@@ -78,8 +77,7 @@ export function ScriptEditor({
           <p className="text-xs text-text-muted mt-3 italic">
             "{script.viralReasoning}"
           </p>
-        </Card.Content>
-      </Card>
+      </div>
 
       <div className="flex items-center gap-2 text-sm text-text-secondary">
         <div className="flex items-center gap-2">

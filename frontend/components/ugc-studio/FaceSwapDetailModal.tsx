@@ -144,7 +144,7 @@ export function FaceSwapDetailModal({
 
   return (
     <Modal>
-      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-4xl">
         <Modal.Header>
           <div className="flex items-center gap-3">
             <Icon
@@ -199,9 +199,9 @@ export function FaceSwapDetailModal({
                     </Button>
                     {showSegments && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                        <button
+                        <div
                           onClick={() => setActiveSegmentIndex(null)}
-                          className={`p-2 sm:p-3 rounded-lg border transition-colors text-left ${
+                          className={`p-2 sm:p-3 rounded-lg border transition-colors text-left cursor-pointer ${
                             activeSegmentIndex === null
                               ? "border-accent-400 bg-accent-400/10"
                               : "border-border-base hover:border-accent-400/50"
@@ -209,15 +209,15 @@ export function FaceSwapDetailModal({
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <Icon icon="solar:video-frame-bold" className="text-accent-400" width={14} />
-                            <span className="text-xs font-medium text-text-accent">Final Video</span>
+                            <span className="text-xs font-medium text-text-primary">Final Video</span>
                           </div>
                           <p className="text-[10px] text-text-tertiary">Complete merged output</p>
-                        </button>
+                        </div>
                         {job.spliceSegments.map((segment, idx) => (
-                          <button
+                          <div
                             key={idx}
                             onClick={() => setActiveSegmentIndex(idx)}
-                            className={`p-2 sm:p-3 rounded-lg border transition-colors text-left ${
+                            className={`p-2 sm:p-3 rounded-lg border transition-colors text-left cursor-pointer ${
                               activeSegmentIndex === idx
                                 ? "border-accent-400 bg-accent-400/10"
                                 : "border-border-base hover:border-accent-400/50"
@@ -229,7 +229,7 @@ export function FaceSwapDetailModal({
                                 className={segment.type === "processed" ? "text-green-400" : "text-blue-400"}
                                 width={14}
                               />
-                              <span className="text-xs font-medium text-text-accent">
+                              <span className="text-xs font-medium text-text-primary">
                                 Segment {idx + 1}
                               </span>
                             </div>
@@ -244,7 +244,7 @@ export function FaceSwapDetailModal({
                             <p className="text-[10px] text-text-tertiary">
                               {formatTime(segment.start)} - {formatTime(segment.end)}
                             </p>
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -294,7 +294,7 @@ export function FaceSwapDetailModal({
 
             {/* Title Section */}
             {isCompleted && (
-              <div className="p-3 sm:p-4 rounded-lg bg-surface-elevated border border-border-base">
+              <div className="p-3 sm:p-4 rounded-lg bg-white/[0.04]">
                 <p className="text-xs text-text-tertiary mb-2">Title</p>
                 {isEditingTitle ? (
                   <div className="flex items-center gap-2">
@@ -332,11 +332,12 @@ export function FaceSwapDetailModal({
                     </Button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setIsEditingTitle(true)}
+                  <Button
+                    variant="tertiary"
+                    onPress={() => setIsEditingTitle(true)}
                     className="flex items-center gap-2 text-sm hover:text-accent-400 transition-colors group w-full"
                   >
-                    <span className={job?.title ? "text-text-accent font-medium" : "text-text-muted italic"}>
+                    <span className={job?.title ? "text-text-primary font-medium" : "text-text-muted italic"}>
                       {job?.title || "Click to add title..."}
                     </span>
                     <Icon
@@ -344,7 +345,7 @@ export function FaceSwapDetailModal({
                       width={14}
                       className="text-text-tertiary group-hover:text-accent-400 transition-colors"
                     />
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -359,19 +360,19 @@ export function FaceSwapDetailModal({
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Created</p>
-                <p className="text-xs sm:text-sm text-text-accent">
+                <p className="text-xs sm:text-sm text-text-primary">
                   {new Date(job.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Processing Time</p>
-                <p className="text-xs sm:text-sm text-text-accent">
+                <p className="text-xs sm:text-sm text-text-primary">
                   {formatDuration(job.createdAt, job.finishedAt)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Job ID</p>
-                <p className="text-xs sm:text-sm text-text-accent font-mono truncate" title={job.id}>
+                <p className="text-xs sm:text-sm text-text-primary font-mono truncate" title={job.id}>
                   {job.id.slice(0, 8)}...
                 </p>
               </div>

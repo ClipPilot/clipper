@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input, Checkbox, Separator, TextField, Label, FieldError } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Checkbox,
+  Separator,
+  TextField,
+  Label,
+  FieldError,
+  InputGroup,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import ContinueWithGoogle from "./ContinueWithGoogle";
 
@@ -34,19 +43,17 @@ export default function SignUpForm({
     e.preventDefault();
     onClearError();
     setLocalError("");
-
     if (password !== confirmPassword) {
       setLocalError("Passwords do not match");
       return;
     }
-
     await onSubmit(email, password, firstName, lastName);
   };
 
   return (
     <>
       <div>
-        <h2 className="text-2xl font-bold text-text-accent">Create Account</h2>
+        <h2 className="text-2xl font-bold text-text-primary">Create Account</h2>
         <p className="text-sm text-text-secondary mt-1">Sign up to get started</p>
       </div>
 
@@ -56,71 +63,57 @@ export default function SignUpForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 gap-4">
-          <TextField isRequired>
+          <TextField fullWidth isRequired variant="secondary">
             <Label>First Name</Label>
-            <Input
-              placeholder="John"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
+            <Input placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             <FieldError />
           </TextField>
-          <TextField isRequired>
+          <TextField fullWidth isRequired variant="secondary">
             <Label>Last Name</Label>
-            <Input
-              placeholder="Doe"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
+            <Input placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             <FieldError />
           </TextField>
         </div>
 
-        <TextField type="email" isRequired>
+        <TextField fullWidth type="email" isRequired variant="secondary">
           <Label>Email Address</Label>
-          <Input
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           <FieldError />
         </TextField>
 
-        <TextField isRequired>
+        <TextField fullWidth isRequired variant="secondary">
           <Label>Password</Label>
-          <Input
-            type={isVisible ? "text" : "password"}
-            endContent={
-              <button type="button" onClick={() => setIsVisible(!isVisible)}>
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <InputGroup>
+            <InputGroup.Input
+              type={isVisible ? "text" : "password"}
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsVisible(!isVisible)}>
+                <Icon icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
           <FieldError />
         </TextField>
 
-        <TextField isRequired>
+        <TextField fullWidth isRequired variant="secondary">
           <Label>Confirm Password</Label>
-          <Input
-            type={isConfirmVisible ? "text" : "password"}
-            endContent={
-              <button type="button" onClick={() => setIsConfirmVisible(!isConfirmVisible)}>
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
+          <InputGroup>
+            <InputGroup.Input
+              type={isConfirmVisible ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsConfirmVisible(!isConfirmVisible)}>
+                <Icon icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
           <FieldError />
         </TextField>
 
@@ -137,12 +130,7 @@ export default function SignUpForm({
           </Checkbox.Content>
         </Checkbox>
 
-        <Button
-          className="bg-accent-400 text-white font-semibold rounded-xl"
-          size="lg"
-          type="submit"
-          isPending={isLoading}
-        >
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" size="lg" type="submit" isPending={isLoading}>
           Create Account
         </Button>
       </form>
@@ -157,9 +145,9 @@ export default function SignUpForm({
 
       <p className="text-sm text-center text-text-secondary mt-2">
         Already have an account?{" "}
-        <button className="text-accent-400 font-medium hover:underline" onClick={onLogin}>
+        <span className="text-accent-400 font-medium hover:underline cursor-pointer" onClick={onLogin}>
           Log In
-        </button>
+        </span>
       </p>
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input, TextField, Label, FieldError } from "@heroui/react";
+import { Button, TextField, Label, FieldError, InputGroup } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface ResetPasswordFormProps {
@@ -28,7 +28,7 @@ export default function ResetPasswordForm({
   return (
     <>
       <div>
-        <h2 className="text-2xl font-bold text-text-accent">Set New Password</h2>
+        <h2 className="text-2xl font-bold text-text-primary">Set New Password</h2>
         <p className="text-sm text-text-secondary mt-1">Enter your new password below</p>
       </div>
 
@@ -38,53 +38,46 @@ export default function ResetPasswordForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <TextField isRequired>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <TextField fullWidth isRequired variant="secondary">
           <Label>New Password</Label>
-          <Input
-            endContent={
-              <button type="button" onClick={() => setIsVisible(!isVisible)} className="focus:outline-none">
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            name="newPassword"
-            placeholder="Enter your new password"
-            type={isVisible ? "text" : "password"}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
+          <InputGroup>
+            <InputGroup.Input
+              name="newPassword"
+              placeholder="Enter your new password"
+              type={isVisible ? "text" : "password"}
+              value={newPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsVisible(!isVisible)}>
+                <Icon icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
           <FieldError />
         </TextField>
 
-        <TextField isRequired>
+        <TextField fullWidth isRequired variant="secondary">
           <Label>Confirm Password</Label>
-          <Input
-            endContent={
-              <button type="button" onClick={() => setIsConfirmVisible(!isConfirmVisible)} className="focus:outline-none">
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            name="confirmNewPassword"
-            placeholder="Confirm your new password"
-            type={isConfirmVisible ? "text" : "password"}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
+          <InputGroup>
+            <InputGroup.Input
+              name="confirmNewPassword"
+              placeholder="Confirm your new password"
+              type={isConfirmVisible ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsConfirmVisible(!isConfirmVisible)}>
+                <Icon icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
           <FieldError />
         </TextField>
 
-        <Button
-          className="bg-accent-400 text-white font-semibold mt-2 rounded-xl"
-          type="submit"
-          size="lg"
-          isPending={isLoading}
-        >
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" type="submit" size="lg" isPending={isLoading}>
           Reset Password
         </Button>
       </form>

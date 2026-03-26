@@ -1,10 +1,13 @@
 "use client";
 
+import type { Key } from "@heroui/react";
 import { Button,
   Card,
   Separator,
   Input,
-  Select, TextField, Label, FieldError } from "@heroui/react";
+  Select,
+  ListBox,
+  TextField, Label, FieldError } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompanySocial, CompetitorSocial } from "@/types/massPosting";
 import { SOCIAL_PLATFORMS, emptySocial, emptyCompetitor } from "@/constants/massPosting";
@@ -88,7 +91,7 @@ export function StepSocials({
     <div className="space-y-8">
       {/* Company Socials */}
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Your Social Accounts <span className="text-danger text-sm">*</span>
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -99,13 +102,23 @@ export function StepSocials({
             <div key={idx} className="flex items-start gap-2">
               <Select
  className="w-40 flex-shrink-0"
- selectedKeys={[social.platform]}
- onChange={(e) => updateCompanySocial(idx, "platform", e.target.value)}
+ value={social.platform}
+ onChange={(val: Key | null) => {
+ if (val) updateCompanySocial(idx, "platform", val as string);
+ }}
  aria-label="Platform"
  >
-                {SOCIAL_PLATFORMS.map((p) => (
-                  <SelectItem key={p.key}>{p.label}</SelectItem>
-                ))}
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    {SOCIAL_PLATFORMS.map((p) => (
+                      <ListBox.Item key={p.key} id={p.key} textValue={p.label}>{p.label}<ListBox.ItemIndicator /></ListBox.Item>
+                    ))}
+                  </ListBox>
+                </Select.Popover>
               </Select>
               <Input onChange={(e) => ((v) => updateCompanySocial(idx, "url", v))(e.target.value)}
  placeholder="https://instagram.com/yourbrand"
@@ -140,7 +153,7 @@ export function StepSocials({
 
       {/* Competitor Socials */}
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Competitor Accounts
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -175,15 +188,23 @@ export function StepSocials({
                   <div key={aIdx} className="flex items-start gap-2 pl-2">
                     <Select
  className="w-36 flex-shrink-0"
- selectedKeys={[account.platform]}
- onChange={(e) =>
- updateCompetitorAccount(cIdx, aIdx, "platform", e.target.value)
- }
+ value={account.platform}
+ onChange={(val: Key | null) => {
+ if (val) updateCompetitorAccount(cIdx, aIdx, "platform", val as string);
+ }}
  aria-label="Platform"
  >
-                      {SOCIAL_PLATFORMS.map((p) => (
-                        <SelectItem key={p.key}>{p.label}</SelectItem>
-                      ))}
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {SOCIAL_PLATFORMS.map((p) => (
+                            <ListBox.Item key={p.key} id={p.key} textValue={p.label}>{p.label}<ListBox.ItemIndicator /></ListBox.Item>
+                          ))}
+                        </ListBox>
+                      </Select.Popover>
                     </Select>
                     <Input onChange={(e) => ((v) => updateCompetitorAccount(cIdx, aIdx, "url", v))(e.target.value)}
  placeholder="Account URL"

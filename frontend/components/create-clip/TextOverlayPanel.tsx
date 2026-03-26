@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { Button, Input, Switch, ProgressBar, TextField, Label, FieldError, Description} from "@heroui/react";
+import React, { useRef } from "react";
+import { Button, Input, Switch, TextField, Label, FieldError, Description } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   EXTENDED_COLORS,
@@ -106,32 +106,36 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   };
 
   // Show heading style/color/font options when either custom text is entered (manual mode) or auto-heading is on
-  const showHeadingOptions = autoHeading || !!customText;
+  const showHeadingOptions = true;
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-bold text-text-accent">Overlays & Captions</h3>
+      <h3 className="text-lg font-bold text-text-primary">Overlays & Captions</h3>
 
       {/* Captions Section */}
-      <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+      <div className="p-4 rounded-lg bg-white/[0.04]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="font-medium text-text-accent">Auto Captions</p>
+            <p className="font-medium text-text-primary">Auto Captions</p>
             <p className="text-sm text-text-secondary">Show captions with highlighted current word</p>
           </div>
-          <Switch isSelected={captions} onChange={setCaptions} />
+          <Switch isSelected={captions} onChange={setCaptions} aria-label="Auto captions">
+            <Switch.Control>
+              <Switch.Thumb />
+            </Switch.Control>
+          </Switch>
         </div>
 
         {captions && (
           <>
             <div>
-              <label className="text-sm font-medium text-text-accent mb-3 block">Highlight Color</label>
+              <label className="text-sm font-medium text-text-primary mb-3 block">Highlight Color</label>
               <div className="grid grid-cols-8 gap-2">
                 {EXTENDED_COLORS.map((c) => (
-                  <button
+                  <div
                     key={`caption-${c.color}`}
                     onClick={() => setCaptionColor(c.color)}
-                    className={`h-8 w-8 rounded border-2 transition-all ${
+                    className={`h-8 w-8 rounded border-2 transition-all cursor-pointer ${
                       captionColor === c.color
                         ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
                         : "border-border-base hover:scale-105"
@@ -143,23 +147,23 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
               </div>
             </div>
             <div className="mt-6">
-              <label className="text-sm font-medium text-text-accent mb-3 block">Caption Font</label>
+              <label className="text-sm font-medium text-text-primary mb-3 block">Caption Font</label>
               <div className="flex gap-3 overflow-x-auto py-2 px-1">
                 {CAPTION_FONTS.map((font) => (
-                  <button
+                  <div
                     key={font.id}
                     onClick={() => setCaptionFont(font.name)}
-                    className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center ${
+                    className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
                       captionFont === font.name
                         ? "bg-accent-400 text-white border-accent-400 scale-105"
-                        : "bg-surface-elevated text-text-accent border-border-base hover:scale-105"
+                        : "bg-surface-elevated text-text-primary border-border-base hover:scale-105"
                     }`}
                     title={font.name}
                   >
                     <span className="text-lg" style={{ fontFamily: `var(--font-${font.id})` }}>
                       Ag
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -168,34 +172,40 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
       </div>
 
       {/* Heading Section */}
-      <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
-        <p className="font-medium text-text-accent mb-4">Heading</p>
+      <div className="p-4 rounded-lg bg-white/[0.04]">
+        <p className="font-medium text-text-primary mb-4">Heading</p>
 
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-text-accent">Auto-Generate Headings</p>
+            <p className="text-sm text-text-primary">Auto-Generate Headings</p>
             <p className="text-xs text-text-secondary">AI creates a viral heading for each clip</p>
           </div>
-          <Switch isSelected={autoHeading} onChange={setAutoHeading} />
+          <Switch isSelected={autoHeading} onChange={setAutoHeading} aria-label="Auto-generate headings">
+            <Switch.Control>
+              <Switch.Thumb />
+            </Switch.Control>
+          </Switch>
         </div>
 
         {autoHeading ? (
-                    <TextField>
+          <TextField fullWidth variant="secondary">
             <Label>Heading Instructions (Optional)</Label>
-            <Input onChange={(e) => (setHeadingInstructions)(e.target.value)}
- placeholder="e.g., focus on product benefits, use question-style headings"
- value={headingInstructions}
- />
+            <Input
+              onChange={(e) => setHeadingInstructions(e.target.value)}
+              placeholder="e.g., focus on product benefits, use question-style headings"
+              value={headingInstructions}
+            />
             <Description>Guide the AI on what type of headings to generate</Description>
             <FieldError />
           </TextField>
         ) : (
-                    <TextField>
+          <TextField fullWidth variant="secondary">
             <Label>Custom Text</Label>
-            <Input onChange={(e) => (setCustomText)(e.target.value)}
- placeholder="e.g., MUST WATCH, NEW PRODUCT ALERT"
- value={customText}
- />
+            <Input
+              onChange={(e) => setCustomText(e.target.value)}
+              placeholder="e.g., MUST WATCH, NEW PRODUCT ALERT"
+              value={customText}
+            />
             <Description>Same heading applied to all clips</Description>
             <FieldError />
           </TextField>
@@ -205,22 +215,24 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
           <>
             {/* Heading Style Toggle */}
             <div className="mt-4">
-              <label className="text-sm font-medium text-text-accent mb-3 block">Heading Style</label>
+              <label className="text-sm font-medium text-text-primary mb-3 block">Heading Style</label>
               <div className="grid grid-cols-2 gap-3">
                 {HEADING_STYLES.map((s) => (
-                  <Button
- key={s.key}
- variant={textStyle === s.key ? "solid" : "bordered"}
- color={textStyle === s.key ? "primary" : "default"}
- onPress={() => {
- setTextStyle(s.key);
- if (s.key === "instagram") setTextFont("Proxima Nova");
- }}
- size="sm"
- >
-                    <Icon icon={s.icon} />
+                  <div
+                    key={s.key}
+                    onClick={() => {
+                      setTextStyle(s.key);
+                      if (s.key === "instagram") setTextFont("Proxima Nova");
+                    }}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
+                      textStyle === s.key
+                        ? "bg-accent-400 text-white border-accent-400"
+                        : "bg-surface-elevated border-border-base text-text-secondary hover:border-accent-400/50"
+                    }`}
+                  >
+                    <Icon icon={s.icon} width={16} />
                     {s.label}
-                  </Button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -228,19 +240,21 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
             {/* Text Position — only for custom text (manual mode) */}
             {!autoHeading && customText && (
               <div className="mt-4">
-                <label className="text-sm font-medium text-text-accent mb-3 block">Text Position</label>
+                <label className="text-sm font-medium text-text-primary mb-3 block">Text Position</label>
                 <div className="grid grid-cols-3 gap-3">
                   {TEXT_POSITIONS.map((pos) => (
-                    <Button
- key={pos.key}
- variant={textPosition === pos.key ? "solid" : "bordered"}
- color={textPosition === pos.key ? "primary" : "default"}
- onPress={() => setTextPosition(pos.key)}
- size="sm"
- >
-                      <Icon icon={pos.icon} />
+                    <div
+                      key={pos.key}
+                      onClick={() => setTextPosition(pos.key)}
+                      className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
+                        textPosition === pos.key
+                          ? "bg-accent-400 text-white border-accent-400"
+                          : "bg-surface-elevated border-border-base text-text-secondary hover:border-accent-400/50"
+                      }`}
+                    >
+                      <Icon icon={pos.icon} width={16} />
                       {pos.label}
-                    </Button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -249,26 +263,28 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
             {/* Background Color — only for instagram style */}
             {textStyle === "instagram" && (
               <div className="mt-4">
-                <label className="text-sm font-medium text-text-accent mb-3 block">Background Color</label>
+                <label className="text-sm font-medium text-text-primary mb-3 block">Background Color</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button
- variant={textBgColor === "#000000" ? "solid" : "bordered"}
- color={textBgColor === "#000000" ? "primary" : "default"}
- onPress={() => setTextBgColor("#000000")}
- size="sm"
- className={textBgColor === "#000000" ? "bg-black text-white border-accent-400" : ""}
- >
+                  <div
+                    onClick={() => setTextBgColor("#000000")}
+                    className={`flex items-center justify-center px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border-2 bg-black text-white ${
+                      textBgColor === "#000000"
+                        ? "border-accent-400 ring-2 ring-accent-400/30"
+                        : "border-white/20 opacity-60 hover:opacity-100"
+                    }`}
+                  >
                     Black
-                  </Button>
-                  <Button
- variant={textBgColor === "#FFFFFF" ? "solid" : "bordered"}
- color={textBgColor === "#FFFFFF" ? "primary" : "default"}
- onPress={() => setTextBgColor("#FFFFFF")}
- size="sm"
- className={textBgColor === "#FFFFFF" ? "bg-white text-black border-accent-400" : ""}
- >
+                  </div>
+                  <div
+                    onClick={() => setTextBgColor("#FFFFFF")}
+                    className={`flex items-center justify-center px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border-2 bg-white text-black ${
+                      textBgColor === "#FFFFFF"
+                        ? "border-accent-400 ring-2 ring-accent-400/30"
+                        : "border-black/20 opacity-60 hover:opacity-100"
+                    }`}
+                  >
                     White
-                  </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -276,16 +292,16 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
             {/* Text Color — hidden for instagram style */}
             {textStyle !== "instagram" && (
               <div className="mt-4">
-                <label className="text-sm font-medium text-text-accent mb-3 block">Text Color</label>
+                <label className="text-sm font-medium text-text-primary mb-3 block">Text Color</label>
                 <div className="grid grid-cols-8 gap-2">
                   {EXTENDED_COLORS.map((c) => (
-                    <button
+                    <div
                       key={`text-${c.color}`}
                       onClick={() => setTextColor(c.color)}
-                      className={`h-8 w-8 rounded border-2 transition-all ${
+                      className={`h-8 w-8 rounded-lg cursor-pointer transition-all ${
                         textColor === c.color
-                          ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
-                          : "border-border-base hover:scale-105"
+                          ? "ring-2 ring-accent-400 ring-offset-2 ring-offset-[#0f0f1a] scale-110"
+                          : "hover:scale-110"
                       }`}
                       style={{ backgroundColor: c.color }}
                       title={c.name}
@@ -296,23 +312,23 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
             )}
 
             <div className="mt-4">
-              <label className="text-sm font-medium text-text-accent mb-3 block">Heading Font</label>
+              <label className="text-sm font-medium text-text-primary mb-3 block">Heading Font</label>
               <div className="flex gap-3 overflow-x-auto py-2 px-1">
                 {HEADING_FONTS.map((font) => (
-                  <button
+                  <div
                     key={font.id}
                     onClick={() => setTextFont(font.name)}
-                    className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center ${
+                    className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
                       textFont === font.name
                         ? "bg-accent-400 text-white border-accent-400 scale-105"
-                        : "bg-surface-elevated text-text-accent border-border-base hover:scale-105"
+                        : "bg-surface-elevated text-text-primary border-border-base hover:scale-105"
                     }`}
                     title={font.name}
                   >
                     <span className="text-lg" style={{ fontFamily: `var(--font-${font.id})` }}>
                       Ag
                     </span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -321,10 +337,10 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
       </div>
 
       {/* Background Music Section */}
-      <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
+      <div className="p-4 rounded-lg bg-white/[0.04]">
         <div className="flex items-center gap-2 mb-4">
           <Icon icon="solar:music-notes-bold" className="text-text-secondary" />
-          <p className="font-medium text-text-accent">Background Music (Optional)</p>
+          <p className="font-medium text-text-primary">Background Music (Optional)</p>
         </div>
 
         {musicS3Key || musicFileName ? (
@@ -333,7 +349,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
               <div className="w-10 h-10 rounded-lg bg-accent-400/20 flex items-center justify-center flex-shrink-0">
                 <Icon icon="solar:music-note-2-bold" className="text-accent-400" />
               </div>
-              <p className="text-sm text-text-accent truncate">{musicFileName}</p>
+              <p className="text-sm text-text-primary truncate">{musicFileName}</p>
             </div>
             <Button size="sm" variant="danger-soft" isIconOnly onPress={handleRemoveMusic}>
               <Icon icon="solar:trash-bin-trash-bold" />

@@ -62,10 +62,9 @@ export function CameraAngleSelector({
                 return (
                   <Dropdown.Item
                     key={angle}
-                    startContent={<Icon icon={angleConfig.icon} width={16} />}
-                    description={angleConfig.description}
-                    className="text-text-accent"
+                    className="text-text-primary"
                   >
+                    <Icon icon={angleConfig.icon} width={16} />
                     {angleConfig.label}
                   </Dropdown.Item>
                 );

@@ -176,7 +176,7 @@ export function VariationModal({
                         <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={28} />
                       </div>
                       <div className="text-center">
-                        <p className="text-text-accent font-medium mb-1">Generating Variations</p>
+                        <p className="text-text-primary font-medium mb-1">Generating Variations</p>
                         <p className="text-text-secondary text-sm">{progressMessage}</p>
                       </div>
                       <div className="w-full max-w-xs">
@@ -191,7 +191,7 @@ export function VariationModal({
                   ) : (
                     <>
                       <div>
-                        <label className="text-sm font-medium text-text-accent mb-2 block">
+                        <label className="text-sm font-medium text-text-primary mb-2 block">
                           What changes do you want?
                         </label>
                         <TextArea
@@ -199,10 +199,7 @@ export function VariationModal({
                           onChange={(e) => setPrompt(e.target.value)}
                           placeholder="e.g., wearing a red dress at a coffee shop, casual gym outfit in a modern apartment, professional blazer in an office setting..."
                           minRows={4}
-                          classNames={{
-                            input: "bg-surface-elevated",
-                            inputWrapper: "bg-surface-elevated border-border-base",
-                          }}
+                          className="bg-surface-elevated border-border-base"
                         />
                       </div>
                       <p className="text-xs text-text-muted">
@@ -216,7 +213,7 @@ export function VariationModal({
           ) : (
             <div className="space-y-4 sm:space-y-6">
               <div className="text-center">
-                <h3 className="text-base sm:text-lg font-semibold text-text-accent mb-1 sm:mb-2">Select Your Favorites</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-1 sm:mb-2">Select Your Favorites</h3>
                 <p className="text-text-secondary text-xs sm:text-sm">
                   Click on images to select • {selectedImageKeys.length} selected
                 </p>
@@ -226,10 +223,10 @@ export function VariationModal({
                 {generatedImages.map((image) => {
                   const isSelected = selectedImageKeys.includes(image.key);
                   return (
-                    <button
+                    <div
                       key={image.key}
                       onClick={() => handleImageToggle(image.key)}
-                      className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all ${
+                      className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                         isSelected
                           ? "border-accent-400 ring-2 ring-accent-400/30"
                           : "border-border-base hover:border-accent-400/50"
@@ -256,7 +253,7 @@ export function VariationModal({
                           <span className="text-text-muted text-sm">{image.index + 1}</span>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -265,10 +262,10 @@ export function VariationModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <Icon icon="solar:tag-bold-duotone" className="text-accent-400 w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-xs sm:text-sm text-text-accent">Credit Cost</span>
+                    <span className="text-xs sm:text-sm text-text-primary">Credit Cost</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-base sm:text-lg font-semibold text-text-accent">{selectedImageKeys.length} credits</span>
+                    <span className="text-base sm:text-lg font-semibold text-text-primary">{selectedImageKeys.length} credits</span>
                     <p className="text-[10px] sm:text-xs text-text-muted">1 credit per image</p>
                   </div>
                 </div>

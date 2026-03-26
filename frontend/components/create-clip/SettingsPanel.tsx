@@ -1,10 +1,13 @@
 "use client";
 
 import React from "react";
+import type { Key } from "@heroui/react";
 import { Select,
+  Label,
+  ListBox,
   Slider,
   TextArea,
-  Card,
+  TextField,
   Switch } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
@@ -101,47 +104,69 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-bold text-text-accent">Clip Settings</h3>
+      <h3 className="text-lg font-bold text-text-primary">Clip Settings</h3>
 
       <Select
- label="Content Type"
- selectedKeys={[promptType]}
- onSelectionChange={(keys) => {
- const key = Array.from(keys)[0] as PromptType;
- if (key) setPromptType(key);
+ variant="secondary"
+ value={promptType}
+ onChange={(val: Key | null) => {
+ if (val) setPromptType(val as PromptType);
  }}
  >
-        {availablePromptTypes.map((type) => (
-          <SelectItem key={type}>{PROMPT_TYPE_LABELS[type]}</SelectItem>
-        ))}
+        <Label>Content Type</Label>
+        <Select.Trigger>
+          <Select.Value />
+          <Select.Indicator />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {availablePromptTypes.map((type) => (
+              <ListBox.Item key={type} id={type} textValue={PROMPT_TYPE_LABELS[type]}>{PROMPT_TYPE_LABELS[type]}<ListBox.ItemIndicator /></ListBox.Item>
+            ))}
+          </ListBox>
+        </Select.Popover>
       </Select>
 
       <Select
- label="Crop Mode"
- selectedKeys={[conversionMode]}
- onSelectionChange={(keys) => {
- const key = Array.from(keys)[0] as ConversionMode;
- if (key) setConversionMode(key);
+ variant="secondary"
+ value={conversionMode}
+ onChange={(val: Key | null) => {
+ if (val) setConversionMode(val as ConversionMode);
  }}
  description={
  CONVERSION_MODE_OPTIONS.find((o) => o.key === conversionMode)
  ?.description
  }
  >
-        {CONVERSION_MODE_OPTIONS.map((mode) => (
-          <SelectItem key={mode.key} startContent={<Icon icon={mode.icon} />}>
-            {mode.label}
-          </SelectItem>
-        ))}
+        <Label>Crop Mode</Label>
+        <Select.Trigger>
+          <Select.Value />
+          <Select.Indicator />
+        </Select.Trigger>
+        <Select.Popover>
+          <ListBox>
+            {CONVERSION_MODE_OPTIONS.map((mode) => (
+              <ListBox.Item key={mode.key} id={mode.key} textValue={mode.label}>
+                <div className="flex items-center gap-2">
+                  <Icon icon={mode.icon} width={16} />
+                  <span>{mode.label}</span>
+                </div>
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            ))}
+          </ListBox>
+        </Select.Popover>
       </Select>
 
-      <TextArea
-        label="Custom Instructions (Optional)"
-        placeholder={PROMPT_TYPE_PLACEHOLDERS[promptType]}
-        value={customPrompt}
-        onValueChange={setCustomPrompt}
-        minRows={3}
-      />
+      <TextField fullWidth variant="secondary">
+        <Label>Custom Instructions (Optional)</Label>
+        <TextArea
+          placeholder={PROMPT_TYPE_PLACEHOLDERS[promptType]}
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          rows={3}
+        />
+      </TextField>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -153,7 +178,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <Switch
  isSelected={autoLength}
  onChange={setAutoLength}
- />
+ aria-label="Auto length"
+ >
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch>
           </div>
         </div>
         {autoLength ? (
@@ -167,7 +197,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
  maxValue={120}
  value={length}
  onChange={(value) => setLength(value as number)}
- />
+ >
+            <Slider.Track>
+              <Slider.Fill />
+              <Slider.Thumb />
+            </Slider.Track>
+          </Slider>
         )}
       </div>
 
@@ -181,7 +216,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <Switch
  isSelected={autoHookLength}
  onChange={setAutoHookLength}
- />
+ aria-label="Auto hook length"
+ >
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch>
           </div>
         </div>
         {autoHookLength ? (
@@ -195,20 +235,32 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
  maxValue={15}
  value={hookLength}
  onChange={(value) => setHookLength(value as number)}
- />
+ >
+            <Slider.Track>
+              <Slider.Fill />
+              <Slider.Thumb />
+            </Slider.Track>
+          </Slider>
         )}
       </div>
 
       <Slider
- label="Number of Clips to Generate"
  step={1}
  minValue={1}
  maxValue={maxClips !== undefined ? Math.min(maxClips, 10) : 10}
  value={numberOfVideos}
  onChange={(value) => setNumberOfVideos(value as number)}
- getValue={(value) => `${value} clip${value !== 1 ? "s" : ""}`}
  isDisabled={maxClips !== undefined && maxClips < 1}
- />
+ >
+        <Label>Number of Clips to Generate</Label>
+        <Slider.Output>
+          {({state}) => `${state.values[0]} clip${state.values[0] !== 1 ? "s" : ""}`}
+        </Slider.Output>
+        <Slider.Track>
+          <Slider.Fill />
+          <Slider.Thumb />
+        </Slider.Track>
+      </Slider>
     </div>
   );
 };

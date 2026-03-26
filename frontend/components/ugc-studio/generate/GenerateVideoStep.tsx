@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
-import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   scriptsAtom,
@@ -93,48 +92,48 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   if (!currentScript || scenes.length === 0) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
             width={48}
           />
-          <h3 className="text-lg font-semibold text-text-accent mb-2">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">
             No Script Found
           </h3>
           <p className="text-text-secondary text-sm">
             Please go back and generate a script first
           </p>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (!isSilent && !selectedVoice) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:soundwave-bold-duotone"
             className="text-amber-400 mb-4"
             width={48}
           />
-          <h3 className="text-lg font-semibold text-text-accent mb-2">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">
             No Voice Selected
           </h3>
           <p className="text-text-secondary text-sm">
             Please go back and select a voice first
           </p>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-text-accent mb-2">
+        <h2 className="text-2xl font-bold text-text-primary mb-2">
           Generate Your Video
         </h2>
         <p className="text-text-secondary">
@@ -143,19 +142,19 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
       </div>
 
       {error && (
-        <Card className="bg-red-500/10 border border-red-500/30">
-          <Card.Content className="p-4">
+        <div className="rounded-xl border border-red-500/30 overflow-hidden bg-red-500/10">
+          <div className="p-4">
             <div className="flex items-center gap-3">
               <Icon icon="solar:danger-triangle-bold" className="text-red-400" width={24} />
               <p className="text-red-400 text-sm">{error}</p>
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="p-6">
-          <h3 className="text-lg font-semibold text-text-accent mb-4">Video Summary</h3>
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Video Summary</h3>
 
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
@@ -163,7 +162,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 <Icon icon="solar:document-text-bold-duotone" className="text-accent-400" width={20} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-accent">Script</p>
+                <p className="text-sm font-medium text-text-primary">Script</p>
                 <p className="text-xs text-text-secondary">
                   {currentScript.title || "Untitled Script"} • {totalScenes} scenes
                 </p>
@@ -175,7 +174,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 <Icon icon={isSilent ? "solar:volume-cross-bold-duotone" : "solar:soundwave-bold-duotone"} className="text-purple-400" width={20} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-accent">{isSilent ? "Audio" : "Voice"}</p>
+                <p className="text-sm font-medium text-text-primary">{isSilent ? "Audio" : "Voice"}</p>
                 <p className="text-xs text-text-secondary">
                   {isSilent ? "Silent mode — no voiceover" : `${selectedVoice!.name} • ${selectedVoice!.gender}`}
                 </p>
@@ -183,8 +182,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
             </div>
 
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
 
       <CreditCostCard
         creditCost={creditCost}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Card,
+import {
   Tabs,
   Button,
   useOverlayState } from "@heroui/react";
@@ -44,13 +44,13 @@ export function VoiceSelector({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const {
     isOpen: isSidebarOpen,
-    onOpen: openSidebar,
-    onClose: closeSidebar,
+    open: openSidebar,
+    close: closeSidebar,
   } = useOverlayState();
   const {
     isOpen: isCloneModalOpen,
-    onOpen: openCloneModal,
-    onClose: closeCloneModal,
+    open: openCloneModal,
+    close: closeCloneModal,
   } = useOverlayState();
   const [isAnimating, setIsAnimating] = useState(false);
   const [clonedVoices, setClonedVoices] = useState<Voice[]>([]);
@@ -258,7 +258,7 @@ export function VoiceSelector({
                   width={18}
                 />
               </div>
-              <span className="text-text-accent">
+              <span className="text-text-primary">
                 {selectedVoice ? selectedVoice.name : "Select Voice (Optional)"}
               </span>
             </div>
@@ -297,7 +297,7 @@ export function VoiceSelector({
                     />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-accent">
+                    <h3 className="text-base font-semibold text-text-primary">
                       Select Voice
                     </h3>
                     <p className="text-xs text-text-tertiary">
@@ -341,8 +341,8 @@ export function VoiceSelector({
 
   return (
     <>
-      <Card className="bg-surface-base border border-border-base">
-        <Card.Header className="pb-0 flex-col items-start gap-3">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-base">
+        <div className="pb-0 flex flex-col items-start gap-3 p-4">
           <div className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
               <Icon
@@ -352,7 +352,7 @@ export function VoiceSelector({
               />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-semibold text-text-accent">
+              <h3 className="text-base font-semibold text-text-primary">
                 Select Voice
               </h3>
               <p className="text-xs text-text-tertiary">
@@ -382,8 +382,8 @@ export function VoiceSelector({
               </Tabs.List>
             </Tabs.ListContainer>
           </Tabs>
-        </Card.Header>
-        <Card.Content className="pt-4">
+        </div>
+        <div className="pt-4 px-4 pb-4">
           <div className="grid grid-cols-2 gap-2">
             {filteredVoices.map((voice) => (
               <VoiceCard
@@ -399,8 +399,8 @@ export function VoiceSelector({
             ))}
           </div>
           <audio ref={audioRef} className="hidden" preload="none" />
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
 
       {cloneModal}
     </>

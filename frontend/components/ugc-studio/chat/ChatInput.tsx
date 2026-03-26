@@ -9,7 +9,7 @@ import {
   useEffect,
   type KeyboardEvent,
 } from "react";
-import { TextArea, Input } from "@heroui/react";
+import { TextArea, Input, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom } from "jotai";
@@ -264,7 +264,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-accent truncate">
+                    <p className="text-sm font-medium text-text-primary truncate">
                       {videoAttachment!.name}
                     </p>
                     <p className="text-[11px] text-text-muted">
@@ -273,13 +273,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                         : `${((videoAttachment!.size ?? 0) / (1024 * 1024)).toFixed(1)}MB — Ready to analyze`}
                     </p>
                   </div>
-                  <button
-                    onClick={removeVideo}
-                    disabled={isDisabled}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 disabled:opacity-40"
+                  <Button
+                    isIconOnly
+                    variant="tertiary"
+                    size="sm"
+                    onPress={removeVideo}
+                    isDisabled={isDisabled}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
                   >
                     <Icon icon="solar:trash-bin-minimalistic-bold" width={16} />
-                  </button>
+                  </Button>
                 </motion.div>
               ) : (
                 <motion.div
@@ -301,8 +304,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     }}
                   />
 
-                  <button
-                    onClick={() => videoInputRef.current?.click()}
+                  <div
+                    onClick={() => !(isDisabled || isFetchingLink) && videoInputRef.current?.click()}
                     onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                     onDragLeave={() => setIsDragOver(false)}
                     onDrop={(e) => {
@@ -311,21 +314,22 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                       const file = Array.from(e.dataTransfer.files).find(isVideoFile);
                       if (file) handleVideoFile(file);
                     }}
-                    disabled={isDisabled || isFetchingLink}
-                    className={`w-full rounded-2xl border-2 border-dashed transition-all duration-200 p-3 flex items-center gap-3 ${
+                    className={[
+                      "w-full rounded-2xl border-2 border-dashed transition-all duration-200 p-3 flex items-center gap-3 cursor-pointer",
                       isDragOver
                         ? "border-amber-400 bg-amber-400/10"
-                        : "border-white/[0.08] bg-white/[0.02] hover:border-amber-400/40 hover:bg-amber-400/5"
-                    } disabled:opacity-40`}
+                        : "border-white/[0.08] bg-white/[0.02] hover:border-amber-400/40 hover:bg-amber-400/5",
+                      (isDisabled || isFetchingLink) ? "opacity-40 pointer-events-none" : "",
+                    ].join(" ")}
                   >
                     <div className="w-9 h-9 rounded-lg bg-amber-400/10 flex items-center justify-center shrink-0">
                       <Icon icon="solar:upload-minimalistic-bold-duotone" width={20} className="text-amber-400" />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-medium text-text-accent">Upload reference ad</p>
+                      <p className="text-sm font-medium text-text-primary">Upload reference ad</p>
                       <p className="text-[11px] text-text-muted">MP4, MOV, WebM up to {MAX_VIDEO_SIZE_MB}MB</p>
                     </div>
-                  </button>
+                  </div>
 
                   <div className="flex items-center gap-3 px-2">
                     <div className="flex-1 h-px bg-white/[0.06]" />
@@ -333,36 +337,38 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     <div className="flex-1 h-px bg-white/[0.06]" />
                   </div>
 
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Input onChange={(e) => ((v) => { setLinkUrl(v); setLinkError(null); })(e.target.value)}
- value={linkUrl}
- placeholder="YouTube, TikTok, Instagram, or X link"
- isDisabled={isDisabled || isFetchingLink}
- isInvalid={!!linkError}
- errorMessage={linkError}
- onKeyDown={(e) => {
- if (e.key === "Enter") {
- e.preventDefault();
- handleLinkSubmit();
- }
- }}
- startContent={
- <Icon icon="solar:link-round-bold" width={16} className="text-text-muted shrink-0" />
- }
- />
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <Icon icon="solar:link-round-bold" width={16} className="text-text-muted" />
                     </div>
-                    <button
-                      onClick={handleLinkSubmit}
-                      disabled={!linkUrl.trim() || isDisabled || isFetchingLink}
-                      className="h-10 px-4 rounded-xl bg-amber-500 text-white text-sm font-medium transition-all hover:brightness-110 disabled:opacity-40 disabled:hover:brightness-100 flex items-center gap-2 shrink-0"
+                    <Input
+                      onChange={(e) => { setLinkUrl(e.target.value); setLinkError(null); }}
+                      value={linkUrl}
+                      placeholder="YouTube, TikTok, Instagram, or X link"
+                      disabled={!!(isDisabled || isFetchingLink)}
+                      className="w-full bg-transparent border border-white/[0.08] rounded-xl pl-9 pr-12 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-amber-500/50 transition-colors"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleLinkSubmit();
+                        }
+                      }}
+                    />
+                    <Button
+                      isIconOnly
+                      variant="tertiary"
+                      size="sm"
+                      onPress={handleLinkSubmit}
+                      isDisabled={!linkUrl.trim() || isDisabled || isFetchingLink}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center transition-all hover:brightness-110"
                     >
                       {isFetchingLink ? (
-                        <Icon icon="solar:loading-circle-bold" width={16} className="animate-spin" />
+                        <Icon icon="svg-spinners:ring-resize" width={14} />
                       ) : (
-                        <Icon icon="solar:arrow-right-bold" width={16} />
+                        <Icon icon="solar:play-bold" width={14} />
                       )}
-                    </button>
+                    </Button>
+                    {linkError && <p className="text-xs text-red-500 mt-1">{linkError}</p>}
                   </div>
                 </motion.div>
               )}
@@ -399,12 +405,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                           </div>
                         )}
                         {!att.uploading && (
-                          <button
-                            onClick={() => removeAttachment(i)}
+                          <Button
+                            isIconOnly
+                            variant="tertiary"
+                            size="sm"
+                            onPress={() => removeAttachment(i)}
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500/90 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 scale-75 group-hover:scale-100 shadow-lg shadow-red-500/20"
                           >
                             <Icon icon="solar:close-circle-bold" width={14} />
-                          </button>
+                          </Button>
                         )}
                       </motion.div>
                     ))}
@@ -426,14 +435,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 }}
               />
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isDisabled || isUploading || attachments.length >= 5}
-                className="shrink-0 mb-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-text-muted hover:text-accent-400 hover:bg-accent-400/10 transition-all duration-200 disabled:opacity-30 disabled:hover:text-text-muted disabled:hover:bg-transparent"
+              <Button
+                isIconOnly
+                variant="tertiary"
+                size="sm"
+                onPress={() => fileInputRef.current?.click()}
+                isDisabled={isDisabled || isUploading || attachments.length >= 5}
+                className="shrink-0 mb-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-text-muted hover:text-accent-400 hover:bg-accent-400/10 transition-all duration-200"
                 title="Upload product images"
               >
                 <Icon icon="solar:gallery-minimalistic-bold-duotone" width={20} />
-              </button>
+              </Button>
 
               <div className="flex-1 relative">
                 {text && /@scene \d/i.test(text) && (
@@ -451,23 +463,26 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   </div>
                 )}
                 <TextArea
- value={text}
- onValueChange={setText}
- onKeyDown={handleKeyDown}
- placeholder={customPlaceholder || (hasVideo ? "Describe your product and any creative direction..." : "Describe the video you want to make, or attach a video to clone...")}
- minRows={1}
- maxRows={4}
- isDisabled={isDisabled}
- />
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={customPlaceholder || (hasVideo ? "Describe your product and any creative direction..." : "Describe the video you want to make, or attach a video to clone...")}
+                  rows={1}
+                  disabled={isDisabled}
+                  className="w-full bg-transparent border-none outline-none resize-none text-sm text-text-primary placeholder:text-text-muted leading-relaxed px-3 py-2 max-h-32"
+                />
               </div>
 
               <motion.div
                 className="shrink-0 mb-0.5"
                 whileTap={hasContent && !isDisabled ? { scale: 0.9 } : {}}
               >
-                <button
-                  onClick={handleSubmit}
-                  disabled={isDisabled || !hasContent}
+                <Button
+                  isIconOnly
+                  variant="tertiary"
+                  size="sm"
+                  onPress={handleSubmit}
+                  isDisabled={isDisabled || !hasContent}
                   className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 ${
                     hasContent && !isDisabled
                       ? "bg-gradient-to-br from-accent-400 to-purple-500 text-white shadow-lg shadow-accent-400/25 hover:shadow-xl hover:shadow-accent-400/30 hover:brightness-110"
@@ -479,7 +494,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                   ) : (
                     <Icon icon="solar:plain-bold" width={16} />
                   )}
-                </button>
+                </Button>
               </motion.div>
             </div>
           </div>

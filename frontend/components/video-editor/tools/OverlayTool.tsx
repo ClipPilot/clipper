@@ -34,7 +34,6 @@ export function OverlayTool() {
     const file = e.target.files?.[0];
     if (!file || !clip || !selectedTeam?.id) return;
 
-    // Validate file type
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
     if (!isImage && !isVideo) {
@@ -42,7 +41,6 @@ export function OverlayTool() {
       return;
     }
 
-    // Validate file size (100MB max)
     if (file.size > 100 * 1024 * 1024) {
       alert("File size must be less than 100MB");
       return;
@@ -52,13 +50,10 @@ export function OverlayTool() {
     setUploadProgress(0);
 
     try {
-      // Create blob URL for preview
       const url = URL.createObjectURL(file);
 
-      // Get natural dimensions
       const dimensions = await getMediaDimensions(url, isImage);
 
-      // Upload to S3
       const { uploadUrl, s3Key } = await clipsAPI.getOverlayUploadUrl(
         selectedTeam.id,
         clip.id,
@@ -91,7 +86,6 @@ export function OverlayTool() {
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      // Reset input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -152,9 +146,8 @@ export function OverlayTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-text-accent flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:layers-bold" className="text-accent-400" />
           Media Overlays
         </h3>
@@ -163,14 +156,12 @@ export function OverlayTool() {
         </p>
       </div>
 
-      {/* Comment Overlay Form */}
       <CommentOverlayForm
         editingOverlayId={
           selectedOverlay?.type === "comment" ? selectedOverlayId : null
         }
       />
 
-      {/* Upload Button */}
       <div>
         <input
           ref={fileInputRef}
@@ -180,11 +171,11 @@ export function OverlayTool() {
           onChange={handleFileSelect}
         />
         <Button
- variant="outline"
- className="w-full"
- onPress={() => fileInputRef.current?.click()}
- isPending={uploading}
- >
+          variant="outline"
+          className="w-full"
+          onPress={() => fileInputRef.current?.click()}
+          isPending={uploading}
+        >
           {!uploading && <Icon icon="solar:upload-bold" />}
           {uploading ? `Uploading... ${uploadProgress}%` : "Add Image/Video Overlay"}
         </Button>
@@ -193,7 +184,6 @@ export function OverlayTool() {
         </p>
       </div>
 
-      {/* Overlay List */}
       {overlays.length > 0 && (
         <div className="space-y-2">
           {overlays.map((overlay) => (
@@ -203,11 +193,10 @@ export function OverlayTool() {
               className={`flex items-center justify-between rounded-lg p-2 cursor-pointer transition-colors ${
                 selectedOverlayId === overlay.id
                   ? "bg-accent-400/20 ring-1 ring-accent-400"
-                  : "bg-surface-elevated hover:bg-surface-hover"
+                  : "bg-white/[0.04] hover:bg-surface-hover"
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                {/* Thumbnail */}
                 <div className="w-10 h-10 rounded bg-surface-base flex-shrink-0 overflow-hidden">
                   {overlay.type === "comment" && overlay.commentData ? (
                     <div className="w-full h-full flex items-center justify-center bg-blue-500/20">
@@ -229,7 +218,7 @@ export function OverlayTool() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-text-accent truncate">{getOverlayLabel(overlay)}</p>
+                  <p className="text-sm text-text-primary truncate">{getOverlayLabel(overlay)}</p>
                   <p className="text-xs text-text-tertiary">
                     {getOverlaySubtitle(overlay)} &middot;{" "}
                     {formatTime(overlay.startTime)} - {formatTime(overlay.endTime)}
@@ -237,11 +226,11 @@ export function OverlayTool() {
                 </div>
               </div>
               <Button
- size="sm"
- variant="danger-soft"
- isIconOnly
- onPress={() => handleRemoveOverlay(overlay.id)}
- >
+                size="sm"
+                variant="danger-soft"
+                isIconOnly
+                onPress={() => handleRemoveOverlay(overlay.id)}
+              >
                 <Icon icon="solar:trash-bin-trash-bold" />
               </Button>
             </div>
@@ -249,36 +238,42 @@ export function OverlayTool() {
         </div>
       )}
 
-      {/* Selected Overlay Controls */}
       {selectedOverlay && (
-        <div className="bg-surface-elevated rounded-lg p-3 space-y-3">
-          {/* Opacity — inline compact row */}
+        <div className="bg-white/[0.04] rounded-lg p-3 space-y-3">
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              isIconOnly
+              variant="tertiary"
+              size="sm"
               className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors text-text-secondary"
-              onClick={() =>
+              onPress={() =>
                 updateOverlay(selectedOverlay.id, {
                   opacity: selectedOverlay.opacity >= 1 ? 0.5 : 1,
                 })
               }
-              title={selectedOverlay.opacity < 1 ? "Reset opacity" : "50% opacity"}
+              aria-label={selectedOverlay.opacity < 1 ? "Reset opacity" : "50% opacity"}
             >
               <Icon
                 icon={selectedOverlay.opacity < 1 ? "solar:eye-closed-bold" : "solar:eye-bold"}
                 className="text-lg"
               />
-            </button>
+            </Button>
             <Slider
- value={selectedOverlay.opacity}
- onChange={(val) =>
- updateOverlay(selectedOverlay.id, { opacity: val as number })
- }
- minValue={0}
- maxValue={1}
- step={0.05}
- className="flex-1"
- aria-label="Opacity"
- />
+              value={selectedOverlay.opacity}
+              onChange={(val) =>
+                updateOverlay(selectedOverlay.id, { opacity: val as number })
+              }
+              minValue={0}
+              maxValue={1}
+              step={0.05}
+              className="flex-1"
+              aria-label="Opacity"
+            >
+              <Slider.Track>
+                <Slider.Fill />
+                <Slider.Thumb />
+              </Slider.Track>
+            </Slider>
             <span className="text-xs text-text-tertiary w-8 text-right tabular-nums">
               {Math.round(selectedOverlay.opacity * 100)}%
             </span>

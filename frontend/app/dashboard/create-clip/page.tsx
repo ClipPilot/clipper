@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
-import { Button, Card, ProgressBar } from "@heroui/react";
-import { toast } from "@/lib/toast";
+import { Button, ProgressBar } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { videoAPI, BatchUploadedVideo, ConversionMode } from "@/api/video";
@@ -441,8 +441,7 @@ export default function CreateClipPage() {
             </p>
           </div>
           {usageStats && (
-            <Card className="bg-surface-base border border-border-accent flex-shrink-0">
-              <Card.Content className="p-3 sm:p-4">
+            <div className="rounded-xl border border-border-accent bg-surface-base p-3 sm:p-4 flex-shrink-0">
                 {selectedTeam?.plan === "free" ? (
                   <div className="flex sm:block items-center gap-3">
                     <p className="text-xs sm:text-sm text-text-secondary sm:mb-1">
@@ -468,21 +467,18 @@ export default function CreateClipPage() {
                     </p>
                   </div>
                 )}
-              </Card.Content>
-            </Card>
+            </div>
           )}
         </div>
 
         {error && (
-          <Card className="mb-6 bg-red-500/10 border border-red-500">
-            <Card.Content className="p-4 flex items-center gap-3">
+          <div className="rounded-xl border border-red-500 bg-red-500/10 p-4 flex items-center gap-3 mb-6">
               <Icon
                 icon="solar:danger-circle-bold"
                 className="text-2xl text-red-500"
               />
               <p className="text-red-500">{error}</p>
-            </Card.Content>
-          </Card>
+          </div>
         )}
 
         {showResults && generatedClips.length > 0 ? (
@@ -499,17 +495,17 @@ export default function CreateClipPage() {
               </div>
               <div className="flex gap-3">
                 <Button
-                  variant="bordered"
+                  variant="outline"
                   onPress={handleCreateAnother}
-                  startContent={<Icon icon="solar:add-circle-bold" />}
                 >
+                  <Icon icon="solar:add-circle-bold" />
                   Create Another
                 </Button>
                 <Button
                   color="primary"
                   onPress={() => router.push("/dashboard/clips")}
-                  startContent={<Icon icon="solar:folder-bold" />}
                 >
+                  <Icon icon="solar:folder-bold" />
                   View All Clips
                 </Button>
               </div>
@@ -526,8 +522,7 @@ export default function CreateClipPage() {
             {!hasVideosReady ? (
               <div className="lg:col-span-3">
                 {/* Batch mode toggle */}
-                <Card className="bg-surface-base border border-border-base mb-4" data-tour="clip-mode-toggle">
-                  <Card.Content className="p-4">
+                <div className="rounded-xl border border-border-base bg-surface-base p-4 mb-4" data-tour="clip-mode-toggle">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Icon
@@ -560,18 +555,20 @@ export default function CreateClipPage() {
                       >
                         <Switch
                           isSelected={batchMode}
-                          onValueChange={(value) => {
+                          onChange={(value) => {
                             setBatchMode(value);
                             setUploadedVideo(null);
                             setBatchVideos([]);
                           }}
-                          size="lg"
-                          color="primary"
-                        />
+                          aria-label="Toggle batch mode"
+                        >
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                        </Switch>
                       </Tooltip>
                     </div>
-                  </Card.Content>
-                </Card>
+                </div>
 
                 <div data-tour="clip-upload">
                   {batchMode ? (
@@ -619,8 +616,7 @@ export default function CreateClipPage() {
             ) : (
               <>
                 <div className="lg:col-span-1">
-                  <Card className="bg-surface-base border border-border-base mb-4">
-                    <Card.Content className="p-4">
+                  <div className="rounded-xl border border-border-base bg-surface-base p-4 mb-4">
                       {batchMode ? (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -635,7 +631,7 @@ export default function CreateClipPage() {
                             </div>
                             <Button
                               size="sm"
-                              variant="light"
+                              variant="tertiary"
                               onPress={handleCreateAnother}
                             >
                               Clear All
@@ -662,7 +658,7 @@ export default function CreateClipPage() {
                           <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
                             <Icon
                               icon="solar:check-circle-bold"
-                              className="text-xl text-green-500"
+                              className="text-xl text-green-400"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -675,7 +671,7 @@ export default function CreateClipPage() {
                           </div>
                           <Button
                             size="sm"
-                            variant="light"
+                            variant="tertiary"
                             isIconOnly
                             onPress={handleCreateAnother}
                           >
@@ -686,11 +682,9 @@ export default function CreateClipPage() {
                           </Button>
                         </div>
                       )}
-                    </Card.Content>
-                  </Card>
+                  </div>
 
-                  <Card className="bg-surface-base border border-border-base" data-tour="clip-settings">
-                    <Card.Content className="p-4 sm:p-6">
+                  <div className="rounded-xl border border-border-base bg-surface-base p-4 sm:p-6" data-tour="clip-settings">
                       <SettingsPanel
                         promptType={promptType}
                         setPromptType={setPromptType}
@@ -716,13 +710,11 @@ export default function CreateClipPage() {
                         }
                         batchMode={batchMode}
                       />
-                    </Card.Content>
-                  </Card>
+                  </div>
                 </div>
 
                 <div className="lg:col-span-2">
-                  <Card className="bg-surface-base border border-border-base h-full" data-tour="clip-overlays">
-                    <Card.Content className="p-4 sm:p-6">
+                  <div className="rounded-xl border border-border-base bg-surface-base p-4 sm:p-6 h-full" data-tour="clip-overlays">
                       <TextOverlayPanel
                         customText={customText}
                         setCustomText={setCustomText}
@@ -758,11 +750,9 @@ export default function CreateClipPage() {
 
                       {isProcessing && (
                         <div className="mt-8">
-                          <Progress
-                            isIndeterminate
-                            color="primary"
-                            className="mb-2"
-                          />
+                          <ProgressBar isIndeterminate className="mb-2">
+                            <ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+                          </ProgressBar>
                           <p className="text-sm text-text-secondary text-center">
                             Submitting job...
                           </p>
@@ -783,11 +773,9 @@ export default function CreateClipPage() {
                               usageStats?.generationsRemaining !== -1 &&
                               (usageStats?.generationsRemaining ?? 0) <= 0)
                           }
-                          isLoading={isProcessing}
-                          startContent={
-                            !isProcessing && <Icon icon="solar:scissors-bold" />
-                          }
+                          isPending={isProcessing}
                         >
+                          {!isProcessing && <Icon icon="solar:scissors-bold" />}
                           {isProcessing
                             ? "Creating Clips..."
                             : batchMode
@@ -795,8 +783,7 @@ export default function CreateClipPage() {
                               : "Create Clips"}
                         </Button>
                       </div>
-                    </Card.Content>
-                  </Card>
+                  </div>
                 </div>
               </>
             )}
@@ -852,11 +839,10 @@ export default function CreateClipPage() {
                   />
                 </div>
               ) : (
-                <Card className="bg-surface-base border border-border-base">
-                  <Card.Content className="flex flex-col items-center justify-center py-12">
+                <div className="rounded-xl border border-border-base bg-surface-base flex flex-col items-center justify-center py-12">
                     <Icon
                       icon="solar:check-circle-bold-duotone"
-                      className="text-5xl text-success-500 mb-3"
+                      className="text-5xl text-green-400 mb-3"
                     />
                     <p className="text-text-secondary text-center mb-1 text-base">
                       All caught up!
@@ -864,8 +850,7 @@ export default function CreateClipPage() {
                     <p className="text-text-tertiary text-center text-sm max-w-md">
                       Upload a video above to generate new clips
                     </p>
-                  </Card.Content>
-                </Card>
+                </div>
               )}
             </div>
           </div>

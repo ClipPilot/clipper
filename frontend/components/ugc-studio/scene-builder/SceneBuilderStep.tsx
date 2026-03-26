@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Card, Button, Spinner, ProgressBar } from "@heroui/react";
+import { Button, Spinner, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   scriptsAtom,
@@ -513,28 +513,28 @@ export function SceneBuilderStep({
 
   if (!currentScript || scenes.length === 0) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
             width={48}
           />
-          <h3 className="text-lg font-semibold text-text-accent mb-2">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">
             No Script Found
           </h3>
           <p className="text-text-secondary text-sm">
             Please go back and generate a script first
           </p>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-text-accent mb-2">
+        <h2 className="text-2xl font-bold text-text-primary mb-2">
           Storyboard
         </h2>
         <p className="text-text-secondary">
@@ -542,8 +542,8 @@ export function SceneBuilderStep({
         </p>
       </div>
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <Card.Content className="p-4">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div
@@ -564,7 +564,7 @@ export function SceneBuilderStep({
                 />
               </div>
               <div>
-                <p className="text-sm font-medium text-text-accent">
+                <p className="text-sm font-medium text-text-primary">
                   {completedScenes} of {totalScenes} scenes complete
                 </p>
                 <p className="text-xs text-text-muted">
@@ -593,14 +593,14 @@ export function SceneBuilderStep({
  >
 <ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
 </ProgressBar>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
 
       {/* Horizontal Storyboard Timeline */}
       <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
         <div className="flex items-center gap-2 mb-4">
           <Icon icon="solar:video-frame-play-horizontal-bold-duotone" className="text-accent-400" width={18} />
-          <span className="text-sm font-medium text-text-accent">Timeline</span>
+          <span className="text-sm font-medium text-text-primary">Timeline</span>
           <span className="text-xs text-text-muted ml-auto">
             Click a scene to edit
           </span>
@@ -637,15 +637,18 @@ export function SceneBuilderStep({
                     onRemove={scenes.length > 3 ? () => handleRemoveScene(scene.id) : undefined}
                   />
                   {/* Add scene button */}
-                  <button
-                    onClick={() => handleAddScene(index)}
+                  <Button
+                    isIconOnly
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => handleAddScene(index)}
                     className="w-5 h-5 rounded-full border border-dashed border-border-base text-text-muted
                       hover:bg-accent-400/20 hover:text-accent-400 hover:border-accent-400
                       transition-all shrink-0 flex items-center justify-center"
                     title="Add scene"
                   >
                     <Icon icon="solar:add-circle-linear" width={12} />
-                  </button>
+                  </Button>
                   {/* Connector line between scenes */}
                   {index < scenes.length - 1 && (
                     <div className="w-4 h-0.5 bg-border-base shrink-0" />

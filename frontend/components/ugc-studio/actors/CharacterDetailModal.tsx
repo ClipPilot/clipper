@@ -83,11 +83,11 @@ export function CharacterDetailModal({
 
   return (
     <Modal>
-      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-2xl">
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-4xl">
         <Modal.Header className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-text-accent truncate">{displayCharacter.name}</h2>
+              <h2 className="text-xl font-bold text-text-primary truncate">{displayCharacter.name}</h2>
               {displayCharacter.public && (
                 <Chip size="sm" variant="tertiary">
                   Public
@@ -127,10 +127,10 @@ export function CharacterDetailModal({
                 {images.length > 1 && (
                   <div className="flex gap-2 justify-center">
                     {images.map((url, index) => (
-                      <button
+                      <div
                         key={index}
                         onClick={() => setSelectedImageIndex(index)}
-                        className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
                           selectedImageIndex === index
                             ? "border-accent-400 ring-2 ring-accent-400/30"
                             : "border-border-base hover:border-accent-400/50"
@@ -142,7 +142,7 @@ export function CharacterDetailModal({
                             <Icon icon="solar:star-bold" className="text-white" width={10} />
                           </div>
                         )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -159,10 +159,10 @@ export function CharacterDetailModal({
                         const thumbUrl = char.primaryImageUrl || char.imageUrls?.[0];
 
                         return (
-                          <button
+                          <div
                             key={char.id}
                             onClick={() => handleCharacterSelect(char)}
-                            className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all group ${
+                            className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all group cursor-pointer ${
                               isSelected
                                 ? "border-accent-400 ring-2 ring-accent-400/30"
                                 : isOriginal
@@ -191,7 +191,7 @@ export function CharacterDetailModal({
                                 {isOriginal ? "Original" : char.name}
                               </p>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -201,8 +201,8 @@ export function CharacterDetailModal({
 
               <div className="space-y-6">
                 {displayCharacter.appearance_config && (
-                  <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-text-accent flex items-center gap-2">
+                  <div className="bg-white/[0.04] rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                       <Icon icon="solar:face-scan-circle-bold-duotone" width={18} className="text-accent-400" />
                       Appearance
                     </h3>
@@ -230,8 +230,8 @@ export function CharacterDetailModal({
                 )}
 
                 {displayCharacter.style_config && (
-                  <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-text-accent flex items-center gap-2">
+                  <div className="bg-white/[0.04] rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                       <Icon icon="solar:hanger-2-bold-duotone" width={18} className="text-accent-400" />
                       Style
                     </h3>

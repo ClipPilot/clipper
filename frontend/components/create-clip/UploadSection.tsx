@@ -67,6 +67,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   );
   const [isDragging, setIsDragging] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
   // URL download state
@@ -280,7 +281,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-accent mb-2">
+            <h3 className="text-lg font-bold text-text-primary mb-2">
               Downloading from Google Drive
             </h3>
             <p className="text-sm text-text-secondary">
@@ -293,13 +294,13 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         </>
       ) : isUploading ? (
         <>
-          <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
+          <div className="w-full mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
             <Icon
               icon="solar:danger-triangle-bold"
-              className="text-warning-500 flex-shrink-0"
+              className="text-yellow-500 flex-shrink-0"
               width={20}
             />
-            <p className="text-sm text-warning-500">
+            <p className="text-sm text-yellow-500">
               Do not leave this page while uploading
             </p>
           </div>
@@ -312,7 +313,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-accent mb-2">
+            <h3 className="text-lg font-bold text-text-primary mb-2">
               Uploading Video
             </h3>
             {selectedFile && (
@@ -370,13 +371,14 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             </div>
 
             <div className="text-center">
-              <h3 className="text-lg font-bold text-text-accent mb-1">
+              <h3 className="text-lg font-bold text-text-primary mb-1">
                 Drag & Drop Video
               </h3>
               <p className="text-sm text-text-secondary">or click to browse</p>
             </div>
 
             <input
+              ref={fileInputRef}
               type="file"
               accept="video/*"
               onChange={handleFileSelect}
@@ -386,13 +388,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
             <div className="flex gap-3">
               <Button
- as="label"
- htmlFor="video-upload"
- size="md"
- isDisabled={downloading}
- variant="tertiary"
- className="cursor-pointer"
- >
+                size="md"
+                isDisabled={downloading}
+                variant="tertiary"
+                onPress={() => fileInputRef.current?.click()}
+              >
                 <Icon icon="solar:folder-open-bold" />
                 Browse Files
               </Button>
@@ -418,13 +418,13 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     <div className="flex flex-col space-y-4">
       {isDownloading ? (
         <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
+          <div className="w-full mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center gap-2">
             <Icon
               icon="solar:danger-triangle-bold"
-              className="text-warning-500 flex-shrink-0"
+              className="text-yellow-500 flex-shrink-0"
               width={20}
             />
-            <p className="text-sm text-warning-500">
+            <p className="text-sm text-yellow-500">
               Do not leave this page while downloading
             </p>
           </div>
@@ -437,7 +437,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
 
           <div className="text-center">
-            <h3 className="text-lg font-bold text-text-accent mb-2">
+            <h3 className="text-lg font-bold text-text-primary mb-2">
               {downloadProgress?.type === "uploading"
                 ? "Uploading to Cloud..."
                 : "Downloading Video"}
@@ -520,7 +520,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-text-accent truncate">
+                  <h4 className="text-sm font-semibold text-text-primary truncate">
                     {videoInfo.title}
                   </h4>
                   <p className="text-xs text-text-secondary mt-1">

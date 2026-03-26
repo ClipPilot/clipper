@@ -26,7 +26,7 @@ export default function ForgotPasswordForm({
   return (
     <>
       <div>
-        <h2 className="text-2xl font-bold text-text-accent">Reset Password</h2>
+        <h2 className="text-2xl font-bold text-text-primary">Reset Password</h2>
         <p className="text-sm text-text-secondary mt-1">Enter your email to receive a reset link</p>
       </div>
 
@@ -36,33 +36,23 @@ export default function ForgotPasswordForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <TextField type="email" isRequired>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <TextField fullWidth type="email" isRequired variant="secondary">
           <Label>Email Address</Label>
-          <Input
-            name="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input name="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <FieldError />
         </TextField>
 
-        <Button
-          className="bg-accent-400 text-white font-semibold mt-2 rounded-xl"
-          type="submit"
-          size="lg"
-          isPending={isLoading}
-        >
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" type="submit" size="lg" isPending={isLoading}>
           Send Reset Link
         </Button>
       </form>
 
       <p className="text-sm text-center text-text-secondary">
         Remember your password?{" "}
-        <button className="text-accent-400 font-medium hover:underline" onClick={onBackToLogin}>
+        <span className="text-accent-400 font-medium hover:underline cursor-pointer" onClick={onBackToLogin}>
           Log In
-        </button>
+        </span>
       </p>
     </>
   );

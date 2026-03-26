@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card,
+import {
   Button,
   TextArea,
   Chip,
@@ -155,8 +155,7 @@ export function SceneCard({
   const isArollMissingDialogue = scene.shotType === "a-roll" && !scene.dialogue?.trim();
 
   return (
-    <Card className={`bg-surface-elevated border overflow-visible ${isArollMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
-      <Card.Content className="p-4 space-y-3">
+    <div className={`rounded-xl border overflow-visible bg-surface-elevated p-4 space-y-3 ${isArollMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Dropdown>
@@ -181,9 +180,9 @@ export function SceneCard({
                   return (
                     <Dropdown.Item
                       key={type}
-                      startContent={<Icon icon={typeConfig.icon} width={16} />}
-                      className="text-text-accent"
+                      className="text-text-primary"
                     >
+                      <Icon icon={typeConfig.icon} width={16} />
                       {typeConfig.label}
                     </Dropdown.Item>
                   );
@@ -294,10 +293,7 @@ export function SceneCard({
               onChange={(e) => setEditedAction(e.target.value)}
               placeholder="Enter action..."
               minRows={1}
-              classNames={{
-                input: "bg-surface-base text-text-accent text-sm",
-                inputWrapper: "bg-surface-base border-border-base",
-              }}
+              className="bg-surface-base text-text-primary text-sm border-border-base"
             />
             <div className="flex justify-end gap-2">
               <Button size="sm" variant="tertiary" onPress={handleCancelActionEdit}>
@@ -314,7 +310,7 @@ export function SceneCard({
           </div>
         ) : (
           <div
-            className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer hover:text-text-accent transition-colors group"
+            className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors group"
             onClick={() => setIsEditingAction(true)}
           >
             <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
@@ -362,10 +358,7 @@ export function SceneCard({
                 onChange={(e) => setEditedDialogue(e.target.value)}
                 placeholder="Enter dialogue..."
                 minRows={2}
-                classNames={{
-                  input: "bg-surface-base text-text-accent",
-                  inputWrapper: "bg-surface-base border-border-base",
-                }}
+                className="bg-surface-base text-text-primary border-border-base"
               />
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="tertiary" onPress={handleCancelDialogueEdit}>
@@ -386,7 +379,7 @@ export function SceneCard({
               onClick={() => setIsEditingDialogue(true)}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-text-accent text-sm leading-relaxed flex-1">
+                <p className="text-text-primary text-sm leading-relaxed flex-1">
                   &quot;{scene.dialogue}&quot;
                 </p>
                 <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
@@ -436,10 +429,7 @@ export function SceneCard({
                             }
                             placeholder="What happens in this shot..."
                             minRows={1}
-                            classNames={{
-                              input: "bg-surface-base text-text-accent text-sm",
-                              inputWrapper: "bg-surface-base border-border-base",
-                            }}
+                            className="bg-surface-base text-text-primary text-sm border-border-base"
                           />
                         </div>
                         <div className="flex justify-end gap-2">
@@ -467,7 +457,7 @@ export function SceneCard({
                               <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
                               <span className="text-xs text-text-muted">{shot.durationSeconds}s</span>
                             </div>
-                            <p className="text-sm text-text-accent">{shot.action}</p>
+                            <p className="text-sm text-text-primary">{shot.action}</p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted" />
@@ -532,7 +522,7 @@ export function SceneCard({
  variant="tertiary"
  onPress={onMoveUp}
  isDisabled={index === 0}
- className="text-text-muted hover:text-text-accent"
+ className="text-text-muted hover:text-text-primary"
  >
                 <Icon icon="solar:arrow-up-linear" width={20} />
               </Button>
@@ -544,7 +534,7 @@ export function SceneCard({
  variant="tertiary"
  onPress={onMoveDown}
  isDisabled={index === totalScenes - 1}
- className="text-text-muted hover:text-text-accent"
+ className="text-text-muted hover:text-text-primary"
  >
                 <Icon icon="solar:arrow-down-linear" width={20} />
               </Button>
@@ -574,7 +564,6 @@ export function SceneCard({
             </Tooltip>
           </div>
         </div>
-      </Card.Content>
-    </Card>
+    </div>
   );
 }

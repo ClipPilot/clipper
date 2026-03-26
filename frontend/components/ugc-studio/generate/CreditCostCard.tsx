@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface CreditCostCardProps {
@@ -31,15 +31,15 @@ export function CreditCostCard({
   buttonClass,
 }: CreditCostCardProps) {
   return (
-    <Card className={`bg-gradient-to-br ${gradientClasses} border ${borderClass}`}>
-      <Card.Content className="p-5">
+    <div className={`rounded-xl bg-gradient-to-br ${gradientClasses} border ${borderClass} overflow-hidden`}>
+      <div className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl ${iconBgClass} flex items-center justify-center`}>
               <Icon icon="solar:stars-bold-duotone" className={iconTextClass} width={28} />
             </div>
             <div>
-              <p className="text-lg font-bold text-text-accent">
+              <p className="text-lg font-bold text-text-primary">
                 {creditCost} Credits
               </p>
               <p className="text-sm text-text-secondary">
@@ -56,14 +56,26 @@ export function CreditCostCard({
  size="lg"
  className={`${buttonClass} px-8`}
  onPress={onGenerate}
- isDisabled={isDisabled}
- isPending={isGenerating}
+ isDisabled={isDisabled || isGenerating}
  >
-            {!isGenerating ? <Icon icon="solar:play-bold" width={20} /> : undefined}
-            {isGenerating ? "Starting..." : "Generate Video"}
+            {isGenerating ? (
+              <span className="flex items-center gap-1">
+                Starting
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+                </span>
+              </span>
+            ) : (
+              <>
+                <Icon icon="solar:play-bold" width={20} />
+                Generate Video
+              </>
+            )}
           </Button>
         </div>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }

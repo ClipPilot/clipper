@@ -36,9 +36,9 @@ export function EmotionSelector({ value, onChange, compact }: EmotionSelectorPro
           return (
             <Dropdown.Item
               key={emotion}
-              startContent={<span>{emotionConfig.emoji}</span>}
-              className="text-text-accent"
+              className="text-text-primary"
             >
+              <span>{emotionConfig.emoji}</span>
               {emotionConfig.label}
             </Dropdown.Item>
           );

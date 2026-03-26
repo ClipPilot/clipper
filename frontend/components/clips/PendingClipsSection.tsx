@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-import { Card, ProgressBar, Button } from "@heroui/react";
+import { ProgressBar, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface Clip {
@@ -100,7 +100,7 @@ function PlaceholderThumbnail({ isEdit }: { isEdit?: boolean }) {
             />
           </div>
         </div>
-        <span className="text-sm font-medium text-text-accent">{isEdit ? "Applying Changes" : "Processing"}</span>
+        <span className="text-sm font-medium text-yellow-400">{isEdit ? "Applying Changes" : "Processing"}</span>
         {/* Animated progress bar */}
         <div className="w-24 mt-2">
           <ProgressBar
@@ -150,7 +150,7 @@ export default function PendingClipsSection({
       {/* Failed clips */}
       {failedClips.length > 0 && (
         <div>
-          <h2 className="text-xl font-bold text-text-accent mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
             <Icon
               icon="solar:danger-circle-bold-duotone"
               className="text-2xl text-danger-400"
@@ -162,21 +162,20 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {failedClips.map((clip) => (
-              <Card
- key={clip.id}
- className="bg-surface-base border border-danger-500/30"
- >
-                <Card.Content className="p-3">
+              <div
+                key={clip.id}
+                className="rounded-xl border border-danger-500/30 bg-surface-base p-3"
+              >
                   <div className="relative w-full aspect-[9/16] bg-gradient-to-br from-danger-500/10 to-surface-base rounded-lg overflow-hidden flex flex-col items-center justify-center">
                     <div className="relative mb-3">
                       <div className="w-14 h-14 rounded-full border-4 border-danger-500/20 flex items-center justify-center">
                         <Icon
                           icon="solar:close-circle-bold"
-                          className="text-3xl text-danger-400"
+                          className="text-3xl text-red-400"
                         />
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-danger-400">Failed</span>
+                    <span className="text-sm font-medium text-red-400">Failed</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-text-tertiary truncate mr-1">
@@ -184,18 +183,17 @@ export default function PendingClipsSection({
                     </p>
                     {onCancel && (
                       <Button
- size="sm"
- variant="danger-soft"
- isPending={cancellingIds.has(clip.id)}
- onPress={() => handleCancel(clip.id)}
- className="min-w-fit h-6 text-xs px-2"
- >
+                        size="sm"
+                        variant="danger-soft"
+                        isPending={cancellingIds.has(clip.id)}
+                        onPress={() => handleCancel(clip.id)}
+                        className="min-w-fit h-6 text-xs px-2"
+                      >
                         {!cancellingIds.has(clip.id) && "Dismiss"}
                       </Button>
                     )}
                   </div>
-                </Card.Content>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -204,7 +202,7 @@ export default function PendingClipsSection({
       {/* New clips being processed */}
       {newClips.length > 0 && (
         <div>
-          <h2 className="text-xl font-bold text-text-accent mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
             <Icon
               icon="solar:clock-circle-bold-duotone"
               className="text-2xl text-warning-400"
@@ -217,12 +215,11 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {newClips.map((clip) => (
-              <Card
- key={clip.id}
- onPress={() => onClipClick(clip)}
- className="bg-surface-base border border-warning-500/30 hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
- >
-                <Card.Content className="p-2">
+              <div
+                key={clip.id}
+                onClick={() => onClipClick(clip)}
+                className="rounded-xl border border-warning-500/30 bg-surface-base p-2 cursor-pointer hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
+              >
                   {clip.rawVideoUrl ? (
                     <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={false} />
                   ) : (
@@ -234,22 +231,21 @@ export default function PendingClipsSection({
                     </p>
                     {onCancel && (
                       <Button
- size="sm"
- variant="danger-soft"
- isIconOnly
- isPending={cancellingIds.has(clip.id)}
- onPress={() => handleCancel(clip.id)}
- className="min-w-6 w-6 h-6"
- title="Cancel processing"
- >
+                        size="sm"
+                        variant="danger-soft"
+                        isIconOnly
+                        isPending={cancellingIds.has(clip.id)}
+                        onPress={() => handleCancel(clip.id)}
+                        className="min-w-6 w-6 h-6"
+                        title="Cancel processing"
+                      >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />
                         )}
                       </Button>
                     )}
                   </div>
-                </Card.Content>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -258,7 +254,7 @@ export default function PendingClipsSection({
       {/* Edited clips being processed */}
       {editingClips.length > 0 && (
         <div>
-          <h2 className="text-xl font-bold text-text-accent mb-4 flex items-center gap-2">
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
             <Icon
               icon="solar:pen-bold-duotone"
               className="text-2xl text-primary-400"
@@ -270,12 +266,11 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {editingClips.map((clip) => (
-              <Card
- key={clip.id}
- onPress={() => onClipClick(clip)}
- className="bg-surface-base border border-primary-500/30 hover:border-primary-500/50 hover:scale-[1.02] transition-all duration-200"
- >
-                <Card.Content className="p-2">
+              <div
+                key={clip.id}
+                onClick={() => onClipClick(clip)}
+                className="rounded-xl border border-primary-500/30 bg-surface-base p-2 cursor-pointer hover:border-primary-500/50 hover:scale-[1.02] transition-all duration-200"
+              >
                   {clip.rawVideoUrl ? (
                     <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={true} />
                   ) : (
@@ -287,22 +282,21 @@ export default function PendingClipsSection({
                     </p>
                     {onCancel && (
                       <Button
- size="sm"
- variant="danger-soft"
- isIconOnly
- isPending={cancellingIds.has(clip.id)}
- onPress={() => handleCancel(clip.id)}
- className="min-w-6 w-6 h-6"
- title="Cancel editing"
- >
+                        size="sm"
+                        variant="danger-soft"
+                        isIconOnly
+                        isPending={cancellingIds.has(clip.id)}
+                        onPress={() => handleCancel(clip.id)}
+                        className="min-w-6 w-6 h-6"
+                        title="Cancel editing"
+                      >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />
                         )}
                       </Button>
                     )}
                   </div>
-                </Card.Content>
-              </Card>
+              </div>
             ))}
           </div>
         </div>

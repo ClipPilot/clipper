@@ -45,13 +45,10 @@ export function VideoEditor() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Load clip and initialise caption/heading atoms
   useEditorClipLoader(clipId);
 
-  // Restore saved editor config when video metadata is available
   const handleLoadedMetadata = useEditorConfigRestore(clipId, videoRef);
 
-  // Gap-aware playback (skips deleted segments)
   const { isInGap, handleTimeUpdate, seekToTime, togglePlayPause } =
     useGapAwarePlayback(videoRef);
 
@@ -88,13 +85,14 @@ export function VideoEditor() {
         <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
           <Icon icon="solar:lock-keyhole-bold-duotone" className="text-red-500" width={32} />
         </div>
-        <h2 className="text-xl font-semibold text-text-accent mb-2">Access Denied</h2>
+        <h2 className="text-xl font-semibold text-text-primary mb-2">Access Denied</h2>
         <p className="text-text-secondary mb-6">
           You don&apos;t have permission to edit this clip.
         </p>
-        <Button variant="primary"
- onPress={() => router.push("/dashboard/clips")}
- >
+        <Button
+          variant="primary"
+          onPress={() => router.push("/dashboard/clips")}
+        >
           <Icon icon="solar:arrow-left-outline" />
           Back to Clips
         </Button>
@@ -115,32 +113,30 @@ export function VideoEditor() {
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-7xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <Button
- variant="tertiary"
- isIconOnly
- onPress={() => router.push("/dashboard/clips")}
- >
+              variant="tertiary"
+              isIconOnly
+              onPress={() => router.push("/dashboard/clips")}
+            >
               <Icon icon="solar:arrow-left-outline" className="text-xl" />
             </Button>
-            <h1 className="text-xl font-bold text-text-accent">
+            <h1 className="text-xl font-bold text-text-primary">
               {clip.title || `Clip #${clip.id}`}
             </h1>
           </div>
-          <Button variant="primary"
- onPress={handleApplyChanges}
- isDisabled={saving}
- >
+          <Button
+            variant="primary"
+            onPress={handleApplyChanges}
+            isDisabled={saving}
+          >
             {saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
             {saving ? "Applying..." : "Apply Changes"}
           </Button>
         </div>
 
-        {/* Main Editor Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Video Preview — 2 cols on large screens */}
           <div className="lg:col-span-2">
             <EditorVideoPreview
               videoRef={videoRef}
@@ -153,13 +149,11 @@ export function VideoEditor() {
               isInGap={isInGap}
             />
 
-            {/* Timeline */}
             <div className="mt-4">
               <EditorTimelineV2 videoRef={videoRef} onSeek={seekToTime} />
             </div>
           </div>
 
-          {/* Tool Panel — 1 col */}
           <div className="lg:col-span-1">
             <EditorToolPanel />
           </div>

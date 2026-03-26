@@ -121,9 +121,6 @@ export function ActiveCampaignDashboard({
     setCurrentCard(savedCard);
   }, [savedCard]);
 
-  // Derive the API tab from the active UI tab
-  const postsTab = activeTab === "published" ? "published" : "queued";
-
   const PAGE_SIZE = 20;
 
   const fetchVideos = useCallback(async (page = 1, { silent = false } = {}) => {
@@ -322,7 +319,7 @@ export function ActiveCampaignDashboard({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <h1 className="text-2xl font-bold text-text-accent truncate">
+            <h1 className="text-2xl font-bold text-text-primary truncate">
               {campaign.name}
             </h1>
             <Chip
@@ -352,125 +349,94 @@ export function ActiveCampaignDashboard({
           onViewContract={handleViewContract}
         />
 
-        {/* Tabs */}
         <Tabs
- selectedKey={activeTab}
- onSelectionChange={(key) => {
- setActiveTab(key as "queued" | "accounts" | "published" | "billing");
- setPostsPage(1);
- setVideoPage(1);
- }}
- >
-          <Tab
-            key="queued"
-            title={
-              <div className="flex items-center gap-2">
-                <span>Queued Posts</span>
-                {activeTab === "queued" && videoTotalCount > 0 && (
-                  <Chip
- size="sm"
- variant="tertiary"
- >
-                    {videoTotalCount}
-                  </Chip>
-                )}
-              </div>
-            }
-          />
-          <Tab key="accounts" title="Accounts" />
-          <Tab
-            key="published"
-            title={
-              <div className="flex items-center gap-2">
-                <span>Published Posts</span>
-                {activeTab === "published" && videoGroups.length > 0 && (
-                  <Chip
- size="sm"
- variant="tertiary"
- >
-                    {totalPosts}
-                  </Chip>
-                )}
-              </div>
-            }
-          />
-          <Tab
-            key="billing"
-            title={
-              <div className="flex items-center gap-2">
-                <span>Billing</span>
-              </div>
-            }
-          />
-        </Tabs>
-
-        {/* Tab content */}
-        <div className="mt-6">
-          {activeTab === "accounts" && (
-            <AccountsTab
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
-            />
-          )}
-
-          {activeTab === "billing" && (
-            <BillingTab campaign={campaign} />
-          )}
-
-          {(activeTab === "queued" || activeTab === "published") && (
-            <div className="space-y-4">
-              {/* Add videos bar (queued tab only) */}
-              {activeTab === "queued" && (
-                <div className="flex items-center justify-end">
-                  <div className="flex gap-2">
-                    <Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated border border-border-base text-text-secondary h-9"
- onPress={() => setIsPickerOpen(true)}
- >
-                      <Icon icon="solar:library-bold-duotone" width={14} />
-                      Add from Library
-                    </Button>
-                    <Button variant="primary"
- size="sm"
- className="h-9"
- onPress={() => setIsUploadOpen(true)}
- >
-                      <Icon icon="solar:upload-bold-duotone" width={14} />
-                      Upload Videos
-                    </Button>
-                  </div>
+          selectedKey={activeTab}
+          onSelectionChange={(key) => {
+            setActiveTab(key as "queued" | "accounts" | "published" | "billing");
+            setPostsPage(1);
+            setVideoPage(1);
+          }}
+        >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Campaign tabs">
+              <Tabs.Tab id="queued">
+                <div className="flex items-center gap-2">
+                  <span>Queued Posts</span>
+                  {activeTab === "queued" && videoTotalCount > 0 && (
+                    <Chip size="sm" variant="tertiary">
+                      {videoTotalCount}
+                    </Chip>
+                  )}
                 </div>
-              )}
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="accounts">
+                Accounts
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="published">
+                <div className="flex items-center gap-2">
+                  <span>Published Posts</span>
+                  {activeTab === "published" && videoGroups.length > 0 && (
+                    <Chip size="sm" variant="tertiary">
+                      {totalPosts}
+                    </Chip>
+                  )}
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="billing">
+                Billing
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
 
-              {/* Posts table — grouped by unique video */}
+          <Tabs.Panel id="queued">
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-end">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="tertiary"
+                    className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+                    onPress={() => setIsPickerOpen(true)}
+                  >
+                    <Icon icon="solar:library-bold-duotone" width={14} />
+                    Add from Library
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="h-9"
+                    onPress={() => setIsUploadOpen(true)}
+                  >
+                    <Icon icon="solar:upload-bold-duotone" width={14} />
+                    Upload Videos
+                  </Button>
+                </div>
+              </div>
+
               <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
-                {/* Header */}
                 <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
-                  <span className="text-sm font-medium text-text-accent">
-                    {postsTab === "queued" ? "Campaign Videos" : "Published Posts"}
-                  </span>
+                  <span className="text-sm font-medium text-text-primary">Campaign Videos</span>
                   <span className="text-xs text-text-secondary">
-                    {activeTab === "queued" ? videoTotalCount : videoGroups.length} video{(activeTab === "queued" ? videoTotalCount : videoGroups.length) !== 1 ? "s" : ""}{postsTab === "published" ? ` \u00B7 ${totalPosts} post${totalPosts !== 1 ? "s" : ""}` : ""}
+                    {videoTotalCount} video{videoTotalCount !== 1 ? "s" : ""}
                   </span>
                 </div>
 
-                {/* Table */}
-                {(activeTab === "queued" ? videosLoading : postsLoading) ? (
+                {videosLoading ? (
                   <div className="p-12 text-center text-text-secondary">Loading...</div>
                 ) : videoGroups.length === 0 ? (
                   <div className="p-12 text-center text-text-secondary">
-                    {postsTab === "queued"
-                      ? "No videos in this campaign yet. Add videos to get started."
-                      : "No published posts yet."}
+                    No videos in this campaign yet. Add videos to get started.
                   </div>
                 ) : (
                   <table className="w-full">
                     <thead className="bg-surface-elevated border-b border-border-base">
                       <tr>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
                           onClick={() => handleSort("title")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -480,7 +446,7 @@ export function ActiveCampaignDashboard({
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Platforms</th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
                           onClick={() => handleSort("post_count")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -489,7 +455,7 @@ export function ActiveCampaignDashboard({
                           </span>
                         </th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
                           onClick={() => handleSort("publish_status")}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -498,11 +464,11 @@ export function ActiveCampaignDashboard({
                           </span>
                         </th>
                         <th
-                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-accent select-none"
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
                           onClick={() => handleSort("created_at")}
                         >
                           <span className="inline-flex items-center gap-1">
-                            {postsTab === "queued" ? "Created" : "Published"}
+                            Created
                             {sortBy === "created_at" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
                           </span>
                         </th>
@@ -510,38 +476,30 @@ export function ActiveCampaignDashboard({
                     </thead>
                     <tbody className="divide-y divide-border-base">
                       {videoGroups.map((group) => {
-                        // For queued tab: publish_status from backend (waiting_assignment / in_drive / published)
-                        // For published tab: aggregate from post-level statuses
-                        const aggregateStatus = postsTab === "queued"
-                          ? (group.statuses[0] || "waiting_assignment")
-                          : group.statuses.includes("processing") ? "processing"
-                            : group.statuses.every((s) => s === "posted") ? "posted"
-                            : "scheduled";
+                        const aggregateStatus = group.statuses[0] || "waiting_assignment";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
                           <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
-                            {/* Video thumbnail + title */}
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-3">
                                 {group.clipUrl ? (
-                                  <button
+                                  <div
                                     onClick={() => setPlayingVideo({ url: group.clipUrl!, title: group.clipTitle || "Video" })}
-                                    className="relative group w-16 h-10 rounded overflow-hidden bg-black flex-shrink-0"
+                                    className="relative group w-16 h-10 rounded overflow-hidden bg-black flex-shrink-0 cursor-pointer"
                                   >
                                     <video src={group.clipUrl} className="w-full h-full object-cover" muted preload="metadata" />
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                                       <Icon icon="solar:play-bold" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
-                                  </button>
+                                  </div>
                                 ) : (
                                   <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
                                 )}
-                                <span className="text-sm text-text-accent truncate max-w-[200px]">
+                                <span className="text-sm text-text-primary truncate max-w-[200px]">
                                   {group.clipTitle || `Video #${group.clipId}`}
                                 </span>
                               </div>
                             </td>
-                            {/* Platforms — chip per platform with count */}
                             <td className="px-6 py-3">
                               {Object.keys(group.platforms).length > 0 ? (
                                 <div className="flex flex-wrap gap-1.5">
@@ -559,11 +517,9 @@ export function ActiveCampaignDashboard({
                                 <span className="text-xs text-text-secondary italic">No platforms yet</span>
                               )}
                             </td>
-                            {/* Total posts count */}
                             <td className="px-6 py-3">
                               <span className="text-sm text-text-secondary">{group.posts.length || "\u2014"}</span>
                             </td>
-                            {/* Aggregate status */}
                             <td className="px-6 py-3">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border ${statusStyle.className}`}>
                                 {aggregateStatus === "processing" && (
@@ -572,7 +528,6 @@ export function ActiveCampaignDashboard({
                                 {statusStyle.label}
                               </span>
                             </td>
-                            {/* Date */}
                             <td className="px-6 py-3">
                               <span className="text-sm text-text-secondary">
                                 {new Date(group.earliestDate).toLocaleDateString("en-US", {
@@ -590,60 +545,37 @@ export function ActiveCampaignDashboard({
                   </table>
                 )}
 
-                {/* Pagination */}
-                {(() => {
-                  const currentPage = activeTab === "queued" ? videoPage : postsPage;
-                  const currentTotalPages = activeTab === "queued" ? videoTotalPages : totalPages;
-                  if (currentTotalPages <= 1) return null;
-                  return (
+                {videoTotalPages > 1 && (
                   <div className="px-6 py-3 border-t border-border-base flex items-center justify-between">
-                    <span className="text-xs text-text-secondary">Page {currentPage} of {currentTotalPages}</span>
+                    <span className="text-xs text-text-secondary">Page {videoPage} of {videoTotalPages}</span>
                     <div className="flex gap-2">
                       <Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
- isDisabled={currentPage === 1}
- onPress={() => {
- const p = Math.max(1, currentPage - 1);
- if (activeTab === "queued") {
- setVideoPage(p);
- } else {
- setPostsPage(p);
- fetchPosts(p);
- }
- }}
- >
+                        size="sm"
+                        variant="tertiary"
+                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        isDisabled={videoPage === 1}
+                        onPress={() => setVideoPage(Math.max(1, videoPage - 1))}
+                      >
                         Prev
                       </Button>
                       <Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
- isDisabled={currentPage === currentTotalPages}
- onPress={() => {
- const p = Math.min(currentTotalPages, currentPage + 1);
- if (activeTab === "queued") {
- setVideoPage(p);
- } else {
- setPostsPage(p);
- fetchPosts(p);
- }
- }}
- >
+                        size="sm"
+                        variant="tertiary"
+                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        isDisabled={videoPage === videoTotalPages}
+                        onPress={() => setVideoPage(Math.min(videoTotalPages, videoPage + 1))}
+                      >
                         Next
                       </Button>
                     </div>
                   </div>
-                  );
-                })()}
+                )}
               </div>
 
-              {/* Video player modal */}
               {playingVideo && (
                 <Modal>
                   <Modal.Backdrop isOpen onOpenChange={() => setPlayingVideo(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
-                    <Modal.Header className="border-b border-border-base text-text-accent">
+                    <Modal.Header className="border-b border-border-base text-text-primary">
                       {playingVideo.title}
                     </Modal.Header>
                     <Modal.Body className="p-0">
@@ -658,8 +590,210 @@ export function ActiveCampaignDashboard({
                 </Modal>
               )}
             </div>
-          )}
-        </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel id="accounts">
+            <div className="mt-6">
+              <AccountsTab
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+              />
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel id="published">
+            <div className="mt-6 space-y-4">
+              <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
+                <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-primary">Published Posts</span>
+                  <span className="text-xs text-text-secondary">
+                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""} &middot; {totalPosts} post{totalPosts !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {postsLoading ? (
+                  <div className="p-12 text-center text-text-secondary">Loading...</div>
+                ) : videoGroups.length === 0 ? (
+                  <div className="p-12 text-center text-text-secondary">
+                    No published posts yet.
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-surface-elevated border-b border-border-base">
+                      <tr>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("title")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Video
+                            {sortBy === "title" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Platforms</th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("post_count")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Posts
+                            {sortBy === "post_count" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("publish_status")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Status
+                            {sortBy === "publish_status" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("created_at")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Published
+                            {sortBy === "created_at" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-base">
+                      {videoGroups.map((group) => {
+                        const aggregateStatus = group.statuses.includes("processing") ? "processing"
+                          : group.statuses.every((s) => s === "posted") ? "posted"
+                          : "scheduled";
+                        const statusStyle = getPostStatusStyle(aggregateStatus);
+                        return (
+                          <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
+                            <td className="px-6 py-3">
+                              <div className="flex items-center gap-3">
+                                {group.clipUrl ? (
+                                  <div
+                                    onClick={() => setPlayingVideo({ url: group.clipUrl!, title: group.clipTitle || "Video" })}
+                                    className="relative group w-16 h-10 rounded overflow-hidden bg-black flex-shrink-0 cursor-pointer"
+                                  >
+                                    <video src={group.clipUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                      <Icon icon="solar:play-bold" className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
+                                )}
+                                <span className="text-sm text-text-primary truncate max-w-[200px]">
+                                  {group.clipTitle || `Video #${group.clipId}`}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-3">
+                              {Object.keys(group.platforms).length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {Object.entries(group.platforms).map(([platform, count]) => (
+                                    <span
+                                      key={platform}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium ${platformChipClass(platform)}`}
+                                    >
+                                      <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
+                                      {count > 1 ? `${platformDisplayName(platform)} x${count}` : platformDisplayName(platform)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-text-secondary italic">No platforms yet</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className="text-sm text-text-secondary">{group.posts.length || "\u2014"}</span>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border ${statusStyle.className}`}>
+                                {aggregateStatus === "processing" && (
+                                  <Icon icon="solar:refresh-bold" className="w-3 h-3 animate-spin" />
+                                )}
+                                {statusStyle.label}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3">
+                              <span className="text-sm text-text-secondary">
+                                {new Date(group.earliestDate).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+                {totalPages > 1 && (
+                  <div className="px-6 py-3 border-t border-border-base flex items-center justify-between">
+                    <span className="text-xs text-text-secondary">Page {postsPage} of {totalPages}</span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="tertiary"
+                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        isDisabled={postsPage === 1}
+                        onPress={() => {
+                          const p = Math.max(1, postsPage - 1);
+                          setPostsPage(p);
+                          fetchPosts(p);
+                        }}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="tertiary"
+                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        isDisabled={postsPage === totalPages}
+                        onPress={() => {
+                          const p = Math.min(totalPages, postsPage + 1);
+                          setPostsPage(p);
+                          fetchPosts(p);
+                        }}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {playingVideo && (
+                <Modal>
+                  <Modal.Backdrop isOpen onOpenChange={() => setPlayingVideo(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+                    <Modal.Header className="border-b border-border-base text-text-primary">
+                      {playingVideo.title}
+                    </Modal.Header>
+                    <Modal.Body className="p-0">
+                      <video
+                        src={playingVideo.url}
+                        controls
+                        autoPlay
+                        className="w-full max-h-[70vh]"
+                      />
+                    </Modal.Body>
+                  </Modal.Dialog></Modal.Container></Modal.Backdrop>
+                </Modal>
+              )}
+            </div>
+          </Tabs.Panel>
+
+          <Tabs.Panel id="billing">
+            <div className="mt-6">
+              <BillingTab campaign={campaign} />
+            </div>
+          </Tabs.Panel>
+        </Tabs>
       </div>
 
       {/* Bulk upload modal */}
@@ -706,7 +840,7 @@ export function ActiveCampaignDashboard({
           <Modal.Header className="border-b border-border-base">
             <div className="flex items-center gap-2">
               <Icon icon="solar:danger-triangle-bold-duotone" className="text-danger-500" width={20} />
-              <span className="text-text-accent">End Campaign</span>
+              <span className="text-text-primary">End Campaign</span>
             </div>
           </Modal.Header>
           <Modal.Body className="py-4">

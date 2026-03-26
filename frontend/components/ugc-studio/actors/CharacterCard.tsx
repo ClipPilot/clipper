@@ -25,15 +25,14 @@ export function CharacterCard({
   const imageUrl = character.primaryImageUrl || character.imageUrls?.[character.primary_image_index || 0];
 
   return (
-    <Card
- onPress={() => onSelect(character)}
- className={`bg-surface-base border-2 transition-all duration-200 group overflow-hidden rounded-2xl ${
- isSelected
- ? "border-accent-400 ring-2 ring-accent-400/30 shadow-lg shadow-accent-400/10"
- : "border-border-base hover:border-accent-400/50 hover:shadow-md"
- }`}
- >
-      <Card.Content className="p-0">
+    <div
+      onClick={() => onSelect(character)}
+      className={`bg-surface-base border-2 transition-all duration-200 group overflow-hidden rounded-xl cursor-pointer ${
+        isSelected
+          ? "border-accent-400 ring-2 ring-accent-400/30 shadow-lg shadow-accent-400/10"
+          : "border-border-base hover:border-accent-400/50 hover:shadow-md"
+      }`}
+    >
         <div className="relative aspect-[3/4] overflow-hidden">
           {imageUrl ? (
             <img
@@ -130,7 +129,6 @@ export function CharacterCard({
             </div>
           </div>
         )}
-      </Card.Content>
-    </Card>
+    </div>
   );
 }

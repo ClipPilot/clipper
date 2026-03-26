@@ -80,6 +80,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
   const [files, setFiles] = useState<FileUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const multipartDataRefs = useRef<Map<number, MultipartUploadResponse>>(
     new Map()
   );
@@ -372,7 +373,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-text-accent truncate">
+              <p className="text-sm font-medium text-text-primary truncate">
                 {fileState.file.name}
               </p>
               <p className="text-xs text-text-tertiary">
@@ -463,7 +464,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         </div>
 
         <div className="text-center">
-          <h3 className="text-lg font-bold text-text-accent mb-1">
+          <h3 className="text-lg font-bold text-text-primary mb-1">
             Drag & Drop Videos
           </h3>
           <p className="text-sm text-text-secondary">
@@ -472,6 +473,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         </div>
 
         <input
+          ref={fileInputRef}
           type="file"
           accept="video/*"
           multiple
@@ -482,13 +484,11 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 
         <div className="flex gap-3">
           <Button
- as="label"
- htmlFor="batch-video-upload"
- size="md"
- isDisabled={downloading}
- variant="tertiary"
- className="cursor-pointer"
- >
+            size="md"
+            isDisabled={downloading}
+            variant="tertiary"
+            onPress={() => fileInputRef.current?.click()}
+          >
             <Icon icon="solar:folder-open-bold" />
             Browse Files
           </Button>
@@ -552,7 +552,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         {files.length > 0 && (
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-text-accent">
+              <span className="text-sm font-medium text-text-primary">
                 {files.length} / {maxVideos} videos
               </span>
               {allCompleted && (

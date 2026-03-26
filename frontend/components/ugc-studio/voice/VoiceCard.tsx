@@ -24,9 +24,9 @@ export function VoiceCard({
   onDelete,
 }: VoiceCardProps) {
   return (
-    <button
+    <div
       onClick={onSelect}
-      className={`relative w-full text-left p-3 rounded-xl border-2 transition-all overflow-hidden ${
+      className={`relative w-full text-left p-3 rounded-xl border-2 transition-all overflow-hidden cursor-pointer ${
         isSelected
           ? voice.isCloned
             ? "border-purple-500 bg-purple-500/10"
@@ -39,7 +39,7 @@ export function VoiceCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-text-accent truncate">{voice.name}</span>
+            <span className="font-medium text-text-primary truncate">{voice.name}</span>
             {voice.isCloned && (
               <Chip size="sm" className="bg-purple-500/20 text-purple-400">
                 Cloned
@@ -91,6 +91,6 @@ export function VoiceCard({
           />
         </div>
       )}
-    </button>
+    </div>
   );
 }

@@ -3,11 +3,10 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { Button, Card, Spinner, Tabs } from "@heroui/react";
+import { Button, Spinner, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
-import { ScalePlanRequired } from "@/components/ugc-studio";
+import {} from "@/lib/plans";
 import { CreateCharacterFlow } from "@/components/ugc-studio/actors/CreateCharacterFlow";
 import { CharacterGrid } from "@/components/ugc-studio/actors/CharacterGrid";
 import { CharacterDetailModal } from "@/components/ugc-studio/actors/CharacterDetailModal";
@@ -62,8 +61,7 @@ function CharactersPageContent() {
         const response = await actorsAPI.list(teamId, {
           limit: PAGE_SIZE,
           offset,
-          sort: "recent",
-        });
+          sort: "recent" });
         if (reset) {
           setMyActors(response.characters);
         } else {
@@ -122,23 +120,22 @@ function CharactersPageContent() {
     );
   };
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
-
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <button
-                onClick={() => router.push("/dashboard/ugc-studio")}
+              <Button
+                isIconOnly
+                variant="tertiary"
+                size="sm"
+                onPress={() => router.push("/dashboard/ugc-studio")}
                 className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
               >
                 <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
-              </button>
-              <h1 className="text-2xl sm:text-3xl font-bold text-text-accent">Characters</h1>
+              </Button>
+              <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Characters</h1>
             </div>
             <p className="text-text-secondary ml-10">
               Create and manage your AI actors for UGC videos
@@ -213,8 +210,8 @@ function CharactersPageContent() {
                   )}
                 </>
               ) : (
-                <Card className="bg-gradient-to-br from-surface-elevated to-surface-base border border-border-base border-dashed">
-                  <Card.Content className="py-16 flex flex-col items-center justify-center text-center">
+                <div className="rounded-xl border border-border-base border-dashed overflow-hidden bg-gradient-to-br from-surface-elevated to-surface-base">
+                  <div className="py-16 flex flex-col items-center justify-center text-center px-6">
                     <div className="w-20 h-20 rounded-2xl bg-accent-400/10 flex items-center justify-center mb-6">
                       <Icon
                         icon="solar:user-plus-bold-duotone"
@@ -222,7 +219,7 @@ function CharactersPageContent() {
                         width={40}
                       />
                     </div>
-                    <h3 className="text-xl font-semibold text-text-accent mb-2">
+                    <h3 className="text-xl font-semibold text-text-primary mb-2">
                       No actors yet
                     </h3>
                     <p className="text-text-secondary text-sm mb-6 max-w-sm">
@@ -235,8 +232,8 @@ function CharactersPageContent() {
                       <Icon icon="solar:magic-stick-3-bold" width={18} />
                       Create Your First Actor
                     </Button>
-                  </Card.Content>
-                </Card>
+                  </div>
+                </div>
               )}
             </div>
           </Tabs.Panel>

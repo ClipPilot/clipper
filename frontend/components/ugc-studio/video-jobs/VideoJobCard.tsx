@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useRef } from "react";
-import { Card, Chip, ProgressBar } from "@heroui/react";
+import { Button, Card, Chip, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { UGCVideoJob } from "@/api/ugc/video";
 import { timeAgo } from "@/lib/platformUtils";
@@ -51,8 +51,8 @@ export const VideoJobCard = memo(
     const isFinalized = job.status === "completed" && !!job.clipId;
 
     return (
-      <Card
-        className="bg-surface-base border border-border-base hover:border-accent-400/50 hover:shadow-lg hover:shadow-accent-400/10 transition-all cursor-pointer overflow-hidden group"
+      <div
+        className="bg-surface-base border border-border-base rounded-xl hover:border-accent-400/50 hover:shadow-lg hover:shadow-accent-400/10 transition-all cursor-pointer overflow-hidden group"
         onClick={onClick}
       >
         {/* Vertical video thumbnail - 9:16 aspect ratio */}
@@ -126,16 +126,15 @@ export const VideoJobCard = memo(
 
           {/* Delete button */}
           {onDelete && (
-            <button
+            <Button
+              isIconOnly
+              variant="tertiary"
+              size="sm"
               className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete();
-              }}
+              onPress={() => onDelete()}
             >
               <Icon icon="solar:trash-bin-trash-bold" className="text-white" width={14} />
-            </button>
+            </Button>
           )}
 
           {/* Progress bar overlay for generating */}
@@ -180,7 +179,7 @@ export const VideoJobCard = memo(
             )}
           </div>
         </div>
-      </Card>
+      </div>
     );
   },
   (prev, next) =>
