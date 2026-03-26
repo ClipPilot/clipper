@@ -72,7 +72,7 @@ For each scene extract: sceneNumber, startTime, endTime, durationSeconds, sceneT
 
 Also extract overall metadata: totalDuration, aspectRatio, overallStyle, hookStrategy, ctaApproach, originalProductName, originalProductCategory, targetDemographic, overallNarrative, keyStrengths, musicStyle, pacing, and voice delivery analysis (speakerPace, speakerEnergy, speakerStyle, speakerWPM, speakerCharacteristics, recommendedTTSSpeed).
 
-Detect audio speedup: if WPM>180, pitch sounds high, or unnatural pacing, set audioSpeedupDetected=true and estimatedAudioSpeedMultiplier accordingly.
+Detect audio speedup: if WPM>180, pitch sounds high, or unnatural pacing, set audioSpeedupDetected=true and estimatedAudioSpeedMultiplier accordingly (must be between 1.0 and 2.0 — cap at 2.0 even if faster).
 
 The goal: someone reading your analysis could recreate this EXACT video — structure, timing, feel, and voice delivery — just with a different product.`,
 });

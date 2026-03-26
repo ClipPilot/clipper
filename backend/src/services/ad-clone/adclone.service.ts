@@ -170,33 +170,51 @@ class AdCloneService {
       );
 
       const agentServiceUrl = config.agentService.url;
-      const agentResponse = await fetch(
-        `${agentServiceUrl}/api/agents/video-analysis-agent/generate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [{
-              role: "user",
-              content: [
-                { type: "file", data: uploadResult.file.uri, mimeType: uploadResult.file.mimeType },
-                { type: "text", text: "Analyze this video." },
-              ],
-            }],
-          }),
-          signal: AbortSignal.timeout(180_000),
-        },
-      );
+      const maxAttempts = 3;
+      let rawAnalysis: any;
+      let lastError = "";
 
-      if (!agentResponse.ok) {
-        const errorBody = await agentResponse.text();
-        console.error("[AD_CLONE] Video analysis agent error:", errorBody);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const userContent: any[] = [
+          { type: "file", data: uploadResult.file.uri, mimeType: uploadResult.file.mimeType },
+          { type: "text", text: "Analyze this video." },
+        ];
+
+        if (lastError) {
+          userContent.push({
+            type: "text",
+            text: `Your previous attempt failed validation: ${lastError}. Fix the invalid fields and try again.`,
+          });
+        }
+
+        const agentResponse = await fetch(
+          `${agentServiceUrl}/api/agents/video-analysis-agent/generate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: userContent }],
+            }),
+            signal: AbortSignal.timeout(180_000),
+          },
+        );
+
+        if (agentResponse.ok) {
+          const agentResult = (await agentResponse.json()) as any;
+          rawAnalysis = agentResult.object ?? agentResult;
+          if (rawAnalysis?.totalDuration) break;
+        }
+
+        lastError = !agentResponse.ok ? await agentResponse.text() : "Agent returned no video analysis";
+
+        if (attempt < maxAttempts) {
+          console.warn(`[AD_CLONE] Video analysis attempt ${attempt}/${maxAttempts} failed: ${lastError}. Retrying...`);
+          continue;
+        }
+
+        console.error("[AD_CLONE] Video analysis agent error after all attempts:", lastError);
         throw new Error("Video analysis failed via agent");
       }
-
-      const agentResult = (await agentResponse.json()) as any;
-      const rawAnalysis = agentResult.object ?? agentResult;
-      if (!rawAnalysis?.totalDuration) throw new Error("Agent returned no video analysis");
 
       const analysis = VideoAnalysisSchema.parse(rawAnalysis);
 
