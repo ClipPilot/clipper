@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { ScrollShadow } from "@heroui/react";
+import { ScrollShadow, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import NextImage from "next/image";
@@ -16,15 +16,18 @@ interface MessageListProps {
   onRetry?: () => void;
   theme?: ChatColorTheme;
   adCloneStep?: "analyzing" | "deconstructing" | null;
+  scenesReady?: boolean;
+  onGenerateVideo?: () => void;
+  isGenerateLoading?: boolean;
 }
 
-export function MessageList({ messages, isThinking, acceptedResult, onAccept, onRetry, theme = "default", adCloneStep }: MessageListProps) {
+export function MessageList({ messages, isThinking, acceptedResult, onAccept, onRetry, theme = "default", adCloneStep, scenesReady, onGenerateVideo, isGenerateLoading }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isThinking, adCloneStep]);
+  }, [messages, isThinking, adCloneStep, scenesReady]);
 
   const showIndicator = isThinking || !!adCloneStep;
 
@@ -110,6 +113,42 @@ export function MessageList({ messages, isThinking, acceptedResult, onAccept, on
                   </div>
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {scenesReady && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex gap-3"
+          >
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-400/20 to-purple-500/20 ring-1 ring-accent-400/10 flex items-center justify-center shrink-0 mt-1 overflow-hidden backdrop-blur-sm">
+              <NextImage
+                src="/branding/cuttr logo svg.svg"
+                alt="Cuttr"
+                width={18}
+                height={18}
+                className="object-contain"
+              />
+            </div>
+            <div className="max-w-[80%] flex flex-col items-start gap-1.5">
+              <span className="text-[11px] font-medium text-accent-400/80">Cuttr AI</span>
+              <div className="rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed bg-white/[0.03] text-text-primary/90 rounded-bl-sm border border-white/[0.06] backdrop-blur-sm">
+                Your scenes are ready! Click <strong className="font-semibold">Generate Video</strong> to create your video, or ask me to make modifications if you&apos;d like to change anything.
+              </div>
+              <Button
+                size="lg"
+                color="primary"
+                className="w-full mt-1 font-semibold"
+                isLoading={isGenerateLoading}
+                isDisabled={isGenerateLoading}
+                onPress={onGenerateVideo}
+                startContent={!isGenerateLoading ? <Icon icon="solar:play-bold" width={18} /> : undefined}
+              >
+                {isGenerateLoading ? "Starting..." : "Generate Video"}
+              </Button>
             </div>
           </motion.div>
         )}
