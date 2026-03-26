@@ -73,7 +73,7 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
             {/* Main Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-text-accent font-bold text-lg">
+                <h3 className="text-text-primary font-bold text-lg">
                   {announcement.title}
                 </h3>
                 {!isRead && (
@@ -127,7 +127,7 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
  aria-label="Dismiss announcement"
  className="flex-shrink-0 hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-colors"
  >
-              <Icon icon="solar:close-circle-bold-duotone" width={22} className="text-text-tertiary hover:text-danger-500" />
+              <Icon icon="solar:close-circle-bold-duotone" width={22} className="text-text-tertiary hover:text-red-500" />
             </Button>
           )}
         </div>

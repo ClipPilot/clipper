@@ -76,7 +76,7 @@ function SceneCard({ scene, index, total }: { scene: any; index: number; total: 
           >
             <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={14} />
           </div>
-          <span className="text-[13px] font-semibold text-text-accent">
+          <span className="text-[13px] font-semibold text-text-primary">
             {scene.sceneNumber}. {slug || config?.label || storyBeat}
           </span>
           <Chip
@@ -192,7 +192,7 @@ export function ExistingScriptPreview({ script }: ExistingScriptPreviewProps) {
           <Icon icon="solar:document-text-bold" width={14} />
           Existing Script
         </div>
-        <h2 className="text-lg font-bold text-text-accent">{script.title}</h2>
+        <h2 className="text-lg font-bold text-text-primary">{script.title}</h2>
         {script.targetAudience && (
           <p className="text-xs text-text-muted">{script.targetAudience}</p>
         )}

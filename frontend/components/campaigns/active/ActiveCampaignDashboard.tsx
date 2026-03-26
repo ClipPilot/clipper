@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button,
   Chip,
-  Tabs,
   Modal,
   toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -53,13 +52,13 @@ function getPostStatusStyle(status: string) {
   const styles: Record<string, { className: string; label: string }> = {
     waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Waiting Assignment" },
     in_drive: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
-    published: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
+    published: { className: "bg-green-500/10 border-success-500/20 text-green-500", label: "Published" },
     // Legacy post-level statuses (used by published tab)
     pending: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Awaiting Platforms" },
-    processing: { className: "bg-warning-500/10 border-warning-500/20 text-warning-500", label: "Processing" },
+    processing: { className: "bg-yellow-500/10 border-warning-500/20 text-yellow-500", label: "Processing" },
     scheduled: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
-    posted: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
-    failed: { className: "bg-danger-500/10 border-danger-500/20 text-danger-500", label: "Failed" },
+    posted: { className: "bg-green-500/10 border-success-500/20 text-green-500", label: "Published" },
+    failed: { className: "bg-red-500/10 border-danger-500/20 text-red-500", label: "Failed" },
   };
   return styles[status] || styles.waiting_assignment;
 }
@@ -181,10 +180,9 @@ export function ActiveCampaignDashboard({
 
   useEffect(() => {
     if (activeTab === "published") {
-      setPostsPage(1);
-      fetchPosts(1);
+      fetchPosts(postsPage);
     }
-  }, [fetchPosts, activeTab]);
+  }, [fetchPosts, activeTab, postsPage]);
 
   // Group posts by clip_id (unique video)
   interface VideoGroup {
@@ -307,9 +305,9 @@ export function ActiveCampaignDashboard({
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Back nav */}
         <Button
- variant="tertiary"
+ variant="ghost"
  size="sm"
- className="text-text-secondary -ml-2"
+ className="text-text-secondary -ml-2 !bg-transparent"
  onPress={onBack}
  >
           <Icon icon="solar:arrow-left-linear" width={16} />
@@ -323,10 +321,11 @@ export function ActiveCampaignDashboard({
               {campaign.name}
             </h1>
             <Chip
- color={campaign.status === "started" ? "success" : "warning"}
- variant="tertiary"
- className="flex-shrink-0 capitalize"
- >
+              size="sm"
+              className={`flex-shrink-0 capitalize ${
+                campaign.status === "started" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"
+              }`}
+            >
               {campaign.status === "started" ? "Live" : campaign.status}
             </Chip>
           </div>
@@ -349,57 +348,41 @@ export function ActiveCampaignDashboard({
           onViewContract={handleViewContract}
         />
 
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => {
-            setActiveTab(key as "queued" | "accounts" | "published" | "billing");
-            setPostsPage(1);
-            setVideoPage(1);
-          }}
-        >
-          <Tabs.ListContainer>
-            <Tabs.List aria-label="Campaign tabs">
-              <Tabs.Tab id="queued">
-                <div className="flex items-center gap-2">
-                  <span>Queued Posts</span>
-                  {activeTab === "queued" && videoTotalCount > 0 && (
-                    <Chip size="sm" variant="tertiary">
-                      {videoTotalCount}
-                    </Chip>
-                  )}
-                </div>
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="accounts">
-                Accounts
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="published">
-                <div className="flex items-center gap-2">
-                  <span>Published Posts</span>
-                  {activeTab === "published" && videoGroups.length > 0 && (
-                    <Chip size="sm" variant="tertiary">
-                      {totalPosts}
-                    </Chip>
-                  )}
-                </div>
-                <Tabs.Indicator />
-              </Tabs.Tab>
-              <Tabs.Tab id="billing">
-                Billing
-                <Tabs.Indicator />
-              </Tabs.Tab>
-            </Tabs.List>
-          </Tabs.ListContainer>
+        <div className="flex gap-1 border-b border-border-base mb-6">
+          {([
+            { id: "queued", label: "Queued Posts", count: activeTab === "queued" && videoTotalCount > 0 ? videoTotalCount : null },
+            { id: "accounts", label: "Accounts", count: null },
+            { id: "published", label: "Published Posts", count: activeTab === "published" && videoGroups.length > 0 ? totalPosts : null },
+            { id: "billing", label: "Billing", count: null },
+          ] as const).map((tab) => (
+            <div
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); setPostsPage(1); setVideoPage(1); }}
+              className={`px-4 py-2.5 text-sm font-medium cursor-pointer transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? "border-accent-400 text-accent-400"
+                  : "border-transparent text-text-tertiary hover:text-text-primary"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {tab.label}
+                {tab.count != null && (
+                  <span className="text-xs bg-accent-400/15 text-accent-400 px-1.5 py-0.5 rounded-full">{tab.count}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <Tabs.Panel id="queued">
+        {activeTab === "queued" && (
+          <div>
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-end">
                 <div className="flex gap-2">
                   <Button
                     size="sm"
                     variant="tertiary"
-                    className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+                    className="bg-white/[0.04] text-text-secondary h-9"
                     onPress={() => setIsPickerOpen(true)}
                   >
                     <Icon icon="solar:library-bold-duotone" width={14} />
@@ -433,7 +416,7 @@ export function ActiveCampaignDashboard({
                   </div>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-surface-elevated border-b border-border-base">
+                    <thead className="bg-white/[0.04] border-b border-border-base">
                       <tr>
                         <th
                           className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
@@ -479,7 +462,7 @@ export function ActiveCampaignDashboard({
                         const aggregateStatus = group.statuses[0] || "waiting_assignment";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
-                          <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
+                          <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-white/[0.04] transition-colors">
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-3">
                                 {group.clipUrl ? (
@@ -493,7 +476,7 @@ export function ActiveCampaignDashboard({
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
+                                  <div className="w-16 h-10 rounded bg-white/[0.04] flex-shrink-0" />
                                 )}
                                 <span className="text-sm text-text-primary truncate max-w-[200px]">
                                   {group.clipTitle || `Video #${group.clipId}`}
@@ -552,7 +535,7 @@ export function ActiveCampaignDashboard({
                       <Button
                         size="sm"
                         variant="tertiary"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        className="bg-white/[0.04] text-text-secondary h-7 text-xs"
                         isDisabled={videoPage === 1}
                         onPress={() => setVideoPage(Math.max(1, videoPage - 1))}
                       >
@@ -561,7 +544,7 @@ export function ActiveCampaignDashboard({
                       <Button
                         size="sm"
                         variant="tertiary"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        className="bg-white/[0.04] text-text-secondary h-7 text-xs"
                         isDisabled={videoPage === videoTotalPages}
                         onPress={() => setVideoPage(Math.min(videoTotalPages, videoPage + 1))}
                       >
@@ -575,7 +558,7 @@ export function ActiveCampaignDashboard({
               {playingVideo && (
                 <Modal>
                   <Modal.Backdrop isOpen onOpenChange={() => setPlayingVideo(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
-                    <Modal.Header className="border-b border-border-base text-text-primary">
+                    <Modal.Header>
                       {playingVideo.title}
                     </Modal.Header>
                     <Modal.Body className="p-0">
@@ -590,18 +573,22 @@ export function ActiveCampaignDashboard({
                 </Modal>
               )}
             </div>
-          </Tabs.Panel>
+          </div>
+        )}
 
-          <Tabs.Panel id="accounts">
+        {activeTab === "accounts" && (
+          <div>
             <div className="mt-6">
               <AccountsTab
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
               />
             </div>
-          </Tabs.Panel>
+          </div>
+        )}
 
-          <Tabs.Panel id="published">
+        {activeTab === "published" && (
+          <div>
             <div className="mt-6 space-y-4">
               <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
                 <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
@@ -619,7 +606,7 @@ export function ActiveCampaignDashboard({
                   </div>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-surface-elevated border-b border-border-base">
+                    <thead className="bg-white/[0.04] border-b border-border-base">
                       <tr>
                         <th
                           className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
@@ -667,7 +654,7 @@ export function ActiveCampaignDashboard({
                           : "scheduled";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
-                          <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
+                          <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-white/[0.04] transition-colors">
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-3">
                                 {group.clipUrl ? (
@@ -681,7 +668,7 @@ export function ActiveCampaignDashboard({
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
+                                  <div className="w-16 h-10 rounded bg-white/[0.04] flex-shrink-0" />
                                 )}
                                 <span className="text-sm text-text-primary truncate max-w-[200px]">
                                   {group.clipTitle || `Video #${group.clipId}`}
@@ -740,26 +727,18 @@ export function ActiveCampaignDashboard({
                       <Button
                         size="sm"
                         variant="tertiary"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        className="bg-white/[0.04] text-text-secondary h-7 text-xs"
                         isDisabled={postsPage === 1}
-                        onPress={() => {
-                          const p = Math.max(1, postsPage - 1);
-                          setPostsPage(p);
-                          fetchPosts(p);
-                        }}
+                        onPress={() => setPostsPage(Math.max(1, postsPage - 1))}
                       >
                         Prev
                       </Button>
                       <Button
                         size="sm"
                         variant="tertiary"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
+                        className="bg-white/[0.04] text-text-secondary h-7 text-xs"
                         isDisabled={postsPage === totalPages}
-                        onPress={() => {
-                          const p = Math.min(totalPages, postsPage + 1);
-                          setPostsPage(p);
-                          fetchPosts(p);
-                        }}
+                        onPress={() => setPostsPage(Math.min(totalPages, postsPage + 1))}
                       >
                         Next
                       </Button>
@@ -771,7 +750,7 @@ export function ActiveCampaignDashboard({
               {playingVideo && (
                 <Modal>
                   <Modal.Backdrop isOpen onOpenChange={() => setPlayingVideo(null)}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
-                    <Modal.Header className="border-b border-border-base text-text-primary">
+                    <Modal.Header>
                       {playingVideo.title}
                     </Modal.Header>
                     <Modal.Body className="p-0">
@@ -786,14 +765,16 @@ export function ActiveCampaignDashboard({
                 </Modal>
               )}
             </div>
-          </Tabs.Panel>
+          </div>
+        )}
 
-          <Tabs.Panel id="billing">
+        {activeTab === "billing" && (
+          <div>
             <div className="mt-6">
               <BillingTab campaign={campaign} />
             </div>
-          </Tabs.Panel>
-        </Tabs>
+          </div>
+        )}
       </div>
 
       {/* Bulk upload modal */}
@@ -837,9 +818,9 @@ export function ActiveCampaignDashboard({
       {/* End campaign confirmation modal */}
       <Modal>
         <Modal.Backdrop isOpen={isEndModalOpen} onOpenChange={() => setIsEndModalOpen(false)}><Modal.Container><Modal.Dialog className="sm:max-w-md">
-          <Modal.Header className="border-b border-border-base">
+          <Modal.Header>
             <div className="flex items-center gap-2">
-              <Icon icon="solar:danger-triangle-bold-duotone" className="text-danger-500" width={20} />
+              <Icon icon="solar:danger-triangle-bold-duotone" className="text-red-500" width={20} />
               <span className="text-text-primary">End Campaign</span>
             </div>
           </Modal.Header>
@@ -849,10 +830,10 @@ export function ActiveCampaignDashboard({
               and mark the campaign as completed. This cannot be undone.
             </p>
           </Modal.Body>
-          <Modal.Footer className="border-t border-border-base">
+          <Modal.Footer>
             <Button
  variant="tertiary"
- className="bg-surface-elevated text-text-secondary"
+ className="bg-white/[0.04] text-text-secondary"
  onPress={() => setIsEndModalOpen(false)}
  isDisabled={isEnding}
  >

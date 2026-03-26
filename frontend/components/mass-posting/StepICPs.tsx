@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button,
-  Card,
   Chip,
   Input,
   TextArea, TextField, Label, FieldError} from "@heroui/react";
@@ -47,7 +46,7 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Ideal Customer Profiles
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -58,47 +57,49 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
 
       <div className="space-y-6">
         {icps.map((icp, idx) => (
-          <Card key={idx} className="bg-surface-elevated border border-border-base">
-            <Card.Header className="px-4 pt-4 pb-0 flex items-center justify-between">
+          <div key={idx} className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+            <div className="px-4 pt-4 pb-0 flex items-center justify-between">
               <span className="text-sm font-medium text-text-secondary">
                 ICP #{idx + 1}
               </span>
               {icps.length > 1 && (
                 <Button
- isIconOnly
- size="sm"
- variant="danger-soft"
- onPress={() => removeICP(idx)}
- >
+                  isIconOnly
+                  size="sm"
+                  variant="danger-soft"
+                  onPress={() => removeICP(idx)}
+                >
                   <Icon icon="solar:trash-bin-trash-bold" />
                 </Button>
               )}
-            </Card.Header>
-            <Card.Content className="p-4 space-y-4">
-                            <TextField isRequired>
+            </div>
+            <div className="p-4 space-y-4">
+              <TextField isRequired>
                 <Label>Name / Label</Label>
-                <Input onChange={(e) => ((v) => updateICP(idx, "name", v))(e.target.value)}
- placeholder="e.g. Small Business Owner, Fitness Enthusiast"
- value={icp.name}
- />
+                <Input
+                  onChange={(e) => updateICP(idx, "name", e.target.value)}
+                  placeholder="e.g. Small Business Owner, Fitness Enthusiast"
+                  value={icp.name}
+                />
                 <FieldError />
               </TextField>
-                            <TextField isRequired>
+              <TextField isRequired>
                 <Label>Description</Label>
                 <TextArea
- placeholder="Describe this customer segment..."
- value={icp.description}
- onValueChange={(v) => updateICP(idx, "description", v)}
- minRows={2}
- />
+                  placeholder="Describe this customer segment..."
+                  value={icp.description}
+                  onChange={(e) => updateICP(idx, "description", e.target.value)}
+                  minRows={2}
+                />
                 <FieldError />
               </TextField>
-                            <TextField>
+              <TextField>
                 <Label>Demographics</Label>
-                <Input onChange={(e) => ((v) => updateICP(idx, "demographics", v))(e.target.value)}
- placeholder="e.g. 25-45, urban professionals, US-based"
- value={icp.demographics ?? ""}
- />
+                <Input
+                  onChange={(e) => updateICP(idx, "demographics", e.target.value)}
+                  placeholder="e.g. 25-45, urban professionals, US-based"
+                  value={icp.demographics ?? ""}
+                />
                 <FieldError />
               </TextField>
               <PainPointsInput
@@ -106,23 +107,21 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
                 onAdd={(point) => addPainPoint(idx, point)}
                 onRemove={(pointIdx) => removePainPoint(idx, pointIdx)}
               />
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       <Button
- variant="tertiary"
- onPress={addICP}
- >
+        variant="tertiary"
+        onPress={addICP}
+      >
         <Icon icon="solar:add-circle-bold" />
         Add Another ICP
       </Button>
     </div>
   );
 }
-
-// ── Pain Points chip input ──────────────────────────────────────
 
 function PainPointsInput({
   painPoints,
@@ -150,23 +149,24 @@ function PainPointsInput({
   return (
     <div className="space-y-2">
       <div className="flex items-end gap-2">
-                <TextField>
+        <TextField>
           <Label>Pain Points</Label>
-          <Input onChange={(e) => (setDraft)(e.target.value)}
- placeholder="Type a pain point and press Enter"
- value={draft}
- onKeyDown={handleKeyDown}
- className="flex-1"
- />
+          <Input
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Type a pain point and press Enter"
+            value={draft}
+            onKeyDown={handleKeyDown}
+            className="flex-1"
+          />
           <FieldError />
         </TextField>
         <Button
- size="md"
- variant="tertiary"
- isDisabled={!draft.trim()}
- onPress={handleAdd}
- isIconOnly
- >
+          size="md"
+          variant="tertiary"
+          isDisabled={!draft.trim()}
+          onPress={handleAdd}
+          isIconOnly
+        >
           <Icon icon="solar:add-circle-bold" className="text-lg" />
         </Button>
       </div>
@@ -174,10 +174,10 @@ function PainPointsInput({
         <div className="flex flex-wrap gap-1.5">
           {painPoints.map((point, idx) => (
             <Chip
- key={idx}
- variant="tertiary"
- onClose={() => onRemove(idx)}
- >
+              key={idx}
+              variant="tertiary"
+              onClose={() => onRemove(idx)}
+            >
               {point}
             </Chip>
           ))}

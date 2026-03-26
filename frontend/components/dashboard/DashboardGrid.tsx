@@ -238,7 +238,7 @@ export function DashboardGrid() {
                       <div className="relative shrink-0">
                         <CreditArc percent={usagePercent} size={88} />
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xl font-bold text-text-accent leading-none">
+                          <span className="text-xl font-bold text-text-primary leading-none">
                             {usageStats?.remaining ?? 0}
                           </span>
                           <span className="text-[10px] text-text-tertiary mt-0.5">left</span>
@@ -247,13 +247,13 @@ export function DashboardGrid() {
                       <div className="flex-1 space-y-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-text-tertiary">Used</span>
-                          <span className="text-text-accent font-medium tabular-nums">
+                          <span className="text-text-primary font-medium tabular-nums">
                             {usageStats?.clipsCreated ?? 0}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-text-tertiary">Limit</span>
-                          <span className="text-text-accent font-medium tabular-nums">
+                          <span className="text-text-primary font-medium tabular-nums">
                             {usageStats?.limit ?? 0}
                           </span>
                         </div>
@@ -306,7 +306,7 @@ export function DashboardGrid() {
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-surface-base" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-text-accent truncate text-sm">
+                    <p className="font-semibold text-text-primary truncate text-sm">
                       {selectedTeam?.name || "No Team"}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -388,7 +388,7 @@ export function DashboardGrid() {
                   >
                     <Icon icon={action.icon} width={22} style={{ color: action.color }} />
                   </div>
-                  <p className="text-sm font-medium text-text-accent">{action.label}</p>
+                  <p className="text-sm font-medium text-text-primary">{action.label}</p>
                   <p className="text-xs text-text-tertiary mt-0.5">{action.description}</p>
                 </div>
                 <Icon
@@ -428,7 +428,7 @@ export function DashboardGrid() {
                   <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center mb-3">
                     <Icon icon="solar:check-circle-bold-duotone" width={28} className="text-green-500" />
                   </div>
-                  <p className="text-sm font-medium text-text-accent">All clear</p>
+                  <p className="text-sm font-medium text-text-primary">All clear</p>
                   <p className="text-xs text-text-tertiary mt-0.5">No active jobs</p>
                 </div>
               ) : (
@@ -478,7 +478,7 @@ export function DashboardGrid() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-text-accent truncate leading-tight">
+                            <p className="text-xs font-medium text-text-primary truncate leading-tight">
                               {item.title}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -559,7 +559,7 @@ export function DashboardGrid() {
               <div className="w-14 h-14 rounded-2xl bg-surface-elevated flex items-center justify-center mb-3">
                 <Icon icon="solar:video-library-bold-duotone" width={28} className="text-text-tertiary" />
               </div>
-              <p className="text-sm font-medium text-text-accent mb-1">No clips yet</p>
+              <p className="text-sm font-medium text-text-primary mb-1">No clips yet</p>
               <p className="text-xs text-text-tertiary mb-4">Create your first clip to get started</p>
               <Button
  size="sm"

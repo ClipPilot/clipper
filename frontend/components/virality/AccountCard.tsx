@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Avatar, Button, Chip } from "@heroui/react";
+import { Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformIconColor, syncStatusColor, timeAgo } from "@/lib/platformUtils";
+import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
+
+const SYNC_STATUS_CLASSES: Record<string, string> = {
+  completed: "bg-green-500/10 text-green-500",
+  failed: "bg-red-500/10 text-red-500",
+  syncing: "bg-amber-500/10 text-amber-500",
+  default: "bg-white/10 text-text-secondary",
+};
 
 interface AccountCardProps {
   account: ViralityAccount;
@@ -43,10 +50,8 @@ export function AccountCard({
 
 
   return (
-    <Card
- className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all"
- >
-      <Card.Content className="p-4">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden hover:border-accent-400/40 transition-all">
+      <div className="p-4">
         <div
           className="flex items-start gap-3 mb-4 cursor-pointer"
           onClick={onViewPosts}
@@ -56,7 +61,7 @@ export function AccountCard({
  />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="font-semibold text-text-accent truncate">
+              <p className="font-semibold text-text-primary truncate">
                 {account.display_name || account.username}
               </p>
               {account.is_verified && (
@@ -76,7 +81,7 @@ export function AccountCard({
           <Chip
  size="sm"
  variant="tertiary"
- color={syncStatusColor(account.sync_status)}
+ className={SYNC_STATUS_CLASSES[account.sync_status] || SYNC_STATUS_CLASSES.default}
  >
             {account.sync_status}
           </Chip>
@@ -84,19 +89,19 @@ export function AccountCard({
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-accent">
+            <p className="text-lg font-bold text-text-primary">
               {formatNumber(account.follower_count)}
             </p>
             <p className="text-xs text-text-tertiary">Followers</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-accent">
+            <p className="text-lg font-bold text-text-primary">
               {formatNumber(account.total_likes)}
             </p>
             <p className="text-xs text-text-tertiary">Likes</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
-            <p className="text-lg font-bold text-text-accent">
+            <p className="text-lg font-bold text-text-primary">
               {formatNumber(account.post_count)}
             </p>
             <p className="text-xs text-text-tertiary">Posts</p>
@@ -154,7 +159,7 @@ export function AccountCard({
             {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
           </Button>
         </div>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }

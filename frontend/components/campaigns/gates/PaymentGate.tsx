@@ -3,14 +3,8 @@
 import React, { useState } from "react";
 import {
   Button,
-  Card,
-  CardBody,
   Input,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Slider,
   Spinner,
   toast,
@@ -54,8 +48,6 @@ function cardBrandIcon(brand: string): string {
   }
 }
 
-// ── Step 1: Setup form (save a card) ─────────────────────────────────────────
-
 interface SetupFormProps {
   teamId: number;
   campaignId: number;
@@ -86,7 +78,6 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
       return;
     }
 
-    // Save the payment method to the wallet
     if (setupIntent?.payment_method) {
       try {
         const pmId =
@@ -109,7 +100,7 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <ModalHeader className="border-b border-border-base">
+      <Modal.Header>
         <div className="flex items-center gap-2">
           <Icon
             icon="solar:card-bold-duotone"
@@ -118,18 +109,18 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
           />
           <span className="text-text-primary">Add Payment Method</span>
         </div>
-      </ModalHeader>
-      <ModalBody className="py-6 gap-5">
+      </Modal.Header>
+      <Modal.Body className="py-6 gap-5">
         <p className="text-sm text-text-secondary">
           Add a card or bank account to fund your campaign. Your payment method
           will be saved for future top-ups.
         </p>
         <PaymentElement />
-      </ModalBody>
-      <ModalFooter className="border-t border-border-base">
+      </Modal.Body>
+      <Modal.Footer>
         <Button
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary"
+          variant="tertiary"
+          className="bg-white/[0.04] text-text-secondary"
           onPress={onClose}
           isDisabled={isSubmitting}
         >
@@ -138,17 +129,15 @@ function SetupForm({ teamId, campaignId, onSaved, onClose }: SetupFormProps) {
         <Button
           type="submit"
           className="bg-accent-400 text-white font-medium"
-          isLoading={isSubmitting}
+          isPending={isSubmitting}
           isDisabled={!stripe || !elements}
         >
           Save Payment Method
         </Button>
-      </ModalFooter>
+      </Modal.Footer>
     </form>
   );
 }
-
-// ── Step 2: Payment form (charge saved card) ─────────────────────────────────
 
 interface PaymentFormProps {
   amountCents: number;
@@ -191,7 +180,6 @@ function PaymentForm({
           return;
         }
       } catch {
-        // ignore — keep polling
       }
     }
 
@@ -224,7 +212,7 @@ function PaymentForm({
   if (stage === "crediting") {
     return (
       <>
-        <ModalHeader className="border-b border-border-base">
+        <Modal.Header>
           <div className="flex items-center gap-2">
             <Icon
               icon="solar:wallet-bold-duotone"
@@ -233,8 +221,8 @@ function PaymentForm({
             />
             <span className="text-text-primary">Processing Payment</span>
           </div>
-        </ModalHeader>
-        <ModalBody className="py-10 flex flex-col items-center gap-4">
+        </Modal.Header>
+        <Modal.Body className="py-10 flex flex-col items-center gap-4">
           <Spinner size="lg" color="secondary" />
           <p className="text-text-secondary text-center">
             Crediting your campaign wallet...
@@ -242,14 +230,14 @@ function PaymentForm({
           <p className="text-text-tertiary text-sm text-center">
             This usually takes a few seconds
           </p>
-        </ModalBody>
+        </Modal.Body>
       </>
     );
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <ModalHeader className="border-b border-border-base">
+      <Modal.Header>
         <div className="flex items-center gap-2">
           <Icon
             icon="solar:wallet-bold-duotone"
@@ -258,20 +246,20 @@ function PaymentForm({
           />
           <span className="text-text-primary">Add Funds</span>
         </div>
-      </ModalHeader>
-      <ModalBody className="py-6 gap-5">
-        <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
+      </Modal.Header>
+      <Modal.Body className="py-6 gap-5">
+        <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.04]">
           <span className="text-text-secondary">Amount</span>
           <span className="text-xl font-bold text-text-primary">
             {formatCents(amountCents)}
           </span>
         </div>
         <PaymentElement />
-      </ModalBody>
-      <ModalFooter className="border-t border-border-base">
+      </Modal.Body>
+      <Modal.Footer>
         <Button
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary"
+          variant="tertiary"
+          className="bg-white/[0.04] text-text-secondary"
           onPress={onClose}
           isDisabled={isSubmitting}
         >
@@ -280,17 +268,15 @@ function PaymentForm({
         <Button
           type="submit"
           className="bg-accent-400 text-white font-medium"
-          isLoading={isSubmitting}
+          isPending={isSubmitting}
           isDisabled={!stripe || !elements}
         >
           Pay {formatCents(amountCents)}
         </Button>
-      </ModalFooter>
+      </Modal.Footer>
     </form>
   );
 }
-
-// ── Setup Modal (Step 1) ─────────────────────────────────────────────────────
 
 export interface SetupModalProps {
   isOpen: boolean;
@@ -312,28 +298,24 @@ export function SetupModal({
   if (!clientSecret) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="md"
-      classNames={{ base: "bg-surface-base border border-border-base" }}
-      isDismissable={false}
-    >
-      <ModalContent>
-        <StripeProvider clientSecret={clientSecret}>
-          <SetupForm
-            teamId={teamId}
-            campaignId={campaignId}
-            onSaved={onSaved}
-            onClose={onClose}
-          />
-        </StripeProvider>
-      </ModalContent>
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose} isDismissable={false}>
+        <Modal.Container>
+          <Modal.Dialog className="sm:max-w-md">
+            <StripeProvider clientSecret={clientSecret}>
+              <SetupForm
+                teamId={teamId}
+                campaignId={campaignId}
+                onSaved={onSaved}
+                onClose={onClose}
+              />
+            </StripeProvider>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   );
 }
-
-// ── Payment Modal (Step 2) ───────────────────────────────────────────────────
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -359,36 +341,32 @@ function PaymentModal({
   if (!clientSecret || !paymentIntentId) return null;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="md"
-      classNames={{ base: "bg-surface-base border border-border-base" }}
-      isDismissable={false}
-    >
-      <ModalContent>
-        <StripeProvider clientSecret={clientSecret}>
-          <PaymentForm
-            amountCents={amountCents}
-            teamId={teamId}
-            campaignId={campaignId}
-            paymentIntentId={paymentIntentId}
-            onSuccess={onSuccess}
-            onClose={onClose}
-          />
-        </StripeProvider>
-      </ModalContent>
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose} isDismissable={false}>
+        <Modal.Container>
+          <Modal.Dialog className="sm:max-w-md">
+            <StripeProvider clientSecret={clientSecret}>
+              <PaymentForm
+                amountCents={amountCents}
+                teamId={teamId}
+                campaignId={campaignId}
+                paymentIntentId={paymentIntentId}
+                onSuccess={onSuccess}
+                onClose={onClose}
+              />
+            </StripeProvider>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   );
 }
-
-// ── Saved Card Display ───────────────────────────────────────────────────────
 
 function SavedPaymentMethodDisplay({ pm }: { pm: CampaignCard }) {
   const isBank = pm.type === "us_bank_account";
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated border border-border-base">
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.04]">
       <Icon
         icon={isBank ? "solar:bank-bold-duotone" : cardBrandIcon(pm.brand ?? "")}
         width={isBank ? 24 : 32}
@@ -408,14 +386,12 @@ function SavedPaymentMethodDisplay({ pm }: { pm: CampaignCard }) {
       </div>
       <Icon
         icon="solar:check-circle-bold"
-        className="text-success-500"
+        className="text-green-500"
         width={18}
       />
     </div>
   );
 }
-
-// ── Main PaymentGate ─────────────────────────────────────────────────────────
 
 interface PaymentGateProps {
   campaignId: number;
@@ -536,7 +512,6 @@ export function PaymentGate({
           return;
         }
       } catch {
-        // ignore — keep polling
       }
     }
 
@@ -553,18 +528,15 @@ export function PaymentGate({
         await campaignAPI.createTopUp(selectedTeam.id, campaignId, cents);
 
       if (confirmed) {
-        // Card was charged AND wallet credited server-side — instant
         setIsCreatingIntent(false);
         toast.success("Wallet funded", { description: `${formatCents(cents)} added to your campaign wallet.` });
         setAmountInput("");
         onPaymentComplete(gate.balanceCents + cents);
       } else if (processing) {
-        // ACH bank transfer — payment initiated, takes 3-5 business days
         setIsCreatingIntent(false);
         toast.warning("Bank transfer initiated", { description: "Your bank transfer is processing. Funds will be credited in 3-5 business days." });
         setAmountInput("");
       } else {
-        // No saved payment method — open payment modal
         setClientSecret(cs);
         setPaymentIntentId(piId);
         setPendingAmountCents(cents);
@@ -591,26 +563,24 @@ export function PaymentGate({
 
   return (
     <div className="space-y-4">
-      {/* Campaign terms summary */}
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-4 grid grid-cols-2 gap-4">
+      <div className="rounded-xl bg-white/[0.04] overflow-hidden">
+        <div className="p-4 grid grid-cols-2 gap-4">
           <div className="text-center">
             <p className="text-xs text-text-secondary mb-1">Budget</p>
             <p className="text-base font-bold text-text-primary">
-              {budget > 0 ? formatDollars(budget) : "—"}
+              {budget > 0 ? formatDollars(budget) : "\u2014"}
             </p>
           </div>
           <div className="text-center border-l border-border-base">
             <p className="text-xs text-text-secondary mb-1">CPM Rate</p>
             <p className="text-base font-bold text-text-primary">
-              {cpm > 0 ? `$${cpm.toFixed(2)}` : "—"}
+              {cpm > 0 ? `$${cpm.toFixed(2)}` : "\u2014"}
             </p>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
 
-      {/* Current balance */}
-      <div className="flex items-center justify-between p-4 rounded-xl bg-surface-elevated">
+      <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.04]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-accent-400/10 flex items-center justify-center">
             <Icon
@@ -629,14 +599,14 @@ export function PaymentGate({
           </div>
         </div>
         {gate.complete ? (
-          <div className="flex items-center gap-1.5 text-success-500 text-sm font-medium">
+          <div className="flex items-center gap-1.5 text-green-500 text-sm font-medium">
             <Icon icon="solar:check-circle-bold" width={18} />
             Funded
           </div>
         ) : (
           <div className="text-right">
             <p className="text-xs text-text-secondary">Required</p>
-            <p className="text-sm font-semibold text-warning-400">
+            <p className="text-sm font-semibold text-yellow-400">
               {formatCents(gate.requiredCents)}
             </p>
           </div>
@@ -664,22 +634,19 @@ export function PaymentGate({
             </div>
             <Button
               size="sm"
-              color="primary"
+              variant="primary"
               onPress={handleAddCard}
-              isLoading={isSettingUp}
-              startContent={
-                !isSettingUp && (
-                  <Icon icon="solar:card-bold-duotone" width={16} />
-                )
-              }
+              isPending={isSettingUp}
             >
+              {!isSettingUp && (
+                <Icon icon="solar:card-bold-duotone" width={16} />
+              )}
               Add Payment Method
             </Button>
           </div>
         </div>
       ) : (
         <>
-          {/* Saved card display */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
@@ -687,10 +654,10 @@ export function PaymentGate({
               </p>
               <Button
                 size="sm"
-                variant="light"
+                variant="tertiary"
                 className="text-text-secondary h-6 text-xs"
                 onPress={handleAddCard}
-                isLoading={isSettingUp}
+                isPending={isSettingUp}
               >
                 Change
               </Button>
@@ -703,50 +670,53 @@ export function PaymentGate({
               <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
                 Fund with Credits
               </p>
-              <div className="p-4 rounded-lg border border-border-base bg-surface-elevated space-y-4">
-                <div className="flex items-center gap-2 text-xs text-text-tertiary">
-                  <Icon icon="solar:transfer-horizontal-bold" width={14} />
-                  <span>1 credit = $3.50 campaign dollars</span>
-                </div>
-                <Slider
-                  value={creditCount}
-                  onChange={(val) => setCreditCount(val as number)}
-                  minValue={0}
-                  maxValue={maxCreditsSlider}
-                  step={1}
-                  size="sm"
-                  color="secondary"
-                  showTooltip
-                  label={`${creditCount} credit${creditCount !== 1 ? "s" : ""}`}
-                  classNames={{
-                    label: "text-sm text-text-primary font-medium",
-                  }}
-                />
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-border-base space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-text-secondary">
-                    {creditCount} credit{creditCount !== 1 ? "s" : ""} ={" "}
-                    <span className="font-semibold text-text-primary">
-                      ${(creditCount * 3.5).toFixed(2)}
-                    </span>{" "}
-                    campaign dollars
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    {totalCredits} credit{totalCredits !== 1 ? "s" : ""} available
-                  </p>
+                  <div className="flex items-center gap-2 text-sm text-text-primary">
+                    <Icon icon="solar:stars-bold-duotone" width={16} className="text-pink-500" />
+                    <span>1 credit = <strong className="text-pink-500">$3.50</strong> campaign dollars</span>
+                  </div>
+                  <span className="text-xs text-text-tertiary">{totalCredits} available</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-text-primary">{creditCount} credit{creditCount !== 1 ? "s" : ""}</span>
+                    <span className="font-semibold text-pink-500">${(creditCount * 3.5).toFixed(2)}</span>
+                  </div>
+                  <div className="relative h-6 flex items-center">
+                    <div className="absolute inset-x-0 h-2 rounded-full bg-white/[0.12]" />
+                    <div
+                      className="absolute h-2 rounded-full bg-pink-500 transition-all"
+                      style={{ width: maxCreditsSlider > 0 ? `${(creditCount / maxCreditsSlider) * 100}%` : "0%" }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={maxCreditsSlider}
+                      step={1}
+                      value={creditCount}
+                      onChange={(e) => setCreditCount(Number(e.target.value))}
+                      className="absolute inset-x-0 w-full h-6 opacity-0 cursor-pointer"
+                    />
+                    <div
+                      className="absolute w-4 h-4 rounded-full bg-pink-500 border-2 border-white shadow-lg pointer-events-none transition-all"
+                      style={{ left: maxCreditsSlider > 0 ? `calc(${(creditCount / maxCreditsSlider) * 100}% - 8px)` : "0" }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-text-tertiary">
+                    <span>0</span>
+                    <span>{maxCreditsSlider}</span>
+                  </div>
                 </div>
                 <Button
                   size="sm"
-                  color="secondary"
+                  className="bg-pink-500 text-white w-full hover:bg-pink-600"
                   onPress={handleFundWithCredits}
-                  isLoading={isFundingWithCredits}
+                  isPending={isFundingWithCredits}
                   isDisabled={creditCount === 0}
-                  startContent={
-                    !isFundingWithCredits && (
-                      <Icon icon="solar:stars-bold-duotone" width={16} />
-                    )
-                  }
                 >
-                  Apply Credits
+                  {!isFundingWithCredits && <Icon icon="solar:stars-bold-duotone" width={16} />}
+                  Apply {creditCount} Credit{creditCount !== 1 ? "s" : ""}
                 </Button>
               </div>
             </div>
@@ -773,35 +743,26 @@ export function PaymentGate({
                 <Input
                   placeholder={`Min $${shortfallDollars > 0 ? shortfallDollars.toFixed(2) : "1.00"}`}
                   value={amountInput}
-                  onValueChange={setAmountInput}
+                  onChange={(e) => setAmountInput(e.target.value)}
                   type="number"
                   min="1"
                   step="0.01"
                   size="sm"
-                  variant="bordered"
-                  startContent={
-                    <span className="text-text-secondary text-sm">$</span>
-                  }
-                  classNames={{
-                    inputWrapper: "border-border-base bg-surface-elevated",
-                    input: "text-text-primary",
-                  }}
+                  className="border-border-base bg-white/[0.04] text-text-primary"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAddFunds();
                   }}
                 />
                 <Button
-                  color="primary"
+                  variant="primary"
                   size="sm"
                   onPress={handleAddFunds}
-                  isLoading={isCreatingIntent || isPolling}
+                  isPending={isCreatingIntent || isPolling}
                   isDisabled={!amountIsValid || isPolling}
-                  startContent={
-                    !isCreatingIntent && !isPolling && (
-                      <Icon icon="solar:wallet-bold-duotone" width={16} />
-                    )
-                  }
                 >
+                  {!isCreatingIntent && !isPolling && (
+                    <Icon icon="solar:wallet-bold-duotone" width={16} />
+                  )}
                   {isPolling ? "Processing..." : "Add Funds"}
                 </Button>
               </div>
@@ -810,7 +771,6 @@ export function PaymentGate({
         </>
       )}
 
-      {/* Setup modal (Step 1) */}
       <SetupModal
         isOpen={isSetupModalOpen}
         onClose={() => {
@@ -823,7 +783,6 @@ export function PaymentGate({
         onSaved={handleCardSaved}
       />
 
-      {/* Payment modal (Step 2) */}
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={handlePaymentModalClose}

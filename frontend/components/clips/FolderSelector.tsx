@@ -43,7 +43,7 @@ function FolderTreeItem({
         className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
           isSelected
             ? "bg-accent-400/20 text-accent-400"
-            : "hover:bg-surface-elevated text-text-accent"
+            : "hover:bg-surface-elevated text-text-primary"
         }`}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
@@ -168,7 +168,7 @@ export function FolderSelector({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-text-accent mb-2">
+        <label className="block text-sm font-medium text-text-primary mb-2">
           {label}
         </label>
       )}
@@ -198,7 +198,7 @@ export function FolderSelector({
                   width={18}
                 />
               )}
-            <span className="truncate text-text-accent">
+            <span className="truncate text-text-primary">
               {selectedFolder?.name || placeholder}
             </span>
             <div className="flex items-center gap-1 ml-auto">

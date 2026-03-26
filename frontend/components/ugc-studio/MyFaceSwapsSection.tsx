@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
-import { Card, Pagination, toast } from "@heroui/react";
+import { Card, toast } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -26,8 +27,7 @@ export interface MyFaceSwapsSectionRef {
 }
 
 export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsSectionProps>(function MyFaceSwapsSection({
-  teamId,
-}, ref) {
+  teamId }, ref) {
   const router = useRouter();
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [optimisticJobs, setOptimisticJobs] = useState<FaceSwapJob[]>([]);
@@ -65,8 +65,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       outputUrl: null,
       errorMessage: null,
       createdAt: new Date().toISOString(),
-      finishedAt: null,
-    };
+      finishedAt: null };
     setOptimisticJobs((prev) => [optimisticJob, ...prev]);
     setTotalJobs((prev) => prev + 1);
   }, []);
@@ -113,8 +112,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     addOptimisticJob,
     updateOptimisticJob,
     updateOptimisticJobStatus,
-    failOptimisticJob,
-  }), [refetch, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
+    failOptimisticJob }), [refetch, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
 
   // Fetch when page changes
   useEffect(() => {
@@ -305,8 +303,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         </div>
         {totalPages > 1 && (
           <div className="flex justify-center pt-4">
-            <Pagination
- total={totalPages}
+            <PaginationControl total={totalPages}
  page={currentPage}
  onChange={handlePageChange}
  siblings={2}

@@ -9,13 +9,12 @@ import {
   TableRow,
   TableCell,
   Avatar,
-  Pagination,
   Button,
   Dropdown,
   Chip,
   Label,
-  cn,
-} from "@heroui/react";
+  cn } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import type { ViralityPost } from "@/api/virality";
 import { formatNumber, formatDate } from "@/lib/formatters";
@@ -72,8 +71,7 @@ function SortableHeader({
   currentSort,
   currentDir,
   onSort,
-  extra,
-}: {
+  extra }: {
   label: string;
   sortKey: SortKey;
   currentSort: SortKey | null;
@@ -108,8 +106,7 @@ function FilterDropdown<T extends string>({
   options,
   selected,
   onChange,
-  icon,
-}: {
+  icon }: {
   options: { key: T; label: string }[];
   selected: T;
   onChange: (key: T) => void;
@@ -453,8 +450,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
             ))}
           </div>
           {totalPages > 1 && (
-            <Pagination
- total={totalPages}
+            <PaginationControl total={totalPages}
  page={page}
  onChange={setPage}
  className="[&_button]:bg-surface-elevated [&_button]:text-text-secondary [&_.active]:bg-accent-400 [&_.active]:text-white"

@@ -108,7 +108,7 @@ export default function TeamInvitesList({
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-text-accent">
+                    <p className="text-sm font-medium text-text-primary">
                       {invite.email}
                     </p>
                     <Chip

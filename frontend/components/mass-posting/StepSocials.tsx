@@ -2,7 +2,6 @@
 
 import type { Key } from "@heroui/react";
 import { Button,
-  Card,
   Separator,
   Input,
   Select,
@@ -25,7 +24,6 @@ export function StepSocials({
   competitorSocials,
   setCompetitorSocials,
 }: StepSocialsProps) {
-  // ── Company socials ──
   const addCompanySocial = () =>
     setCompanySocials([...companySocials, emptySocial()]);
 
@@ -38,7 +36,6 @@ export function StepSocials({
     setCompanySocials(updated);
   };
 
-  // ── Competitor socials ──
   const addCompetitor = () =>
     setCompetitorSocials([...competitorSocials, emptyCompetitor()]);
 
@@ -89,7 +86,6 @@ export function StepSocials({
 
   return (
     <div className="space-y-8">
-      {/* Company Socials */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
           Your Social Accounts <span className="text-danger text-sm">*</span>
@@ -101,13 +97,13 @@ export function StepSocials({
           {companySocials.map((social, idx) => (
             <div key={idx} className="flex items-start gap-2">
               <Select
- className="w-40 flex-shrink-0"
- value={social.platform}
- onChange={(val: Key | null) => {
- if (val) updateCompanySocial(idx, "platform", val as string);
- }}
- aria-label="Platform"
- >
+                className="w-40 flex-shrink-0"
+                value={social.platform}
+                onChange={(val: Key | null) => {
+                  if (val) updateCompanySocial(idx, "platform", val as string);
+                }}
+                aria-label="Platform"
+              >
                 <Select.Trigger>
                   <Select.Value />
                   <Select.Indicator />
@@ -120,18 +116,19 @@ export function StepSocials({
                   </ListBox>
                 </Select.Popover>
               </Select>
-              <Input onChange={(e) => ((v) => updateCompanySocial(idx, "url", v))(e.target.value)}
- placeholder="https://instagram.com/yourbrand"
- value={social.url}
- className="flex-1"
- />
+              <Input
+                onChange={(e) => updateCompanySocial(idx, "url", e.target.value)}
+                placeholder="https://instagram.com/yourbrand"
+                value={social.url}
+                className="flex-1"
+              />
               {companySocials.length > 1 && (
                 <Button
- isIconOnly
- size="sm"
- variant="danger-soft"
- onPress={() => removeCompanySocial(idx)}
- >
+                  isIconOnly
+                  size="sm"
+                  variant="danger-soft"
+                  onPress={() => removeCompanySocial(idx)}
+                >
                   <Icon icon="solar:trash-bin-trash-bold" />
                 </Button>
               )}
@@ -139,11 +136,11 @@ export function StepSocials({
           ))}
         </div>
         <Button
- size="sm"
- variant="tertiary"
- className="mt-3"
- onPress={addCompanySocial}
- >
+          size="sm"
+          variant="tertiary"
+          className="mt-3"
+          onPress={addCompanySocial}
+        >
           <Icon icon="solar:add-circle-bold" />
           Add Account
         </Button>
@@ -151,7 +148,6 @@ export function StepSocials({
 
       <Separator />
 
-      {/* Competitor Socials */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
           Competitor Accounts
@@ -161,25 +157,26 @@ export function StepSocials({
         </p>
         <div className="space-y-6">
           {competitorSocials.map((competitor, cIdx) => (
-            <Card key={cIdx} className="bg-surface-elevated border border-border-base">
-              <Card.Content className="p-4 space-y-3">
+            <div key={cIdx} className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+              <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                                    <TextField>
+                  <TextField>
                     <Label>Competitor Name</Label>
-                    <Input onChange={(e) => ((v) => updateCompetitorField(cIdx, "companyName", v))(e.target.value)}
- placeholder="e.g. Acme Corp"
- value={competitor.companyName}
- className="flex-1"
- />
+                    <Input
+                      onChange={(e) => updateCompetitorField(cIdx, "companyName", e.target.value)}
+                      placeholder="e.g. Acme Corp"
+                      value={competitor.companyName}
+                      className="flex-1"
+                    />
                     <FieldError />
                   </TextField>
                   {competitorSocials.length > 1 && (
                     <Button
- isIconOnly
- size="sm"
- variant="danger-soft"
- onPress={() => removeCompetitor(cIdx)}
- >
+                      isIconOnly
+                      size="sm"
+                      variant="danger-soft"
+                      onPress={() => removeCompetitor(cIdx)}
+                    >
                       <Icon icon="solar:trash-bin-trash-bold" />
                     </Button>
                   )}
@@ -187,13 +184,13 @@ export function StepSocials({
                 {competitor.accounts.map((account, aIdx) => (
                   <div key={aIdx} className="flex items-start gap-2 pl-2">
                     <Select
- className="w-36 flex-shrink-0"
- value={account.platform}
- onChange={(val: Key | null) => {
- if (val) updateCompetitorAccount(cIdx, aIdx, "platform", val as string);
- }}
- aria-label="Platform"
- >
+                      className="w-36 flex-shrink-0"
+                      value={account.platform}
+                      onChange={(val: Key | null) => {
+                        if (val) updateCompetitorAccount(cIdx, aIdx, "platform", val as string);
+                      }}
+                      aria-label="Platform"
+                    >
                       <Select.Trigger>
                         <Select.Value />
                         <Select.Indicator />
@@ -206,41 +203,42 @@ export function StepSocials({
                         </ListBox>
                       </Select.Popover>
                     </Select>
-                    <Input onChange={(e) => ((v) => updateCompetitorAccount(cIdx, aIdx, "url", v))(e.target.value)}
- placeholder="Account URL"
- value={account.url}
- className="flex-1"
- />
+                    <Input
+                      onChange={(e) => updateCompetitorAccount(cIdx, aIdx, "url", e.target.value)}
+                      placeholder="Account URL"
+                      value={account.url}
+                      className="flex-1"
+                    />
                     {competitor.accounts.length > 1 && (
                       <Button
- isIconOnly
- size="sm"
- variant="danger-soft"
- onPress={() => removeCompetitorAccount(cIdx, aIdx)}
- >
+                        isIconOnly
+                        size="sm"
+                        variant="danger-soft"
+                        onPress={() => removeCompetitorAccount(cIdx, aIdx)}
+                      >
                         <Icon icon="solar:trash-bin-trash-bold" />
                       </Button>
                     )}
                   </div>
                 ))}
                 <Button
- size="sm"
- variant="tertiary"
- onPress={() => addCompetitorAccount(cIdx)}
- >
+                  size="sm"
+                  variant="tertiary"
+                  onPress={() => addCompetitorAccount(cIdx)}
+                >
                   <Icon icon="solar:add-circle-linear" />
                   Add Account
                 </Button>
-              </Card.Content>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
         <Button
- size="sm"
- variant="tertiary"
- className="mt-3"
- onPress={addCompetitor}
- >
+          size="sm"
+          variant="tertiary"
+          className="mt-3"
+          onPress={addCompetitor}
+        >
           <Icon icon="solar:add-circle-bold" />
           Add Competitor
         </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, cn } from "@heroui/react";
+import { cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { Campaign, CampaignWallet, CampaignCard } from "@/api/campaign";
 
@@ -73,15 +73,15 @@ export function CampaignInfoBar({
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {stats.map((stat) => (
-        <Card
- key={stat.title}
- className={cn(
- "bg-surface-base border border-border-base",
- stat.onClick && "cursor-pointer hover:border-accent-400/40 transition-colors",
- )}
- onPress={stat.onClick}
- >
-          <Card.Content className="p-4">
+        <div
+          key={stat.title}
+          className={cn(
+            "rounded-xl border border-border-base bg-surface-base overflow-hidden",
+            stat.onClick && "cursor-pointer hover:border-accent-400/40 transition-colors",
+          )}
+          onClick={stat.onClick}
+        >
+          <div className="p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] text-text-tertiary font-medium tracking-wide">
                 {stat.title}
@@ -96,7 +96,7 @@ export function CampaignInfoBar({
               <p
                 className={cn(
                   "text-xl font-bold truncate",
-                  stat.valueColor || "text-text-accent"
+                  stat.valueColor || "text-text-primary"
                 )}
               >
                 {stat.value}
@@ -114,8 +114,8 @@ export function CampaignInfoBar({
                 />
               </div>
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );

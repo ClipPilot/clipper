@@ -190,7 +190,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
   return (
     <div className="w-64 bg-surface-base border border-border-base rounded-lg flex flex-col h-fit max-h-[calc(100vh-200px)]">
       <div className="flex items-center justify-between p-3 border-b border-border-base">
-        <h3 className="text-sm font-semibold text-text-accent">Folders</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Folders</h3>
         <div className="flex items-center gap-1">
           {!isReadOnly && (
             <Button
@@ -227,7 +227,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
           `}
         >
           <Icon icon="solar:home-2-bold-duotone" className="text-xl text-accent-400" />
-          <span className="text-sm text-text-accent">All Clips</span>
+          <span className="text-sm text-text-primary">All Clips</span>
         </div>
 
         {folders.length > 0 ? (

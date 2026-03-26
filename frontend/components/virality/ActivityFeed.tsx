@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { Card, Tooltip, Chip, cn } from "@heroui/react";
+import { Button, Tooltip, Chip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
@@ -93,21 +93,21 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
 
   if (allPosts.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <Card.Content className="flex flex-col items-center justify-center py-12 gap-2">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Icon icon="solar:fire-bold" width={40} className="text-text-tertiary" />
           <p className="text-text-secondary text-sm">No posts yet — sync accounts to see top content</p>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <Card.Content className="p-0">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-sm font-medium text-text-accent">Top Performing Content</h3>
+            <h3 className="text-sm font-medium text-text-primary">Top Performing Content</h3>
             {filter === "viral" && (
               <Tooltip
  content={
@@ -124,18 +124,18 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
           </div>
           <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
             {filters.map((f) => (
-              <button
+              <div
                 key={f.key}
                 onClick={() => handleFilterChange(f.key)}
                 className={cn(
-                  "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all",
+                  "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer",
                   filter === f.key
                     ? "bg-accent-400 text-white shadow-sm"
                     : "text-text-tertiary hover:text-text-secondary"
                 )}
               >
                 {f.label}
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -182,7 +182,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       {account && (
-                        <span className="text-xs font-medium text-text-accent">
+                        <span className="text-xs font-medium text-text-primary">
                           @{account.username}
                         </span>
                       )}
@@ -235,7 +235,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
             })}
           </div>
         )}
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }

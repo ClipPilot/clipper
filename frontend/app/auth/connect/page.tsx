@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
 
           {/* Text */}
           <div className="text-center space-y-1">
-            <p className="text-lg font-semibold text-text-accent">
+            <p className="text-lg font-semibold text-text-primary">
               Connecting to Google Drive
             </p>
             <p className="text-sm text-text-secondary animate-pulse">

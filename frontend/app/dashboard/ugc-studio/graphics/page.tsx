@@ -95,7 +95,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="tertiary" isIconOnly onPress={() => router.push("/dashboard/ugc-studio")}>
+          <Button variant="ghost" isIconOnly className="!bg-transparent text-text-secondary hover:text-text-primary" onPress={() => router.push("/dashboard/ugc-studio")}>
             <Icon icon="solar:arrow-left-linear" width={20} />
           </Button>
           <div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Card,
+import {
   Button,
   Spinner,
   Tabs,
@@ -33,7 +33,6 @@ function generateMockHistory(
         ? 7 * 24 * 60 * 60 * 1000
         : 30 * 24 * 60 * 60 * 1000;
 
-  // Distribute usage across periods with weighted randomness
   const weights = Array.from({ length: count }, () => Math.random() + 0.2);
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 
@@ -93,12 +92,6 @@ export default function UsagePage() {
       ? (usageStats.clipsGenerated / usageStats.generationLimit) * 100
       : 0;
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return "danger";
-    if (percentage >= 70) return "warning";
-    return "success";
-  };
-
   const maxHistoryValue = Math.max(...history.map((h) => h.creditsUsed), 1);
 
   const formatDate = (dateStr: string) => {
@@ -137,7 +130,6 @@ export default function UsagePage() {
       transition={{ duration: 0.4 }}
       className="max-w-6xl mx-auto px-4 py-8"
     >
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -145,17 +137,19 @@ export default function UsagePage() {
         className="flex items-center justify-between mb-8"
       >
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-xl bg-surface-elevated hover:bg-surface-elevated/80 transition-colors"
+          <Button
+            isIconOnly
+            variant="tertiary"
+            onPress={() => router.back()}
+            className="rounded-xl bg-surface-elevated hover:bg-surface-elevated/80"
           >
             <Icon
               icon="solar:arrow-left-linear"
               className="text-xl text-text-secondary"
             />
-          </button>
+          </Button>
           <div>
-            <h1 className="text-2xl font-bold text-text-accent">
+            <h1 className="text-2xl font-bold text-text-primary">
               Usage & Analytics
             </h1>
             <p className="text-text-secondary text-sm">
@@ -170,7 +164,6 @@ export default function UsagePage() {
         </div>
       </motion.div>
 
-      {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           {
@@ -214,8 +207,8 @@ export default function UsagePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 + index * 0.08 }}
           >
-            <Card className="bg-surface-elevated border border-border-base hover:border-border-accent transition-colors">
-              <Card.Content className="p-5">
+            <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden hover:border-border-accent transition-colors">
+              <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div
                     className={`p-2.5 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10`}
@@ -230,28 +223,27 @@ export default function UsagePage() {
                   </span>
                 </div>
                 <p
-                  className={`${stat.isDate ? "text-xl" : "text-3xl"} font-bold text-text-accent mb-1`}
+                  className={`${stat.isDate ? "text-xl" : "text-3xl"} font-bold text-text-primary mb-1`}
                 >
                   {stat.value}
                 </p>
                 <p className="text-sm text-text-secondary">{stat.title}</p>
-              </Card.Content>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Usage Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <Card className="bg-surface-elevated border border-border-base">
-            <Card.Content className="p-6">
+          <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-accent">
+                <h3 className="text-lg font-semibold text-text-primary">
                   Credits Usage
                 </h3>
                 <span className="text-sm text-text-secondary">
@@ -278,8 +270,8 @@ export default function UsagePage() {
                   </span>
                 </div>
               </div>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -287,10 +279,10 @@ export default function UsagePage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.45 }}
         >
-          <Card className="bg-surface-elevated border border-border-base">
-            <Card.Content className="p-6">
+          <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-accent">
+                <h3 className="text-lg font-semibold text-text-primary">
                   AI Generations
                 </h3>
                 <span className="text-sm text-text-secondary">
@@ -319,21 +311,20 @@ export default function UsagePage() {
                   ? "Unlimited AI generations with your plan"
                   : `${usageStats?.generationsRemaining || 0} generations remaining`}
               </div>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         </motion.div>
       </div>
 
-      {/* Usage History */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.5 }}
       >
-        <Card className="bg-surface-elevated border border-border-base">
-          <Card.Content className="p-6">
+        <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-text-accent">
+              <h3 className="text-lg font-semibold text-text-primary">
                 Usage History
               </h3>
               <Tabs
@@ -411,7 +402,7 @@ export default function UsagePage() {
                       </motion.div>
                     </div>
                     <div className="w-24 text-right">
-                      <span className="text-sm font-medium text-text-accent">
+                      <span className="text-sm font-medium text-text-primary">
                         {entry.creditsUsed}
                       </span>
                       <span className="text-xs text-text-tertiary ml-1">
@@ -422,11 +413,10 @@ export default function UsagePage() {
                 ))}
               </div>
             )}
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Footer Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

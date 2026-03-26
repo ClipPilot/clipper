@@ -124,9 +124,9 @@ export default function PreviewClipViewModal({
             <div className="flex items-center gap-2">
               <Icon
                 icon="solar:eye-bold-duotone"
-                className="text-xl text-warning-500"
+                className="text-xl text-yellow-500"
               />
-              <h2 className="text-xl font-bold text-text-accent">
+              <h2 className="text-xl font-bold text-text-primary">
                 Preview Clip
               </h2>
             </div>
@@ -236,7 +236,7 @@ export default function PreviewClipViewModal({
                     Virality Score
                   </h3>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl font-bold text-text-accent">
+                    <span className="text-3xl font-bold text-text-primary">
                       {clip.clip_score}
                     </span>
                     <span className="text-text-tertiary">/100</span>
@@ -260,7 +260,7 @@ export default function PreviewClipViewModal({
                     />
                     AI Analysis
                   </h3>
-                  <p className="text-sm text-text-accent leading-relaxed">
+                  <p className="text-sm text-text-primary leading-relaxed">
                     {clip.message}
                   </p>
                 </div>
@@ -276,18 +276,18 @@ export default function PreviewClipViewModal({
                     />
                     Prompt Used
                   </h3>
-                  <p className="text-sm text-text-accent leading-relaxed italic">
+                  <p className="text-sm text-text-primary leading-relaxed italic">
                     &quot;{clip.prompt}&quot;
                   </p>
                 </div>
               )}
 
               {/* Info notice */}
-              <div className="p-4 rounded-lg bg-warning-500/10 border border-warning-500/30">
+              <div className="p-4 rounded-lg bg-yellow-500/10 border border-warning-500/30">
                 <div className="flex items-start gap-3">
                   <Icon
                     icon="solar:info-circle-bold"
-                    className="text-xl text-warning-500 flex-shrink-0 mt-0.5"
+                    className="text-xl text-yellow-500 flex-shrink-0 mt-0.5"
                   />
                   <div>
                     <p className="text-sm text-text-secondary">
@@ -307,7 +307,7 @@ export default function PreviewClipViewModal({
                   />
                   Created
                 </h3>
-                <p className="text-sm text-text-accent">
+                <p className="text-sm text-text-primary">
                   {new Date(clip.created_at).toLocaleString()}
                 </p>
               </div>

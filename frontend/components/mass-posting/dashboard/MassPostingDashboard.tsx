@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Chip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { adPostingAPI, type GetTeamPostsParams } from "@/api/adPosting";

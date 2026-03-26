@@ -52,7 +52,7 @@ export default function WorkspaceSelector({
         <Card.Header className="flex flex-col px-0 pb-0">
           <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
             <div>
-              <h4 className="text-base font-semibold text-text-accent">
+              <h4 className="text-base font-semibold text-text-primary">
                 Current Workspace
               </h4>
               <div className="flex items-center gap-2 mt-1">
@@ -140,7 +140,7 @@ export default function WorkspaceSelector({
                               "text-sm font-medium truncate",
                               selectedTeam?.id === team.id
                                 ? "text-accent-400"
-                                : "text-text-accent"
+                                : "text-text-primary"
                             )}
                           >
                             {team.name}

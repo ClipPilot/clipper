@@ -9,23 +9,19 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Pagination,
   Spinner,
-  Tooltip,
-} from "@heroui/react";
+  Tooltip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { formatDateTime } from "@/lib/formatters";
 import {
   platformIcon,
   platformIconColor,
-  platformChipClass,
-} from "@/lib/platformUtils";
+  platformChipClass } from "@/lib/platformUtils";
 import { FilterBar } from "./FilterBar";
 import type {
   TeamPost,
-  PostsPagination,
-  QueuedGroup,
-} from "@/types/massPosting";
+  PostsQueuedGroup } from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
 
 const STATUS_CONFIG: Record<
@@ -37,24 +33,20 @@ const STATUS_CONFIG: Record<
     dotClass: "bg-blue-400",
     icon: "solar:refresh-bold",
     iconClass: "animate-spin",
-    label: "Processing",
-  },
+    label: "Processing" },
   scheduled: {
     color: "text-green-400",
     dotClass: "bg-green-400",
-    label: "Queued",
-  },
+    label: "Queued" },
   failed: {
     color: "text-red-400",
     dotClass: "bg-red-400",
     icon: "solar:danger-triangle-bold",
-    label: "Failed",
-  },
-};
+    label: "Failed" } };
 
 interface QueuedPostsTabProps {
   posts: TeamPost[];
-  pagination: PostsPagination | null;
+  pagination: Posts| null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
 }
@@ -63,8 +55,7 @@ export function QueuedPostsTab({
   posts,
   pagination,
   isLoading,
-  onParamsChange,
-}: QueuedPostsTabProps) {
+  onParamsChange }: QueuedPostsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
@@ -79,8 +70,7 @@ export function QueuedPostsTab({
         page,
         sortBy: "created_at",
         sortOrder: "desc",
-        ...overrides,
-      };
+        ...overrides };
       onParamsChange(params);
     },
     [searchQuery, platformFilter, dateRange, page, onParamsChange]
@@ -97,8 +87,7 @@ export function QueuedPostsTab({
           clip_title: post.clip_title,
           clip_url: post.clip_url,
           posts: [],
-          earliestCreatedAt: post.created_at,
-        });
+          earliestCreatedAt: post.created_at });
       }
       const group = map.get(key)!;
       group.posts.push(post);
@@ -162,8 +151,7 @@ export function QueuedPostsTab({
           removeWrapper
           classNames={{
             th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-            td: "py-4 px-4 border-t border-border-base",
-          }}
+            td: "py-4 px-4 border-t border-border-base" }}
         >
           <TableHeader>
             <TableColumn>VIDEO CONTENT</TableColumn>
@@ -294,8 +282,7 @@ export function QueuedPostsTab({
           )}
         </p>
         {totalPages > 1 && (
-          <Pagination
- total={totalPages}
+          <PaginationControl total={totalPages}
  page={page}
  onChange={(p) => {
  setPage(p);

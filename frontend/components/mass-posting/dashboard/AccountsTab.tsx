@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Chip, Spinner } from "@heroui/react";
+import { Chip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -62,13 +62,13 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
 
   const renderAccountCard = (account: MassPostingAccount) => {
     return (
-      <Card
- key={account.id}
- className="bg-surface-base border border-border-base"
- >
-        <Card.Content className="p-4">
+      <div
+        key={account.id}
+        className="rounded-xl border border-border-base bg-surface-base overflow-hidden"
+      >
+        <div className="p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-white/[0.04] flex items-center justify-center">
               <Icon
                 icon={platformIcon(account.platform)}
                 width={20}
@@ -76,25 +76,25 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-text-accent truncate">
+              <p className="text-sm font-semibold text-text-primary truncate">
                 {account.handle}
               </p>
               <Chip
- size="sm"
- variant="tertiary"
- >
+                size="sm"
+                variant="tertiary"
+              >
                 {platformDisplayName(account.platform)}
               </Chip>
             </div>
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-border-base">
             <span className="text-xs text-text-tertiary">Total Reposts</span>
-            <span className="text-sm font-bold text-text-accent">
+            <span className="text-sm font-bold text-text-primary">
               {account.totalReposts}
             </span>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -131,7 +131,7 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
                 className="text-accent-400"
               />
             </div>
-            <h3 className="text-lg font-semibold text-text-accent mb-1">
+            <h3 className="text-lg font-semibold text-text-primary mb-1">
               {searchQuery ? "No matching accounts" : "No accounts yet"}
             </h3>
             <p className="text-sm text-text-secondary max-w-sm text-center">

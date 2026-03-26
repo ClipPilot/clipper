@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card,
+import {
   Button,
   toast,
   Modal,
@@ -72,8 +72,8 @@ const onClose = overlayState.close;
 
   if (ranked.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <Card.Content className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             ACCOUNTS
           </p>
@@ -87,14 +87,14 @@ const onClose = overlayState.close;
               No accounts added yet
             </p>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <Card.Content className="p-3">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-3">
         <p className="text-[10px] text-text-tertiary font-medium tracking-wide mb-2">
           ACCOUNTS
         </p>
@@ -112,7 +112,7 @@ const onClose = overlayState.close;
                 width={12}
                 className={platformIconColor(account.platform)}
               />
-              <span className="text-xs text-text-accent truncate flex-1 min-w-0">
+              <span className="text-xs text-text-primary truncate flex-1 min-w-0">
                 @{account.username}
               </span>
               <span className="text-[10px] text-text-tertiary flex-shrink-0 flex items-center gap-1 sm:gap-1.5">
@@ -135,7 +135,7 @@ const onClose = overlayState.close;
             </div>
           ))}
         </div>
-      </Card.Content>
+      </div>
 
       <Modal>
         <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-sm bg-surface-base border border-border-accent">
@@ -143,15 +143,15 @@ const onClose = overlayState.close;
             const account = accounts.find((a) => a.id === pendingDeleteId);
             return (
               <>
-                <Modal.Header className="flex flex-col items-start border-b border-border-base pb-4">
+                <Modal.Header>
                   <div className="flex gap-3 items-center">
-                    <div className="w-10 h-10 rounded-full bg-danger-500/10 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                       <Icon
                         icon="solar:trash-bin-trash-bold-duotone"
-                        className="text-2xl text-danger-500"
+                        className="text-2xl text-red-500"
                       />
                     </div>
-                    <h3 className="text-xl font-bold text-text-accent">Remove Account</h3>
+                    <h3 className="text-xl font-bold text-text-primary">Remove Account</h3>
                   </div>
                 </Modal.Header>
                 <Modal.Body className="py-6">
@@ -159,22 +159,22 @@ const onClose = overlayState.close;
                     Are you sure you want to remove this account? All synced posts and metrics will be deleted.
                   </p>
                   {account && (
-                    <p className="text-text-accent font-medium mt-3">
+                    <p className="text-text-primary font-medium mt-3">
                       <span className="text-text-tertiary">Account:</span> @{account.username}
                     </p>
                   )}
                 </Modal.Body>
-                <Modal.Footer className="border-t border-border-base pt-4">
+                <Modal.Footer>
                   <Button
  variant="tertiary"
  onPress={onClose}
- className="bg-surface-elevated hover:bg-surface-raised text-text-accent"
+ className="bg-surface-elevated hover:bg-surface-raised text-text-primary"
  >
                     Cancel
                   </Button>
                   <Button variant="danger"
  onPress={handleConfirmDelete}
- className="bg-danger-500 hover:bg-danger-600 text-white font-semibold"
+ className="bg-red-500 hover:bg-red-600 text-white font-semibold"
  >
                     Remove
                   </Button>
@@ -184,6 +184,6 @@ const onClose = overlayState.close;
           }}
         </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
-    </Card>
+    </div>
   );
 }

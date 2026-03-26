@@ -47,7 +47,7 @@ export function WidgetWrapper({
           >
             <Icon icon={icon} width={16} className="text-white" />
           </div>
-          <span className="font-medium text-text-accent text-sm">{title}</span>
+          <span className="font-medium text-text-primary text-sm">{title}</span>
         </div>
         {isEditMode && onColorChange && (
           <Popover placement="bottom-end">

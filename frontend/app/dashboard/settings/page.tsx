@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Card,
+import {
   Input,
   Button,
   Separator,
@@ -70,47 +70,45 @@ export default function SettingsPage() {
       className="min-h-screen bg-surface-dark p-6 lg:p-8"
     >
       <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <h1 className="text-2xl font-bold text-text-accent">Settings</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
           <p className="text-text-secondary mt-1">
             Manage your account and preferences
           </p>
         </motion.div>
 
-        {/* Profile Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-        <Card className="bg-surface-base border border-border-base">
-          <Card.Header className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:user-circle-bold-duotone"
               className="text-accent-400"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-accent">
+              <h2 className="text-lg font-semibold text-text-primary">
                 Profile
               </h2>
               <p className="text-sm text-text-tertiary">
                 Your personal information
               </p>
             </div>
-          </Card.Header>
-          <Card.Content className="gap-6">
+          </div>
+          <div className="p-6 space-y-6">
             <div className="flex items-center gap-4">
               <Avatar size="lg" className="bg-accent-400 text-white w-16 h-16">
                 <Avatar.Fallback className="text-xl font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
               </Avatar>
               <div>
-                <p className="text-text-accent font-medium">
+                <p className="text-text-primary font-medium">
                   {user?.firstName && user?.lastName
                     ? `${user.firstName} ${user.lastName}`
                     : user?.email?.split("@")[0] || "User"}
@@ -145,7 +143,7 @@ export default function SettingsPage() {
               <Input
  placeholder="Enter your email"
  value={email}
- isReadOnly
+ readOnly
  />
               <Description>Contact support to change your email</Description>
               <FieldError />
@@ -161,36 +159,35 @@ export default function SettingsPage() {
                 Save Changes
               </Button>
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
         </motion.div>
 
-        {/* Notifications Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
-        <Card className="bg-surface-base border border-border-base">
-          <Card.Header className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:bell-bold-duotone"
               className="text-accent-400"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-accent">
+              <h2 className="text-lg font-semibold text-text-primary">
                 Notifications
               </h2>
               <p className="text-sm text-text-tertiary">
                 How you receive updates
               </p>
             </div>
-          </Card.Header>
-          <Card.Content className="gap-4">
+          </div>
+          <div className="p-6 space-y-4">
             <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
               <div>
-                <p className="text-text-accent font-medium">
+                <p className="text-text-primary font-medium">
                   Email Notifications
                 </p>
                 <p className="text-sm text-text-tertiary">
@@ -200,12 +197,14 @@ export default function SettingsPage() {
               <Switch
  isSelected={emailNotifications}
  onChange={handleToggleEmailNotifications}
- />
+ >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+              </Switch>
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
               <div>
-                <p className="text-text-accent font-medium">Marketing Emails</p>
+                <p className="text-text-primary font-medium">Marketing Emails</p>
                 <p className="text-sm text-text-tertiary">
                   Tips, tutorials, and product updates
                 </p>
@@ -213,38 +212,39 @@ export default function SettingsPage() {
               <Switch
  isSelected={marketingEmails}
  onChange={setMarketingEmails}
- />
+ >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+              </Switch>
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
         </motion.div>
 
-        {/* Danger Zone */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-        <Card className="bg-surface-base border border-red-500/30">
-          <Card.Header className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-red-500/30 bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:danger-triangle-bold-duotone"
               className="text-red-500"
               width={24}
             />
             <div>
-              <h2 className="text-lg font-semibold text-text-accent">
+              <h2 className="text-lg font-semibold text-text-primary">
                 Danger Zone
               </h2>
               <p className="text-sm text-text-tertiary">
                 Irreversible actions
               </p>
             </div>
-          </Card.Header>
-          <Card.Content className="gap-4">
+          </div>
+          <div className="p-6 space-y-4">
             <div className="flex items-center justify-between p-4 rounded-lg bg-red-500/5 border border-red-500/20">
               <div>
-                <p className="text-text-accent font-medium">Delete Account</p>
+                <p className="text-text-primary font-medium">Delete Account</p>
                 <p className="text-sm text-text-tertiary">
                   Permanently delete your account and all data
                 </p>
@@ -256,8 +256,8 @@ export default function SettingsPage() {
                 Delete Account
               </Button>
             </div>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
         </motion.div>
       </div>
     </motion.div>

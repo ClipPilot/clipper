@@ -5,10 +5,10 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  forwardRef,
-} from "react";
+  forwardRef } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Pagination, Modal, Button } from "@heroui/react";
+import { Card, Modal, Button } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { ugcVideoAPI, UGCVideoJob } from "@/api/ugc/video";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -69,8 +69,7 @@ export const MyVideoJobsSection = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      refetch: fetchJobs,
-    }),
+      refetch: fetchJobs }),
     [fetchJobs]
   );
 
@@ -101,8 +100,7 @@ export const MyVideoJobsSection = forwardRef<
           progressMessage: update.progressMessage,
           finalVideoUrl: update.finalVideoUrl,
           totalDurationSeconds: update.totalDurationSeconds,
-          errorMessage: update.error,
-        };
+          errorMessage: update.error };
         return updated;
       });
     };
@@ -181,8 +179,7 @@ export const MyVideoJobsSection = forwardRef<
       </div>
       {totalPages > 1 && (
         <div className="flex justify-center pt-4">
-          <Pagination
-            total={totalPages}
+          <PaginationControl total={totalPages}
             page={currentPage}
             onChange={setCurrentPage}
           />

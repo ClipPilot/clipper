@@ -73,7 +73,7 @@ export function AccountFilterPopover({
  className={
  isActive
  ? "bg-accent-400/10 text-accent-400 border-2 border-accent-400/50"
- : "bg-surface-base text-text-accent border-2 border-border-base hover:border-accent-400/40 transition-colors"
+ : "bg-surface-base text-text-primary border-2 border-border-base hover:border-accent-400/40 transition-colors"
  }
  >
           <Icon icon="solar:filter-bold" width={16} />
@@ -85,13 +85,14 @@ export function AccountFilterPopover({
             ) : null}
 </Button>
       </Popover.Trigger>
-      <Popover.Content className="w-72 p-0 bg-surface-elevated border border-border-base">
+      <Popover.Content className="w-72 p-0 bg-white/[0.04]">
         <div className="p-3 space-y-3">
-          <Input onChange={(e) => (setSearch)(e.target.value)}
+          <Input onChange={(e) => setSearch(e.target.value)}
  placeholder="Search accounts..."
  value={search}
- startContent={<Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />}
- />
+ >
+            <Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />
+          </Input>
 
           <div className="max-h-60 overflow-y-auto space-y-0.5">
             {filteredAccounts.length === 0 ? (
@@ -101,24 +102,23 @@ export function AccountFilterPopover({
                 const selected = pending.includes(account.id);
                 const platform = PLATFORM_ICONS[account.platform] ?? PLATFORM_ICONS.instagram;
                 return (
-                  <button
+                  <div
                     key={account.id}
-                    type="button"
                     onClick={() => toggleAccount(account.id)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer ${
                       selected
                         ? "bg-accent-400/10"
                         : "hover:bg-surface-base"
                     }`}
                   >
                     <Icon icon={platform.icon} width={16} className={platform.color} />
-                    <span className="flex-1 text-sm text-text-accent truncate">
+                    <span className="flex-1 text-sm text-text-primary truncate">
                       @{account.username}
                     </span>
                     {selected && (
                       <Icon icon="solar:check-circle-bold" width={18} className="text-accent-400 shrink-0" />
                     )}
-                  </button>
+                  </div>
                 );
               })
             )}

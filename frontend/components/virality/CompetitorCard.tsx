@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button, Card, Input, cn } from "@heroui/react";
+import { Button, Input, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { formatNumber } from "@/lib/formatters";
 import type { CompetitorWithAccounts, ViralityPost } from "@/api/virality";
@@ -84,8 +84,8 @@ export function CompetitorCard({
   ];
 
   return (
-    <Card className="bg-surface-base border border-border-base overflow-hidden">
-      <Card.Content className="p-4 flex flex-col gap-0">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-4 flex flex-col gap-0">
         {/* Top: identity */}
         <div className="flex items-center gap-3">
           <div
@@ -114,7 +114,7 @@ export function CompetitorCard({
  />
             ) : (
               <>
-                <p className="text-sm font-medium text-text-accent truncate">{competitor.name}</p>
+                <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
                 <p className="text-[10px] text-text-tertiary mt-0.5">
                   {isMyPerformance && competitor.accounts.length === 0
                     ? "Track your own accounts"
@@ -182,7 +182,7 @@ export function CompetitorCard({
               <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
                 <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="text-sm font-bold text-text-accent">{m.value}</p>
+                  <p className="text-sm font-bold text-text-primary">{m.value}</p>
                   {m.change != null && (
                     <span
                       className={cn(
@@ -202,7 +202,7 @@ export function CompetitorCard({
         </motion.div>
 
         {/* Expand/collapse toggle */}
-        <button
+        <div
           onClick={onToggleExpand}
           className="w-full flex items-center justify-center pt-2 group cursor-pointer"
         >
@@ -211,13 +211,13 @@ export function CompetitorCard({
               icon="solar:alt-arrow-down-linear"
               width={16}
               className={cn(
-                "text-text-tertiary transition-all group-hover:text-text-accent",
+                "text-text-tertiary transition-all group-hover:text-text-primary",
                 isExpanded && "rotate-180"
               )}
             />
           </div>
-        </button>
-      </Card.Content>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }

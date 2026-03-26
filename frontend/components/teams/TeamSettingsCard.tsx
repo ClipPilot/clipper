@@ -112,7 +112,7 @@ const onClose = overlayState.close;
               width={20}
               className="text-accent-400"
             />
-            <h3 className="text-lg font-semibold text-text-accent">Team Settings</h3>
+            <h3 className="text-lg font-semibold text-text-primary">Team Settings</h3>
           </div>
         </Card.Header>
         <Card.Content className="gap-6 p-6">
@@ -166,7 +166,7 @@ const onClose = overlayState.close;
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-text-accent group-hover:text-accent-400 transition-colors">
+                  <p className="text-sm font-medium text-text-primary group-hover:text-accent-400 transition-colors">
                     {team.logo_url ? "Change logo" : "Upload a logo"}
                   </p>
                   <p className="text-xs text-text-tertiary mt-1">
@@ -195,7 +195,7 @@ const onClose = overlayState.close;
 
           <div className="pt-4 border-t border-border-base">
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-text-accent">Danger Zone</h4>
+              <h4 className="text-sm font-medium text-text-primary">Danger Zone</h4>
               <p className="text-xs text-text-tertiary">
                 Deleting this team will remove all members and data. This action cannot be
                 undone.
@@ -214,7 +214,7 @@ const onClose = overlayState.close;
 
       <Modal>
         <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
-          <Modal.Header className="text-text-accent">
+          <Modal.Header className="text-text-primary">
             Delete Team
           </Modal.Header>
           <Modal.Body className="py-6">

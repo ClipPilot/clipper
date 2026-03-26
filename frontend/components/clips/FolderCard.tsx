@@ -68,7 +68,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
             />
           </div>
           <div>
-            <h3 className="text-base font-bold text-text-accent">{folder.name}</h3>
+            <h3 className="text-base font-bold text-text-primary">{folder.name}</h3>
             <p className="text-xs text-text-tertiary">{clips.length} clips</p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, Avatar } from "@heroui/react";
+import { Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -31,8 +31,8 @@ export function BestPerformingAccounts({
 
   if (ranked.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <Card.Content className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             BEST PERFORMING ACCOUNTS
           </p>
@@ -46,14 +46,14 @@ export function BestPerformingAccounts({
               No accounts to rank yet
             </p>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <Card.Content className="p-5">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-5">
         <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
           BEST PERFORMING ACCOUNTS
         </p>
@@ -76,13 +76,13 @@ export function BestPerformingAccounts({
                     width={14}
                     className={platformIconColor(account.platform)}
                   />
-                  <span className="text-sm text-text-accent truncate">
+                  <span className="text-sm text-text-primary truncate">
                     @{account.username}
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-text-accent">
+                <p className="text-sm font-semibold text-text-primary">
                   {formatNumber(totalViews)}
                 </p>
                 <p className="text-xs text-text-tertiary">views</p>
@@ -90,7 +90,7 @@ export function BestPerformingAccounts({
             </div>
           ))}
         </div>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -168,7 +168,7 @@ export function VideoUploadCard({
           <Icon icon="solar:upload-bold-duotone" className="text-3xl text-accent-400" />
         </div>
         <div className="text-center">
-          <p className="text-lg font-medium text-text-accent">Drag & drop your video</p>
+          <p className="text-lg font-medium text-text-primary">Drag & drop your video</p>
           <p className="text-sm text-text-tertiary mt-1">or click to browse files</p>
         </div>
         <input
@@ -203,7 +203,7 @@ export function VideoUploadCard({
             <Icon icon="solar:download-bold-duotone" className="text-3xl text-accent-400 animate-pulse" />
           </div>
           <div className="text-center">
-            <h3 className="text-base font-semibold text-text-accent">
+            <h3 className="text-base font-semibold text-text-primary">
               {downloadProgress?.type === "uploading" ? "Importing Video..." : "Downloading Video"}
             </h3>
             {videoInfo && (
@@ -264,7 +264,7 @@ export function VideoUploadCard({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-text-accent truncate">{videoInfo.title}</h4>
+                  <h4 className="text-sm font-semibold text-text-primary truncate">{videoInfo.title}</h4>
                   <p className="text-xs text-text-secondary mt-1">
                     {videoInfo.uploader}
                     {videoInfo.platform && (
@@ -314,7 +314,7 @@ export function VideoUploadCard({
             <Icon icon="solar:videocamera-record-bold-duotone" className="text-accent-400" width={22} />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-text-accent">Video & Trim</h3>
+            <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
             <p className="text-xs text-text-tertiary">Upload video and select clips (max 60s total)</p>
           </div>
         </div>
@@ -324,7 +324,7 @@ export function VideoUploadCard({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 p-2 bg-surface-elevated rounded-lg">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-text-accent truncate">{video.file.name}</p>
+                <p className="text-sm font-medium text-text-primary truncate">{video.file.name}</p>
                 <p className="text-xs text-text-tertiary">
                   {Math.round(videoDuration)}s {!showEditor && "\u2022 Ready for auto-detect"}
                 </p>

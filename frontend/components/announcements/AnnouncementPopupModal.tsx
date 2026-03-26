@@ -117,7 +117,7 @@ export default function AnnouncementPopupModal() {
         {/* Body */}
         <Modal.Body className="p-8 bg-surface-base">
           <div
-            className="text-text-accent text-base announcement-content leading-relaxed prose prose-sm max-w-none"
+            className="text-text-primary text-base announcement-content leading-relaxed prose prose-sm max-w-none"
             dangerouslySetInnerHTML={{ __html: currentAnnouncement.content }}
           />
 
@@ -147,7 +147,7 @@ export default function AnnouncementPopupModal() {
         </Modal.Body>
 
         {/* Footer */}
-        <Modal.Footer className="bg-surface-elevated border-t border-border-base p-6">
+        <Modal.Footer>
           <Button
  variant="tertiary"
  onPress={handleDismiss}

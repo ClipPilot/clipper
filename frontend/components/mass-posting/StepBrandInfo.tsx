@@ -1,7 +1,6 @@
 "use client";
 
 import { Input, TextArea, TextField, Label, FieldError} from "@heroui/react";
-import { Icon } from "@iconify/react";
 
 interface StepBrandInfoProps {
   campaignName: string;
@@ -23,44 +22,40 @@ export function StepBrandInfo({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Campaign & Brand Information
         </h3>
         <p className="text-sm text-text-secondary mb-4">
           Name your campaign and tell us about your brand.
         </p>
       </div>
-            <TextField isRequired>
+      <TextField isRequired>
         <Label>Campaign Name</Label>
-        <Input onChange={(e) => (setCampaignName)(e.target.value)}
- placeholder="e.g. Summer Launch 2026"
- value={campaignName}
- startContent={
- <Icon icon="solar:flag-bold-duotone" className="text-text-tertiary" />
- }
- />
+        <Input
+          onChange={(e) => setCampaignName(e.target.value)}
+          placeholder="e.g. Summer Launch 2026"
+          value={campaignName}
+        />
         <FieldError />
       </TextField>
-            <TextField isRequired>
+      <TextField isRequired>
         <Label>Brand Description</Label>
         <TextArea
- placeholder="Describe your brand, products/services, and target market..."
- value={brandDescription}
- onValueChange={setBrandDescription}
- minRows={4}
- maxRows={8}
- />
+          placeholder="Describe your brand, products/services, and target market..."
+          value={brandDescription}
+          onChange={(e) => setBrandDescription(e.target.value)}
+          minRows={4}
+          maxRows={8}
+        />
         <FieldError />
       </TextField>
-            <TextField type="url">
+      <TextField type="url">
         <Label>Company Website</Label>
-        <Input onChange={(e) => (setCompanyWebsite)(e.target.value)}
- placeholder="https://yourcompany.com"
- value={companyWebsite}
- startContent={
- <Icon icon="solar:global-bold-duotone" className="text-text-tertiary" />
- }
- />
+        <Input
+          onChange={(e) => setCompanyWebsite(e.target.value)}
+          placeholder="https://yourcompany.com"
+          value={companyWebsite}
+        />
         <FieldError />
       </TextField>
     </div>

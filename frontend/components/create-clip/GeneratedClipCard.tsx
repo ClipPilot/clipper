@@ -37,7 +37,7 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
             <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-2xl text-accent-400" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-text-accent">
+            <h3 className="text-base font-bold text-text-primary">
               Clip #{index + 1}
             </h3>
             <p className="text-xs text-text-tertiary">ID: {clip.id}</p>
@@ -69,7 +69,7 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Icon icon="solar:chat-round-bold-duotone" className="text-lg text-accent-400" />
-              <h4 className="text-sm font-semibold text-text-accent">AI Analysis</h4>
+              <h4 className="text-sm font-semibold text-text-primary">AI Analysis</h4>
             </div>
             <p className="text-sm text-text-secondary leading-relaxed pl-6">
               {clip.finalMessage}
@@ -79,7 +79,7 @@ export const GeneratedClipCard: React.FC<GeneratedClipCardProps> = ({ clip, inde
           {/* Quality Badge */}
           <div className="flex items-center gap-2 pl-6">
             <Icon icon="solar:medal-star-bold-duotone" className="text-lg text-accent-400" />
-            <span className="text-sm font-medium text-text-accent">
+            <span className="text-sm font-medium text-text-primary">
               Quality: {getScoreLabel(clip.evalScore)}
             </span>
           </div>

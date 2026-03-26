@@ -321,7 +321,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
               </Button>
             )}
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-text-accent truncate">Your Performance</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">Your Performance</h1>
               <p className="text-text-secondary text-[11px] sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">
                 Real-time performance metrics for your own accounts
               </p>
@@ -346,7 +346,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             </Button>
             <Button
  size="sm"
- className="bg-surface-base text-text-accent border border-border-base flex-shrink-0"
+ className="bg-surface-base text-text-primary border border-border-base flex-shrink-0"
  isDisabled={isSyncing || accounts.length === 0}
  onPress={handleSyncAll}
  >
@@ -380,7 +380,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
                 .filter((a) => syncingAccountIds.includes(a.id))
                 .map((a, i, arr) => (
                   <Fragment key={a.id}>
-                    <span className="font-medium text-text-accent">
+                    <span className="font-medium text-text-primary">
                       {a.account_type === "hashtag" ? "#" : "@"}{a.username}
                     </span>
                     {i < arr.length - 1 && ", "}

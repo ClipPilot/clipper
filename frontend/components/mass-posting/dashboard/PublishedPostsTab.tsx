@@ -8,25 +8,24 @@ import { Table,
   TableRow,
   TableCell,
   Chip,
-  Pagination,
   Button,
   Spinner,
   Modal,
   useOverlayState } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { formatDateTime } from "@/lib/formatters";
 import {
   platformIcon,
   platformIconColor,
-  platformChipClass,
-} from "@/lib/platformUtils";
+  platformChipClass } from "@/lib/platformUtils";
 import { FilterBar } from "./FilterBar";
-import type { TeamPost, PostsPagination } from "@/types/massPosting";
+import type { TeamPost, Posts} from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
 
 interface PublishedPostsTabProps {
   posts: TeamPost[];
-  pagination: PostsPagination | null;
+  pagination: Posts| null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
   dateRange: string;
@@ -39,8 +38,7 @@ export function PublishedPostsTab({
   isLoading,
   onParamsChange,
   dateRange,
-  onDateRangeChange,
-}: PublishedPostsTabProps) {
+  onDateRangeChange }: PublishedPostsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -56,8 +54,7 @@ export function PublishedPostsTab({
         page,
         sortBy: "posted_time",
         sortOrder: "desc",
-        ...overrides,
-      };
+        ...overrides };
       onParamsChange(params);
     },
     [searchQuery, platformFilter, dateRange, page, onParamsChange],
@@ -173,8 +170,7 @@ export function PublishedPostsTab({
             removeWrapper
             classNames={{
               th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-              td: "py-4 px-4 border-t border-border-base",
-            }}
+              td: "py-4 px-4 border-t border-border-base" }}
           >
             <TableHeader>
               <TableColumn>CONTENT</TableColumn>
@@ -300,8 +296,7 @@ export function PublishedPostsTab({
             )}
           </p>
           {totalPages > 1 && (
-            <Pagination
- total={totalPages}
+            <PaginationControl total={totalPages}
  page={page}
  onChange={(p) => {
  setPage(p);

@@ -54,7 +54,7 @@ export function ComparisonModeSelector({
 <Button
  size="sm"
  variant="tertiary"
- className="bg-surface-elevated text-text-secondary hover:text-text-accent"
+ className="bg-surface-elevated text-text-secondary hover:text-text-primary"
  >
             <Icon icon="solar:chart-square-linear" width={16} />
             {getModeLabel(selected)}
@@ -101,10 +101,7 @@ export function ComparisonModeSelector({
             minValue={minDate as any}
             maxValue={maxDate as any}
             onChange={handleCalendarChange}
-            classNames={{
-              base: "bg-surface-base",
-              headerWrapper: "bg-surface-elevated",
-            }}
+            className="bg-surface-base"
           />
         </Popover.Content>
       </Popover>

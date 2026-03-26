@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   ResponsiveContainer,
@@ -111,8 +110,8 @@ export function AccountBreakdownChart({
 
   if (data.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base h-full">
-        <Card.Content className="p-3 sm:p-5 h-full flex flex-col">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden h-full">
+        <div className="p-3 sm:p-5 h-full flex flex-col">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-3 sm:mb-4">
             ACCOUNT BREAKDOWN
           </p>
@@ -126,14 +125,14 @@ export function AccountBreakdownChart({
               View data will appear after syncing
             </p>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base h-full">
-      <Card.Content className="p-5 h-full flex flex-col">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden h-full">
+      <div className="p-5 h-full flex flex-col">
         <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
           ACCOUNT BREAKDOWN
         </p>
@@ -163,7 +162,7 @@ export function AccountBreakdownChart({
                       <tspan
                         x="50%"
                         dy="-0.4em"
-                        className="fill-text-accent text-xl font-bold"
+                        className="fill-text-primary text-xl font-bold"
                       >
                         {formatNumber(total)}
                       </tspan>
@@ -209,7 +208,7 @@ export function AccountBreakdownChart({
                     className={platformIconColor(entry.platform)}
                   />
                 )}
-                <span className="text-text-accent truncate flex-1">
+                <span className="text-text-primary truncate flex-1">
                   {entry.name}
                 </span>
                 <span className="text-text-secondary font-medium">
@@ -222,7 +221,7 @@ export function AccountBreakdownChart({
             );
           })}
         </div>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -406,7 +406,7 @@ export function FaceSwapDetailModal({
                   {shareToken ? (
                     <div className="flex items-center gap-2 relative">
                       {showCopied && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-success-500 text-white text-xs rounded whitespace-nowrap z-10">
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-green-500 text-white text-xs rounded whitespace-nowrap z-10">
                           Copied!
                         </div>
                       )}

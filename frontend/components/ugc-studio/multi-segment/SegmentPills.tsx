@@ -61,7 +61,7 @@ export function SegmentPills({
             >
               <Icon icon="solar:play-bold" className="text-white" width={10} />
             </button>
-            <span className="text-[10px] sm:text-xs font-mono text-text-accent whitespace-nowrap">
+            <span className="text-[10px] sm:text-xs font-mono text-text-primary whitespace-nowrap">
               {formatTime(segment.start)} - {formatTime(segment.end)}
             </span>
             <span className="text-[10px] sm:text-xs text-text-tertiary hidden sm:inline">({segDuration}s)</span>

@@ -277,14 +277,14 @@ export default function SpotlightTour({
               </span>
               <button
                 onClick={onClose}
-                className="text-text-tertiary hover:text-text-accent transition-colors"
+                className="text-text-tertiary hover:text-text-primary transition-colors"
               >
                 <Icon icon="solar:close-circle-bold" width={20} />
               </button>
             </div>
 
             {/* Title & description */}
-            <h3 className="text-base font-semibold text-text-accent mb-1">
+            <h3 className="text-base font-semibold text-text-primary mb-1">
               {step.title}
             </h3>
             <p className="text-sm text-text-secondary leading-relaxed mb-4">

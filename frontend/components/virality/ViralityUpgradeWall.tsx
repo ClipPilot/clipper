@@ -23,7 +23,7 @@ export function ViralityUpgradeWall() {
           </div>
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-bold text-text-accent">Virality Tracker</h2>
+          <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
             Track competitor performance, monitor viral trends, and benchmark your content against the competition.
           </p>

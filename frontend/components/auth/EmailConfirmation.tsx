@@ -15,10 +15,10 @@ export default function EmailConfirmation({ email, onContinue }: EmailConfirmati
       <div className="rounded-full bg-green-500/10 p-4">
         <Icon icon="solar:check-circle-bold" className="text-6xl text-green-500" />
       </div>
-      <h2 className="text-2xl font-bold text-text-accent">Confirm Your Email</h2>
+      <h2 className="text-2xl font-bold text-text-primary">Confirm Your Email</h2>
       <p className="text-center text-text-secondary">
         We&apos;ve sent a confirmation email to{" "}
-        <span className="font-semibold text-text-accent">{email}</span>. Please check your inbox and click the confirmation link.
+        <span className="font-semibold text-text-primary">{email}</span>. Please check your inbox and click the confirmation link.
       </p>
       <Button className="mt-4 bg-accent-400 text-white font-semibold rounded-xl" size="lg" onPress={onContinue}>
         Continue to Log In

@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Button,
-  ProgressBar,
-  toast,
-} from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -67,69 +63,70 @@ export function VideosGate({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-text-secondary">Videos added</span>
-          <span className="font-semibold text-text-accent">
-            {gate.videoCount} / {gate.videoMinimum}
-          </span>
+          <span className="font-semibold text-text-primary">{gate.videoCount} / {gate.videoMinimum}</span>
         </div>
-        <ProgressBar
- value={progressValue}
- >
-<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
-</ProgressBar>
+        <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${gate.complete ? "bg-green-500" : "bg-blue-500"}`}
+            style={{ width: `${progressValue}%` }}
+          />
+        </div>
         {gate.complete && (
-          <p className="text-xs text-success-500 flex items-center gap-1">
+          <p className="text-xs text-green-500 flex items-center gap-1">
             <Icon icon="solar:check-circle-bold" width={14} />
             Minimum video requirement met
           </p>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated text-text-secondary"
- onPress={() => setIsPickerOpen(true)}
- >
-          <Icon icon="solar:library-bold-duotone" width={16} />
-          Add from Library
-        </Button>
-        <Button variant="primary"
- size="sm"
- onPress={() => setIsUploadOpen(true)}
- >
-          <Icon icon="solar:upload-bold-duotone" width={16} />
-          Upload Videos
-        </Button>
-      </div>
-
-      {videos.length > 0 && (
-        <VideoTable
-          videos={videos}
-          page={tablePage}
-          onPageChange={setTablePage}
-          onPreview={setPreviewVideo}
-          onRemove={handleRemoveVideo}
-          removingId={removingId}
-        />
-      )}
-
-      {videos.length === 0 && !bulk.isActive && (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <Icon
-            icon="solar:video-library-bold-duotone"
-            className="text-text-tertiary"
-            width={32}
-          />
-          <p className="text-sm text-text-secondary">No videos added yet</p>
-          <p className="text-xs text-text-tertiary">
-            Add clips from your library or upload video files above.
-          </p>
+      {videos.length === 0 && !bulk.isActive ? (
+        <div className="rounded-xl bg-white/[0.03] py-12 flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-accent-400/10 flex items-center justify-center">
+            <Icon icon="solar:video-library-bold-duotone" className="text-accent-400" width={28} />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-text-primary">No videos added yet</p>
+            <p className="text-xs text-text-tertiary mt-1">Add clips from your library or upload new video files</p>
+          </div>
+          <div className="flex gap-3">
+            <Button size="sm" variant="tertiary" className="border border-border-base text-text-primary hover:border-accent-400/50" onPress={() => setIsPickerOpen(true)}>
+              <Icon icon="solar:library-bold-duotone" width={16} />
+              Add from Library
+            </Button>
+            <Button variant="primary" size="sm" className="bg-blue-500 text-white hover:bg-blue-600" onPress={() => setIsUploadOpen(true)}>
+              <Icon icon="solar:upload-bold-duotone" width={16} />
+              Upload Videos
+            </Button>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="bg-white/[0.06] border border-border-base text-text-primary hover:bg-white/[0.1]" onPress={() => setIsPickerOpen(true)}>
+              <Icon icon="solar:library-bold-duotone" width={16} />
+              Add from Library
+            </Button>
+            <Button size="sm" className="bg-blue-500 text-white hover:bg-blue-600" onPress={() => setIsUploadOpen(true)}>
+              <Icon icon="solar:upload-bold-duotone" width={16} />
+              Upload Videos
+            </Button>
+          </div>
+
+          {videos.length > 0 && (
+            <VideoTable
+              videos={videos}
+              page={tablePage}
+              onPageChange={setTablePage}
+              onPreview={setPreviewVideo}
+              onRemove={handleRemoveVideo}
+              removingId={removingId}
+            />
+          )}
+        </>
       )}
 
       <BulkUploadModal

@@ -206,7 +206,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
                 variant="tertiary"
                 size="sm"
                 onPress={handleRemoveProfilePic}
-                className="absolute -top-1 -right-1 w-4 h-4 min-w-0 bg-danger-500 rounded-full flex items-center justify-center"
+                className="absolute -top-1 -right-1 w-4 h-4 min-w-0 bg-red-500 rounded-full flex items-center justify-center"
               >
                 <Icon icon="solar:close-circle-bold" className="text-white text-xs" />
               </Button>

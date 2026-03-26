@@ -90,7 +90,7 @@ export default function SharedClipPage() {
               icon="solar:video-frame-play-vertical-bold-duotone"
               className="text-6xl text-text-tertiary mb-4"
             />
-            <p className="text-text-accent text-center mb-2 text-lg font-semibold">
+            <p className="text-text-primary text-center mb-2 text-lg font-semibold">
               Clip Not Found
             </p>
             <p className="text-text-tertiary text-center text-sm">
@@ -124,7 +124,7 @@ export default function SharedClipPage() {
               <div className="space-y-4">
                 {clip.title && (
                   <div>
-                    <h1 className="text-xl font-bold text-text-accent">
+                    <h1 className="text-xl font-bold text-text-primary">
                       {clip.title}
                     </h1>
                   </div>
@@ -139,7 +139,7 @@ export default function SharedClipPage() {
                       />
                       AI Analysis
                     </h3>
-                    <p className="text-sm text-text-accent leading-relaxed">
+                    <p className="text-sm text-text-primary leading-relaxed">
                       {clip.message}
                     </p>
                   </div>
@@ -153,7 +153,7 @@ export default function SharedClipPage() {
                     />
                     Created
                   </h3>
-                  <p className="text-sm text-text-accent">
+                  <p className="text-sm text-text-primary">
                     {new Date(clip.created_at).toLocaleDateString("en-US", {
                       weekday: "long",
                       year: "numeric",
@@ -182,7 +182,7 @@ export default function SharedClipPage() {
         <div className="mt-8 flex flex-col items-center gap-2">
           <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <BrandLogo size={32} />
-            <span className="text-lg font-semibold text-text-accent">Cuttr</span>
+            <span className="text-lg font-semibold text-text-primary">Cuttr</span>
           </a>
           <p className="text-text-tertiary text-xs">
             Create viral clips with AI

@@ -280,7 +280,7 @@ function SceneCard({
         >
           <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={13} />
         </div>
-        <span className="text-sm font-semibold text-text-accent">
+        <span className="text-sm font-semibold text-text-primary">
           {scene.sceneNumber}. {config?.label ?? scene.sceneType}
         </span>
         <button
@@ -411,7 +411,7 @@ function SceneCard({
           <div className="space-y-2 pt-1">
             <div className="flex items-center gap-1.5">
               <Icon icon="solar:camera-bold-duotone" width={13} className="text-amber-400" />
-              <span className="text-[11px] font-semibold text-text-accent">
+              <span className="text-[11px] font-semibold text-text-primary">
                 B-Roll Shots
               </span>
             </div>
@@ -460,7 +460,7 @@ function SceneCard({
                     {/* Shot details */}
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold text-text-accent">
+                        <span className="text-[11px] font-semibold text-text-primary">
                           Shot {idx + 1}
                         </span>
                         {shot.shotType && (
@@ -551,7 +551,7 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
               )}
             </div>
             <div>
-              <p className="text-sm font-bold text-text-accent">
+              <p className="text-sm font-bold text-text-primary">
                 {completedCount} of {totalScenes} scenes{" "}
                 {anyGenerating ? "generating..." : "complete"}
               </p>
@@ -608,7 +608,7 @@ export function ScriptPreview({ script, onSceneUpdate, onGenerateImages, onConti
 
       {/* Title + meta */}
       <div className="space-y-1.5 px-1">
-        <h2 className="text-base font-bold text-text-accent">{script.title}</h2>
+        <h2 className="text-base font-bold text-text-primary">{script.title}</h2>
         {script.targetAudience && (
           <p className="text-[11px] text-text-muted leading-relaxed">
             {script.targetAudience}

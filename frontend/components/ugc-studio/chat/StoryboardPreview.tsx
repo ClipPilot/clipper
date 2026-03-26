@@ -192,7 +192,7 @@ export function StoryboardPreview({
       className="flex flex-col gap-4 h-full overflow-y-auto pb-8"
     >
       <div className="space-y-2">
-        <h2 className="text-lg font-bold text-text-accent">{script.title}</h2>
+        <h2 className="text-lg font-bold text-text-primary">{script.title}</h2>
         <p className="text-xs text-text-muted">{script.targetAudience}</p>
         <div className="flex items-center gap-2">
           <Chip size="sm" variant="tertiary" className={`text-[11px] ${accentBgLight} ${accentText}`}>
@@ -236,7 +236,7 @@ export function StoryboardPreview({
                     <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${config?.color ?? "bg-default-500/10 text-default-400"}`}>
                       <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={11} />
                     </div>
-                    <span className="text-[12px] font-medium text-text-accent">{scene.sceneNumber}. {scene.slug}</span>
+                    <span className="text-[12px] font-medium text-text-primary">{scene.sceneNumber}. {scene.slug}</span>
                     <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${
                       scene.sceneType === "visual"
                         ? "bg-amber-500/10 text-amber-400"
@@ -321,7 +321,7 @@ export function StoryboardPreview({
                       <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${config?.color ?? "bg-default-500/10 text-default-400"}`}>
                         <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={11} />
                       </div>
-                      <span className="text-[12px] font-medium text-text-accent">{scene.sceneNumber}. {scene.slug}</span>
+                      <span className="text-[12px] font-medium text-text-primary">{scene.sceneNumber}. {scene.slug}</span>
                       <span className="text-[9px] px-1 py-0.5 rounded font-medium bg-blue-500/10 text-blue-400">
                         a-roll
                       </span>

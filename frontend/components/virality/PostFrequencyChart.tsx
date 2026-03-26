@@ -36,7 +36,7 @@ export function PostFrequencyChart({ posts, startDate, endDate }: PostFrequencyC
       <section className="flex flex-col flex-nowrap">
         <div className="flex flex-col gap-y-2 p-3 sm:p-6">
           <div className="flex items-center justify-between">
-            <dt className="text-base text-text-accent font-medium">
+            <dt className="text-base text-text-primary font-medium">
               Post Frequency
             </dt>
             {isHourly && (

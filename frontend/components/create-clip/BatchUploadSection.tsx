@@ -351,9 +351,9 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
           key={fileState.videoIndex}
           className={`p-4 rounded-lg border ${
             fileState.status === "failed"
-              ? "border-danger-500/50 bg-danger-500/10"
+              ? "border-danger-500/50 bg-red-500/10"
               : fileState.status === "completed"
-                ? "border-success-500/50 bg-success-500/10"
+                ? "border-success-500/50 bg-green-500/10"
                 : "border-border-base bg-surface-elevated"
           }`}
         >
@@ -361,9 +361,9 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             <div
               className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                 fileState.status === "failed"
-                  ? "bg-danger-500/20"
+                  ? "bg-red-500/20"
                   : fileState.status === "completed"
-                    ? "bg-success-500/20"
+                    ? "bg-green-500/20"
                     : "bg-accent-400/20"
               }`}
             >
@@ -390,7 +390,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             {fileState.status === "completed" && (
               <Icon
                 icon="solar:check-circle-bold"
-                className="text-xl text-success-500"
+                className="text-xl text-green-500"
               />
             )}
             {fileState.status === "failed" && (
@@ -437,7 +437,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
           )}
 
           {fileState.status === "failed" && fileState.error && (
-            <p className="mt-2 text-xs text-danger-500">{fileState.error}</p>
+            <p className="mt-2 text-xs text-red-500">{fileState.error}</p>
           )}
         </div>
       ))}
@@ -537,13 +537,13 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
     <Card className="bg-surface-base border border-border-base">
       <Card.Content className="p-6">
         {isUploading && (
-          <div className="mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 border border-warning-500/20 flex items-center gap-2">
             <Icon
               icon="solar:danger-triangle-bold"
-              className="text-warning-500 flex-shrink-0"
+              className="text-yellow-500 flex-shrink-0"
               width={20}
             />
-            <p className="text-sm text-warning-500">
+            <p className="text-sm text-yellow-500">
               Do not leave this page while uploading
             </p>
           </div>
@@ -556,7 +556,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
                 {files.length} / {maxVideos} videos
               </span>
               {allCompleted && (
-                <span className="text-xs text-success-500 flex items-center gap-1">
+                <span className="text-xs text-green-500 flex items-center gap-1">
                   <Icon icon="solar:check-circle-bold" />
                   All uploaded
                 </span>
@@ -583,7 +583,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         )}
 
         {hasErrors && !isUploading && (
-          <p className="mt-3 text-sm text-danger-500 text-center">
+          <p className="mt-3 text-sm text-red-500 text-center">
             Some uploads failed. Please retry or remove them before proceeding.
           </p>
         )}

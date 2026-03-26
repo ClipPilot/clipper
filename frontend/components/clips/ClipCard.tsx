@@ -69,7 +69,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
     if (score >= 80) return "text-success-600 bg-success-600/10";
-    if (score >= 60) return "text-warning-600 bg-warning-600/10";
+    if (score >= 60) return "text-yellow-600 bg-warning-600/10";
     return "text-text-tertiary bg-surface-elevated";
   };
 
@@ -161,11 +161,11 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <h3 className="text-sm font-medium text-text-accent truncate">
+          <h3 className="text-sm font-medium text-text-primary truncate">
             {clip.title || `Clip #${clip.id}`}
           </h3>
           {isEditing && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 flex-shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-500 flex-shrink-0">
               <Icon icon="svg-spinners:ring-resize" className="text-xs" />
               Editing
             </span>
@@ -338,7 +338,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             )}
           </div>
           {isEditing && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 w-fit mb-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-500 w-fit mb-1">
               <Icon icon="svg-spinners:ring-resize" className="text-xs" />
               Editing
             </span>

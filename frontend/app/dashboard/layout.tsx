@@ -59,8 +59,7 @@ export default function DashboardLayout({
   const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
   const { fetchUnread } = useAnnouncements();
 
-  const canViewPricing =
-    selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
+  const canViewPricing = true;
 
   const getTeamIcon = (role?: string) => {
     switch (role) {
@@ -288,106 +287,34 @@ export default function DashboardLayout({
                     </Button>
 <Dropdown.Popover>
 
-<Dropdown.Menu
-                    aria-label="Account actions"
-                    classNames={{
-                      base: "bg-surface-base border border-border-base",
-                      list: "gap-1 p-2",
-                    }}
-                  >
-                    <Dropdown.Item
-                      key="settings"
-                      startContent={
-                        <Icon
-                          icon="solar:settings-bold-duotone"
-                          width={20}
-                          className="text-text-secondary"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/settings")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+<Dropdown.Menu aria-label="Account actions">
+                    <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
+                      <Icon icon="solar:settings-bold-duotone" width={18} className="text-text-secondary" />
                       Settings
                     </Dropdown.Item>
-                    <Dropdown.Item
-                      key="api-platform"
-                      startContent={
-                        <Icon
-                          icon="solar:code-bold-duotone"
-                          width={20}
-                          className="text-text-secondary"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/api-platform")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+                    <Dropdown.Item key="api-platform" onPress={() => router.push("/dashboard/api-platform")}>
+                      <Icon icon="solar:code-bold-duotone" width={18} className="text-text-secondary" />
                       API Platform
                     </Dropdown.Item>
-                    <Dropdown.Item
-                      key="referrals"
-                      startContent={
-                        <Icon
-                          icon="solar:money-bag-bold-duotone"
-                          width={20}
-                          className="text-amber-500"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/referrals")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+                    <Dropdown.Item key="referrals" onPress={() => router.push("/dashboard/referrals")}>
+                      <Icon icon="solar:money-bag-bold-duotone" width={18} className="text-amber-500" />
                       Referral Program
                     </Dropdown.Item>
                     {canViewPricing ? (
-                      <Dropdown.Item
-                        key="pricing"
-                        startContent={
-                          <Icon
-                            icon="solar:wallet-bold-duotone"
-                            width={20}
-                            className="text-text-secondary"
-                          />
-                        }
-                        onPress={() => router.push("/dashboard/pricing")}
-                        classNames={{
-                          base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-primary font-medium",
-                        }}
-                      >
+                      <Dropdown.Item key="pricing" onPress={() => router.push("/dashboard/pricing")}>
+                        <Icon icon="solar:wallet-bold-duotone" width={18} className="text-text-secondary" />
                         Pricing
                       </Dropdown.Item>
                     ) : null}
-                    <Dropdown.Item
-                      key="logout"
-                      color="danger"
-                      startContent={
-                        <Icon
-                          icon="solar:logout-2-bold-duotone"
-                          width={20}
-                        />
-                      }
-                      onPress={handleSignOut}
-                      classNames={{
-                        base: "rounded-lg data-[hover=true]:bg-red-500/10",
-                      }}
-                    >
+                    <Dropdown.Item key="logout" variant="danger" onPress={handleSignOut}>
+                      <Icon icon="solar:logout-2-bold-duotone" width={18} />
                       Sign Out
                     </Dropdown.Item>
                   </Dropdown.Menu>
 </Dropdown.Popover>
                 </Dropdown>
 
-                <Tooltip
- content="Expand sidebar"
- placement="right"
+                <Tooltip content="Expand sidebar" placement="right"
  >
                   <Button
                     isIconOnly
@@ -404,14 +331,13 @@ export default function DashboardLayout({
                 </Tooltip>
               </div>
             ) : (
-              <>
                 <Dropdown placement="top-start">
 <Button
  variant="tertiary"
  className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
  >
                       <div className="flex items-center gap-2.5 w-full">
-                        <Avatar size="sm" className="bg-accent-400 text-white flex-shrink-0">
+                        <Avatar size="sm" className="bg-accent-400 text-white">
                           <Avatar.Fallback className="text-sm font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
                         </Avatar>
                         <div className="flex flex-col items-start flex-1 min-w-0">
@@ -433,121 +359,32 @@ export default function DashboardLayout({
                     </Button>
 <Dropdown.Popover>
 
-<Dropdown.Menu
-                    aria-label="Account actions"
-                    classNames={{
-                      base: "bg-surface-base border border-border-base",
-                      list: "gap-1 p-2",
-                    }}
-                  >
-                    <Dropdown.Item
-                      key="settings"
-                      startContent={
-                        <Icon
-                          icon="solar:settings-bold-duotone"
-                          width={20}
-                          className="text-text-secondary"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/settings")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+<Dropdown.Menu aria-label="Account actions">
+                    <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
+                      <Icon icon="solar:settings-bold-duotone" width={18} className="text-text-secondary" />
                       Settings
                     </Dropdown.Item>
-                    <Dropdown.Item
-                      key="api-platform"
-                      startContent={
-                        <Icon
-                          icon="solar:code-bold-duotone"
-                          width={20}
-                          className="text-text-secondary"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/api-platform")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+                    <Dropdown.Item key="api-platform" onPress={() => router.push("/dashboard/api-platform")}>
+                      <Icon icon="solar:code-bold-duotone" width={18} className="text-text-secondary" />
                       API Platform
                     </Dropdown.Item>
-                    <Dropdown.Item
-                      key="referrals"
-                      startContent={
-                        <Icon
-                          icon="solar:money-bag-bold-duotone"
-                          width={20}
-                          className="text-amber-500"
-                        />
-                      }
-                      onPress={() => router.push("/dashboard/referrals")}
-                      classNames={{
-                        base: "rounded-lg hover:bg-surface-elevated",
-                        title: "text-text-primary font-medium",
-                      }}
-                    >
+                    <Dropdown.Item key="referrals" onPress={() => router.push("/dashboard/referrals")}>
+                      <Icon icon="solar:money-bag-bold-duotone" width={18} className="text-amber-500" />
                       Referral Program
                     </Dropdown.Item>
                     {canViewPricing ? (
-                      <Dropdown.Item
-                        key="pricing"
-                        startContent={
-                          <Icon
-                            icon="solar:wallet-bold-duotone"
-                            width={20}
-                            className="text-text-secondary"
-                          />
-                        }
-                        onPress={() => router.push("/dashboard/pricing")}
-                        classNames={{
-                          base: "rounded-lg hover:bg-surface-elevated",
-                          title: "text-text-primary font-medium",
-                        }}
-                      >
+                      <Dropdown.Item key="pricing" onPress={() => router.push("/dashboard/pricing")}>
+                        <Icon icon="solar:wallet-bold-duotone" width={18} className="text-text-secondary" />
                         Pricing
                       </Dropdown.Item>
                     ) : null}
-                    <Dropdown.Item
-                      key="logout"
-                      color="danger"
-                      startContent={
-                        <Icon
-                          icon="solar:logout-2-bold-duotone"
-                          width={20}
-                        />
-                      }
-                      onPress={handleSignOut}
-                      classNames={{
-                        base: "rounded-lg data-[hover=true]:bg-red-500/10",
-                      }}
-                    >
+                    <Dropdown.Item key="logout" variant="danger" onPress={handleSignOut}>
+                      <Icon icon="solar:logout-2-bold-duotone" width={18} />
                       Sign Out
                     </Dropdown.Item>
                   </Dropdown.Menu>
 </Dropdown.Popover>
                 </Dropdown>
-
-                <Tooltip
- content="Collapse sidebar"
- placement="right"
- >
-                  <Button
-                    isIconOnly
-                    variant="tertiary"
-                    size="sm"
-                    onPress={() => setIsCollapsed(true)}
-                    className="mt-2 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
-                  >
-                    <Icon
-                      icon="solar:alt-arrow-left-bold-duotone"
-                      width={18}
-                    />
-                  </Button>
-                </Tooltip>
-              </>
             )}
           </div>
         </aside>

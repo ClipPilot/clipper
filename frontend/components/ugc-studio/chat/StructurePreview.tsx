@@ -83,7 +83,7 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-text-accent">{scene.slug}</span>
+                    <span className="text-[13px] font-medium text-text-primary">{scene.slug}</span>
                     <Tooltip
  content={SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}
  placement="top"

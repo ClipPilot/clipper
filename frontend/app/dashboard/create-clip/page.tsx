@@ -795,7 +795,7 @@ export default function CreateClipPage() {
           <div id="processing-section" className="mt-12">
             <div className="border-t border-border-base pt-8">
               <div className="mb-6 flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-warning-500/10">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-yellow-500/10">
                   <Icon icon="solar:hourglass-bold-duotone" className="text-2xl text-warning-400" />
                 </div>
                 <div>

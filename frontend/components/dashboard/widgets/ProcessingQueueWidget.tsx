@@ -131,7 +131,7 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-text-accent truncate">
+                  <p className="text-xs font-medium text-text-primary truncate">
                     {job.title || `Clip #${job.id}`}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
-import { Link, Input, Button, Chip } from "@heroui/react";
+import { Link, Input, Button, TextField } from "@heroui/react";
 import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 
@@ -264,48 +264,40 @@ function PricingContent() {
             <span className="text-sm text-green-500 font-medium">
               Referral code applied: {appliedReferral}
             </span>
-            <button
-              onClick={handleRemoveReferral}
-              className="text-text-tertiary hover:text-text-secondary transition-colors"
+            <Button
+              isIconOnly
+              variant="tertiary"
+              size="sm"
+              onPress={handleRemoveReferral}
+              className="text-text-tertiary hover:text-text-secondary"
             >
               <Icon icon="solar:close-circle-bold" width={18} />
-            </button>
+            </Button>
           </div>
         ) : showReferralInput ? (
           <div className="flex flex-col sm:flex-row items-stretch gap-2 p-3 rounded-lg bg-surface-base border border-border-base">
-            <Input
-              placeholder="Enter referral code"
-              value={referralCode}
-              onValueChange={setReferralCode}
-              size="sm"
-              classNames={{
-                input: "bg-surface-elevated text-text-primary",
-                inputWrapper:
-                  "bg-surface-elevated border-border-base hover:border-border-light",
-              }}
-              startContent={
-                <Icon
-                  icon="solar:ticket-bold-duotone"
-                  className="text-text-tertiary"
-                  width={16}
-                />
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleApplyReferral();
-              }}
-            />
+            <TextField variant="secondary" className="flex-1">
+              <Input
+                placeholder="Enter referral code"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleApplyReferral();
+                }}
+              />
+            </TextField>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="bg-accent-400 text-white font-medium"
                 onPress={handleApplyReferral}
-                isLoading={isApplyingCode}
+                isPending={isApplyingCode}
               >
                 Apply
               </Button>
               <Button
                 size="sm"
-                variant="flat"
+                variant="tertiary"
                 className="text-text-secondary"
                 onPress={() => {
                   setShowReferralInput(false);
@@ -317,9 +309,12 @@ function PricingContent() {
             </div>
           </div>
         ) : (
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setShowReferralInput(true)}
-            className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:from-amber-500/20 hover:via-orange-500/20 hover:to-amber-500/20 transition-all group"
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setShowReferralInput(true); }}
+            className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:from-amber-500/20 hover:via-orange-500/20 hover:to-amber-500/20 transition-all group cursor-pointer"
           >
             <div className="p-2 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
               <Icon
@@ -338,7 +333,7 @@ function PricingContent() {
               className="text-amber-500/50 group-hover:text-amber-500 transition-colors"
               width={16}
             />
-          </button>
+          </div>
         )}
       </motion.div>
 
@@ -350,7 +345,7 @@ function PricingContent() {
         transition={{ duration: 0.4, delay: 0.3 }}
         className="relative z-10 w-full max-w-6xl mx-auto"
       >
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-2xl bg-surface-elevated/80 border border-border-base backdrop-blur-md">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-2xl bg-white/[0.04] backdrop-blur-md">
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10">
               <Icon icon="solar:buildings-3-bold-duotone" className="text-emerald-500" width={24} />
@@ -366,8 +361,8 @@ function PricingContent() {
             className="bg-emerald-500 text-white font-semibold flex-shrink-0"
             size="lg"
             onPress={() => window.open("https://cuttr.com/contact", "_blank")}
-            startContent={<Icon icon="solar:chat-round-call-bold" width={18} />}
           >
+            <Icon icon="solar:chat-round-call-bold" width={18} />
             Contact Sales
           </Button>
         </div>

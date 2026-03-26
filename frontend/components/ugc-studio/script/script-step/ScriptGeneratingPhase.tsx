@@ -18,7 +18,7 @@ export function ScriptGeneratingPhase({ progress, message }: ScriptGeneratingPha
           width={48}
         />
       </div>
-      <h3 className="text-xl font-semibold text-text-accent mb-2">
+      <h3 className="text-xl font-semibold text-text-primary mb-2">
         Crafting Your Viral Script
       </h3>
       <p className="text-text-secondary mb-6">

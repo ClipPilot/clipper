@@ -154,7 +154,7 @@ export default function TeamManagementModal({
                 </Tabs>
               </Modal.Body>
               {!isOwner && (
-                <Modal.Footer className="border-t border-border-base">
+                <Modal.Footer>
                   <Button
                     variant="danger-soft"
                     onPress={leaveState.open}
@@ -180,7 +180,7 @@ export default function TeamManagementModal({
         <Modal.Backdrop isOpen={leaveState.isOpen} onOpenChange={leaveState.close}>
           <Modal.Container><Modal.Dialog className="sm:max-w-md">
               <Modal.CloseTrigger />
-              <Modal.Header className="border-b border-border-base">
+              <Modal.Header>
                 <Modal.Heading>Leave Team</Modal.Heading>
               </Modal.Header>
               <Modal.Body className="py-6">
@@ -190,7 +190,7 @@ export default function TeamManagementModal({
                   lose access to all team resources.
                 </p>
               </Modal.Body>
-              <Modal.Footer className="border-t border-border-base">
+              <Modal.Footer>
                 <Button
                   variant="tertiary"
                   onPress={leaveState.close}

@@ -134,7 +134,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-text-accent truncate">
+          <h3 className="text-sm font-medium text-text-primary truncate">
             {folder.name}
           </h3>
         </div>
@@ -205,7 +205,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="mt-2">
-          <h3 className="text-sm font-semibold text-text-accent truncate text-center">
+          <h3 className="text-sm font-semibold text-text-primary truncate text-center">
             {folder.name}
           </h3>
 

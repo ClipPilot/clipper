@@ -319,10 +319,10 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
 
       {saveError && (
         <div className="bg-danger-100 border border-danger-300 text-danger-700 px-4 py-3 rounded-xl flex items-center gap-3">
-          <Icon icon="solar:danger-triangle-bold" className="text-danger-500" width={20} />
+          <Icon icon="solar:danger-triangle-bold" className="text-red-500" width={20} />
           <span className="text-sm">{saveError}</span>
           <button onClick={() => setSaveError(null)} className="ml-auto">
-            <Icon icon="solar:close-circle-bold" className="text-danger-400 hover:text-danger-600" width={18} />
+            <Icon icon="solar:close-circle-bold" className="text-danger-400 hover:text-red-600" width={18} />
           </button>
         </div>
       )}
@@ -330,7 +330,7 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
       <div className="flex items-center justify-between">
         <Button
  variant="tertiary"
- className="text-text-secondary hover:text-text-accent"
+ className="text-text-secondary hover:text-text-primary"
  onPress={handleBack}
  isDisabled={currentStepIndex === 0}
  >

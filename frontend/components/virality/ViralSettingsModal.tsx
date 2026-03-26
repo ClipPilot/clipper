@@ -156,7 +156,7 @@ export function ViralSettingsModal({
  hideCloseButton>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="max-w-full h-full h-full flex flex-col">
         {/* Sticky header */}
-        <Modal.Header className="flex-shrink-0 border-b border-[#2a2d3e] px-6 py-4">
+        <Modal.Header>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-accent-400/10 rounded-lg">
@@ -191,12 +191,12 @@ export function ViralSettingsModal({
                   <Icon icon="solar:users-group-rounded-bold" width={18} className="text-accent-400" />
                   <h3 className="text-sm font-semibold text-white">Accounts to Monitor</h3>
                 </div>
-                <button
+                <div
                   onClick={toggleAll}
-                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors"
+                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors cursor-pointer"
                 >
                   {enabledIds.length === accounts.length ? "Deselect All" : "Select All"}
-                </button>
+                </div>
               </div>
               <p className="text-xs text-gray-500">
                 Choose which accounts should trigger viral alerts
@@ -204,28 +204,26 @@ export function ViralSettingsModal({
 
               {/* View toggle */}
               <div className="flex items-center bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg p-0.5 w-fit">
-                <button
-                  type="button"
+                <div
                   onClick={() => setAccountView("account")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     accountView === "account"
                       ? "bg-accent-400 text-white"
                       : "text-gray-400 hover:text-gray-300"
                   }`}
                 >
                   By Account
-                </button>
-                <button
-                  type="button"
+                </div>
+                <div
                   onClick={() => setAccountView("competitor")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     accountView === "competitor"
                       ? "bg-accent-400 text-white"
                       : "text-gray-400 hover:text-gray-300"
                   }`}
                 >
                   By Competitor
-                </button>
+                </div>
               </div>
 
               <div className="max-h-64 overflow-y-auto space-y-1.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] p-2">
@@ -239,11 +237,10 @@ export function ViralSettingsModal({
                     const selected = enabledIds.includes(account.id);
                     const platform = PLATFORM_ICONS[account.platform] ?? PLATFORM_ICONS.instagram;
                     return (
-                      <button
+                      <div
                         key={account.id}
-                        type="button"
                         onClick={() => toggleAccount(account.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer ${
                           selected
                             ? "bg-accent-400/10"
                             : "hover:bg-[#1a1d2e]"
@@ -263,7 +260,7 @@ export function ViralSettingsModal({
                             <Icon icon="solar:check-read-linear" width={12} className="text-white" />
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 ) : (
@@ -273,11 +270,10 @@ export function ViralSettingsModal({
                     const allSelected = compAccountIds.length > 0 && selectedCount === compAccountIds.length;
                     const someSelected = selectedCount > 0 && !allSelected;
                     return (
-                      <button
+                      <div
                         key={comp.id}
-                        type="button"
                         onClick={() => toggleCompetitor(comp)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer ${
                           allSelected
                             ? "bg-accent-400/10"
                             : someSelected
@@ -310,7 +306,7 @@ export function ViralSettingsModal({
                             />
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 )}
@@ -356,15 +352,20 @@ export function ViralSettingsModal({
                   <Switch
  isSelected={usePercent}
  onChange={setUsePercent}
- />
+ >
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
                 </div>
                 {usePercent && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input onChange={(e) => (setPercentValue)(e.target.value)}
+                    <Input onChange={(e) => setPercentValue(e.target.value)}
  type="number"
  value={percentValue}
- endContent={<span className="text-gray-500 text-xs">%</span>}
- />
+ >
+                      <span className="text-gray-500 text-xs">%</span>
+                    </Input>
                     <span className="text-xs text-gray-400">increase triggers alert</span>
                   </div>
                 )}
@@ -375,28 +376,26 @@ export function ViralSettingsModal({
                 <div className="flex items-center justify-center gap-2">
                   <div className="flex-1 border-t border-[#2a2d3e]" />
                   <div className="flex items-center bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg p-0.5">
-                    <button
-                      type="button"
+                    <div
                       onClick={() => setThresholdMode("and")}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                         thresholdMode === "and"
                           ? "bg-accent-400 text-white"
                           : "text-gray-400 hover:text-gray-300"
                       }`}
                     >
                       AND
-                    </button>
-                    <button
-                      type="button"
+                    </div>
+                    <div
                       onClick={() => setThresholdMode("or")}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                         thresholdMode === "or"
                           ? "bg-accent-400 text-white"
                           : "text-gray-400 hover:text-gray-300"
                       }`}
                     >
                       OR
-                    </button>
+                    </div>
                   </div>
                   <div className="flex-1 border-t border-[#2a2d3e]" />
                 </div>
@@ -421,15 +420,20 @@ export function ViralSettingsModal({
                   <Switch
  isSelected={useAbsolute}
  onChange={setUseAbsolute}
- />
+ >
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
                 </div>
                 {useAbsolute && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input onChange={(e) => (setAbsoluteValue)(e.target.value)}
+                    <Input onChange={(e) => setAbsoluteValue(e.target.value)}
  type="number"
  value={absoluteValue}
- startContent={<span className="text-gray-500 text-xs">+</span>}
- />
+ >
+                      <span className="text-gray-500 text-xs">+</span>
+                    </Input>
                     <span className="text-xs text-gray-400">views triggers alert</span>
                   </div>
                 )}
@@ -551,7 +555,7 @@ export function ViralSettingsModal({
         </Modal.Body>
 
         {/* Sticky footer */}
-        <Modal.Footer className="flex-shrink-0 border-t border-[#2a2d3e] px-6 py-4">
+        <Modal.Footer>
           <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
             <Button
  variant="tertiary"

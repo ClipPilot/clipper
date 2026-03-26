@@ -106,10 +106,10 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   return (
     <div className="mb-6 sm:mb-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4">
-        <h2 className="text-lg sm:text-xl font-bold text-text-accent flex items-center gap-2">
+        <h2 className="text-lg sm:text-xl font-bold text-text-primary flex items-center gap-2">
           <Icon
             icon="solar:gallery-check-bold-duotone"
-            className="text-xl sm:text-2xl text-warning-500 flex-shrink-0"
+            className="text-xl sm:text-2xl text-yellow-500 flex-shrink-0"
           />
           <span>Clips to Save</span>
           <span className="text-xs sm:text-sm font-normal text-text-tertiary">
@@ -129,7 +129,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
         <Card.Content className="p-3 sm:p-4 flex items-start sm:items-center gap-3">
           <Icon
             icon="solar:info-circle-bold"
-            className="text-lg sm:text-xl text-warning-500 flex-shrink-0 mt-0.5 sm:mt-0"
+            className="text-lg sm:text-xl text-yellow-500 flex-shrink-0 mt-0.5 sm:mt-0"
           />
           <p className="text-xs sm:text-sm text-text-secondary">
             Clips cannot be downloaded here. Save to add to your library to download.
@@ -172,7 +172,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                     className="text-xl text-accent-400"
                   />
                   <div className="text-left">
-                    <span className="text-sm font-semibold text-text-accent">
+                    <span className="text-sm font-semibold text-text-primary">
                       {groupClips.length} clip
                       {groupClips.length !== 1 ? "s" : ""} from:{" "}
                       <span className="font-normal text-text-secondary">

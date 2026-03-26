@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { ProgressBar, Tooltip, cn } from "@heroui/react";
+import { Button, ProgressBar, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
@@ -74,12 +74,15 @@ export default function Sidebar({
     const isActive = currentKey === item.key;
     const locked = isItemLocked(item);
 
-    const button = (
-      <button
+    const itemButton = (
+      <div
         key={item.key}
+        role="button"
+        tabIndex={0}
         onClick={() => handleNav(item)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleNav(item); }}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-lg transition-colors",
+          "w-full flex items-center gap-2.5 rounded-lg transition-colors cursor-pointer",
           isCollapsed ? "justify-center p-2" : "px-2.5 py-1.5",
           locked
             ? "opacity-50 hover:bg-surface-elevated"
@@ -97,7 +100,7 @@ export default function Sidebar({
               ? "text-text-tertiary"
               : isActive
                 ? "text-accent-400"
-                : "text-text-accent"
+                : "text-text-primary"
           )}
         />
         <span
@@ -110,7 +113,7 @@ export default function Sidebar({
               ? "text-text-tertiary"
               : isActive
                 ? "text-accent-400"
-                : "text-text-accent"
+                : "text-text-primary"
           )}
         >
           {item.title}
@@ -122,7 +125,7 @@ export default function Sidebar({
             className="text-text-tertiary ml-auto flex-shrink-0"
           />
         )}
-      </button>
+      </div>
     );
 
     if (isCollapsed) {
@@ -136,12 +139,12 @@ export default function Sidebar({
  placement="right"
  delay={200}
  >
-          {button}
+          {itemButton}
         </Tooltip>
       );
     }
 
-    return button;
+    return itemButton;
   };
 
   const renderSection = (section: SidebarSection, idx: number) => (
@@ -252,10 +255,13 @@ export default function Sidebar({
 
               {canViewPricing &&
                 (isPaidPlan(plan) ? (
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.push("/dashboard/pricing")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors cursor-pointer",
                       plan === "enterprise"
                         ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                         : plan === "scale"
@@ -292,11 +298,14 @@ export default function Sidebar({
                     >
                       Manage subscription
                     </span>
-                  </button>
+                  </div>
                 ) : (
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.push("/dashboard/pricing")}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
                   >
                     <Icon
                       icon="solar:arrow-up-bold"
@@ -306,7 +315,7 @@ export default function Sidebar({
                     <span className="text-xs font-medium text-accent-400">
                       Upgrade workspace
                     </span>
-                  </button>
+                  </div>
                 ))}
             </div>
           )}
@@ -316,16 +325,19 @@ export default function Sidebar({
  content="Upgrade workspace"
  placement="right"
  >
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => router.push("/dashboard/pricing")}
-                className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
               >
                 <Icon
                   icon="solar:arrow-up-bold"
                   className="text-accent-400"
                   width={16}
                 />
-              </button>
+              </div>
             </Tooltip>
           )}
 
@@ -334,10 +346,13 @@ export default function Sidebar({
  content="Manage subscription"
  placement="right"
  >
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => router.push("/dashboard/pricing")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
                 className={cn(
-                  "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors",
+                  "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer",
                   plan === "enterprise"
                     ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                     : plan === "scale"
@@ -360,7 +375,7 @@ export default function Sidebar({
                   }
                   width={16}
                 />
-              </button>
+              </div>
             </Tooltip>
           )}
         </div>

@@ -83,13 +83,13 @@ export function GeneratePanel({
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className={`w-2.5 h-2.5 rounded-full ${hasVideo ? "bg-green-500" : "bg-surface-elevated"}`} />
-              <span className={`text-sm ${hasVideo ? "text-text-accent" : "text-text-tertiary"}`}>
+              <span className={`text-sm ${hasVideo ? "text-text-primary" : "text-text-tertiary"}`}>
                 Video uploaded
               </span>
             </div>
             <div className="flex items-center gap-3">
               <div className={`w-2.5 h-2.5 rounded-full ${hasCharacter ? "bg-green-500" : "bg-surface-elevated"}`} />
-              <span className={`text-sm ${hasCharacter ? "text-text-accent" : "text-text-tertiary"}`}>
+              <span className={`text-sm ${hasCharacter ? "text-text-primary" : "text-text-tertiary"}`}>
                 {characterCount > 0
                   ? `${characterCount} face${characterCount > 1 ? "s" : ""} selected`
                   : "Select character faces"}
@@ -104,7 +104,7 @@ export function GeneratePanel({
                 />
                 <span
                   className={`text-sm ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "text-text-accent" : "text-text-tertiary"
+                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "text-text-primary" : "text-text-tertiary"
                   }`}
                 >
                   {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤5min)

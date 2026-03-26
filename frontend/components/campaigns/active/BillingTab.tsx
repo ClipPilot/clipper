@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Card, Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -51,19 +51,19 @@ function ToggleGroup<T extends string | number | null>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex items-center bg-surface-elevated rounded-lg p-0.5 gap-0.5">
+    <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
       {options.map((opt) => (
-        <button
+        <div
           key={String(opt.value)}
           onClick={() => onChange(opt.value)}
-          className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${
+          className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
             value === opt.value
               ? "bg-accent-500 text-white"
               : "text-text-tertiary hover:text-text-secondary"
           }`}
         >
           {opt.label}
-        </button>
+        </div>
       ))}
     </div>
   );
@@ -192,16 +192,16 @@ export function BillingTab({ campaign }: BillingTabProps) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {summaryCards.map((stat) => (
-          <Card
- key={stat.title}
- className="bg-surface-base border border-border-base"
- >
-            <Card.Content className="p-4">
+          <div
+            key={stat.title}
+            className="rounded-xl border border-border-base bg-surface-base overflow-hidden"
+          >
+            <div className="p-4">
               <p className="text-[11px] text-text-tertiary font-medium tracking-wide mb-2">
                 {stat.title}
               </p>
               <div className="flex items-end justify-between gap-2">
-                <p className="text-xl font-bold text-text-accent">
+                <p className="text-xl font-bold text-text-primary">
                   {stat.value}
                 </p>
                 <div
@@ -210,15 +210,15 @@ export function BillingTab({ campaign }: BillingTabProps) {
                   <Icon icon={stat.icon} width={18} className={stat.iconColor} />
                 </div>
               </div>
-            </Card.Content>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
       <div className="bg-surface-base border border-border-base rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <h3 className="text-sm font-medium text-text-accent">
+            <h3 className="text-sm font-medium text-text-primary">
               Daily Charges
             </h3>
             <span className="text-xs text-text-secondary">
@@ -244,36 +244,36 @@ export function BillingTab({ campaign }: BillingTabProps) {
             <BarChart data={chartData}>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="hsl(var(--heroui-default-200))"
+                stroke="var(--border-base)"
                 vertical={false}
               />
               <XAxis
                 dataKey="date"
-                tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
-                axisLine={false}
+                tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                axisLine={{ stroke: "var(--border-base)" }}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "hsl(var(--heroui-default-500))", fontSize: 11 }}
-                axisLine={false}
+                tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+                axisLine={{ stroke: "var(--border-base)" }}
                 tickLine={false}
                 tickFormatter={(v) => `$${v}`}
               />
               <Tooltip
- cursor={{ fill: "hsl(var(--heroui-default-100))" }}
- contentStyle={{
- backgroundColor: "hsl(var(--heroui-content1))",
- border: "1px solid hsl(var(--heroui-default-200))",
- borderRadius: "8px",
- fontSize: "12px",
- padding: "8px 12px",
- }}
- formatter={(value, _name, props) => [
- `$${Number(value).toFixed(2)}`,
- `${(props as any).payload.views.toLocaleString()} views`,
- ]}
- labelFormatter={(label) => label}
- />
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                contentStyle={{
+                  backgroundColor: "var(--surface-base)",
+                  border: "1px solid var(--border-base)",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  padding: "8px 12px",
+                }}
+                formatter={(value, _name, props) => [
+                  `$${Number(value).toFixed(2)}`,
+                  `${(props as any).payload.views.toLocaleString()} views`,
+                ]}
+                labelFormatter={(label) => label}
+              />
               <Bar
                 dataKey="charge"
                 fill="#6366F1"
@@ -291,7 +291,7 @@ export function BillingTab({ campaign }: BillingTabProps) {
 
       <div className="bg-surface-base border border-border-base rounded-2xl overflow-hidden">
         <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
-          <span className="text-sm font-medium text-text-accent">
+          <span className="text-sm font-medium text-text-primary">
             Billing History
           </span>
           <span className="text-xs text-text-secondary">
@@ -301,7 +301,7 @@ export function BillingTab({ campaign }: BillingTabProps) {
         </div>
         {filteredCharges.length > 0 ? (
           <table className="w-full">
-            <thead className="bg-surface-elevated border-b border-border-base">
+            <thead className="bg-white/[0.04] border-b border-border-base">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Date
@@ -340,9 +340,9 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
   const [expanded, setExpanded] = useState(false);
 
   const statusStyles: Record<string, string> = {
-    charged: "bg-success-500/10 border-success-500/20 text-success-500",
-    failed: "bg-danger-500/10 border-danger-500/20 text-danger-500",
-    waived: "bg-default-500/10 border-default-500/20 text-default-500",
+    charged: "bg-green-500/10 border-green-500/20 text-green-500",
+    failed: "bg-red-500/10 border-red-500/20 text-red-500",
+    waived: "bg-white/[0.06] border-white/[0.1] text-text-tertiary",
   };
 
   const sourceLabel: Record<string, string> = {
@@ -353,7 +353,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
   return (
     <>
       <tr
-        className="hover:bg-surface-elevated/50 transition-colors cursor-pointer"
+        className="hover:bg-white/[0.04] transition-colors cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <td className="px-6 py-3">
@@ -367,7 +367,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
               width={12}
               className="text-text-tertiary"
             />
-            <span className="text-sm text-text-accent">
+            <span className="text-sm text-text-primary">
               {new Date(charge.chargeDate).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -382,7 +382,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
           </span>
         </td>
         <td className="px-6 py-3">
-          <span className="text-sm font-medium text-text-accent">
+          <span className="text-sm font-medium text-text-primary">
             ${(charge.chargeCents / 100).toFixed(2)}
           </span>
         </td>
@@ -402,7 +402,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
       {expanded && charge.postBreakdown.length > 0 && (
         <tr>
           <td colSpan={5} className="px-6 py-0">
-            <div className="ml-6 mb-3 mt-1 bg-surface-elevated rounded-lg border border-border-base overflow-hidden">
+            <div className="ml-6 mb-3 mt-1 bg-white/[0.04] rounded-lg border border-border-base overflow-hidden">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border-base">
@@ -452,7 +452,7 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
                       <td className="px-4 py-1.5 text-xs text-text-secondary">
                         +{post.delta_views.toLocaleString()}
                       </td>
-                      <td className="px-4 py-1.5 text-xs font-medium text-text-accent">
+                      <td className="px-4 py-1.5 text-xs font-medium text-text-primary">
                         ${(post.charge_cents / 100).toFixed(2)}
                       </td>
                     </tr>

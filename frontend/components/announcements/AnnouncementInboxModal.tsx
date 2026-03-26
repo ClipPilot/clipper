@@ -66,7 +66,7 @@ export default function AnnouncementInboxModal() {
                   className="text-text-tertiary"
                 />
               </div>
-              <h3 className="text-text-accent font-medium mb-1">
+              <h3 className="text-text-primary font-medium mb-1">
                 No announcements yet
               </h3>
               <p className="text-text-secondary text-sm text-center">

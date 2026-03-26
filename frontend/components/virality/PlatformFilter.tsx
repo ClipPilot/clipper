@@ -29,7 +29,7 @@ export function PlatformFilter({ selected, onChange }: PlatformFilterProps) {
  className={
  selected === filter.value
  ? "bg-accent-400 text-white"
- : "bg-surface-elevated text-text-secondary hover:text-text-accent"
+ : "bg-surface-elevated text-text-secondary hover:text-text-primary"
  }
  onPress={() => onChange(filter.value)}
  >

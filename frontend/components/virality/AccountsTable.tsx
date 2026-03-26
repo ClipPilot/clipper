@@ -10,10 +10,10 @@ import { Table,
   Avatar,
   Button,
   Chip,
-  Pagination,
   Spinner,
   Dropdown,
   Tooltip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -52,8 +52,7 @@ export function AccountsTable({
   onDeleteAccount,
   onToggleAccountStatus,
   onToggleAlert,
-  accountStatuses,
-}: AccountsTableProps) {
+  accountStatuses }: AccountsTableProps) {
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
 
@@ -65,8 +64,7 @@ export function AccountsTable({
         result.push({
           account: a,
           competitorName: c.name,
-          competitorId: c.id,
-        });
+          competitorId: c.id });
       }
     }
     return result;
@@ -118,8 +116,7 @@ export function AccountsTable({
         classNames={{
           th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap",
           td: "py-4 px-4 border-t border-border-base",
-          table: "min-w-[700px]",
-        }}
+          table: "min-w-[700px]" }}
       >
         <TableHeader>
           <TableColumn>ACCOUNT</TableColumn>
@@ -315,14 +312,13 @@ export function AccountsTable({
       </Table>
       </div>
 
-      {/* Pagination */}
+      {/* */}
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">
           Showing {paginated.length} of {filtered.length} Accounts
         </p>
         {totalPages > 1 && (
-          <Pagination
- total={totalPages}
+          <PaginationControl total={totalPages}
  page={page}
  onChange={setPage}
  />

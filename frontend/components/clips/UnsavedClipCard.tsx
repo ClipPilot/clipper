@@ -38,7 +38,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
     if (score >= 80) return "text-success-600 bg-success-600/10";
-    if (score >= 60) return "text-warning-600 bg-warning-600/10";
+    if (score >= 60) return "text-yellow-600 bg-warning-600/10";
     return "text-text-tertiary bg-surface-elevated";
   };
 
@@ -84,7 +84,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 
         <div className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-text-accent truncate">
+            <h3 className="text-sm font-semibold text-text-primary truncate">
               {clip.title || `Clip #${clip.id}`}
             </h3>
             {clip.clip_score !== undefined && clip.clip_score !== null && (

@@ -143,7 +143,7 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
           style={{ color: folder.color || "#3B82F6" }}
         />
 
-        <span className="flex-1 text-sm text-text-accent truncate">{folder.name}</span>
+        <span className="flex-1 text-sm text-text-primary truncate">{folder.name}</span>
 
         {!isReadOnly && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

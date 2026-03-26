@@ -52,7 +52,7 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
  className="flex-shrink-0"
  />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-text-accent truncate">
+            <p className="font-semibold text-text-primary truncate">
               {selectedTeam?.name || "No Team"}
             </p>
             <div className="flex items-center gap-2 mt-1">

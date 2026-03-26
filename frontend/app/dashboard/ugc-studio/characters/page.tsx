@@ -131,7 +131,7 @@ function CharactersPageContent() {
                 variant="tertiary"
                 size="sm"
                 onPress={() => router.push("/dashboard/ugc-studio")}
-                className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
+                className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
               >
                 <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
               </Button>

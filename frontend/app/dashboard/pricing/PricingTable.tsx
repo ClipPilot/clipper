@@ -67,7 +67,7 @@ export function PricingTable({
                       Most Popular
                     </Chip>
                   )}
-                  <div className="text-xl font-semibold text-text-accent">
+                  <div className="text-xl font-semibold text-text-primary">
                     {tier.title}
                   </div>
                   <p className="mt-1 text-sm text-text-secondary">
@@ -84,7 +84,7 @@ export function PricingTable({
                 <td key={tier.key} className="relative px-6 py-4 xl:px-8">
                   <div className="min-h-[72px]">
                     <div className="flex items-baseline gap-1 min-h-[48px]">
-                      <span className="text-4xl font-bold text-text-accent">
+                      <span className="text-4xl font-bold text-text-primary">
                         {tier.price}
                       </span>
                       <span className="text-sm text-text-tertiary min-w-[70px]">
@@ -115,12 +115,7 @@ export function PricingTable({
  "bg-accent-400 text-white font-semibold shadow-lg shadow-accent-400/25":
  tier.mostPopular && !isButtonDisabled(tier),
  })}
- color={
- tier.mostPopular && !isButtonDisabled(tier)
- ? "primary"
- : "default"
- }
- variant={isButtonDisabled(tier) ? "flat" : tier.buttonVariant}
+ variant={isButtonDisabled(tier) ? "tertiary" : tier.buttonVariant}
  isDisabled={isButtonDisabled(tier)}
  isPending={loadingTier === tier.key}
  onPress={() => {
@@ -143,7 +138,7 @@ export function PricingTable({
                 <tr>
                   <th
                     className={cn(
-                      "pt-12 pb-4 text-lg font-semibold text-text-accent",
+                      "pt-12 pb-4 text-lg font-semibold text-text-primary",
                       {
                         "pt-16": featIndex === 0,
                       }
@@ -168,7 +163,7 @@ export function PricingTable({
                         <div className="flex items-center gap-1">
                           <span>{tierFeature.title}</span>
                           <Tooltip
- className="max-w-[240px] bg-surface-elevated text-text-accent"
+ className="max-w-[240px] bg-surface-elevated text-text-primary"
  content={tierFeature.helpText}
  placement="right"
  >

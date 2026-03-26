@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Button,
-  Card,
-  Chip,
-  Separator,
-  Spinner,
-  toast } from "@heroui/react";
+import { Button, Chip, Spinner, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -24,18 +19,16 @@ import { PaymentGate } from "./gates/PaymentGate";
 import { ContractGate } from "./gates/ContractGate";
 import { ActiveCampaignDashboard } from "./active/ActiveCampaignDashboard";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function StepStatusIcon({ complete }: { complete: boolean }) {
   if (complete) {
     return (
-      <div className="w-6 h-6 rounded-full bg-success-500/20 flex items-center justify-center flex-shrink-0">
-        <Icon icon="solar:check-circle-bold" className="text-success-500" width={16} />
+      <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+        <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
       </div>
     );
   }
   return (
-    <div className="w-6 h-6 rounded-full bg-default-100 flex items-center justify-center flex-shrink-0">
+    <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center flex-shrink-0">
       <Icon icon="solar:lock-bold" className="text-text-tertiary" width={14} />
     </div>
   );
@@ -60,30 +53,29 @@ function StepSection({
 }: StepSectionProps) {
   const [isExpanded, setIsExpanded] = useState(!complete);
 
-  // Auto-collapse when step becomes complete
   useEffect(() => {
     if (complete) setIsExpanded(false);
   }, [complete]);
 
   return (
-    <Card
- className={`bg-surface-base border transition-colors ${
- complete ? "border-success-500/30" : "border-border-base"
- }`}
- >
-      <Card.Header
-        className="cursor-pointer select-none"
+    <div
+      className={`rounded-xl border bg-surface-base overflow-hidden transition-colors ${
+        complete ? "border-green-500/30" : "border-border-base"
+      }`}
+    >
+      <div
+        className="cursor-pointer select-none px-4 py-3"
         onClick={() => setIsExpanded((v) => !v)}
       >
         <div className="flex items-center gap-3 w-full">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              complete ? "bg-success-500/10" : "bg-accent-400/10"
+              complete ? "bg-green-500/10" : "bg-accent-400/10"
             }`}
           >
             <Icon
               icon={icon}
-              className={complete ? "text-success-500" : "text-accent-400"}
+              className={complete ? "text-green-500" : "text-accent-400"}
               width={18}
             />
           </div>
@@ -93,12 +85,12 @@ function StepSection({
                 Step {number}
               </span>
               {complete && (
-                <Chip color="success" variant="tertiary" size="sm" className="h-5">
+                <Chip variant="tertiary" size="sm" className="h-5 bg-green-500/15 text-green-500">
                   Complete
                 </Chip>
               )}
             </div>
-            <p className="text-sm font-semibold text-text-accent">{title}</p>
+            <p className="text-sm font-semibold text-text-primary">{title}</p>
             <p className="text-xs text-text-secondary">{description}</p>
           </div>
           <StepStatusIcon complete={complete} />
@@ -108,18 +100,16 @@ function StepSection({
             width={16}
           />
         </div>
-      </Card.Header>
+      </div>
       {isExpanded && (
         <>
-          <Separator className="bg-border-base" />
-          <Card.Content className="p-4 sm:p-5">{children}</Card.Content>
+          <div className="h-px bg-border-base" />
+          <div className="p-4 sm:p-5">{children}</div>
         </>
       )}
-    </Card>
+    </div>
   );
 }
-
-// ── Progress bar ──────────────────────────────────────────────────────────────
 
 function StepsProgressBar({ gates }: { gates: CampaignGates }) {
   const completed = [
@@ -132,7 +122,7 @@ function StepsProgressBar({ gates }: { gates: CampaignGates }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-text-secondary">Steps complete</span>
-        <span className="font-semibold text-text-accent">{completed} / 3</span>
+        <span className="font-semibold text-text-primary">{completed} / 3</span>
       </div>
       <div className="flex gap-1.5">
         {[gates.videos.complete, gates.payment.complete, gates.contract.complete].map(
@@ -140,7 +130,7 @@ function StepsProgressBar({ gates }: { gates: CampaignGates }) {
             <div
               key={i}
               className={`h-2 flex-1 rounded-full transition-colors ${
-                done ? "bg-success-500" : "bg-default-200"
+                done ? "bg-green-500" : "bg-white/[0.06]"
               }`}
             />
           )
@@ -149,8 +139,6 @@ function StepsProgressBar({ gates }: { gates: CampaignGates }) {
     </div>
   );
 }
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 interface CampaignDashboardProps {
   campaignId: number;
@@ -176,7 +164,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     setIsLoading(true);
     setLoadError(null);
     try {
-      // Campaign is critical — if it fails, show an error instead of loading forever
       let campaignData: { campaign: Campaign; gates: CampaignGates };
       try {
         campaignData = await campaignAPI.getCampaign(selectedTeam.id, campaignId);
@@ -225,8 +212,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
-
-  // ── Targeted video state updates (no full refetch) ──────────────────────────
 
   const handleVideoAdded = useCallback((video: CampaignVideo) => {
     setVideos((prev) => [...prev, video]);
@@ -290,8 +275,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     }
   }, [selectedTeam?.id, campaignId]);
 
-  // ── Targeted payment state updates ─────────────────────────────────────────
-
   const handleCardSaved = useCallback((card: CampaignCard) => {
     setSavedCard(card);
   }, []);
@@ -310,8 +293,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         : prev
     );
   }, []);
-
-  // ── Targeted contract state update ─────────────────────────────────────────
 
   const handleCampaignUpdated = useCallback((updated: Campaign) => {
     setCampaign(updated);
@@ -364,10 +345,10 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="flex flex-col items-center gap-4 py-32 text-center">
         <Icon
           icon="solar:shield-warning-bold-duotone"
-          className="text-warning-500"
+          className="text-yellow-500"
           width={40}
         />
-        <p className="text-lg font-semibold text-text-accent">Unauthorized</p>
+        <p className="text-lg font-semibold text-text-primary">Unauthorized</p>
         <p className="text-text-secondary text-sm">
           This campaign doesn&apos;t exist or you don&apos;t have access to it.
         </p>
@@ -383,7 +364,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="flex flex-col items-center gap-4 py-32 text-center">
         <Icon
           icon="solar:close-circle-bold-duotone"
-          className="text-danger-500"
+          className="text-red-500"
           width={40}
         />
         <p className="text-text-secondary">Failed to load campaign.</p>
@@ -394,16 +375,14 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
-  // ── Pending / Appeal — awaiting admin review ────────────────────────────
-
   if (campaign.status === "pending" || campaign.status === "appeal") {
     return (
       <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
           <Button
- variant="tertiary"
+ variant="ghost"
  size="sm"
- className="text-text-secondary -ml-2"
+ className="!bg-transparent text-text-secondary hover:text-text-primary -ml-2"
  onPress={onBack}
  >
             <Icon icon="solar:arrow-left-linear" width={16} />
@@ -411,16 +390,16 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           </Button>
 
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-warning-500/10 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center">
               <Icon
                 icon="solar:clock-circle-bold-duotone"
-                className="text-warning-500"
+                className="text-yellow-500"
                 width={36}
               />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-accent">{campaign.name}</h1>
-              <Chip color="warning" variant="tertiary" className="capitalize mt-2">
+              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
+              <Chip variant="tertiary" className="capitalize mt-2 bg-yellow-500/15 text-yellow-500">
                 {campaign.status === "appeal" ? "Under Appeal" : "Pending Review"}
               </Chip>
             </div>
@@ -432,8 +411,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       </div>
     );
   }
-
-  // ── Active campaign dashboard ─────────────────────────────────────────────
 
   if (campaign.status === "started" || campaign.status === "paused") {
     return (
@@ -451,8 +428,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
-  // ── Completed campaign view ──────────────────────────────────────────────
-
   if (campaign.status === "completed") {
     const completedDate = campaign.completed_at
       ? new Intl.DateTimeFormat("en-US", {
@@ -466,9 +441,9 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
         <div className="max-w-3xl mx-auto space-y-6">
           <Button
- variant="tertiary"
+ variant="ghost"
  size="sm"
- className="text-text-secondary -ml-2"
+ className="!bg-transparent text-text-secondary hover:text-text-primary -ml-2"
  onPress={onBack}
  >
             <Icon icon="solar:arrow-left-linear" width={16} />
@@ -476,7 +451,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           </Button>
 
           <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-default-100 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-white/[0.06] flex items-center justify-center">
               <Icon
                 icon="solar:check-circle-bold-duotone"
                 className="text-text-secondary"
@@ -484,8 +459,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
               />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-accent">{campaign.name}</h1>
-              <Chip color="default" variant="tertiary" className="capitalize mt-2">
+              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
+              <Chip variant="tertiary" className="capitalize mt-2 bg-white/[0.08] text-text-secondary">
                 Completed
               </Chip>
             </div>
@@ -500,8 +475,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
-  // ── Setup flow ────────────────────────────────────────────────────────────
-
   const allStepsComplete =
     gates.videos.complete && gates.payment.complete && gates.contract.complete;
 
@@ -514,9 +487,9 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Back nav */}
         <Button
- variant="tertiary"
+ variant="ghost"
  size="sm"
- className="text-text-secondary -ml-2"
+ className="!bg-transparent text-text-secondary hover:text-text-primary -ml-2"
  onPress={onBack}
  >
           <Icon icon="solar:arrow-left-linear" width={16} />
@@ -527,28 +500,27 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         <div className="space-y-1">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-text-accent truncate">
+              <h1 className="text-2xl font-bold text-text-primary truncate">
                 {campaign.name}
               </h1>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-text-secondary">
                 {budget > 0 && (
                   <span className="flex items-center gap-1">
                     <Icon icon="solar:dollar-bold" width={14} />
-                    Budget: <strong className="text-text-accent">${budget.toLocaleString()}</strong>
+                    Budget: <strong className="text-text-primary">${budget.toLocaleString()}</strong>
                   </span>
                 )}
                 {cpm > 0 && (
                   <span className="flex items-center gap-1">
                     <Icon icon="solar:chart-bold-duotone" width={14} />
-                    CPM: <strong className="text-text-accent">${cpm.toFixed(2)}</strong>
+                    CPM: <strong className="text-text-primary">${cpm.toFixed(2)}</strong>
                   </span>
                 )}
               </div>
             </div>
             <Chip
- color={campaign.status === "rejected" ? "danger" : "default"}
  variant="tertiary"
- className="flex-shrink-0 capitalize"
+ className={`flex-shrink-0 capitalize ${campaign.status === "rejected" ? "bg-red-500/15 text-red-500" : "bg-white/[0.08] text-text-secondary"}`}
  >
               {campaign.status}
             </Chip>

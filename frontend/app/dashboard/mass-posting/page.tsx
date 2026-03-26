@@ -44,7 +44,7 @@ export default function MassPostingPage() {
           />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-text-accent">
+          <h2 className="text-xl font-bold text-text-primary">
             Complete Setup First
           </h2>
           <p className="text-sm text-text-secondary leading-relaxed">

@@ -80,7 +80,7 @@ export default function AddToCampaignModal({
         <Modal.Body className="py-4">
           <p className="text-sm text-text-secondary mb-4">
             Add{" "}
-            <span className="font-medium text-text-accent">
+            <span className="font-medium text-text-primary">
               {clipTitle || `Clip #${clipId}`}
             </span>{" "}
             to a campaign
@@ -114,7 +114,7 @@ export default function AddToCampaignModal({
                     className="flex items-center justify-between p-3 rounded-lg border border-border-base hover:bg-surface-elevated transition-all"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-accent truncate">
+                      <p className="text-sm font-medium text-text-primary truncate">
                         {campaign.name}
                       </p>
                       <p className="text-xs text-text-secondary capitalize">
@@ -122,7 +122,7 @@ export default function AddToCampaignModal({
                       </p>
                     </div>
                     {alreadyAdded ? (
-                      <div className="flex items-center gap-1.5 ml-3 text-success-500">
+                      <div className="flex items-center gap-1.5 ml-3 text-green-500">
                         <Icon icon="solar:check-circle-bold" width={18} />
                         <span className="text-sm font-medium">Added</span>
                       </div>

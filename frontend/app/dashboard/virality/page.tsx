@@ -491,7 +491,7 @@ export default function ViralityPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-accent">
+            <h1 className="text-2xl font-bold text-text-primary">
               Tracked Competitors
             </h1>
             <p className="text-text-secondary text-sm mt-1">
@@ -571,19 +571,15 @@ export default function ViralityPage() {
               <Input
                 placeholder="Search accounts..."
                 value={searchQuery}
-                onValueChange={setSearchQuery}
-                startContent={
-                  <Icon
-                    icon="solar:magnifer-linear"
-                    width={18}
-                    className="text-text-tertiary"
-                  />
-                }
-                classNames={{
-                  base: "w-60",
-                  inputWrapper: "bg-surface-base border-border-base",
-                }}
-              />
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-60"
+              >
+                <Icon
+                  icon="solar:magnifer-linear"
+                  width={18}
+                  className="text-text-tertiary"
+                />
+              </Input>
             </div>
             <RecalcOverlay active={isRecalculating}>
               <AccountsTable

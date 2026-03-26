@@ -19,7 +19,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Review Your Application
         </h3>
         <p className="text-sm text-text-secondary mb-4">
@@ -27,14 +27,12 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </p>
       </div>
 
-      {/* Campaign & Brand Info */}
       <ReviewSection title="Campaign & Brand Info" icon="solar:buildings-bold-duotone">
         <ReviewField label="Campaign Name" value={data.name} />
         <ReviewField label="Description" value={data.brand_description} />
         <ReviewField label="Website" value={data.company_website_url} />
       </ReviewSection>
 
-      {/* Socials */}
       <ReviewSection title="Social Accounts" icon="solar:share-circle-bold-duotone">
         {data.company_socials?.map((s, i) => (
           <ReviewField
@@ -45,12 +43,11 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         ))}
       </ReviewSection>
 
-      {/* Competitors */}
       {data.competitor_socials && data.competitor_socials.length > 0 && (
         <ReviewSection title="Competitors" icon="solar:users-group-two-rounded-bold-duotone">
           {data.competitor_socials.map((c, i) => (
             <div key={i} className="mb-3 last:mb-0">
-              <p className="text-sm font-medium text-text-accent">
+              <p className="text-sm font-medium text-text-primary">
                 {c.companyName || "Unnamed"}
               </p>
               {c.accounts.map((a, j) => (
@@ -63,11 +60,10 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </ReviewSection>
       )}
 
-      {/* ICPs */}
       <ReviewSection title="Ideal Customer Profiles" icon="solar:users-group-rounded-bold-duotone">
         {data.icps?.map((icp, i) => (
           <div key={i} className="mb-4 last:mb-0">
-            <p className="text-sm font-semibold text-text-accent">
+            <p className="text-sm font-semibold text-text-primary">
               {icp.name || `ICP #${i + 1}`}
             </p>
             {icp.description && (
@@ -91,31 +87,29 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         ))}
       </ReviewSection>
 
-      {/* Budget */}
       {data.budget && (
         <ReviewSection title="Budget" icon="solar:wallet-money-bold-duotone">
           <ReviewField label="Monthly Budget" value={`$${data.budget.toLocaleString()}`} />
           {activeTier && (
-            <>
-              <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
-            </>
+            <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
           )}
         </ReviewSection>
       )}
 
       <Separator />
 
-      <Button variant="primary"
- fullWidth
- size="lg"
- isPending={isSubmitting}
- onPress={onSubmit}
- >
+      <Button
+        variant="primary"
+        fullWidth
+        size="lg"
+        isPending={isSubmitting}
+        onPress={onSubmit}
+      >
         {!isSubmitting && (
-            <Icon
-              icon={isAppeal ? "solar:pen-new-round-bold" : "solar:send-square-bold"}
-            />
-          )}
+          <Icon
+            icon={isAppeal ? "solar:pen-new-round-bold" : "solar:send-square-bold"}
+          />
+        )}
         {isSubmitting
           ? "Submitting..."
           : isAppeal
@@ -125,8 +119,6 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
     </div>
   );
 }
-
-// ── Shared review helpers ───────────────────────────────────────
 
 function ReviewSection({
   title,
@@ -141,7 +133,7 @@ function ReviewSection({
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Icon icon={icon} className="text-lg text-accent-400" />
-        <h4 className="text-sm font-semibold text-text-accent">{title}</h4>
+        <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
       </div>
       <div className="pl-7 space-y-2">{children}</div>
     </div>

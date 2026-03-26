@@ -186,7 +186,7 @@ export default function TeamMembersList({
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-text-accent">
+                    <p className="text-sm font-medium text-text-primary">
                       {member.firstName} {member.lastName}
                       {user?.id && member.userId === parseInt(user.id) && (
                         <span className="text-xs text-text-tertiary ml-2">

@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Button, Input, Chip, Dropdown } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { Clip, Tag, clipsAPI } from "@/api/clips";
 import { useAtomValue } from "jotai";

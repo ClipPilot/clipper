@@ -219,14 +219,14 @@ export function ContractGate({
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-success-500/10 border border-success-500/20">
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-success-500/20">
           <Icon
             icon="solar:check-circle-bold"
-            className="text-success-500 flex-shrink-0"
+            className="text-green-500 flex-shrink-0"
             width={22}
           />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-success-500">
+            <p className="text-sm font-semibold text-green-500">
               Agreement signed on {signedDate}
             </p>
             <p className="text-xs text-text-secondary mt-0.5">
@@ -240,7 +240,7 @@ export function ContractGate({
           <Button
  variant="tertiary"
  size="sm"
- className="bg-surface-elevated text-text-secondary"
+ className="bg-white/[0.04] text-text-secondary"
  as="a"
  href={agreement.presigned_pdf_url}
  target="_blank"
@@ -266,14 +266,14 @@ export function ContractGate({
   return (
     <div className="space-y-4">
       {/* View agreement PDF */}
-      <div className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated border border-border-base">
+      <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.04]">
         <div className="flex items-center gap-2">
           <Icon
             icon="solar:file-text-bold-duotone"
             className="text-text-secondary"
             width={20}
           />
-          <span className="text-sm text-text-accent">Cuttr Campaign Services Agreement</span>
+          <span className="text-sm text-text-primary">Cuttr Campaign Services Agreement</span>
         </div>
         <Button
  size="sm"

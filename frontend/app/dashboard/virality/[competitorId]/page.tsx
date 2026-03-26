@@ -387,7 +387,7 @@ export default function CompetitorDetailPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-text-accent">{competitor.name}</h1>
+                  <h1 className="text-2xl font-bold text-text-primary">{competitor.name}</h1>
                   <Button
  size="sm"
  isIconOnly
@@ -419,9 +419,9 @@ export default function CompetitorDetailPage() {
                         {competitor.accounts.map((a) => (
                           <Dropdown.Item
                             key={a.id}
-                            startContent={<Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />}
                             onPress={() => window.open(a.profile_url, "_blank", "noopener,noreferrer")}
                           >
+                            <Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />
                             {a.account_type === "hashtag"
                               ? `#${a.username}`
                               : a.account_type === "keyword"
@@ -487,7 +487,7 @@ export default function CompetitorDetailPage() {
                 .filter((a) => syncingAccountIds.includes(a.id))
                 .map((a, i, arr) => (
                   <Fragment key={a.id}>
-                    <span className="font-medium text-text-accent">
+                    <span className="font-medium text-text-primary">
                       {a.account_type === "hashtag" ? "#" : "@"}{a.username}
                     </span>
                     {i < arr.length - 1 && ", "}

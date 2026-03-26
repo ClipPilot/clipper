@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, Tooltip as HeroTooltip } from "@heroui/react";
+import { Tooltip as HeroTooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   ResponsiveContainer,
@@ -75,7 +75,7 @@ function ChartTitle({ title, infoTooltip }: { title: string; infoTooltip?: strin
         <HeroTooltip
           content={infoTooltip}
           placement="top"
-          classNames={{ content: "max-w-[220px] text-xs" }}
+          className="max-w-[220px] text-xs"
         >
           <span className="cursor-help">
             <Icon
@@ -93,8 +93,8 @@ function ChartTitle({ title, infoTooltip }: { title: string; infoTooltip?: strin
 function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps) {
   if (data.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <Card.Content className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <ChartTitle title={title} infoTooltip={infoTooltip} />
           <div className="flex flex-col items-center justify-center h-[280px] gap-3">
             <Icon
@@ -106,14 +106,14 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
               Distribution data will appear after accounts are synced
             </p>
           </div>
-        </Card.Content>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <Card.Content className="p-5">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-5">
         <ChartTitle title={title} infoTooltip={infoTooltip} />
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
@@ -140,7 +140,7 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
                     <tspan
                       x="50%"
                       dy="-0.4em"
-                      className="fill-text-accent text-xl font-bold"
+                      className="fill-text-primary text-xl font-bold"
                     >
                       {formatNumber(total)}
                     </tspan>
@@ -183,7 +183,7 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
                   width={14}
                   className={platformIconColor(entry.platform)}
                 />
-                <span className="text-text-accent truncate flex-1">
+                <span className="text-text-primary truncate flex-1">
                   @{entry.username}
                 </span>
                 <span className="text-text-secondary font-medium">
@@ -196,8 +196,8 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
             );
           })}
         </div>
-      </Card.Content>
-    </Card>
+      </div>
+    </div>
   );
 }
 

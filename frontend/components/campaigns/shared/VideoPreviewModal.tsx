@@ -17,14 +17,14 @@ export function VideoPreviewModal({ video, isOpen, onClose }: VideoPreviewModalP
   return (
     <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
-        <Modal.Header className="border-b border-border-base">
+        <Modal.Header>
           <div className="flex items-center gap-2 min-w-0">
             <Icon
               icon="solar:video-frame-play-vertical-bold-duotone"
               className="text-accent-400 flex-shrink-0"
               width={20}
             />
-            <span className="text-text-accent truncate">
+            <span className="text-text-primary truncate">
               {video.title ?? video.file_name ?? `Video #${video.id}`}
             </span>
           </div>

@@ -16,7 +16,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-text-accent mb-1">
+        <h3 className="text-lg font-semibold text-text-primary mb-1">
           Monthly Budget
         </h3>
         <p className="text-sm text-text-secondary">
@@ -24,21 +24,19 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
         </p>
       </div>
 
-      {/* Budget Input */}
-            <TextField type="number" isRequired>
+      <TextField type="number" isRequired>
         <Label>Monthly Budget</Label>
-        <Input onChange={(e) => ((v) => setBudget(v ? parseFloat(v) : null))(e.target.value)}
- placeholder="e.g. 25000"
- startContent={<span className="text-text-tertiary text-sm">$</span>}
- value={budget?.toString() ?? ""}
- min={0}
- step={500}
- />
+        <Input
+          onChange={(e) => setBudget(e.target.value ? parseFloat(e.target.value) : null)}
+          placeholder="e.g. 25000"
+          value={budget?.toString() ?? ""}
+          min={0}
+          step={500}
+        />
         <Description>Minimum $5,000 required</Description>
         <FieldError />
       </TextField>
 
-      {/* CPM Tier Cards */}
       <div className="grid grid-cols-2 gap-3">
         {CPM_TIERS.map((tier) => {
           const isActive = activeTier?.label === tier.label;
@@ -49,7 +47,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
               className={`p-4 rounded-xl border transition-colors ${
                 isActive
                   ? "border-accent-400 bg-accent-400/10"
-                  : "border-border-base bg-surface-elevated"
+                  : "border-border-base bg-white/[0.04]"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -61,7 +59,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
                 )}
               </div>
 
-              <p className={`text-lg font-bold mb-0.5 ${isActive ? "text-accent-400" : "text-text-accent"}`}>
+              <p className={`text-lg font-bold mb-0.5 ${isActive ? "text-accent-400" : "text-text-primary"}`}>
                 ${tier.cpm.toFixed(2)} <span className="text-sm font-normal">CPM</span>
               </p>
 
@@ -71,9 +69,8 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
         })}
       </div>
 
-      {/* No-tier warning */}
       {budget !== null && budget > 0 && budget < 5000 && (
-        <p className="text-xs text-warning-500 flex items-center gap-1.5">
+        <p className="text-xs text-yellow-500 flex items-center gap-1.5">
           <Icon icon="solar:danger-triangle-bold-duotone" className="text-base flex-shrink-0" />
           Minimum budget of $5,000 required to qualify for a CPM tier.
         </p>

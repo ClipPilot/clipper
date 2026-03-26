@@ -272,7 +272,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
         <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
-              <dt className="text-base text-text-accent font-medium inline-flex items-center gap-1.5">
+              <dt className="text-base text-text-primary font-medium inline-flex items-center gap-1.5">
                 Analytics
                 <HTooltip content={`Times shown in ${TIMEZONE}`} placement="top" size="sm">
                   <Icon

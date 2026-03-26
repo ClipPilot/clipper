@@ -68,10 +68,10 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
     <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md bg-surface-base border border-border-accent">
 <form onSubmit={handleSubmit}>
-            <Modal.Header className="flex flex-col items-start border-b border-border-base">
+            <Modal.Header>
               <div className="flex gap-2 items-center">
                 <Icon icon="solar:folder-bold-duotone" className="text-2xl" style={{ color }} />
-                <h3 className="text-xl font-bold text-text-accent">
+                <h3 className="text-xl font-bold text-text-primary">
                   Edit Folder
                 </h3>
               </div>
@@ -88,7 +88,7 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
               </TextField>
 
               <div>
-                <label className="text-sm font-medium text-text-accent mb-2 block">
+                <label className="text-sm font-medium text-text-primary mb-2 block">
                   Folder Color
                 </label>
                 <div className="grid grid-cols-8 gap-2">
@@ -120,7 +120,7 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
               </TextField>
             </Modal.Body>
 
-            <Modal.Footer className="border-t border-border-base">
+            <Modal.Footer>
               <Button
  variant="outline"
  onPress={onClose}

@@ -20,6 +20,7 @@ import {
   campaignUploadFilterAtom,
 } from "@/store/clips";
 import { Button, Card, Dropdown, Tooltip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
@@ -539,7 +540,7 @@ function MyClipsPageContent() {
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-accent">Library</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Library</h1>
           <div className="flex items-center gap-2">
             <Dropdown>
 <Button
@@ -647,7 +648,7 @@ function MyClipsPageContent() {
  onPress={() => setIsMobileFolderOpen(!isMobileFolderOpen)}
  >
                 <Icon icon="solar:folder-bold-duotone" className="text-accent-400" width={18} />
-                <span className="flex-1 text-left text-text-accent">
+                <span className="flex-1 text-left text-text-primary">
                   {selectedFolderId === null ? "All Folders" : folderPath[folderPath.length - 1]?.name || "Folder"}
                 </span>
                 <Icon icon={isMobileFolderOpen ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={16} />
@@ -730,7 +731,7 @@ function MyClipsPageContent() {
                 className="min-h-[200px]"
               >
                 <div className="flex items-center justify-between gap-2 mb-4">
-                  <h2 className="text-base sm:text-xl font-bold text-text-accent flex items-center gap-2 min-w-0">
+                  <h2 className="text-base sm:text-xl font-bold text-text-primary flex items-center gap-2 min-w-0">
                     <Icon
                       icon={isSearchMode ? "solar:magnifer-bold-duotone" : "solar:video-library-bold-duotone"}
                       className="text-xl sm:text-2xl text-accent-400 flex-shrink-0"

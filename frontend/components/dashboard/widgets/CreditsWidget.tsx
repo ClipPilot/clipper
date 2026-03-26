@@ -57,7 +57,7 @@ export function CreditsWidget({ color, onColorChange }: CreditsWidgetProps) {
         <div className="flex flex-col gap-4 h-full justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-2xl font-bold text-text-accent">
+              <span className="text-2xl font-bold text-text-primary">
                 {usageStats?.remaining ?? 0}
               </span>
               <Chip

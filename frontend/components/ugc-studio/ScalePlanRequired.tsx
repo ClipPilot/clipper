@@ -17,7 +17,7 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
               <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={40} />
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-text-accent">UGC Studio</h1>
+              <h1 className="text-2xl font-bold text-text-primary">UGC Studio</h1>
               <p className="text-text-secondary">
                 Create AI-powered character swaps and more with UGC Studio.
               </p>

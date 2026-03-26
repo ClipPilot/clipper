@@ -67,7 +67,7 @@ function RegenerationPanel({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Icon icon="solar:tuning-2-bold-duotone" className="text-accent-400" width={20} />
-          <span className="text-sm font-medium text-text-accent">Tweak Before Regenerating</span>
+          <span className="text-sm font-medium text-text-primary">Tweak Before Regenerating</span>
         </div>
         <Button
  isIconOnly
@@ -137,7 +137,7 @@ export function GenerateStep({
           <div className="w-14 h-14 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
             <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={28} />
           </div>
-          <h3 className="text-xl font-semibold text-text-accent mb-2">Generate Your Actor</h3>
+          <h3 className="text-xl font-semibold text-text-primary mb-2">Generate Your Actor</h3>
           <p className="text-text-secondary text-sm">
             We'll create 4 unique variations based on your selections
           </p>
@@ -150,7 +150,7 @@ export function GenerateStep({
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent-400/20 to-purple-500/20 flex items-center justify-center mx-auto mb-6 animate-pulse">
                   <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={36} />
                 </div>
-                <h4 className="text-lg font-semibold text-text-accent mb-2">
+                <h4 className="text-lg font-semibold text-text-primary mb-2">
                   Generating Your Actor
                 </h4>
                 <p className="text-text-secondary text-sm mb-6">{progressMessage}</p>
@@ -170,7 +170,7 @@ export function GenerateStep({
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent-400/30 to-purple-500/30 flex items-center justify-center mx-auto mb-6">
                   <Icon icon="solar:stars-bold-duotone" className="text-accent-400" width={40} />
                 </div>
-                <h4 className="text-lg font-semibold text-text-accent mb-2">
+                <h4 className="text-lg font-semibold text-text-primary mb-2">
                   Ready to Generate
                 </h4>
                 <p className="text-text-secondary text-sm mb-6 max-w-sm mx-auto">
@@ -198,7 +198,7 @@ export function GenerateStep({
   return (
     <div className="space-y-8">
       <div className="text-center mb-8">
-        <h3 className="text-xl font-semibold text-text-accent mb-2">Select Your Favorites</h3>
+        <h3 className="text-xl font-semibold text-text-primary mb-2">Select Your Favorites</h3>
         <p className="text-text-secondary text-sm">
           Click on images to select them • {selectedImageKeys.length} selected
         </p>
@@ -252,10 +252,10 @@ export function GenerateStep({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Icon icon="solar:tag-bold-duotone" className="text-accent-400" width={20} />
-            <span className="text-sm text-text-accent">Credit Cost</span>
+            <span className="text-sm text-text-primary">Credit Cost</span>
           </div>
           <div className="text-right">
-            <span className="text-lg font-semibold text-text-accent">
+            <span className="text-lg font-semibold text-text-primary">
               {selectedImageKeys.length} credits
             </span>
             <p className="text-xs text-text-muted">1 credit per selected image</p>

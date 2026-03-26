@@ -28,14 +28,14 @@ export function ConfirmGenerateModal({
     <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
         <Modal.Header>
-          <span className="text-text-accent">Confirm Video Generation</span>
+          <span className="text-text-primary">Confirm Video Generation</span>
         </Modal.Header>
         <Modal.Body>
           <div className="text-center py-4">
             <div className="flex justify-center mb-4">
               <BrandLogo size={64} />
             </div>
-            <p className="text-text-accent mb-2">
+            <p className="text-text-primary mb-2">
               This will use{" "}
               <span className={`font-bold ${accentTextClass}`}>
                 {creditCost} credits

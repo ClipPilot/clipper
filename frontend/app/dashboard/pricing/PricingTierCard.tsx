@@ -3,7 +3,6 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { Button,
-  Card,
   Chip,
   Separator,
   cn } from "@heroui/react";
@@ -25,30 +24,30 @@ export function PricingTierCard({
   onUpgrade,
 }: PricingTierCardProps) {
   return (
-    <Card
- className={cn(
- "bg-surface-elevated/80 border border-border-base p-3 backdrop-blur-md h-full flex flex-col",
- {
- "border-accent-400/50 shadow-lg shadow-accent-400/10": tier.mostPopular,
- }
- )}
- >
+    <div
+      className={cn(
+        "rounded-xl border border-border-base bg-surface-base overflow-hidden p-3 backdrop-blur-md h-full flex flex-col",
+        {
+          "border-accent-400/50 shadow-lg shadow-accent-400/10": tier.mostPopular,
+        }
+      )}
+    >
       {tier.mostPopular && (
         <Chip
- size="sm"
- >
+          size="sm"
+        >
           Most Popular
         </Chip>
       )}
-      <Card.Header className="flex flex-col items-start gap-2 pb-6">
-        <h2 className="text-xl font-semibold text-text-accent">{tier.title}</h2>
+      <div className="flex flex-col items-start gap-2 p-4 pb-6">
+        <h2 className="text-xl font-semibold text-text-primary">{tier.title}</h2>
         <p className="text-sm text-text-secondary">{tier.description}</p>
-      </Card.Header>
+      </div>
       <Separator className="bg-border-base" />
-      <Card.Content className="gap-6 flex-1">
+      <div className="p-4 space-y-6 flex-1">
         <div className="pt-2 min-h-[88px]">
           <div className="flex items-baseline gap-1 min-h-[48px]">
-            <span className="text-4xl font-bold text-text-accent">
+            <span className="text-4xl font-bold text-text-primary">
               {tier.price}
             </span>
             <span className="text-sm text-text-tertiary min-w-[70px]">
@@ -63,7 +62,7 @@ export function PricingTierCard({
         <div className="flex flex-col gap-2 rounded-lg bg-surface-dark/50 p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-tertiary">Credits</span>
-            <span className="text-sm font-medium text-text-accent">
+            <span className="text-sm font-medium text-text-primary">
               {tier.credits}
             </span>
           </div>
@@ -81,23 +80,22 @@ export function PricingTierCard({
             </li>
           ))}
         </ul>
-      </Card.Content>
-      <Card.Footer>
+      </div>
+      <div className="p-4 pt-0">
         <Button
- fullWidth
- className={cn({
- "bg-accent-400 text-white font-semibold":
- tier.mostPopular && !isDisabled,
- })}
- color={tier.mostPopular && !isDisabled ? "primary" : "default"}
- variant={isDisabled ? "flat" : tier.buttonVariant}
- isDisabled={isDisabled}
- isPending={isLoading}
- onPress={onUpgrade}
- >
+          fullWidth
+          className={cn({
+            "bg-accent-400 text-white font-semibold":
+              tier.mostPopular && !isDisabled,
+          })}
+          variant={isDisabled ? "tertiary" : tier.buttonVariant}
+          isDisabled={isDisabled}
+          isPending={isLoading}
+          onPress={onUpgrade}
+        >
           {buttonText}
         </Button>
-      </Card.Footer>
-    </Card>
+      </div>
+    </div>
   );
 }
