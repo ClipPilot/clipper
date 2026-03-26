@@ -1,16 +1,16 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Card, CardBody, Input, Button, Chip, addToast } from "@heroui/react";
+import { Card, CardBody, Input, Button, Chip, Tabs, Tab, Select, SelectItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import {
   platformIcon,
   platformIconColor,
   platformDisplayName,
   Platform,
 } from "@/lib/platformUtils";
-
-// ─── Platform detection ─────────────────────────────────────────────
 
 const PLATFORM_HOSTS: [string, Platform][] = [
   ["tiktok.com", "tiktok"],
@@ -36,8 +36,6 @@ function detectPlatform(url: string): Platform | null {
   }
 }
 
-// ─── Types ──────────────────────────────────────────────────────────
-
 type RowStatus = "queued" | "processing" | "success" | "error";
 
 interface QueueEntry {
@@ -49,8 +47,6 @@ interface QueueEntry {
   error?: string;
 }
 
-// ─── API call ───────────────────────────────────────────────────────
-
 async function submitOne(postId: number, postUrl: string) {
   const res = await fetch("/api/mark-posted", {
     method: "POST",
@@ -61,8 +57,6 @@ async function submitOne(postId: number, postUrl: string) {
   if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
   return data;
 }
-
-// ─── Status icon ────────────────────────────────────────────────────
 
 function StatusIcon({ status }: { status: RowStatus }) {
   switch (status) {
@@ -77,7 +71,28 @@ function StatusIcon({ status }: { status: RowStatus }) {
   }
 }
 
-// ─── Page ───────────────────────────────────────────────────────────
+interface ParsedSpreadsheet {
+  headers: string[];
+  rows: Record<string, string>[];
+}
+
+function validateSpreadsheetRow(
+  row: Record<string, string>,
+  idColumn: string,
+  urlColumn: string
+): { postId: number; postUrl: string; platform: Platform } | null {
+  const rawId = row[idColumn]?.trim();
+  const rawUrl = row[urlColumn]?.trim();
+  if (!rawId || !rawUrl) return null;
+
+  const postId = Number(rawId);
+  if (!Number.isInteger(postId) || postId <= 0) return null;
+
+  const platform = detectPlatform(rawUrl);
+  if (!platform) return null;
+
+  return { postId, postUrl: rawUrl, platform };
+}
 
 let nextKey = 0;
 
@@ -85,6 +100,11 @@ export default function MarkPostedPage() {
   const [postId, setPostId] = useState("");
   const [postUrl, setPostUrl] = useState("");
   const [queue, setQueue] = useState<QueueEntry[]>([]);
+
+  const [parsed, setParsed] = useState<ParsedSpreadsheet | null>(null);
+  const [idColumn, setIdColumn] = useState("");
+  const [urlColumn, setUrlColumn] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processingRef = useRef(false);
   const queueRef = useRef(queue);
@@ -104,7 +124,6 @@ export default function MarkPostedPage() {
   const errorCount = queue.filter((r) => r.status === "error").length;
   const queuedCount = queue.filter((r) => r.status === "queued" || r.status === "processing").length;
 
-  // Worker loop — processes one entry at a time, keeps going while there are queued items
   const processQueue = useCallback(async () => {
     if (processingRef.current) return;
     processingRef.current = true;
@@ -116,7 +135,6 @@ export default function MarkPostedPage() {
 
       const entry = current[nextIdx];
 
-      // Mark as processing
       setQueue((prev) =>
         prev.map((r) => (r.key === entry.key ? { ...r, status: "processing" } : r))
       );
@@ -152,10 +170,8 @@ export default function MarkPostedPage() {
 
     setQueue((prev) => [entry, ...prev]);
     setPostId("");
-    // Keep postUrl so VAs can quickly add many IDs for the same URL
   }
 
-  // Kick off the worker whenever queue changes
   useEffect(() => {
     const hasQueued = queue.some((e) => e.status === "queued");
     if (hasQueued && !processingRef.current) {
@@ -173,10 +189,82 @@ export default function MarkPostedPage() {
     );
   }
 
+  function loadParsedData(headers: string[], rows: Record<string, string>[]) {
+    setParsed({ headers, rows });
+    setIdColumn("");
+    setUrlColumn("");
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isExcel = /\.xlsx?$/i.test(file.name);
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+          defval: "",
+          raw: false,
+        });
+        const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+        loadParsedData(headers, rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete(results) {
+          const headers = results.meta.fields || [];
+          const rows = results.data as Record<string, string>[];
+          loadParsedData(headers, rows);
+        },
+      });
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function handleResetUpload() {
+    setParsed(null);
+    setIdColumn("");
+    setUrlColumn("");
+  }
+
+  const previewRows = useMemo(() => {
+    if (!parsed || !idColumn || !urlColumn) return [];
+    return parsed.rows.map((row) => validateSpreadsheetRow(row, idColumn, urlColumn));
+  }, [parsed, idColumn, urlColumn]);
+
+  const validCount = previewRows.filter(Boolean).length;
+  const invalidCount = previewRows.length - validCount;
+
+  function handleBulkSubmit() {
+    const entries: QueueEntry[] = [];
+    for (const result of previewRows) {
+      if (!result) continue;
+      entries.push({
+        key: String(++nextKey),
+        postId: result.postId,
+        postUrl: result.postUrl,
+        platform: result.platform,
+        status: "queued",
+      });
+    }
+    setQueue((prev) => [...entries, ...prev]);
+    setParsed(null);
+    setIdColumn("");
+    setUrlColumn("");
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="w-full max-w-2xl flex flex-col gap-4">
-        {/* Input card */}
         <Card className="bg-surface-base border border-border-base">
           <CardBody className="flex flex-col gap-4 p-6">
             <div className="flex flex-col gap-1">
@@ -184,81 +272,237 @@ export default function MarkPostedPage() {
                 Mark Posts as Published
               </h1>
               <p className="text-sm text-text-secondary">
-                Add posts below — they&apos;ll be submitted automatically. You can keep adding while
-                previous ones process.
+                Add posts one at a time or upload a spreadsheet to bulk-submit.
               </p>
             </div>
 
-            <form onSubmit={handleAdd} className="flex flex-col gap-3">
-              <div className="flex gap-3 items-end">
-                <Input
-                  label="Post ID"
-                  placeholder="1234"
-                  type="number"
-                  value={postId}
-                  onValueChange={setPostId}
-                  isInvalid={postId !== "" && !isValidPostId}
-                  errorMessage={
-                    postId !== "" && !isValidPostId ? "Must be a positive number" : undefined
-                  }
-                  className="w-32 shrink-0"
-                  startContent={
-                    <Icon icon="solar:hashtag-bold" className="text-text-tertiary" />
-                  }
-                />
-
-                <Input
-                  label="Post URL"
-                  placeholder="https://www.tiktok.com/@user/video/..."
-                  type="url"
-                  value={postUrl}
-                  onValueChange={setPostUrl}
-                  isInvalid={postUrl.trim().length > 0 && !platform}
-                  errorMessage={
-                    postUrl.trim().length > 0 && !platform
-                      ? "Unsupported platform"
-                      : undefined
-                  }
-                  className="flex-1"
-                  startContent={
-                    <Icon icon="solar:link-bold" className="text-text-tertiary" />
-                  }
-                />
-
-                <Button
-                  type="submit"
-                  color="primary"
-                  isDisabled={!canAdd}
-                  className="shrink-0"
-                  startContent={<Icon icon="solar:add-circle-bold" className="text-lg" />}
-                >
-                  Add
-                </Button>
-              </div>
-
-              {platform && (
-                <Chip
-                  variant="flat"
-                  startContent={
-                    <Icon
-                      icon={platformIcon(platform)}
-                      className={`text-base ${platformIconColor(platform)}`}
+            <Tabs aria-label="Input mode" variant="underlined" color="primary">
+              <Tab key="manual" title={
+                <div className="flex items-center gap-1.5">
+                  <Icon icon="solar:pen-bold" className="text-sm" />
+                  <span>Manual</span>
+                </div>
+              }>
+                <form onSubmit={handleAdd} className="flex flex-col gap-3 pt-2">
+                  <div className="flex gap-3 items-end">
+                    <Input
+                      label="Post ID"
+                      placeholder="1234"
+                      type="number"
+                      value={postId}
+                      onValueChange={setPostId}
+                      isInvalid={postId !== "" && !isValidPostId}
+                      errorMessage={
+                        postId !== "" && !isValidPostId ? "Must be a positive number" : undefined
+                      }
+                      className="w-32 shrink-0"
+                      startContent={
+                        <Icon icon="solar:hashtag-bold" className="text-text-tertiary" />
+                      }
                     />
-                  }
-                  size="sm"
-                >
-                  {platformDisplayName(platform)}
-                </Chip>
-              )}
-            </form>
+
+                    <Input
+                      label="Post URL"
+                      placeholder="https://www.tiktok.com/@user/video/..."
+                      type="url"
+                      value={postUrl}
+                      onValueChange={setPostUrl}
+                      isInvalid={postUrl.trim().length > 0 && !platform}
+                      errorMessage={
+                        postUrl.trim().length > 0 && !platform
+                          ? "Unsupported platform"
+                          : undefined
+                      }
+                      className="flex-1"
+                      startContent={
+                        <Icon icon="solar:link-bold" className="text-text-tertiary" />
+                      }
+                    />
+
+                    <Button
+                      type="submit"
+                      color="primary"
+                      isDisabled={!canAdd}
+                      className="shrink-0"
+                      startContent={<Icon icon="solar:add-circle-bold" className="text-lg" />}
+                    >
+                      Add
+                    </Button>
+                  </div>
+
+                  {platform && (
+                    <Chip
+                      variant="flat"
+                      startContent={
+                        <Icon
+                          icon={platformIcon(platform)}
+                          className={`text-base ${platformIconColor(platform)}`}
+                        />
+                      }
+                      size="sm"
+                    >
+                      {platformDisplayName(platform)}
+                    </Chip>
+                  )}
+                </form>
+              </Tab>
+
+              <Tab key="spreadsheet" title={
+                <div className="flex items-center gap-1.5">
+                  <Icon icon="solar:file-bold" className="text-sm" />
+                  <span>Spreadsheet</span>
+                </div>
+              }>
+                <div className="flex flex-col gap-4 pt-2">
+                  {!parsed ? (
+                    <div
+                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border-base p-8 cursor-pointer hover:border-accent-400 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Icon icon="solar:upload-bold" className="text-3xl text-text-tertiary" />
+                      <p className="text-sm text-text-secondary">
+                        Click to upload a <span className="font-medium text-text-primary">.csv</span> or <span className="font-medium text-text-primary">.xlsx</span> file
+                      </p>
+                      <p className="text-xs text-text-tertiary">
+                        Must have columns for Post ID and Post URL
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon icon="solar:file-check-bold" className="text-green-500 text-lg" />
+                          <span className="text-sm text-text-primary font-medium">
+                            {parsed.rows.length} rows found
+                          </span>
+                          <span className="text-xs text-text-tertiary">
+                            ({parsed.headers.length} columns)
+                          </span>
+                        </div>
+                        <Button size="sm" variant="light" color="danger" onPress={handleResetUpload}>
+                          Remove
+                        </Button>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Select
+                          label="Post ID column"
+                          placeholder="Select column"
+                          selectedKeys={idColumn ? [idColumn] : []}
+                          onSelectionChange={(keys) => {
+                            const val = Array.from(keys)[0] as string;
+                            setIdColumn(val || "");
+                          }}
+                          className="flex-1"
+                          startContent={<Icon icon="solar:hashtag-bold" className="text-text-tertiary" />}
+                        >
+                          {parsed.headers.map((h) => (
+                            <SelectItem key={h}>{h}</SelectItem>
+                          ))}
+                        </Select>
+
+                        <Select
+                          label="Post URL column"
+                          placeholder="Select column"
+                          selectedKeys={urlColumn ? [urlColumn] : []}
+                          onSelectionChange={(keys) => {
+                            const val = Array.from(keys)[0] as string;
+                            setUrlColumn(val || "");
+                          }}
+                          className="flex-1"
+                          startContent={<Icon icon="solar:link-bold" className="text-text-tertiary" />}
+                        >
+                          {parsed.headers.map((h) => (
+                            <SelectItem key={h}>{h}</SelectItem>
+                          ))}
+                        </Select>
+                      </div>
+
+                      {idColumn && urlColumn && (
+                        <>
+                          <div className="flex items-center gap-3 text-sm">
+                            {validCount > 0 && (
+                              <span className="flex items-center gap-1 text-green-500">
+                                <Icon icon="solar:check-circle-bold" className="text-sm" />
+                                {validCount} valid
+                              </span>
+                            )}
+                            {invalidCount > 0 && (
+                              <span className="flex items-center gap-1 text-amber-500">
+                                <Icon icon="solar:danger-triangle-bold" className="text-sm" />
+                                {invalidCount} skipped (missing ID, URL, or unsupported platform)
+                              </span>
+                            )}
+                          </div>
+
+                          {validCount > 0 && (
+                            <div className="rounded-lg border border-border-base overflow-hidden">
+                              <div className="max-h-48 overflow-y-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="text-text-tertiary text-xs uppercase tracking-wider border-b border-border-base bg-surface-elevated/50">
+                                      <th className="text-left px-3 py-1.5">ID</th>
+                                      <th className="text-left px-3 py-1.5">Platform</th>
+                                      <th className="text-left px-3 py-1.5">URL</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {previewRows.map((result, i) => {
+                                      if (!result) return null;
+                                      return (
+                                        <tr key={i} className="border-b border-border-base last:border-b-0">
+                                          <td className="px-3 py-1.5 font-mono text-text-primary">#{result.postId}</td>
+                                          <td className="px-3 py-1.5">
+                                            <div className="flex items-center gap-1">
+                                              <Icon
+                                                icon={platformIcon(result.platform)}
+                                                className={`text-sm ${platformIconColor(result.platform)}`}
+                                              />
+                                              <span className="text-text-secondary text-xs">
+                                                {platformDisplayName(result.platform)}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="px-3 py-1.5 text-text-tertiary text-xs truncate max-w-48">
+                                            {result.postUrl}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          <Button
+                            color="primary"
+                            isDisabled={validCount === 0}
+                            onPress={handleBulkSubmit}
+                            startContent={<Icon icon="solar:upload-bold" className="text-lg" />}
+                          >
+                            Submit {validCount} post{validCount !== 1 ? "s" : ""}
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </Tab>
+            </Tabs>
           </CardBody>
         </Card>
 
-        {/* Queue table */}
         {queue.length > 0 && (
           <Card className="bg-surface-base border border-border-base">
             <CardBody className="p-0">
-              {/* Summary bar */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border-base">
                 <div className="flex items-center gap-3 text-sm text-text-secondary">
                   {queuedCount > 0 && (
@@ -287,7 +531,6 @@ export default function MarkPostedPage() {
                 )}
               </div>
 
-              {/* Table */}
               <div className="max-h-96 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead>
