@@ -8,7 +8,7 @@ import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { sceneImagesAtom, resetUGCAtom } from "@/store/ugc";
 import { resetAdCloneAtom } from "@/store/adClone";
-import { currentStepAtom, videoStateAtom } from "@/store/videoState";
+import { currentStepAtom, videoStateAtom, isReady } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { adCloneAPI } from "@/api/adClone";
@@ -122,6 +122,12 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     (img) => img.status === "generating" || img.status === "regenerating",
   );
   const isChatDisabled = isThinking || isAnalyzing;
+
+  const scenesReady =
+    isReady(videoState) &&
+    Object.keys(sceneImages).length > 0 &&
+    !isImagesGenerating &&
+    videoState.scenes.every((s) => sceneImages[s.id]?.status === "completed");
 
   const chatInputRef = useRef<ChatInputHandle>(null);
   const savedCharacterIdRef = useRef<number | null>(null);
@@ -296,6 +302,9 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
               onAccept={handleAccept}
               onRetry={retryStructure}
               adCloneStep={adCloneStep}
+              scenesReady={!!scenesReady}
+              onGenerateVideo={handleContinueToGenerate}
+              isGenerateLoading={isStartingGeneration}
             />
           </ImageDropZone>
           {isImagesGenerating && (
