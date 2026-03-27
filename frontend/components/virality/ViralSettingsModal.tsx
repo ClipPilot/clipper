@@ -360,12 +360,10 @@ export function ViralSettingsModal({
                 </div>
                 {usePercent && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input onChange={(e) => setPercentValue(e.target.value)}
- type="number"
- value={percentValue}
- >
-                      <span className="text-gray-500 text-xs">%</span>
-                    </Input>
+                    <div className="relative">
+                      <Input onChange={(e) => setPercentValue(e.target.value)} type="number" value={percentValue} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs pointer-events-none">%</span>
+                    </div>
                     <span className="text-xs text-gray-400">increase triggers alert</span>
                   </div>
                 )}
@@ -428,12 +426,10 @@ export function ViralSettingsModal({
                 </div>
                 {useAbsolute && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input onChange={(e) => setAbsoluteValue(e.target.value)}
- type="number"
- value={absoluteValue}
- >
-                      <span className="text-gray-500 text-xs">+</span>
-                    </Input>
+                    <div className="relative">
+                      <Input onChange={(e) => setAbsoluteValue(e.target.value)} type="number" value={absoluteValue} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs pointer-events-none">+</span>
+                    </div>
                     <span className="text-xs text-gray-400">views triggers alert</span>
                   </div>
                 )}

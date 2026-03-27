@@ -151,8 +151,8 @@ export function CompetitorCard({
                 <Button
  size="sm"
  isIconOnly
- variant="tertiary"
- className="text-text-tertiary h-7 w-7 min-w-0"
+ variant="ghost"
+ className="!bg-transparent text-text-tertiary hover:text-text-primary h-7 w-7 min-w-0"
  onPress={() => onEditStart(competitor.id, competitor.name)}
  >
                   <Icon icon="solar:pen-2-linear" width={14} />

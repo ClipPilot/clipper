@@ -29,7 +29,7 @@ export function StepBrandInfo({
           Name your campaign and tell us about your brand.
         </p>
       </div>
-      <TextField isRequired>
+      <TextField fullWidth variant="secondary" isRequired>
         <Label>Campaign Name</Label>
         <Input
           onChange={(e) => setCampaignName(e.target.value)}
@@ -38,18 +38,18 @@ export function StepBrandInfo({
         />
         <FieldError />
       </TextField>
-      <TextField isRequired>
+      <TextField fullWidth variant="secondary" isRequired>
         <Label>Brand Description</Label>
         <TextArea
           placeholder="Describe your brand, products/services, and target market..."
           value={brandDescription}
           onChange={(e) => setBrandDescription(e.target.value)}
-          minRows={4}
-          maxRows={8}
+          rows={4}
+          
         />
         <FieldError />
       </TextField>
-      <TextField type="url">
+      <TextField fullWidth variant="secondary" type="url">
         <Label>Company Website</Label>
         <Input
           onChange={(e) => setCompanyWebsite(e.target.value)}

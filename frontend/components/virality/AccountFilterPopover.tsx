@@ -87,12 +87,10 @@ export function AccountFilterPopover({
       </Popover.Trigger>
       <Popover.Content className="w-72 p-0 bg-white/[0.04]">
         <div className="p-3 space-y-3">
-          <Input onChange={(e) => setSearch(e.target.value)}
- placeholder="Search accounts..."
- value={search}
- >
-            <Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />
-          </Input>
+          <div className="relative">
+            <Icon icon="solar:magnifer-linear" width={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+            <Input onChange={(e) => setSearch(e.target.value)} placeholder="Search accounts..." value={search} className="pl-9" />
+          </div>
 
           <div className="max-h-60 overflow-y-auto space-y-0.5">
             {filteredAccounts.length === 0 ? (

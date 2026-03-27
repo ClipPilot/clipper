@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
+import {
   Chip,
   Button,
   Spinner,
@@ -141,7 +136,7 @@ export function PublishedPostsTab({
             <Button
  size="sm"
  variant="tertiary"
- className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+ className="bg-white/[0.04] text-text-secondary h-9"
  onPress={handleExportCSV}
  isDisabled={posts.length === 0}
  >
@@ -165,118 +160,116 @@ export function PublishedPostsTab({
             <p className="text-sm">No published posts found</p>
           </div>
         ) : (
-          <Table
-            aria-label="Published posts table"
-            removeWrapper
-            classNames={{
-              th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-              td: "py-4 px-4 border-t border-border-base" }}
-          >
-            <TableHeader>
-              <TableColumn>CONTENT</TableColumn>
-              <TableColumn>ACCOUNT</TableColumn>
-              <TableColumn>PLATFORM</TableColumn>
-              <TableColumn>PUBLISHED DATE</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {posts.map((post) => {
-                const { date, time } = formatDateTime(post.posted_time);
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">CONTENT</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">ACCOUNT</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">PLATFORM</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">PUBLISHED DATE</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.map((post) => {
+                  const { date, time } = formatDateTime(post.posted_time);
 
-                return (
-                  <TableRow
-                    key={post.id}
-                    className="hover:bg-surface-elevated/50 transition-colors"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {post.clip_url ? (
-                          <button
-                            onClick={() => handleVideoClick(post.clip_url)}
-                            className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-surface-elevated flex-shrink-0 group cursor-pointer"
-                          >
-                            <video
-                              src={post.clip_url}
-                              className="w-full h-full object-cover"
-                              muted
-                              preload="metadata"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  return (
+                    <tr
+                      key={post.id}
+                      className="hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <div className="flex items-center gap-3">
+                          {post.clip_url ? (
+                            <button
+                              onClick={() => handleVideoClick(post.clip_url)}
+                              className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-white/[0.04] flex-shrink-0 group cursor-pointer"
+                            >
+                              <video
+                                src={post.clip_url}
+                                className="w-full h-full object-cover"
+                                muted
+                                preload="metadata"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Icon
+                                  icon="solar:play-bold"
+                                  width={20}
+                                  className="text-white"
+                                />
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="w-[72px] h-[48px] rounded-md bg-white/[0.04] flex-shrink-0 flex items-center justify-center">
                               <Icon
-                                icon="solar:play-bold"
-                                width={20}
-                                className="text-white"
+                                icon="solar:videocamera-record-bold-duotone"
+                                width={24}
+                                className="text-text-tertiary"
                               />
                             </div>
-                          </button>
-                        ) : (
-                          <div className="w-[72px] h-[48px] rounded-md bg-surface-elevated flex-shrink-0 flex items-center justify-center">
-                            <Icon
-                              icon="solar:videocamera-record-bold-duotone"
-                              width={24}
-                              className="text-text-tertiary"
-                            />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-text-accent truncate max-w-[320px]">
-                            {post.clip_title || `Post #${post.id}`}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                            <span className="text-xs text-text-tertiary">
-                              Published
-                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-text-primary truncate max-w-[320px]">
+                              {post.clip_title || `Post #${post.id}`}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                              <span className="text-xs text-text-tertiary">
+                                Published
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-text-secondary">
-                        {post.accountHandle || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <span className="text-sm text-text-secondary">
+                          {post.accountHandle || "—"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <Chip
  size="sm"
  variant="tertiary"
  >
-                        <Icon icon={platformIcon(post.platform)} width={12} />
-                        <span className="text-xs capitalize">
-                          {post.platform}
-                        </span>
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm text-text-accent">{date}</p>
-                        <p className="text-xs text-text-tertiary">{time}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {post.post_url ? (
-                        <Button
+                          <Icon icon={platformIcon(post.platform)} width={12} />
+                          <span className="text-xs capitalize">
+                            {post.platform}
+                          </span>
+                        </Chip>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <div>
+                          <p className="text-sm text-text-primary">{date}</p>
+                          <p className="text-xs text-text-tertiary">{time}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        {post.post_url ? (
+                          <Button
  size="sm"
  variant="tertiary"
  isIconOnly
- className="bg-transparent hover:bg-surface-elevated"
+ className="bg-transparent hover:bg-white/[0.04]"
  onPress={() => window.open(post.post_url!, "_blank")}
  >
-                          <Icon
-                            icon="solar:square-arrow-right-up-linear"
-                            width={16}
-                            className="text-text-secondary"
-                          />
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-text-tertiary">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                            <Icon
+                              icon="solar:square-arrow-right-up-linear"
+                              width={16}
+                              className="text-text-secondary"
+                            />
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-text-tertiary">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
@@ -307,10 +300,9 @@ export function PublishedPostsTab({
         </div>
       </div>
 
-      {/* Video Preview Modal */}
       <Modal>
         <Modal.Backdrop isOpen={isOpen} onOpenChange={() => {
- onOpenChange();
+ onClose();
  setVideoUrl(null);
  }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
           <Modal.Body className="p-0">

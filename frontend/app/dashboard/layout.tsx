@@ -207,6 +207,7 @@ export default function DashboardLayout({
                 </Popover.Trigger>
                 <Popover.Content className="p-0">
                   <WorkspaceSelector
+                    onClose={() => setIsWorkspaceOpen(false)}
                     onCreateTeam={() => {
                       setIsWorkspaceOpen(false);
                       setIsCreateTeamOpen(true);
@@ -245,6 +246,7 @@ export default function DashboardLayout({
                 </Popover.Trigger>
                 <Popover.Content className="p-0">
                   <WorkspaceSelector
+                    onClose={() => setIsWorkspaceOpen(false)}
                     onCreateTeam={() => {
                       setIsWorkspaceOpen(false);
                       setIsCreateTeamOpen(true);

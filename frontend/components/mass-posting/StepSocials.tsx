@@ -96,7 +96,7 @@ export function StepSocials({
         <div className="space-y-3">
           {companySocials.map((social, idx) => (
             <div key={idx} className="flex items-start gap-2">
-              <Select
+              <Select variant="secondary"
                 className="w-40 flex-shrink-0"
                 value={social.platform}
                 onChange={(val: Key | null) => {
@@ -137,8 +137,7 @@ export function StepSocials({
         </div>
         <Button
           size="sm"
-          variant="tertiary"
-          className="mt-3"
+          className="mt-3 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
           onPress={addCompanySocial}
         >
           <Icon icon="solar:add-circle-bold" />
@@ -160,7 +159,7 @@ export function StepSocials({
             <div key={cIdx} className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <TextField>
+                  <TextField fullWidth variant="secondary">
                     <Label>Competitor Name</Label>
                     <Input
                       onChange={(e) => updateCompetitorField(cIdx, "companyName", e.target.value)}
@@ -183,7 +182,7 @@ export function StepSocials({
                 </div>
                 {competitor.accounts.map((account, aIdx) => (
                   <div key={aIdx} className="flex items-start gap-2 pl-2">
-                    <Select
+                    <Select variant="secondary"
                       className="w-36 flex-shrink-0"
                       value={account.platform}
                       onChange={(val: Key | null) => {
@@ -223,7 +222,7 @@ export function StepSocials({
                 ))}
                 <Button
                   size="sm"
-                  variant="tertiary"
+                  className="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
                   onPress={() => addCompetitorAccount(cIdx)}
                 >
                   <Icon icon="solar:add-circle-linear" />
@@ -235,8 +234,7 @@ export function StepSocials({
         </div>
         <Button
           size="sm"
-          variant="tertiary"
-          className="mt-3"
+          className="mt-3 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
           onPress={addCompetitor}
         >
           <Icon icon="solar:add-circle-bold" />

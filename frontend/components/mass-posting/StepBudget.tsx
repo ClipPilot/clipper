@@ -24,9 +24,11 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
         </p>
       </div>
 
-      <TextField type="number" isRequired>
+      <TextField fullWidth variant="secondary" isRequired>
         <Label>Monthly Budget</Label>
         <Input
+          type="number"
+          inputMode="numeric"
           onChange={(e) => setBudget(e.target.value ? parseFloat(e.target.value) : null)}
           placeholder="e.g. 25000"
           value={budget?.toString() ?? ""}

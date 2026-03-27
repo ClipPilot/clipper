@@ -95,7 +95,7 @@ function RegenerationPanel({
  value={anythingElse}
  onChange={(e) => setAnythingElse(e.target.value)}
  placeholder="e.g., Holding a coffee cup, warm lighting, more confident pose..."
- minRows={2}
+ rows={2}
  />
         </div>
 

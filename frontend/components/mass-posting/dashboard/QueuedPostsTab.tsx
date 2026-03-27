@@ -150,7 +150,7 @@ export function QueuedPostsTab({
           aria-label="Queued posts table"
           removeWrapper
           classNames={{
-            th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
+            th: "bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
             td: "py-4 px-4 border-t border-border-base" }}
         >
           <TableHeader>
@@ -168,12 +168,12 @@ export function QueuedPostsTab({
               return (
                 <TableRow
                   key={group.clip_id ?? group.posts[0]?.id}
-                  className="hover:bg-surface-elevated/50 transition-colors"
+                  className="hover:bg-white/[0.02] transition-colors"
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {group.clip_url ? (
-                        <div className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-surface-elevated flex-shrink-0">
+                        <div className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-white/[0.04] flex-shrink-0">
                           <video
                             src={group.clip_url}
                             className="w-full h-full object-cover"
@@ -182,12 +182,12 @@ export function QueuedPostsTab({
                           />
                         </div>
                       ) : (
-                        <div className="w-[72px] h-[48px] rounded-md bg-surface-elevated flex-shrink-0 flex items-center justify-center">
+                        <div className="w-[72px] h-[48px] rounded-md bg-white/[0.04] flex-shrink-0 flex items-center justify-center">
                           <Icon icon="solar:videocamera-record-bold-duotone" width={24} className="text-text-tertiary" />
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-text-accent truncate max-w-[280px]">
+                        <p className="text-sm font-semibold text-text-primary truncate max-w-[280px]">
                           {group.clip_title || `Clip #${group.clip_id}`}
                         </p>
                         <p className="text-xs text-text-tertiary">
@@ -198,7 +198,7 @@ export function QueuedPostsTab({
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="text-sm text-text-accent">{date}</p>
+                      <p className="text-sm text-text-primary">{date}</p>
                       <p className="text-xs text-text-tertiary">{time}</p>
                     </div>
                   </TableCell>

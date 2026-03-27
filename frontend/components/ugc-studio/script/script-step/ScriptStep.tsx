@@ -379,7 +379,7 @@ export function ScriptStep({
  placeholder="Describe what you want... e.g., Make it funny, focus on the before/after, target skeptics"
  value={scriptDirection}
  onChange={(e) => setScriptDirection(e.target.value)}
- minRows={3}
+ rows={3}
  />
             <FieldError />
           </TextField>

@@ -74,7 +74,7 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
               )}
             </div>
             <div className="p-4 space-y-4">
-              <TextField isRequired>
+              <TextField fullWidth variant="secondary" isRequired>
                 <Label>Name / Label</Label>
                 <Input
                   onChange={(e) => updateICP(idx, "name", e.target.value)}
@@ -83,17 +83,17 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
                 />
                 <FieldError />
               </TextField>
-              <TextField isRequired>
+              <TextField fullWidth variant="secondary" isRequired>
                 <Label>Description</Label>
                 <TextArea
                   placeholder="Describe this customer segment..."
                   value={icp.description}
                   onChange={(e) => updateICP(idx, "description", e.target.value)}
-                  minRows={2}
+                  rows={2}
                 />
                 <FieldError />
               </TextField>
-              <TextField>
+              <TextField fullWidth variant="secondary">
                 <Label>Demographics</Label>
                 <Input
                   onChange={(e) => updateICP(idx, "demographics", e.target.value)}
@@ -149,7 +149,7 @@ function PainPointsInput({
   return (
     <div className="space-y-2">
       <div className="flex items-end gap-2">
-        <TextField>
+        <TextField fullWidth variant="secondary">
           <Label>Pain Points</Label>
           <Input
             onChange={(e) => setDraft(e.target.value)}

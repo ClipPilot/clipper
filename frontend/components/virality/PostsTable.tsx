@@ -2,12 +2,6 @@
 
 import { useState, useMemo } from "react";
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
   Avatar,
   Button,
   Dropdown,
@@ -81,8 +75,8 @@ function SortableHeader({
 }) {
   const isActive = currentSort === sortKey;
   return (
-    <button
-      className="inline-flex items-center gap-1 hover:text-text-secondary transition-colors"
+    <div
+      className="inline-flex items-center gap-1 hover:text-text-secondary transition-colors cursor-pointer"
       onClick={() => onSort(sortKey)}
     >
       {label}
@@ -98,7 +92,7 @@ function SortableHeader({
         width={12}
         className={isActive ? "text-accent-400" : "text-text-tertiary"}
       />
-    </button>
+    </div>
   );
 }
 
@@ -117,18 +111,18 @@ function FilterDropdown<T extends string>({
 
   return (
     <Dropdown>
-      <button
+      <div
         className={cn(
-          "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
+          "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
           isFiltered
             ? "bg-accent-400/10 text-accent-400 border border-accent-400/30"
-            : "bg-surface-elevated text-text-secondary hover:text-text-accent border border-transparent"
+            : "bg-surface-elevated text-text-secondary hover:text-text-primary border border-transparent"
         )}
       >
         <Icon icon={icon} width={13} />
         {selectedLabel}
         <Icon icon="solar:alt-arrow-down-linear" width={10} />
-      </button>
+      </div>
       <Dropdown.Popover>
         <Dropdown.Menu
           aria-label="Filter options"
@@ -261,165 +255,164 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
             icon="solar:heart-bold"
           />
           {activeFilterCount > 0 && (
-            <button
-              className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors underline"
+            <div
+              className="text-[11px] text-text-tertiary hover:text-text-secondary transition-colors underline cursor-pointer"
               onClick={() => { setViewsFilter("all"); setLikesFilter("all"); setPage(1); }}
             >
               Clear filters
-            </button>
+            </div>
           )}
         </div>
       </div>
 
       <div className="overflow-x-auto">
-      <Table
-        aria-label="Posts table"
-        className="min-w-[700px]"
-      >
-        <TableHeader>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">POST</TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">PLATFORM</TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
-            <SortableHeader label="VIEWS" sortKey="views" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-          </TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
-            <SortableHeader
-              label="ENG RATE"
-              sortKey="eng_rate"
-              currentSort={sortKey}
-              currentDir={sortDir}
-              onSort={handleSort}
-            />
-          </TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
-            <SortableHeader label="LIKES" sortKey="likes" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-          </TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
-            <SortableHeader label="COMMENTS" sortKey="comments" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-          </TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">TYPE</TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">
-            <SortableHeader label="PUBLISHED" sortKey="published" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
-          </TableColumn>
-          <TableColumn className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap">{""}</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {paginatedPosts.map((post) => (
-            <TableRow
-              key={post.id}
-              className="cursor-pointer hover:bg-surface-hover transition-colors"
-              onClick={() => window.open(post.post_url, "_blank")}
-            >
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <div className="flex items-center gap-3 max-w-sm">
-                  {!post.thumbnail_url || accountPlatformMap[post.account_id] === "instagram" ? (
-                    <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
-                      <Icon
-                        icon={platformIcon(accountPlatformMap[post.account_id])}
-                        width={20}
-                        className="text-text-tertiary"
-                      />
-                    </div>
-                  ) : (
-                    <Avatar size="sm" className="bg-surface-hover flex-shrink-0 rounded-sm">
-                      <Avatar.Image src={post.thumbnail_url} alt="Post thumbnail" />
-                      <Avatar.Fallback>P</Avatar.Fallback>
-                    </Avatar>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-accent truncate">
-                      {post.caption || "No caption"}
-                    </p>
-                    {post.mass_post_id != null && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <Chip size="sm" variant="tertiary" className="bg-violet-500/10 text-violet-500 h-5 px-1.5 text-[10px] font-medium">
-                          Managed by Cuttr
-                        </Chip>
-                        {post.campaign_name && (
-                          <Chip size="sm" variant="tertiary" className="bg-amber-500/10 text-amber-500 h-5 px-1.5 text-[10px] font-medium">
-                            {post.campaign_name}
-                          </Chip>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <Icon
-                  icon={platformIcon(accountPlatformMap[post.account_id])}
-                  width={16}
-                  className={platformIconColor(accountPlatformMap[post.account_id])}
+        <table className="w-full min-w-[700px]">
+          <thead>
+            <tr>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">POST</th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">PLATFORM</th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">
+                <SortableHeader label="VIEWS" sortKey="views" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              </th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">
+                <SortableHeader
+                  label="ENG RATE"
+                  sortKey="eng_rate"
+                  currentSort={sortKey}
+                  currentDir={sortDir}
+                  onSort={handleSort}
                 />
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <div className="flex flex-col">
-                  <span className="font-medium text-text-accent">
-                    {post.video_play_count != null
-                      ? formatNumber(post.video_play_count)
-                      : "—"}
+              </th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">
+                <SortableHeader label="LIKES" sortKey="likes" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              </th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">
+                <SortableHeader label="COMMENTS" sortKey="comments" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              </th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">TYPE</th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">
+                <SortableHeader label="PUBLISHED" sortKey="published" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
+              </th>
+              <th className="bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap text-left">{""}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedPosts.map((post) => (
+              <tr
+                key={post.id}
+                className="cursor-pointer hover:bg-surface-hover transition-colors"
+                onClick={() => window.open(post.post_url, "_blank")}
+              >
+                <td className="py-4 px-4 border-t border-border-base">
+                  <div className="flex items-center gap-3 max-w-sm">
+                    {!post.thumbnail_url || accountPlatformMap[post.account_id] === "instagram" ? (
+                      <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
+                        <Icon
+                          icon={platformIcon(accountPlatformMap[post.account_id])}
+                          width={20}
+                          className="text-text-tertiary"
+                        />
+                      </div>
+                    ) : (
+                      <Avatar size="sm" className="bg-surface-hover flex-shrink-0 rounded-sm">
+                        <Avatar.Image src={post.thumbnail_url} alt="Post thumbnail" />
+                        <Avatar.Fallback>P</Avatar.Fallback>
+                      </Avatar>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm text-text-primary truncate">
+                        {post.caption || "No caption"}
+                      </p>
+                      {post.mass_post_id != null && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <Chip size="sm" variant="tertiary" className="bg-violet-500/10 text-violet-500 h-5 px-1.5 text-[10px] font-medium">
+                            Managed by Cuttr
+                          </Chip>
+                          {post.campaign_name && (
+                            <Chip size="sm" variant="tertiary" className="bg-amber-500/10 text-amber-500 h-5 px-1.5 text-[10px] font-medium">
+                              {post.campaign_name}
+                            </Chip>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <Icon
+                    icon={platformIcon(accountPlatformMap[post.account_id])}
+                    width={16}
+                    className={platformIconColor(accountPlatformMap[post.account_id])}
+                  />
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-text-primary">
+                      {post.video_play_count != null
+                        ? formatNumber(post.video_play_count)
+                        : "—"}
+                    </span>
+                    <MetricChangeIndicator change={getPostMetricChange(post, "views", comparisonDate)} />
+                  </div>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-text-primary">
+                      {post.video_play_count
+                        ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
+                        : "—"}
+                    </span>
+                    <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} absolute />
+                  </div>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-text-primary">
+                      {formatNumber(post.like_count)}
+                    </span>
+                    <MetricChangeIndicator change={getPostMetricChange(post, "likes", comparisonDate)} />
+                  </div>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <div className="flex flex-col">
+                    <span className="font-medium text-text-primary">
+                      {formatNumber(post.comment_count)}
+                    </span>
+                    <MetricChangeIndicator change={getPostMetricChange(post, "comments", comparisonDate)} />
+                  </div>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  {post.post_type ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-text-secondary">
+                      {post.post_type}
+                    </span>
+                  ) : (
+                    <span className="text-text-tertiary">—</span>
+                  )}
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  <span className="text-sm text-text-secondary">
+                    {post.posted_at ? formatDate(post.posted_at) : "—"}
                   </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "views", comparisonDate)} />
-                </div>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <div className="flex flex-col">
-                  <span className="font-medium text-text-accent">
-                    {post.video_play_count
-                      ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
-                      : "—"}
-                  </span>
-                  <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} absolute />
-                </div>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <div className="flex flex-col">
-                  <span className="font-medium text-text-accent">
-                    {formatNumber(post.like_count)}
-                  </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "likes", comparisonDate)} />
-                </div>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <div className="flex flex-col">
-                  <span className="font-medium text-text-accent">
-                    {formatNumber(post.comment_count)}
-                  </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "comments", comparisonDate)} />
-                </div>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                {post.post_type ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-text-secondary">
-                    {post.post_type}
-                  </span>
-                ) : (
-                  <span className="text-text-tertiary">—</span>
-                )}
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                <span className="text-sm text-text-secondary">
-                  {post.posted_at ? formatDate(post.posted_at) : "—"}
-                </span>
-              </TableCell>
-              <TableCell className="py-4 px-4 border-t border-border-base">
-                {onDeletePost && (
-                  <button
-                    className="p-1 rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeletePost(post.id);
-                    }}
-                    aria-label="Remove post"
-                  >
-                    <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
-                  </button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                </td>
+                <td className="py-4 px-4 border-t border-border-base">
+                  {onDeletePost && (
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="tertiary"
+                      className="p-1 text-text-tertiary hover:text-red-500 hover:bg-red-500/10"
+                      onPress={() => onDeletePost(post.id)}
+                      aria-label="Remove post"
+                    >
+                      <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border-base">
@@ -445,7 +438,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
  setPage(1);
  }}
  >
-                {size}
+              {size}
               </Button>
             ))}
           </div>

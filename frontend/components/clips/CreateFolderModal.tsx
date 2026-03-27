@@ -117,7 +117,7 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
  placeholder="Add a for this folder..."
  value={message}
  onValueChange={setMessage}
- minRows={3}
+ rows={3}
  />
                 <FieldError />
               </TextField>

@@ -313,8 +313,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             {showBackButton && (
               <Button
  isIconOnly
- variant="tertiary"
- className="text-text-secondary flex-shrink-0"
+ variant="ghost"
+ className="!bg-transparent text-text-secondary hover:text-text-primary flex-shrink-0"
  onPress={() => router.push(backHref)}
  >
                 <Icon icon="solar:arrow-left-linear" width={20} />

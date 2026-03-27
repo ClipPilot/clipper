@@ -189,7 +189,7 @@ export const MyVideoJobsSection = forwardRef<
       {/* Delete confirmation modal */}
       <Modal>
         <Modal.Backdrop isOpen={!!deletingJobId} onOpenChange={() => !isDeleting && setDeletingJobId(null)}><Modal.Container><Modal.Dialog className="sm:max-w-sm">
-          <Modal.Header className="text-text-accent">Delete Video</Modal.Header>
+          <Modal.Header className="text-text-primary">Delete Video</Modal.Header>
           <Modal.Body>
             <p className="text-text-secondary">
               Are you sure you want to delete this video? This action cannot be undone.

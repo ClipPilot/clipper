@@ -75,7 +75,7 @@ export default function CreateTeamModal({
               </TextField>
             </Modal.Body>
             <Modal.Footer>
-              <Button slot="close" variant="secondary" className="flex-1" onPress={handleClose}>
+              <Button slot="close" className="flex-1 bg-white/[0.06] text-text-secondary hover:bg-white/[0.1]" onPress={handleClose}>
                 Cancel
               </Button>
               <Button

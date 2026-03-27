@@ -245,11 +245,11 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
                 variant="tertiary"
                 onPress={() => i <= currentStep && goToStep(i)}
                 isDisabled={i > currentStep}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors !bg-transparent ${
                   i === currentStep
-                    ? "bg-accent-400/10 text-accent-400"
+                    ? "text-accent-400"
                     : i < currentStep
-                      ? "text-green-500 hover:bg-white/[0.04] cursor-pointer"
+                      ? "text-green-500 cursor-pointer"
                       : "text-text-tertiary opacity-50 cursor-not-allowed"
                 }`}
               >
@@ -282,7 +282,8 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
         {currentStep < LAST_STEP && (
           <div className="flex justify-between mt-6">
             <Button
-              variant="tertiary"
+              variant="ghost"
+              className="!bg-transparent text-text-secondary hover:text-text-primary"
               isDisabled={currentStep === 0}
               onPress={handleBack}
             >
@@ -290,7 +291,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
               Back
             </Button>
             <Button
-              variant="primary"
+              className="bg-accent-400 text-white"
               isDisabled={!canProceed}
               onPress={handleNext}
             >

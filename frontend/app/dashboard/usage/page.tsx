@@ -141,7 +141,7 @@ export default function UsagePage() {
             isIconOnly
             variant="tertiary"
             onPress={() => router.back()}
-            className="rounded-xl bg-surface-elevated hover:bg-surface-elevated/80"
+            className="!bg-transparent text-text-secondary hover:text-text-primary"
           >
             <Icon
               icon="solar:arrow-left-linear"

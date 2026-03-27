@@ -198,7 +198,7 @@ export function VariationModal({
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
                           placeholder="e.g., wearing a red dress at a coffee shop, casual gym outfit in a modern apartment, professional blazer in an office setting..."
-                          minRows={4}
+                          rows={4}
                           className="bg-surface-elevated border-border-base"
                         />
                       </div>

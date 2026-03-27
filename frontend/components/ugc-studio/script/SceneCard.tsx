@@ -292,7 +292,7 @@ export function SceneCard({
               value={editedAction}
               onChange={(e) => setEditedAction(e.target.value)}
               placeholder="Enter action..."
-              minRows={1}
+              rows={1}
               className="bg-surface-base text-text-primary text-sm border-border-base"
             />
             <div className="flex justify-end gap-2">
@@ -357,7 +357,7 @@ export function SceneCard({
                 value={editedDialogue}
                 onChange={(e) => setEditedDialogue(e.target.value)}
                 placeholder="Enter dialogue..."
-                minRows={2}
+                rows={2}
                 className="bg-surface-base text-text-primary border-border-base"
               />
               <div className="flex justify-end gap-2">
@@ -428,7 +428,7 @@ export function SceneCard({
                               setEditedBRollShot({ ...editedBRollShot, action: e.target.value })
                             }
                             placeholder="What happens in this shot..."
-                            minRows={1}
+                            rows={1}
                             className="bg-surface-base text-text-primary text-sm border-border-base"
                           />
                         </div>

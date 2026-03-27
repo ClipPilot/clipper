@@ -267,7 +267,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
             variant="tertiary"
             size="sm"
             onPress={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
-            className="p-2 rounded-lg hover:bg-surface-elevated transition-colors"
+            className="p-2 text-text-secondary hover:text-text-primary transition-colors"
           >
             <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
           </Button>

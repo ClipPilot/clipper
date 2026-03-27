@@ -17,11 +17,13 @@ import { getPlanName, getPlanColor, isPaidPlan } from "@/lib/plans";
 interface WorkspaceSelectorProps extends CardProps {
   onCreateTeam?: () => void;
   onManageTeam?: () => void;
+  onClose?: () => void;
 }
 
 export default function WorkspaceSelector({
   onCreateTeam,
   onManageTeam,
+  onClose,
   ...props
 }: WorkspaceSelectorProps) {
   const router = useRouter();
@@ -52,9 +54,7 @@ export default function WorkspaceSelector({
         <Card.Header className="flex flex-col px-0 pb-0">
           <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
             <div>
-              <h4 className="text-base font-semibold text-text-primary">
-                Current Workspace
-              </h4>
+              <h4 className="text-base font-semibold text-text-primary">Current Workspace</h4>
               <div className="flex items-center gap-2 mt-1">
                 <span
                   className={cn(
@@ -66,6 +66,11 @@ export default function WorkspaceSelector({
                 </span>
               </div>
             </div>
+            {onClose && (
+              <Button isIconOnly variant="ghost" size="sm" className="!bg-transparent text-text-tertiary hover:text-text-primary" onPress={onClose}>
+                <Icon icon="solar:close-circle-bold" width={18} />
+              </Button>
+            )}
           </div>
         </Card.Header>
         <Card.Content className="w-full gap-0 p-0">

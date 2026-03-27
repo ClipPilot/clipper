@@ -164,40 +164,44 @@ export function AddAccountModal({
                     ? "Profile URL"
                     : "Username or Profile URL"}
             </label>
-            <Input onChange={(e) => (handleUrlChange)(e.target.value)}
- placeholder={
- accountType === "hashtag"
- ? "e.g. #fashion or fashion"
- : accountType === "keyword"
- ? "e.g. trending coffee"
- : selectedPlatform === "tiktok"
- ? "e.g. @selenagomez or tiktok.com/@selenagomez"
- : selectedPlatform === "x"
- ? "e.g. @elonmusk or x.com/elonmusk"
- : "e.g. instagram.com/creatorscale"
- }
- value={profileUrl}
- startContent={
- <Icon
- icon={
- accountType === "hashtag"
- ? "solar:hashtag-bold"
- : accountType === "keyword"
- ? "solar:magnifer-bold"
- : selectedPlatform === "instagram"
- ? "solar:link-linear"
- : "solar:at-linear"
- }
- width={18}
- className="text-gray-500"
- />
- }
- onKeyDown={(e) => {
- if (e.key === "Enter" && profileUrl.trim()) {
- handleSubmit();
- }
- }}
- />
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                <Icon
+                  icon={
+                    accountType === "hashtag"
+                      ? "solar:hashtag-bold"
+                      : accountType === "keyword"
+                        ? "solar:magnifer-bold"
+                        : selectedPlatform === "instagram"
+                          ? "solar:link-linear"
+                          : "solar:at-linear"
+                  }
+                  width={18}
+                  className="text-gray-500"
+                />
+              </div>
+              <Input
+                onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder={
+                  accountType === "hashtag"
+                    ? "e.g. #fashion or fashion"
+                    : accountType === "keyword"
+                      ? "e.g. trending coffee"
+                      : selectedPlatform === "tiktok"
+                        ? "e.g. @selenagomez or tiktok.com/@selenagomez"
+                        : selectedPlatform === "x"
+                          ? "e.g. @elonmusk or x.com/elonmusk"
+                          : "e.g. instagram.com/creatorscale"
+                }
+                value={profileUrl}
+                className="pl-9"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && profileUrl.trim()) {
+                    handleSubmit();
+                  }
+                }}
+              />
+            </div>
           </div>
 
           {/* Platform Selection */}

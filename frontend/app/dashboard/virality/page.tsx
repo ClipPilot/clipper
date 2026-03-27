@@ -509,10 +509,11 @@ export default function ViralityPage() {
               Alert Settings
             </Button>
             <Button
- className="bg-accent-400 text-white"
- onPress={onOpen}
- >
-              <Icon icon="solar:add-circle-bold" width={18} />
+              size="sm"
+              className="bg-blue-500 text-white hover:bg-blue-600"
+              onPress={onOpen}
+            >
+              <Icon icon="solar:add-circle-bold" width={16} />
               Add Account
             </Button>
           </div>
@@ -568,18 +569,15 @@ export default function ViralityPage() {
                 selected={platformFilter}
                 onChange={setPlatformFilter}
               />
-              <Input
-                placeholder="Search accounts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-60"
-              >
-                <Icon
-                  icon="solar:magnifer-linear"
-                  width={18}
-                  className="text-text-tertiary"
+              <div className="relative w-60">
+                <Icon icon="solar:magnifer-linear" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <Input
+                  placeholder="Search accounts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
                 />
-              </Input>
+              </div>
             </div>
             <RecalcOverlay active={isRecalculating}>
               <AccountsTable
