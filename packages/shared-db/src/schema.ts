@@ -501,6 +501,7 @@ export const ugcScripts = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     character_id: integer("character_id")
       .references(() => characters.id, { onDelete: "set null" }),
+    characters_config: jsonb("characters_config"),
     product_image_keys: jsonb("product_image_keys").notNull(),
     product_name: varchar("product_name", { length: 255 }),
     script_direction: text("script_direction"),
@@ -634,6 +635,7 @@ export const ugcVideoGenerationJobs = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     script_id: uuid("script_id").notNull(),
     voice_id: varchar("voice_id", { length: 255 }).notNull(),
+    voice_config: jsonb("voice_config"),
     status: ugcVideoJobStatusEnum("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
     progress_message: text("progress_message"),
