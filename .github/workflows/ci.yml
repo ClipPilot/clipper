@@ -1,0 +1,748 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, staging]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to deploy"
+        required: true
+        type: choice
+        options:
+          - all
+          - backend
+          - worker
+          - agent-service
+          - terraform
+          - face-detect
+          - scene-detect
+          - facecam-detect
+          - sscd-similarity
+          - virality-sync
+          - cpm-billing
+          - expire-clips
+        default: all
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+        default: production
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  AWS_REGION: us-west-2
+  TF_VERSION: "1.6.0"
+
+# ------------------------------------------------------------------------------
+# CHANGE DETECTION
+# ------------------------------------------------------------------------------
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.set-outputs.outputs.backend }}
+      worker: ${{ steps.set-outputs.outputs.worker }}
+      agent-service: ${{ steps.set-outputs.outputs.agent-service }}
+      infra: ${{ steps.set-outputs.outputs.infra }}
+      face-detect: ${{ steps.set-outputs.outputs.face-detect }}
+      scene-detect: ${{ steps.set-outputs.outputs.scene-detect }}
+      facecam-detect: ${{ steps.set-outputs.outputs.facecam-detect }}
+      sscd-similarity: ${{ steps.set-outputs.outputs.sscd-similarity }}
+      virality-sync: ${{ steps.set-outputs.outputs.virality-sync }}
+      cpm-billing: ${{ steps.set-outputs.outputs.cpm-billing }}
+      expire-clips: ${{ steps.set-outputs.outputs.expire-clips }}
+      environment: ${{ steps.set-env.outputs.environment }}
+      github-environment: ${{ steps.set-env.outputs.github-environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: set-env
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "github-environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.environment }}" == "production" ]]; then
+              echo "environment=prod" >> $GITHUB_OUTPUT
+              echo "github-environment=production" >> $GITHUB_OUTPUT
+            else
+              echo "environment=staging" >> $GITHUB_OUTPUT
+              echo "github-environment=staging" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "github-environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "github-environment=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect changed paths
+        if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/')
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'packages/shared-db/**'
+              - 'packages/shared-email/**'
+            agent-service:
+              - 'agent-service/**'
+              - 'packages/shared-db/**'
+            infra:
+              - 'infra/**'
+            face-detect:
+              - 'lambda-face-detect/**'
+            scene-detect:
+              - 'lambda-scene-detect/**'
+            facecam-detect:
+              - 'lambda-facecam-detect/**'
+            sscd-similarity:
+              - 'lambda-sscd-similarity/**'
+            virality-sync:
+              - 'lambda-virality-sync/**'
+              - 'packages/shared-db/**'
+            cpm-billing:
+              - 'lambda-cpm-billing/**'
+              - 'packages/shared-db/**'
+              - 'packages/shared-email/**'
+            expire-clips:
+              - 'lambda-expire-clips/**'
+              - 'packages/shared-db/**'
+
+      - name: Set outputs
+        id: set-outputs
+        run: |
+          EVENT="${{ github.event_name }}"
+          SERVICE="${{ inputs.service }}"
+
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            for svc in backend worker agent-service face-detect scene-detect facecam-detect sscd-similarity virality-sync cpm-billing expire-clips; do
+              echo "$svc=true" >> $GITHUB_OUTPUT
+            done
+            echo "infra=false" >> $GITHUB_OUTPUT
+          elif [[ "$EVENT" == "workflow_dispatch" ]]; then
+            should_deploy() {
+              [[ "$SERVICE" == "all" || "$SERVICE" == "$1" ]] && echo "true" || echo "false"
+            }
+            echo "backend=$(should_deploy backend)" >> $GITHUB_OUTPUT
+            echo "worker=$(should_deploy worker)" >> $GITHUB_OUTPUT
+            echo "agent-service=$(should_deploy agent-service)" >> $GITHUB_OUTPUT
+            echo "infra=$(should_deploy terraform)" >> $GITHUB_OUTPUT
+            echo "face-detect=$(should_deploy face-detect)" >> $GITHUB_OUTPUT
+            echo "scene-detect=$(should_deploy scene-detect)" >> $GITHUB_OUTPUT
+            echo "facecam-detect=$(should_deploy facecam-detect)" >> $GITHUB_OUTPUT
+            echo "sscd-similarity=$(should_deploy sscd-similarity)" >> $GITHUB_OUTPUT
+            echo "virality-sync=$(should_deploy virality-sync)" >> $GITHUB_OUTPUT
+            echo "cpm-billing=$(should_deploy cpm-billing)" >> $GITHUB_OUTPUT
+            echo "expire-clips=$(should_deploy expire-clips)" >> $GITHUB_OUTPUT
+          else
+            echo "backend=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
+            echo "worker=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
+            echo "agent-service=${{ steps.filter.outputs.agent-service }}" >> $GITHUB_OUTPUT
+            echo "infra=${{ steps.filter.outputs.infra }}" >> $GITHUB_OUTPUT
+            echo "face-detect=${{ steps.filter.outputs.face-detect }}" >> $GITHUB_OUTPUT
+            echo "scene-detect=${{ steps.filter.outputs.scene-detect }}" >> $GITHUB_OUTPUT
+            echo "facecam-detect=${{ steps.filter.outputs.facecam-detect }}" >> $GITHUB_OUTPUT
+            echo "sscd-similarity=${{ steps.filter.outputs.sscd-similarity }}" >> $GITHUB_OUTPUT
+            echo "virality-sync=${{ steps.filter.outputs.virality-sync }}" >> $GITHUB_OUTPUT
+            echo "cpm-billing=${{ steps.filter.outputs.cpm-billing }}" >> $GITHUB_OUTPUT
+            echo "expire-clips=${{ steps.filter.outputs.expire-clips }}" >> $GITHUB_OUTPUT
+          fi
+
+  # ------------------------------------------------------------------------------
+  # BACKEND TESTS
+  # ------------------------------------------------------------------------------
+  test-backend:
+    name: Backend Tests
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.backend == 'true' &&
+      !startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: |
+          pnpm --filter @clipper/shared-db build
+          pnpm --filter @clipper/shared-email build
+
+      - name: Run tests
+        working-directory: backend
+        run: pnpm test
+
+  # ------------------------------------------------------------------------------
+  # TERRAFORM
+  # ------------------------------------------------------------------------------
+  terraform-plan:
+    name: Terraform Plan
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || needs.detect-changes.outputs.github-environment }}
+    defaults:
+      run:
+        working-directory: ./infra
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: terraform init -backend-config="key=${{ needs.detect-changes.outputs.environment }}/terraform.tfstate"
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Create terraform.tfvars
+        env:
+          ENV_SUFFIX: ${{ needs.detect-changes.outputs.environment }}
+        run: |
+          if [[ "$ENV_SUFFIX" == "prod" ]]; then
+            NODE_ENV="production"
+            BACKEND_CPU=2048; BACKEND_MEMORY=4096; BACKEND_COUNT=2
+            WORKER_CPU=4096; WORKER_MEMORY=8192
+            DB_URL="${{ secrets.DATABASE_URL }}"
+            SUPA_URL="${{ secrets.SUPABASE_URL }}"
+            SUPA_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+            STRIPE_SK="${{ secrets.STRIPE_SECRET_KEY }}"
+            STRIPE_WH="${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+            AMPLIFY_BRANCH="main"
+            API_DOMAIN="api.cuttr.com"
+            FRONTEND_URL="https://platform.cuttr.com"
+            STATUS_DOMAIN="status.cuttr.com"
+          else
+            NODE_ENV="staging"
+            BACKEND_CPU=1024; BACKEND_MEMORY=2048; BACKEND_COUNT=1
+            WORKER_CPU=2048; WORKER_MEMORY=4096
+            DB_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            SUPA_URL="${{ secrets.STAGING_SUPABASE_URL }}"
+            SUPA_KEY="${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
+            STRIPE_SK="${{ secrets.STAGING_STRIPE_SECRET_KEY }}"
+            STRIPE_WH="${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}"
+            AMPLIFY_BRANCH="staging"
+            API_DOMAIN="api-staging.cuttr.com"
+            FRONTEND_URL="https://beta.cuttr.com"
+            STATUS_DOMAIN="status-staging.cuttr.com"
+          fi
+
+          cat > terraform.tfvars <<EOF
+          aws_region          = "${{ env.AWS_REGION }}"
+          environment         = "$ENV_SUFFIX"
+          node_env            = "$NODE_ENV"
+          project_name        = "clipster"
+
+          backend_container_port = 3001
+          backend_cpu            = $BACKEND_CPU
+          backend_memory         = $BACKEND_MEMORY
+          backend_desired_count  = $BACKEND_COUNT
+
+          worker_cpu             = $WORKER_CPU
+          worker_memory          = $WORKER_MEMORY
+
+          openai_api_key     = "${{ secrets.OPENAI_API_KEY }}"
+          deepgram_api_key   = "${{ secrets.DEEPGRAM_API_KEY }}"
+          database_url       = "$DB_URL"
+          supabase_url       = "$SUPA_URL"
+          supabase_anon_key  = "$SUPA_KEY"
+          resend_api_key     = "${{ secrets.RESEND_API_KEY }}"
+
+          stripe_secret_key     = "$STRIPE_SK"
+          stripe_webhook_secret = "$STRIPE_WH"
+
+          github_repository   = "${{ github.repository }}"
+          github_access_token = "${{ secrets.GH_PAT }}"
+          gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
+          amplify_branch      = "$AMPLIFY_BRANCH"
+
+          admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+          sync_key            = "${{ secrets.SYNC_KEY }}"
+
+          elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
+          fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
+          apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+          socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
+
+          tavily_api_key     = "${{ secrets.TAVILY_API_KEY }}"
+          internal_api_key   = "${{ secrets.INTERNAL_API_KEY }}"
+
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
+          api_domain          = "$API_DOMAIN"
+          frontend_url        = "$FRONTEND_URL"
+
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "$STATUS_DOMAIN"
+
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
+          EOF
+
+          if [[ "$ENV_SUFFIX" == "staging" ]]; then
+            echo "          shared_s3_bucket    = \"clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}\"" >> terraform.tfvars
+          fi
+
+      - name: Import existing ECR repos (staging only)
+        if: needs.detect-changes.outputs.environment == 'staging'
+        run: terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Save readable plan
+        run: terraform show -no-color tfplan > plan.txt
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-changes.outputs.environment }}
+          path: infra/tfplan
+          retention-days: 5
+
+      - name: Upload Terraform Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-build-${{ needs.detect-changes.outputs.environment }}
+          path: infra/.build/
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Comment PR with Plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8');
+
+            const body = `## Terraform Plan (${{ needs.detect-changes.outputs.environment }})
+
+            <details><summary>Click to expand</summary>
+
+            \`\`\`terraform
+            ${plan.substring(0, 65000)}
+            \`\`\`
+
+            </details>
+
+            _Triggered by @${{ github.actor }}_`;
+
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: [detect-changes, terraform-plan]
+    if: |
+      needs.detect-changes.outputs.infra == 'true' &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.detect-changes.outputs.github-environment }}
+    defaults:
+      run:
+        working-directory: ./infra
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init -backend-config="key=${{ needs.detect-changes.outputs.environment }}/terraform.tfstate"
+
+      - name: Create terraform.tfvars
+        env:
+          ENV_SUFFIX: ${{ needs.detect-changes.outputs.environment }}
+        run: |
+          if [[ "$ENV_SUFFIX" == "prod" ]]; then
+            NODE_ENV="production"
+            BACKEND_CPU=2048; BACKEND_MEMORY=4096; BACKEND_COUNT=2
+            WORKER_CPU=4096; WORKER_MEMORY=8192
+            DB_URL="${{ secrets.DATABASE_URL }}"
+            SUPA_URL="${{ secrets.SUPABASE_URL }}"
+            SUPA_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+            STRIPE_SK="${{ secrets.STRIPE_SECRET_KEY }}"
+            STRIPE_WH="${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+            AMPLIFY_BRANCH="main"
+            API_DOMAIN="api.cuttr.com"
+            FRONTEND_URL="https://platform.cuttr.com"
+            STATUS_DOMAIN="status.cuttr.com"
+          else
+            NODE_ENV="staging"
+            BACKEND_CPU=1024; BACKEND_MEMORY=2048; BACKEND_COUNT=1
+            WORKER_CPU=2048; WORKER_MEMORY=4096
+            DB_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            SUPA_URL="${{ secrets.STAGING_SUPABASE_URL }}"
+            SUPA_KEY="${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
+            STRIPE_SK="${{ secrets.STAGING_STRIPE_SECRET_KEY }}"
+            STRIPE_WH="${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}"
+            AMPLIFY_BRANCH="staging"
+            API_DOMAIN="api-staging.cuttr.com"
+            FRONTEND_URL="https://beta.cuttr.com"
+            STATUS_DOMAIN="status-staging.cuttr.com"
+          fi
+
+          cat > terraform.tfvars <<EOF
+          aws_region          = "${{ env.AWS_REGION }}"
+          environment         = "$ENV_SUFFIX"
+          node_env            = "$NODE_ENV"
+          project_name        = "clipster"
+
+          backend_container_port = 3001
+          backend_cpu            = $BACKEND_CPU
+          backend_memory         = $BACKEND_MEMORY
+          backend_desired_count  = $BACKEND_COUNT
+
+          worker_cpu             = $WORKER_CPU
+          worker_memory          = $WORKER_MEMORY
+
+          openai_api_key     = "${{ secrets.OPENAI_API_KEY }}"
+          deepgram_api_key   = "${{ secrets.DEEPGRAM_API_KEY }}"
+          database_url       = "$DB_URL"
+          supabase_url       = "$SUPA_URL"
+          supabase_anon_key  = "$SUPA_KEY"
+          resend_api_key     = "${{ secrets.RESEND_API_KEY }}"
+
+          stripe_secret_key     = "$STRIPE_SK"
+          stripe_webhook_secret = "$STRIPE_WH"
+
+          github_repository   = "${{ github.repository }}"
+          github_access_token = "${{ secrets.GH_PAT }}"
+          gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
+          amplify_branch      = "$AMPLIFY_BRANCH"
+
+          admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+          sync_key            = "${{ secrets.SYNC_KEY }}"
+
+          elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
+          fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
+          apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+          socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
+
+          tavily_api_key     = "${{ secrets.TAVILY_API_KEY }}"
+          internal_api_key   = "${{ secrets.INTERNAL_API_KEY }}"
+
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
+          api_domain          = "$API_DOMAIN"
+          frontend_url        = "$FRONTEND_URL"
+
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "$STATUS_DOMAIN"
+
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
+          EOF
+
+          if [[ "$ENV_SUFFIX" == "staging" ]]; then
+            echo "          shared_s3_bucket    = \"clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}\"" >> terraform.tfvars
+          fi
+
+      - name: Import existing ECR repos (staging only)
+        if: needs.detect-changes.outputs.environment == 'staging'
+        run: terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.detect-changes.outputs.environment }}
+          path: infra/
+
+      - name: Download Terraform Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-build-${{ needs.detect-changes.outputs.environment }}
+          path: infra/.build/
+        continue-on-error: true
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+  # ------------------------------------------------------------------------------
+  # ECS DEPLOYS
+  # Trigger: push to staging, tag push (v*), or workflow_dispatch
+  # Push to main alone does NOT deploy — only tags do (via release-please)
+  # ------------------------------------------------------------------------------
+  deploy-backend:
+    name: Deploy Backend
+    needs: [detect-changes, test-backend]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.backend == 'true' &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-ecs.yml
+    with:
+      service-name: backend
+      dockerfile: backend/Dockerfile
+      docker-context: "."
+      container-name: backend
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-worker:
+    name: Deploy Worker
+    needs: [detect-changes, test-backend]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.worker == 'true' &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-ecs.yml
+    with:
+      service-name: worker
+      dockerfile: backend/Dockerfile.worker
+      docker-context: "."
+      container-name: worker
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-agent-service:
+    name: Deploy Agent Service
+    needs: [detect-changes, test-backend]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.agent-service == 'true' &&
+      (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-ecs.yml
+    with:
+      service-name: agent-service
+      dockerfile: agent-service/Dockerfile
+      docker-context: "."
+      container-name: agent-service
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  # ------------------------------------------------------------------------------
+  # LAMBDA DEPLOYS
+  # Same trigger logic: staging push, tag push, or workflow_dispatch
+  # ------------------------------------------------------------------------------
+  deploy-face-detect:
+    name: Deploy Face Detect Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.face-detect == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: face-detect
+      dockerfile: lambda-face-detect/Dockerfile
+      docker-context: lambda-face-detect/
+      lambda-functions: clipster-face-detect-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-scene-detect:
+    name: Deploy Scene Detect Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.scene-detect == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: scene-detect
+      dockerfile: lambda-scene-detect/Dockerfile
+      docker-context: lambda-scene-detect/
+      lambda-functions: clipster-scene-detect-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-facecam-detect:
+    name: Deploy Facecam Detect Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.facecam-detect == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: facecam-detect
+      dockerfile: lambda-facecam-detect/Dockerfile
+      docker-context: lambda-facecam-detect/
+      lambda-functions: clipster-facecam-detect-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-sscd-similarity:
+    name: Deploy SSCD Similarity Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.sscd-similarity == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: sscd-similarity
+      dockerfile: lambda-sscd-similarity/Dockerfile
+      docker-context: lambda-sscd-similarity/
+      lambda-functions: clipster-sscd-similarity-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-virality-sync:
+    name: Deploy Virality Sync Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.virality-sync == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: virality-sync
+      dockerfile: lambda-virality-sync/Dockerfile
+      docker-context: "."
+      lambda-functions: >-
+        clipster-virality-sync-orchestrator-${{ needs.detect-changes.outputs.environment }},
+        clipster-virality-sync-worker-${{ needs.detect-changes.outputs.environment }},
+        clipster-virality-sync-extractor-${{ needs.detect-changes.outputs.environment }},
+        clipster-virality-sync-reporter-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-cpm-billing:
+    name: Deploy CPM Billing Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.cpm-billing == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: cpm-billing
+      dockerfile: lambda-cpm-billing/Dockerfile
+      docker-context: "."
+      lambda-functions: clipster-cpm-billing-${{ needs.detect-changes.outputs.environment }}
+      environment: ${{ needs.detect-changes.outputs.environment }}
+      github-environment: ${{ needs.detect-changes.outputs.github-environment }}
+    secrets: inherit
+
+  deploy-expire-clips:
+    name: Deploy Expire Clips Lambda
+    needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.expire-clips == 'true' &&
+      needs.detect-changes.outputs.environment == 'prod' &&
+      (
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+        github.event_name == 'workflow_dispatch'
+      )
+    uses: ./.github/workflows/_deploy-lambda.yml
+    with:
+      lambda-name: expire-clips
+      dockerfile: lambda-expire-clips/Dockerfile
+      docker-context: "."
+      lambda-functions: clipster-expire-clips
+      environment: prod
+      github-environment: production
+      ecr-repository-override: clipster-expire-clips-lambda
+    secrets: inherit
