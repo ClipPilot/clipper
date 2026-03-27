@@ -60,10 +60,10 @@ export default function TeamInvitesList({
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string): "accent" | "default" => {
     switch (role) {
       case "manager":
-        return "primary";
+        return "accent";
       case "member":
       default:
         return "default";

@@ -350,9 +350,9 @@ export function DashboardGrid() {
                       {userTeams.map((team) => (
                         <Dropdown.Item
                           key={team.id.toString()}
-                          startContent={<Avatar size="sm" className="w-6 h-6"><Avatar.Fallback>{team.name.charAt(0)}</Avatar.Fallback></Avatar>}
                           className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
                         >
+                          <Avatar size="sm" className="w-6 h-6"><Avatar.Fallback>{team.name.charAt(0)}</Avatar.Fallback></Avatar>
                           {team.name}
                         </Dropdown.Item>
                       ))}

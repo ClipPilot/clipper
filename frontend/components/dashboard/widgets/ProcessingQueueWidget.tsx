@@ -61,12 +61,12 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
     }
   };
 
-  const getStatusColor = (status: string): "warning" | "primary" | "success" | "default" => {
+  const getStatusColor = (status: string): "warning" | "accent" | "success" | "default" => {
     switch (status) {
       case "pending":
         return "warning";
       case "processing":
-        return "primary";
+        return "accent";
       case "completed":
         return "success";
       default:
@@ -138,7 +138,7 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
                     <Chip
  size="sm"
  color={getStatusColor(job.status)}
- variant="dot"
+ variant="soft"
  className="capitalize text-[10px]"
  >
                       {job.status}

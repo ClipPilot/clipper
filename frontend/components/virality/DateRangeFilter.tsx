@@ -139,11 +139,10 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
       </div>
 
       <DateRangePicker
-        size="sm"
         value={pickerValue as any}
         onChange={handlePickerChange as any}
         maxValue={today(getLocalTimeZone()) as any}
-        className="max-w-xs"
+        className="max-w-xs text-sm"
       />
     </div>
   );

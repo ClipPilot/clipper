@@ -25,7 +25,7 @@ interface VideoStatusPageProps {
 
 const colorMap: Record<AccentColor, {
   buttonClass: string;
-  spinnerColor: "warning" | "primary";
+  spinnerColor: "warning" | "accent";
   bgGlow: string;
   borderGlow: string;
   iconClass: string;
@@ -39,7 +39,7 @@ const colorMap: Record<AccentColor, {
   },
   accent: {
     buttonClass: "bg-accent-400 text-white font-semibold",
-    spinnerColor: "primary",
+    spinnerColor: "accent",
     bgGlow: "bg-accent-400/20",
     borderGlow: "border-accent-400",
     iconClass: "text-accent-400",

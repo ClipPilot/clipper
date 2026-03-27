@@ -108,8 +108,7 @@ export function AddAccountModal({
   };
 
   return (
-    <Modal
- hideCloseButton>
+    <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
         <Modal.Body className="gap-6">
           {/* Header */}

@@ -72,18 +72,17 @@ function ChartTitle({ title, infoTooltip }: { title: string; infoTooltip?: strin
         {title}
       </p>
       {infoTooltip && (
-        <HeroTooltip
-          content={infoTooltip}
-          placement="top"
-          className="max-w-[220px] text-xs"
-        >
-          <span className="cursor-help">
-            <Icon
-              icon="solar:info-circle-linear"
-              width={14}
-              className="text-text-tertiary"
-            />
-          </span>
+        <HeroTooltip>
+          <HeroTooltip.Trigger>
+            <span className="cursor-help">
+              <Icon
+                icon="solar:info-circle-linear"
+                width={14}
+                className="text-text-tertiary"
+              />
+            </span>
+          </HeroTooltip.Trigger>
+          <HeroTooltip.Content placement="top" className="max-w-[220px] text-xs">{infoTooltip}</HeroTooltip.Content>
         </HeroTooltip>
       )}
     </div>

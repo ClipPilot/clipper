@@ -40,7 +40,7 @@ export function CameraAngleSelector({
   };
 
   return (
-    <Popover isOpen={isCustomOpen} onOpenChange={setIsCustomOpen} placement="bottom">
+    <Popover isOpen={isCustomOpen} onOpenChange={setIsCustomOpen}>
       <Popover.Trigger>
         <div className="inline-block">
           <Dropdown>
@@ -74,7 +74,7 @@ export function CameraAngleSelector({
           </Dropdown>
         </div>
       </Popover.Trigger>
-      <Popover.Content className="bg-surface-elevated border border-border-base p-3 w-64">
+      <Popover.Content placement="bottom" className="bg-surface-elevated border border-border-base p-3 w-64">
         <div className="space-y-3">
           <p className="text-sm text-text-secondary">Custom camera angle</p>
           <Input

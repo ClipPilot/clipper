@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { Button, Card, Input, ProgressBar, Tabs } from "@heroui/react";
+import { Button, Card, InputGroup, ProgressBar, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { MultiSegmentTrimmer, VideoSegment } from "./multi-segment";
 import { UploadedFile } from "./types";
@@ -233,16 +233,20 @@ export function VideoUploadCard({
       ) : (
         <>
           <div className="flex gap-2">
-            <Input
- placeholder="Paste video URL (YouTube, TikTok, etc.)"
- value={urlInput}
- onChange={(e) => setUrlInput(e.target.value)}
- onKeyDown={(e) => {
- if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
- }}
- startContent={<Icon icon="solar:link-bold" className="text-text-tertiary" />}
- isDisabled={isFetchingInfo}
- />
+            <InputGroup className="flex-1">
+              <InputGroup.Prefix>
+                <Icon icon="solar:link-bold" className="text-text-tertiary" />
+              </InputGroup.Prefix>
+              <InputGroup.Input
+                placeholder="Paste video URL (YouTube, TikTok, etc.)"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
+                }}
+                disabled={isFetchingInfo}
+              />
+            </InputGroup>
             <Button
  variant="tertiary"
  onPress={handleFetchVideoInfo}

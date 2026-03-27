@@ -42,7 +42,7 @@ export default function DashboardLayout({
   const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useAtom(sidebarCollapsedAtom);
   const [contentCollapsed, setContentCollapsed] = useState(isCollapsed);
-  const expandTimer = useRef<ReturnType<typeof setTimeout>>();
+  const expandTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     clearTimeout(expandTimer.current);
@@ -144,20 +144,20 @@ export default function DashboardLayout({
               )}
             >
               {contentCollapsed ? (
-                <Tooltip
- content="Cuttr"
- placement="right"
- >
-                  <div className="flex items-center justify-center w-8 h-8">
-                    <Image
-                      src={CuttrIcon}
-                      alt="Cuttr"
-                      width={28}
-                      height={28}
-                      className="object-contain"
-                      unoptimized
-                    />
-                  </div>
+                <Tooltip>
+                  <Tooltip.Trigger>
+                    <div className="flex items-center justify-center w-8 h-8">
+                      <Image
+                        src={CuttrIcon}
+                        alt="Cuttr"
+                        width={28}
+                        height={28}
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="right">Cuttr</Tooltip.Content>
                 </Tooltip>
               ) : (
                 <>
@@ -196,7 +196,6 @@ export default function DashboardLayout({
 
             {contentCollapsed ? (
               <Popover
-                placement="right-start"
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
@@ -205,7 +204,7 @@ export default function DashboardLayout({
                     {teamIconEl}
                   </Button>
                 </Popover.Trigger>
-                <Popover.Content className="p-0">
+                <Popover.Content className="p-0" placement="right top">
                   <WorkspaceSelector
                     onClose={() => setIsWorkspaceOpen(false)}
                     onCreateTeam={() => {
@@ -221,7 +220,6 @@ export default function DashboardLayout({
               </Popover>
             ) : (
               <Popover
-                placement="bottom-start"
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
@@ -244,7 +242,7 @@ export default function DashboardLayout({
                     </div>
                   </Button>
                 </Popover.Trigger>
-                <Popover.Content className="p-0">
+                <Popover.Content placement="bottom start" className="p-0">
                   <WorkspaceSelector
                     onClose={() => setIsWorkspaceOpen(false)}
                     onCreateTeam={() => {
@@ -281,13 +279,13 @@ export default function DashboardLayout({
           >
             {contentCollapsed ? (
               <div className="flex flex-col items-center gap-2">
-                <Dropdown placement="right-start">
+                <Dropdown>
 <Button variant="tertiary" className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
                       <Avatar size="sm" className="bg-accent-400 text-white">
                         <Avatar.Fallback className="text-xs font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
                       </Avatar>
                     </Button>
-<Dropdown.Popover>
+<Dropdown.Popover placement="right top">
 
 <Dropdown.Menu aria-label="Account actions">
                     <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
@@ -316,24 +314,26 @@ export default function DashboardLayout({
 </Dropdown.Popover>
                 </Dropdown>
 
-                <Tooltip content="Expand sidebar" placement="right"
- >
-                  <Button
-                    isIconOnly
-                    variant="tertiary"
-                    size="sm"
-                    onPress={() => setIsCollapsed(!isCollapsed)}
-                    className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
-                  >
-                    <Icon
-                      icon="solar:alt-arrow-right-bold-duotone"
-                      width={18}
-                    />
-                  </Button>
+                <Tooltip>
+                  <Tooltip.Trigger>
+                    <Button
+                      isIconOnly
+                      variant="tertiary"
+                      size="sm"
+                      onPress={() => setIsCollapsed(!isCollapsed)}
+                      className="p-2 rounded-lg hover:bg-surface-elevated transition-colors text-text-tertiary hover:text-text-primary"
+                    >
+                      <Icon
+                        icon="solar:alt-arrow-right-bold-duotone"
+                        width={18}
+                      />
+                    </Button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content placement="right">Expand sidebar</Tooltip.Content>
                 </Tooltip>
               </div>
             ) : (
-                <Dropdown placement="top-start">
+                <Dropdown>
 <Button
  variant="tertiary"
  className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
@@ -359,7 +359,7 @@ export default function DashboardLayout({
                         />
                       </div>
                     </Button>
-<Dropdown.Popover>
+<Dropdown.Popover placement="top start">
 
 <Dropdown.Menu aria-label="Account actions">
                     <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
@@ -418,7 +418,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
-      <Toast.Provider placement="top-right" />
+      <Toast.Provider placement="top end" />
 
       <AnnouncementInboxModal />
       <AnnouncementPopupModal />

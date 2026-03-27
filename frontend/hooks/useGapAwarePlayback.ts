@@ -28,7 +28,7 @@ import {
  *     useGapAwarePlayback(videoRef);
  *   <video onTimeUpdate={handleTimeUpdate} ... />
  */
-export function useGapAwarePlayback(videoRef: React.RefObject<HTMLVideoElement>) {
+export function useGapAwarePlayback(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const [currentTime, setCurrentTime] = useAtom(currentTimeAtom);
   const [isPlaying, setIsPlaying] = useAtom(isPlayingAtom);
   const activeSegments = useAtomValue(activeSegmentsAtom);

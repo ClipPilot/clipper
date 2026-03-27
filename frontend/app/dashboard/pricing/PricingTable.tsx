@@ -162,18 +162,17 @@ export function PricingTable({
                       {tierFeature.helpText ? (
                         <div className="flex items-center gap-1">
                           <span>{tierFeature.title}</span>
-                          <Tooltip
- className="max-w-[240px] bg-surface-elevated text-text-primary"
- content={tierFeature.helpText}
- placement="right"
- >
-                            <span className="cursor-help">
-                              <Icon
-                                className="text-text-tertiary"
-                                icon="solar:info-circle-line-duotone"
-                                width={18}
-                              />
-                            </span>
+                          <Tooltip>
+                            <Tooltip.Trigger>
+                              <span className="cursor-help">
+                                <Icon
+                                  className="text-text-tertiary"
+                                  icon="solar:info-circle-line-duotone"
+                                  width={18}
+                                />
+                              </span>
+                            </Tooltip.Trigger>
+                            <Tooltip.Content placement="right" className="max-w-[240px] bg-surface-elevated text-text-primary">{tierFeature.helpText}</Tooltip.Content>
                           </Tooltip>
                         </div>
                       ) : (

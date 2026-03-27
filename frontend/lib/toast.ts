@@ -7,7 +7,7 @@ interface LegacyToastOptions {
   color?: "success" | "danger" | "warning" | "default" | string;
 }
 
-export function toast(options: LegacyToastOptions) {
+function toastLegacy(options: LegacyToastOptions) {
   const { title, description, color } = options;
   const method = color === "success" ? heroToast.success
     : color === "danger" || color === "error" ? heroToast.danger
@@ -20,5 +20,14 @@ export function toast(options: LegacyToastOptions) {
   }
   return method(title);
 }
+
+export const toast = Object.assign(toastLegacy, {
+  success: heroToast.success,
+  danger: heroToast.danger,
+  warning: heroToast.warning,
+  info: heroToast.info,
+  promise: heroToast.promise,
+  close: heroToast.close,
+});
 
 export { heroToast as toastDirect };

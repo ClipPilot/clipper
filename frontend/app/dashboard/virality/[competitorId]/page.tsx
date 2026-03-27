@@ -397,17 +397,11 @@ export default function CompetitorDetailPage() {
                     <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
                   </Button>
                   {competitor.accounts.length === 1 ? (
-                    <Button
- size="sm"
- isIconOnly
- variant="tertiary"
- as="a"
- href={competitor.accounts[0].profile_url}
- target="_blank"
- rel="noopener noreferrer"
- >
-                      <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
-                    </Button>
+                    <a href={competitor.accounts[0].profile_url} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" isIconOnly variant="tertiary">
+                        <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                      </Button>
+                    </a>
                   ) : competitor.accounts.length > 1 ? (
                     <Dropdown>
 <Button size="sm" isIconOnly variant="tertiary">

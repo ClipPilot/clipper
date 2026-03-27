@@ -94,15 +94,13 @@ export default function TeamMembersList({
       items.push(
         <Dropdown.Item
           key="promote-owner"
-          startContent={
-            <Icon
-              icon="solar:crown-bold-duotone"
-              width={18}
-              className="text-yellow-500"
-            />
-          }
           onPress={() => handleChangeRole(member.id, "owner")}
         >
+          <Icon
+            icon="solar:crown-bold-duotone"
+            width={18}
+            className="text-yellow-500"
+          />
           Make Owner
         </Dropdown.Item>,
       );
@@ -111,15 +109,13 @@ export default function TeamMembersList({
         items.push(
           <Dropdown.Item
             key="promote-manager"
-            startContent={
-              <Icon
-                icon="solar:user-check-bold-duotone"
-                width={18}
-                className="text-blue-500"
-              />
-            }
             onPress={() => handleChangeRole(member.id, "manager")}
           >
+            <Icon
+              icon="solar:user-check-bold-duotone"
+              width={18}
+              className="text-blue-500"
+            />
             Make Manager
           </Dropdown.Item>,
         );
@@ -129,15 +125,13 @@ export default function TeamMembersList({
         items.push(
           <Dropdown.Item
             key="demote"
-            startContent={
-              <Icon
-                icon="solar:user-bold-duotone"
-                width={18}
-                className="text-text-tertiary"
-              />
-            }
             onPress={() => handleChangeRole(member.id, "member")}
           >
+            <Icon
+              icon="solar:user-bold-duotone"
+              width={18}
+              className="text-text-tertiary"
+            />
             Make Member
           </Dropdown.Item>,
         );
@@ -150,12 +144,10 @@ export default function TeamMembersList({
       items.push(
         <Dropdown.Item
           key="remove"
-          color="danger"
-          startContent={
-            <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
-          }
+          className="text-red-500"
           onPress={() => handleRemoveMember(member.id)}
         >
+          <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
           Remove from Team
         </Dropdown.Item>,
       );
@@ -229,9 +221,7 @@ export default function TeamMembersList({
                       <Dropdown.Popover>
                         <Dropdown.Menu
                           aria-label="Member actions"
-                          classNames={{
-                            base: "bg-surface-base border border-border-base",
-                          }}
+                          className="bg-surface-base border border-border-base"
                         >
                           {getMenuItems(member)}
                         </Dropdown.Menu>

@@ -21,7 +21,8 @@ export default function AIVideoCreatorPage() {
     router.push("/dashboard/ugc-studio/ai-video-creator/create");
   };
 
-  // Check if user has access to UGC Studio
+  if (!selectedTeam) return null;
+
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">

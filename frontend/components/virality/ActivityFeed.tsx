@@ -109,16 +109,17 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
           <div className="flex items-center gap-1.5">
             <h3 className="text-sm font-medium text-text-primary">Top Performing Content</h3>
             {filter === "viral" && (
-              <Tooltip
- content={
- hasDateRange
- ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
- : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."
- }
- >
-                <span className="cursor-help">
-                  <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
-                </span>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <span className="cursor-help">
+                    <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
+                  </span>
+                </Tooltip.Trigger>
+                <Tooltip.Content>
+                  {hasDateRange
+                    ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
+                    : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."}
+                </Tooltip.Content>
               </Tooltip>
             )}
           </div>

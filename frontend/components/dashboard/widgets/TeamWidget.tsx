@@ -15,12 +15,12 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const userTeams = useAtomValue(userTeamsAtom);
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string): "warning" | "accent" | "default" => {
     switch (role) {
       case "owner":
         return "warning";
       case "manager":
-        return "primary";
+        return "accent";
       default:
         return "default";
     }
@@ -95,14 +95,9 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
               {userTeams.map((team) => (
                 <Dropdown.Item
                   key={team.id.toString()}
-                  startContent={
-                    <Avatar
- size="sm"
- className="w-6 h-6"
- />
-                  }
                   className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
                 >
+                  <Avatar size="sm" className="w-6 h-6" />
                   {team.name}
                 </Dropdown.Item>
               ))}

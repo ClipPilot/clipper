@@ -25,7 +25,7 @@ export function PlatformFilter({ selected, onChange }: PlatformFilterProps) {
         <Button
  key={filter.value}
  size="sm"
- variant={selected === filter.value ? "solid" : "flat"}
+ variant={selected === filter.value ? "primary" : "ghost"}
  className={
  selected === filter.value
  ? "bg-accent-400 text-white"

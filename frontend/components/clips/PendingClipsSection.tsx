@@ -237,7 +237,7 @@ export default function PendingClipsSection({
                         isPending={cancellingIds.has(clip.id)}
                         onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
-                        title="Cancel processing"
+                        aria-label="Cancel processing"
                       >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />
@@ -288,7 +288,7 @@ export default function PendingClipsSection({
                         isPending={cancellingIds.has(clip.id)}
                         onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
-                        title="Cancel editing"
+                        aria-label="Cancel editing"
                       >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />

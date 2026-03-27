@@ -736,23 +736,26 @@ function MyClipsPageContent() {
                   </h2>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {selectedFolderId !== null && savedClips.length > 0 && (
-                      <Tooltip content="Download folder as ZIP">
-                        <Button
- isIconOnly
- size="sm"
- variant="tertiary"
- isPending={isDownloadingFolder}
- onPress={() => handleDownloadFolder()}
- >
-                          <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
-                        </Button>
+                      <Tooltip>
+                        <Tooltip.Trigger>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="tertiary"
+                            isPending={isDownloadingFolder}
+                            onPress={() => handleDownloadFolder()}
+                          >
+                            <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+                          </Button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Download folder as ZIP</Tooltip.Content>
                       </Tooltip>
                     )}
                     <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1">
                       <Button
  isIconOnly
  size="sm"
- variant={viewMode === "grid" ? "solid" : "light"}
+ variant={viewMode === "grid" ? "primary" : "ghost"}
  className={viewMode === "grid" ? "bg-accent-400" : ""}
  onPress={() => setViewMode("grid")}
  >
@@ -761,7 +764,7 @@ function MyClipsPageContent() {
                       <Button
  isIconOnly
  size="sm"
- variant={viewMode === "list" ? "solid" : "light"}
+ variant={viewMode === "list" ? "primary" : "ghost"}
  className={viewMode === "list" ? "bg-accent-400" : ""}
  onPress={() => setViewMode("list")}
  >

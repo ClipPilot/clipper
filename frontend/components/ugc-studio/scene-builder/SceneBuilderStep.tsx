@@ -645,7 +645,7 @@ export function SceneBuilderStep({
                     className="w-5 h-5 rounded-full border border-dashed border-border-base text-text-muted
                       hover:bg-accent-400/20 hover:text-accent-400 hover:border-accent-400
                       transition-all shrink-0 flex items-center justify-center"
-                    title="Add scene"
+                    aria-label="Add scene"
                   >
                     <Icon icon="solar:add-circle-linear" width={12} />
                   </Button>

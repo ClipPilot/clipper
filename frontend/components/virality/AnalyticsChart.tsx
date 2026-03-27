@@ -274,12 +274,15 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
             <div className="flex items-center justify-between">
               <dt className="text-base text-text-primary font-medium inline-flex items-center gap-1.5">
                 Analytics
-                <HTooltip content={`Times shown in ${TIMEZONE}`} placement="top" size="sm">
-                  <Icon
-                    icon="solar:clock-circle-linear"
-                    width={14}
-                    className="text-default-400 cursor-help"
-                  />
+                <HTooltip>
+                  <HTooltip.Trigger>
+                    <Icon
+                      icon="solar:clock-circle-linear"
+                      width={14}
+                      className="text-default-400 cursor-help"
+                    />
+                  </HTooltip.Trigger>
+                  <HTooltip.Content placement="top">{`Times shown in ${TIMEZONE}`}</HTooltip.Content>
                 </HTooltip>
               </dt>
               <div className="flex items-center gap-3 flex-wrap">
@@ -328,12 +331,15 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     >
                       {title}
                       {tooltip && (
-                        <HTooltip content={tooltip} placement="top" size="sm">
-                          <Icon
-                            icon="solar:info-circle-linear"
-                            width={14}
-                            className="text-text-tertiary cursor-help"
-                          />
+                        <HTooltip>
+                          <HTooltip.Trigger>
+                            <Icon
+                              icon="solar:info-circle-linear"
+                              width={14}
+                              className="text-text-tertiary cursor-help"
+                            />
+                          </HTooltip.Trigger>
+                          <HTooltip.Content placement="top">{tooltip}</HTooltip.Content>
                         </HTooltip>
                       )}
                     </span>

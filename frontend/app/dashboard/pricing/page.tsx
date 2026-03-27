@@ -410,9 +410,8 @@ function PricingContent() {
         <p className="text-text-tertiary">
           Questions about pricing?{" "}
           <Link
-            className="text-accent-400 hover:text-accent-300"
+            className="text-accent-400 hover:text-accent-300 underline"
             href="mailto:support@cuttr.com"
-            underline="always"
           >
             Contact us
           </Link>

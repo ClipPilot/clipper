@@ -463,22 +463,12 @@ export default function ClipViewModal({
                         }}
                       >
                         {(item) => (
-                          <Dropdown.Item
-                            key={item.id}
-                            startContent={
-                              item.id === "unorganized" ? (
-                                <Icon
-                                  icon="solar:inbox-bold-duotone"
-                                  className="text-text-tertiary"
-                                />
-                              ) : (
-                                <Icon
-                                  icon="solar:folder-bold-duotone"
-                                  style={{ color: item.color || "#3B82F6" }}
-                                />
-                              )
-                            }
-                          >
+                          <Dropdown.Item key={item.id}>
+                            {item.id === "unorganized" ? (
+                              <Icon icon="solar:inbox-bold-duotone" className="text-text-tertiary" />
+                            ) : (
+                              <Icon icon="solar:folder-bold-duotone" style={{ color: item.color || "#3B82F6" }} />
+                            )}
                             {item.name}
                           </Dropdown.Item>
                         )}
@@ -544,7 +534,7 @@ export default function ClipViewModal({
                                 onPress={(e) => handleDeleteTag(tag.id, e as any)}
                                 isDisabled={isDeleting}
                                 className="opacity-0 group-hover:opacity-100 hover:scale-110 transition-all ml-0.5"
-                                title="Delete tag"
+                                aria-label="Delete tag"
                               >
                                 {isDeleting ? (
                                   <Icon
@@ -910,7 +900,7 @@ export default function ClipViewModal({
  variant="tertiary"
  isIconOnly
  onPress={handleCopyShareLink}
- title="Copy link"
+ aria-label="Copy link"
  >
                       <Icon icon="solar:copy-bold" />
                     </Button>
@@ -919,7 +909,7 @@ export default function ClipViewModal({
  isIconOnly
  isPending={isSharing}
  onPress={handleRemoveShare}
- title="Disable sharing"
+ aria-label="Disable sharing"
  >
                       <Icon icon="solar:link-broken-bold" />
                     </Button>

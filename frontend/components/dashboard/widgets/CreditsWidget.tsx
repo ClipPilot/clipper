@@ -28,14 +28,14 @@ export function CreditsWidget({ color, onColorChange }: CreditsWidgetProps) {
     return "primary";
   };
 
-  const getPlanColor = (plan: string) => {
+  const getPlanColor = (plan: string): "success" | "warning" | "danger" | "default" | "accent" => {
     switch (plan?.toLowerCase()) {
       case "enterprise":
-        return "secondary";
+        return "accent";
       case "scale":
         return "success";
       case "studio":
-        return "primary";
+        return "accent";
       default:
         return "default";
     }

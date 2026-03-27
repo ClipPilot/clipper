@@ -224,7 +224,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       setAttachments([]);
     };
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
@@ -442,7 +442,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 onPress={() => fileInputRef.current?.click()}
                 isDisabled={isDisabled || isUploading || attachments.length >= 5}
                 className="shrink-0 mb-0.5 w-8 h-8 rounded-xl flex items-center justify-center text-text-muted hover:text-accent-400 hover:bg-accent-400/10 transition-all duration-200"
-                title="Upload product images"
+                aria-label="Upload product images"
               >
                 <Icon icon="solar:gallery-minimalistic-bold-duotone" width={20} />
               </Button>

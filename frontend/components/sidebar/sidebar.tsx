@@ -133,13 +133,11 @@ export default function Sidebar({
         ? `${item.title} — Upgrade to ${getUpgradePlanName(item)}`
         : item.title;
       return (
-        <Tooltip
- key={item.key}
- content={tooltipContent}
- placement="right"
- delay={200}
- >
-          {itemButton}
+        <Tooltip key={item.key} delay={200}>
+          <Tooltip.Trigger>
+            {itemButton}
+          </Tooltip.Trigger>
+          <Tooltip.Content placement="right">{tooltipContent}</Tooltip.Content>
         </Tooltip>
       );
     }
@@ -180,39 +178,39 @@ export default function Sidebar({
           )}
         >
           {isCollapsed ? (
-            <Tooltip
- placement="right"
- content={
- <div className="space-y-1 py-1">
- <p className="font-medium">{selectedTeam.name}</p>
- <p className="text-text-tertiary">
- {getPlanName(plan)} — {usageStats.clipsCreated}/
- {usageStats.baseLimit} clips
- </p>
- {usageStats.totalRemaining > 0 && (
- <p className="text-text-tertiary">
- {usageStats.totalRemaining} credit
- {usageStats.totalRemaining !== 1 ? "s" : ""} remaining
- </p>
- )}
- </div>
- }
- >
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    "text-[9px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor(plan)
-                  )}
-                >
-                  {getPlanName(plan)}
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div className="flex flex-col items-center gap-2">
+                  <div
+                    className={cn(
+                      "text-[9px] px-1.5 py-0.5 rounded font-medium",
+                      getPlanColor(plan)
+                    )}
+                  >
+                    {getPlanName(plan)}
+                  </div>
+                  <ProgressBar
+                    value={usagePercentage}
+                  >
+                    <ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+                  </ProgressBar>
                 </div>
-                <ProgressBar
- value={usagePercentage}
- >
-<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
-</ProgressBar>
-              </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">
+                <div className="space-y-1 py-1">
+                  <p className="font-medium">{selectedTeam.name}</p>
+                  <p className="text-text-tertiary">
+                    {getPlanName(plan)} — {usageStats.clipsCreated}/
+                    {usageStats.baseLimit} clips
+                  </p>
+                  {usageStats.totalRemaining > 0 && (
+                    <p className="text-text-tertiary">
+                      {usageStats.totalRemaining} credit
+                      {usageStats.totalRemaining !== 1 ? "s" : ""} remaining
+                    </p>
+                  )}
+                </div>
+              </Tooltip.Content>
             </Tooltip>
           ) : (
             <div className="space-y-2">
@@ -321,61 +319,61 @@ export default function Sidebar({
           )}
 
           {isCollapsed && canViewPricing && !isPaidPlan(plan) && (
-            <Tooltip
- content="Upgrade workspace"
- placement="right"
- >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push("/dashboard/pricing")}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
-                className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
-              >
-                <Icon
-                  icon="solar:arrow-up-bold"
-                  className="text-accent-400"
-                  width={16}
-                />
-              </div>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push("/dashboard/pricing")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                  className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
+                >
+                  <Icon
+                    icon="solar:arrow-up-bold"
+                    className="text-accent-400"
+                    width={16}
+                  />
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">Upgrade workspace</Tooltip.Content>
             </Tooltip>
           )}
 
           {isCollapsed && canViewPricing && isPaidPlan(plan) && (
-            <Tooltip
- content="Manage subscription"
- placement="right"
- >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push("/dashboard/pricing")}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
-                className={cn(
-                  "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer",
-                  plan === "enterprise"
-                    ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
-                    : plan === "scale"
-                      ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                      : plan === "creator"
-                        ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
-                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
-                )}
-              >
-                <Icon
-                  icon="solar:verified-check-bold"
-                  className={
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push("/dashboard/pricing")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                  className={cn(
+                    "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer",
                     plan === "enterprise"
-                      ? "text-emerald-500"
+                      ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                       : plan === "scale"
-                        ? "text-purple-500"
+                        ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
                         : plan === "creator"
-                          ? "text-orange-500"
-                          : "text-accent-400"
-                  }
-                  width={16}
-                />
-              </div>
+                          ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                  )}
+                >
+                  <Icon
+                    icon="solar:verified-check-bold"
+                    className={
+                      plan === "enterprise"
+                        ? "text-emerald-500"
+                        : plan === "scale"
+                          ? "text-purple-500"
+                          : plan === "creator"
+                            ? "text-orange-500"
+                            : "text-accent-400"
+                    }
+                    width={16}
+                  />
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">Manage subscription</Tooltip.Content>
             </Tooltip>
           )}
         </div>

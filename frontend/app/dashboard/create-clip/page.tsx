@@ -502,7 +502,7 @@ export default function CreateClipPage() {
                   Create Another
                 </Button>
                 <Button
-                  color="primary"
+                  variant="primary"
                   onPress={() => router.push("/dashboard/clips")}
                 >
                   <Icon icon="solar:folder-bold" />
@@ -546,26 +546,23 @@ export default function CreateClipPage() {
                           </p>
                         </div>
                       </div>
-                      <Tooltip
-                        content={
-                          batchMode
-                            ? "Switch to single video"
-                            : "Switch to batch mode (up to 5 videos)"
-                        }
-                      >
-                        <Switch
-                          isSelected={batchMode}
-                          onChange={(value) => {
-                            setBatchMode(value);
-                            setUploadedVideo(null);
-                            setBatchVideos([]);
-                          }}
-                          aria-label="Toggle batch mode"
-                        >
-                          <Switch.Control>
-                            <Switch.Thumb />
-                          </Switch.Control>
-                        </Switch>
+                      <Tooltip>
+                        <Tooltip.Trigger>
+                          <Switch
+                            isSelected={batchMode}
+                            onChange={(value) => {
+                              setBatchMode(value);
+                              setUploadedVideo(null);
+                              setBatchVideos([]);
+                            }}
+                            aria-label="Toggle batch mode"
+                          >
+                            <Switch.Control>
+                              <Switch.Thumb />
+                            </Switch.Control>
+                          </Switch>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>{batchMode ? "Switch to single video" : "Switch to batch mode (up to 5 videos)"}</Tooltip.Content>
                       </Tooltip>
                     </div>
                 </div>
@@ -763,7 +760,7 @@ export default function CreateClipPage() {
                         <Button
                           fullWidth
                           size="lg"
-                          color="primary"
+                          variant="primary"
                           data-tour="clip-create-btn"
                           onPress={handleSubmit}
                           isDisabled={

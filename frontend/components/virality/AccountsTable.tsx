@@ -115,24 +115,26 @@ export function AccountsTable({
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">
                 <div className="flex items-center gap-1">
                   STATUS
-                  <Tooltip
- content="Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed."
- >
-                    <span className="cursor-help">
-                      <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
-                    </span>
+                  <Tooltip>
+                    <Tooltip.Trigger>
+                      <span className="cursor-help">
+                        <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
+                      </span>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed.</Tooltip.Content>
                   </Tooltip>
                 </div>
               </th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">
                 <div className="flex items-center gap-1">
                   ALERTS
-                  <Tooltip
- content="When enabled, you'll receive email alerts when this account's posts go viral based on your alert settings."
- >
-                    <span className="cursor-help">
-                      <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
-                    </span>
+                  <Tooltip>
+                    <Tooltip.Trigger>
+                      <span className="cursor-help">
+                        <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
+                      </span>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>When enabled, you'll receive email alerts when this account's posts go viral based on your alert settings.</Tooltip.Content>
                   </Tooltip>
                 </div>
               </th>
@@ -280,7 +282,6 @@ export function AccountsTable({
                         <Dropdown.Item
                           key="delete"
                           className="text-danger"
-                          color="danger"
                         >
                           <Icon icon="solar:trash-bin-trash-linear" width={16} />
                           Delete

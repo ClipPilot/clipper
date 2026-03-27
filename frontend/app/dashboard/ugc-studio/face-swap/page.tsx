@@ -47,6 +47,7 @@ export default function FaceSwapPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
 
+  if (!selectedTeam) return null;
   return <FaceSwapContent selectedTeam={selectedTeam} router={router} />;
 }
 
@@ -278,7 +279,7 @@ function FaceSwapContent({
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button
-            variant="light"
+            variant="ghost"
             isIconOnly
             onPress={() => router.push("/dashboard/ugc-studio")}
             className="text-text-secondary hover:text-text-primary"

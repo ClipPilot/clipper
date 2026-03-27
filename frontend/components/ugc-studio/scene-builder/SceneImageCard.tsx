@@ -716,7 +716,7 @@ export function SceneImageCard({
                     size="sm"
                     onPress={() => onSceneUpdate({ ...scene, dialogue: "Add voiceover text here..." })}
                     className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
-                    title="Add voiceover"
+                    aria-label="Add voiceover"
                   >
                     <Icon icon="solar:volume-loud-bold" width={14} />
                   </Button>
@@ -785,7 +785,7 @@ export function SceneImageCard({
                           size="sm"
                           onPress={() => onSceneUpdate({ ...scene, dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 })}
                           className="p-1 rounded hover:bg-amber-500/20 text-text-muted hover:text-amber-400 transition-colors"
-                          title="Remove voiceover (silent b-roll)"
+                          aria-label="Remove voiceover (silent b-roll)"
                         >
                           <Icon icon="solar:volume-cross-bold" width={16} />
                         </Button>

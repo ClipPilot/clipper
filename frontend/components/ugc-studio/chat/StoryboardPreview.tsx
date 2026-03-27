@@ -266,7 +266,7 @@ export function StoryboardPreview({
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 {isGenerating ? (
-                                  <Spinner size="sm" color={isOrange ? "warning" : "primary"} />
+                                  <Spinner size="sm" color={isOrange ? "warning" : "accent"} />
                                 ) : (
                                   <Icon icon="solar:gallery-add-bold-duotone" width={18} className="text-text-muted/20" />
                                 )}
@@ -298,7 +298,7 @@ export function StoryboardPreview({
                       <div className="w-full min-h-[140px] flex items-center justify-center">
                         {isGenerating ? (
                           <div className="text-center">
-                            <Spinner size="sm" color={isOrange ? "warning" : "primary"} />
+                            <Spinner size="sm" color={isOrange ? "warning" : "accent"} />
                             <p className="text-[9px] text-text-muted mt-1">Generating</p>
                           </div>
                         ) : (

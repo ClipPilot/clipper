@@ -144,33 +144,45 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
-          <Tooltip content="Open">
-            <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
-              <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
-            </Button>
+          <Tooltip>
+            <Tooltip.Trigger>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
+                <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content>Open</Tooltip.Content>
           </Tooltip>
 
           {onEdit && (
-            <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
-                <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+                  <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Edit</Tooltip.Content>
             </Tooltip>
           )}
 
           {onDownload && (
-            <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
-                {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
+                  {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Download as ZIP</Tooltip.Content>
             </Tooltip>
           )}
 
           {onDelete && (
-            <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
-                <Icon icon="mdi:delete-outline" className="text-lg" />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
+                  <Icon icon="mdi:delete-outline" className="text-lg" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Delete</Tooltip.Content>
             </Tooltip>
           )}
         </div>
@@ -217,33 +229,45 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
         </div>
 
         <div className="mt-2 flex items-center justify-center gap-1">
-          <Tooltip content="Open">
-            <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
-              <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
-            </Button>
+          <Tooltip>
+            <Tooltip.Trigger>
+              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={handleOpen}>
+                <Icon icon="solar:folder-open-bold" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content>Open</Tooltip.Content>
           </Tooltip>
 
           {onEdit && (
-            <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
-                <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+                  <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Edit</Tooltip.Content>
             </Tooltip>
           )}
 
           {onDownload && (
-            <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
-                {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-8 h-8 min-w-8" isPending={isDownloading} onPress={() => onDownload(folder.id)}>
+                  {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Download as ZIP</Tooltip.Content>
             </Tooltip>
           )}
 
           {onDelete && (
-            <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
-                <Icon icon="mdi:delete-outline" className="text-lg" />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="danger-soft" className="w-8 h-8 min-w-8" onPress={handleDelete}>
+                  <Icon icon="mdi:delete-outline" className="text-lg" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Delete</Tooltip.Content>
             </Tooltip>
           )}
         </div>

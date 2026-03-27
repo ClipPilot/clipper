@@ -175,10 +175,6 @@ export function FolderSelector({
       <Popover
         isOpen={isOpen}
         onOpenChange={setIsOpen}
-        placement="bottom-start"
-        classNames={{
-          content: "bg-surface-base border border-border-accent p-0 w-72",
-        }}
       >
         <Popover.Trigger>
           <Button
@@ -218,7 +214,7 @@ export function FolderSelector({
               </div>
 </Button>
         </Popover.Trigger>
-        <Popover.Content>
+        <Popover.Content placement="bottom start" className="bg-surface-base border border-border-accent p-0 w-72">
           <div className="max-h-64 overflow-y-auto py-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">

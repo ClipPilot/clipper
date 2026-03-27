@@ -237,18 +237,12 @@ export function ContractGate({
         </div>
 
         {agreement.presigned_pdf_url && (
-          <Button
- variant="tertiary"
- size="sm"
- className="bg-white/[0.04] text-text-secondary"
- as="a"
- href={agreement.presigned_pdf_url}
- target="_blank"
- rel="noopener noreferrer"
- >
-            <Icon icon="solar:file-download-bold-duotone" width={16} />
-            Download Agreement PDF
-          </Button>
+          <a href={agreement.presigned_pdf_url} target="_blank" rel="noopener noreferrer">
+            <Button variant="tertiary" size="sm" className="bg-white/[0.04] text-text-secondary">
+              <Icon icon="solar:file-download-bold-duotone" width={16} />
+              Download Agreement PDF
+            </Button>
+          </a>
         )}
       </div>
     );

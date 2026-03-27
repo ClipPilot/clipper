@@ -270,7 +270,7 @@ export function MultiSegmentTrimmer({
     if (!videoFile || isDetectingFaces) return;
 
     setIsDetectingFaces(true);
-    toast("Detecting faces...", { description: "This may take 1-3 minutes. Please wait.", variant: primary });
+    toast.info("Detecting faces...", { description: "This may take 1-3 minutes. Please wait." });
 
     try {
       const data = await faceSwapAPI.detectFaces(videoFile);

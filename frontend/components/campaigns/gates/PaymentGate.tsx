@@ -223,7 +223,7 @@ function PaymentForm({
           </div>
         </Modal.Header>
         <Modal.Body className="py-10 flex flex-col items-center gap-4">
-          <Spinner size="lg" color="secondary" />
+          <Spinner size="lg" color="accent" />
           <p className="text-text-secondary text-center">
             Crediting your campaign wallet...
           </p>
@@ -747,8 +747,7 @@ export function PaymentGate({
                   type="number"
                   min="1"
                   step="0.01"
-                  size="sm"
-                  className="border-border-base bg-white/[0.04] text-text-primary"
+                  className="border-border-base bg-white/[0.04] text-text-primary text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleAddFunds();
                   }}

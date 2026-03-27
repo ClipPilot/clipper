@@ -106,10 +106,13 @@ export const FaceSwapJobCard = memo(
             </div>
             {onDelete && (
               <div className="flex justify-end mt-3" onClick={(e) => e.stopPropagation()}>
-                <Tooltip content="Delete">
-                  <Button size="sm" variant="tertiary" isIconOnly className="text-red-500 min-w-7 w-7 h-7" onPress={handleDelete} isPending={isDeleting}>
-                    {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />}
-                  </Button>
+                <Tooltip>
+                  <Tooltip.Trigger>
+                    <Button size="sm" variant="tertiary" isIconOnly className="text-red-500 min-w-7 w-7 h-7" onPress={handleDelete} isPending={isDeleting}>
+                      {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />}
+                    </Button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>Delete</Tooltip.Content>
                 </Tooltip>
               </div>
             )}
@@ -147,31 +150,43 @@ export const FaceSwapJobCard = memo(
           </div>
           <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
             {hasClip && onShare && (
-              <Tooltip content={showCopied ? "Copied!" : (job.shareToken ? "Copy link" : "Share")} placement="left">
-                <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleShare} isPending={isSharing}>
-                  {!isSharing && <Icon icon={job.shareToken ? "solar:link-bold" : "solar:share-bold"} className="text-sm" />}
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleShare} isPending={isSharing}>
+                    {!isSharing && <Icon icon={job.shareToken ? "solar:link-bold" : "solar:share-bold"} className="text-sm" />}
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="left">{showCopied ? "Copied!" : (job.shareToken ? "Copy link" : "Share")}</Tooltip.Content>
               </Tooltip>
             )}
             {hasClip && onEdit && (
-              <Tooltip content="Edit" placement="left">
-                <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleEdit}>
-                  <Icon icon="solar:pen-bold" className="text-sm" />
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleEdit}>
+                    <Icon icon="solar:pen-bold" className="text-sm" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="left">Edit</Tooltip.Content>
               </Tooltip>
             )}
             {job.outputUrl && (
-              <Tooltip content="Download" placement="left">
-                <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleDownload} isPending={isDownloading}>
-                  {!isDownloading && <Icon icon="solar:download-bold" className="text-sm" />}
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-white/80 hover:text-white min-w-8 w-8 h-8 rounded-lg" onPress={handleDownload} isPending={isDownloading}>
+                    {!isDownloading && <Icon icon="solar:download-bold" className="text-sm" />}
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="left">Download</Tooltip.Content>
               </Tooltip>
             )}
             {onDelete && (
-              <Tooltip content="Delete" placement="left">
-                <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-red-400/80 hover:text-red-400 min-w-8 w-8 h-8 rounded-lg" onPress={handleDelete} isPending={isDeleting}>
-                  {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />}
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button size="sm" variant="tertiary" isIconOnly className="bg-black/40 backdrop-blur-sm text-red-400/80 hover:text-red-400 min-w-8 w-8 h-8 rounded-lg" onPress={handleDelete} isPending={isDeleting}>
+                    {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />}
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="left">Delete</Tooltip.Content>
               </Tooltip>
             )}
           </div>

@@ -21,7 +21,8 @@ import {
 import { FilterBar } from "./FilterBar";
 import type {
   TeamPost,
-  PostsQueuedGroup } from "@/types/massPosting";
+  QueuedGroup,
+  PostsPagination } from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
 
 const STATUS_CONFIG: Record<
@@ -46,7 +47,7 @@ const STATUS_CONFIG: Record<
 
 interface QueuedPostsTabProps {
   posts: TeamPost[];
-  pagination: Posts| null;
+  pagination: PostsPagination | null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
 }
@@ -146,13 +147,7 @@ export function QueuedPostsTab({
           <p className="text-sm">No queued posts found</p>
         </div>
       ) : (
-        <Table
-          aria-label="Queued posts table"
-          removeWrapper
-          classNames={{
-            th: "bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-            td: "py-4 px-4 border-t border-border-base" }}
-        >
+        <Table aria-label="Queued posts table">
           <TableHeader>
             <TableColumn>VIDEO CONTENT</TableColumn>
             <TableColumn>DATE SUBMITTED</TableColumn>
@@ -210,25 +205,24 @@ export function QueuedPostsTab({
                           counts.set(p.platform, (counts.get(p.platform) ?? 0) + 1);
                         }
                         return Array.from(counts.entries()).map(([platform, count]) => (
-                          <Tooltip
- key={platform}
- content={`${platform}${count > 1 ? ` ×${count}` : ""}`}
- placement="top"
- >
-                            <span
-                              className={`relative w-7 h-7 rounded-full flex items-center justify-center ${platformChipClass(platform)}`}
-                            >
-                              <Icon
-                                icon={platformIcon(platform)}
-                                width={14}
-                                className={platformIconColor(platform)}
-                              />
-                              {count > 1 && (
-                                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-accent-400 text-white text-[10px] font-bold flex items-center justify-center px-0.5">
-                                  {count}
-                                </span>
-                              )}
-                            </span>
+                          <Tooltip key={platform}>
+                            <Tooltip.Trigger>
+                              <span
+                                className={`relative w-7 h-7 rounded-full flex items-center justify-center ${platformChipClass(platform)}`}
+                              >
+                                <Icon
+                                  icon={platformIcon(platform)}
+                                  width={14}
+                                  className={platformIconColor(platform)}
+                                />
+                                {count > 1 && (
+                                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-accent-400 text-white text-[10px] font-bold flex items-center justify-center px-0.5">
+                                    {count}
+                                  </span>
+                                )}
+                              </span>
+                            </Tooltip.Trigger>
+                            <Tooltip.Content placement="top">{`${platform}${count > 1 ? ` ×${count}` : ""}`}</Tooltip.Content>
                           </Tooltip>
                         ));
                       })()}

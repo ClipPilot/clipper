@@ -92,15 +92,21 @@ export function VideoTable({
       case "actions":
         return (
           <div className="flex items-center justify-end gap-1">
-            <Tooltip content="Preview">
-              <Button isIconOnly size="sm" variant="tertiary" onPress={() => onPreview(video)} aria-label="Preview video">
-                <Icon icon="solar:eye-bold" className="text-text-secondary" width={16} />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" onPress={() => onPreview(video)} aria-label="Preview video">
+                  <Icon icon="solar:eye-bold" className="text-text-secondary" width={16} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Preview</Tooltip.Content>
             </Tooltip>
-            <Tooltip content="Remove">
-              <Button isIconOnly size="sm" variant="tertiary" className="text-red-500" onPress={() => onRemove(video.id)} isPending={removingId === video.id} aria-label="Remove video">
-                <Icon icon="solar:trash-bin-trash-bold" width={16} />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="text-red-500" onPress={() => onRemove(video.id)} isPending={removingId === video.id} aria-label="Remove video">
+                  <Icon icon="solar:trash-bin-trash-bold" width={16} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Remove</Tooltip.Content>
             </Tooltip>
           </div>
         );

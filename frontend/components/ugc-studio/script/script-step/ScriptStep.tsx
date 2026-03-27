@@ -383,15 +383,9 @@ export function ScriptStep({
  />
             <FieldError />
           </TextField>
-          <Tooltip
- content={
- customPattern.some((s) => s.shot === "a-roll")
- ? "Silent mode can't be used with A-roll scenes — remove A-roll scenes first"
- : "No dialogue is generated — great for edit-style videos with music. Incompatible with A-roll scenes."
- }
- placement="right"
- >
-            <Button
+          <Tooltip>
+            <Tooltip.Trigger>
+              <Button
  size="sm"
  variant={isAutoSilent ? "primary" : "outline"}
  isDisabled={!isAutoSilent && customPattern.some((s) => s.shot === "a-roll")}
@@ -411,9 +405,15 @@ export function ScriptStep({
  }
  }}
  >
-              <Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />
-              {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
-            </Button>
+                <Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />
+                {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
+              </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content placement="right">
+              {customPattern.some((s) => s.shot === "a-roll")
+                ? "Silent mode can't be used with A-roll scenes — remove A-roll scenes first"
+                : "No dialogue is generated — great for edit-style videos with music. Incompatible with A-roll scenes."}
+            </Tooltip.Content>
           </Tooltip>
       </div>
 

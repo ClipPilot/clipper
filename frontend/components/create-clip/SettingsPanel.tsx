@@ -127,36 +127,37 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </Select.Popover>
       </Select>
 
-      <Select
+      <div>
+        <Select
  variant="secondary"
  value={conversionMode}
  onChange={(val: Key | null) => {
  if (val) setConversionMode(val as ConversionMode);
  }}
- description={
- CONVERSION_MODE_OPTIONS.find((o) => o.key === conversionMode)
- ?.description
- }
  >
-        <Label>Crop Mode</Label>
-        <Select.Trigger>
-          <Select.Value />
-          <Select.Indicator />
-        </Select.Trigger>
-        <Select.Popover>
-          <ListBox>
-            {CONVERSION_MODE_OPTIONS.map((mode) => (
-              <ListBox.Item key={mode.key} id={mode.key} textValue={mode.label}>
-                <div className="flex items-center gap-2">
-                  <Icon icon={mode.icon} width={16} />
-                  <span>{mode.label}</span>
-                </div>
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-            ))}
-          </ListBox>
-        </Select.Popover>
-      </Select>
+          <Label>Crop Mode</Label>
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              {CONVERSION_MODE_OPTIONS.map((mode) => (
+                <ListBox.Item key={mode.key} id={mode.key} textValue={mode.label}>
+                  <div className="flex items-center gap-2">
+                    <Icon icon={mode.icon} width={16} />
+                    <span>{mode.label}</span>
+                  </div>
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
+        {CONVERSION_MODE_OPTIONS.find((o) => o.key === conversionMode)?.description && (
+          <p className="text-xs text-text-tertiary mt-1">{CONVERSION_MODE_OPTIONS.find((o) => o.key === conversionMode)?.description}</p>
+        )}
+      </div>
 
       <TextField fullWidth variant="secondary">
         <Label>Custom Instructions (Optional)</Label>

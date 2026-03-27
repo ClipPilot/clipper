@@ -236,7 +236,7 @@ export function FaceSwapDetailModal({
                             <Chip
  size="sm"
  variant="tertiary"
- color={segment.type === "processed" ? "success" : "primary"}
+ color={segment.type === "processed" ? "success" : "accent"}
  className="text-[10px] h-4 mb-1"
  >
                               {segment.type === "processed" ? "Swapped" : "Original"}

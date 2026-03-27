@@ -18,6 +18,7 @@ export default function GraphicsPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
 
+  if (!selectedTeam) return null;
   return <GraphicsContent teamId={selectedTeam.id} router={router} />;
 }
 

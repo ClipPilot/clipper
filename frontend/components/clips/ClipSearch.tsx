@@ -165,9 +165,7 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
               selectionMode="multiple"
               selectedKeys={new Set(selectedTagIds.map(String))}
               onSelectionChange={(keys) => handleTagSelectionChange(keys as Set<string>)}
-              classNames={{
-                base: "bg-surface-base border border-border-base",
-              }}
+              className="bg-surface-base border border-border-base"
             >
               {tags.map((tag) => (
                 <Dropdown.Item key={tag.id.toString()}>
@@ -189,14 +187,17 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
             return (
               <Chip
  key={tagId}
- onClose={() => handleTagToggle(tagId)}
  variant="tertiary"
+ className="gap-1"
  >
                 <div
-                    className="w-2 h-2 rounded-full ml-1"
+                    className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: tag.color }}
                   />
                 {tag.name}
+                <button onClick={() => handleTagToggle(tagId)} className="ml-1 hover:text-text-primary">
+                  <Icon icon="solar:close-circle-bold" width={14} />
+                </button>
               </Chip>
             );
           })}

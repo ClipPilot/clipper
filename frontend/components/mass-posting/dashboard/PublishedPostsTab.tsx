@@ -15,12 +15,12 @@ import {
   platformIconColor,
   platformChipClass } from "@/lib/platformUtils";
 import { FilterBar } from "./FilterBar";
-import type { TeamPost, Posts} from "@/types/massPosting";
+import type { TeamPost, PostsPagination } from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
 
 interface PublishedPostsTabProps {
   posts: TeamPost[];
-  pagination: Posts| null;
+  pagination: PostsPagination | null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
   dateRange: string;

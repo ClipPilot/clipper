@@ -90,12 +90,11 @@ export function ComparisonModeSelector({
       <Popover
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
-        placement="bottom"
       >
         <Popover.Trigger>
           <span className="hidden" />
         </Popover.Trigger>
-        <Popover.Content className="p-0">
+        <Popover.Content placement="bottom" className="p-0">
           <Calendar
             aria-label="Select comparison date"
             minValue={minDate as any}

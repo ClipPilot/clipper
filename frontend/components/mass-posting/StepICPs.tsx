@@ -173,12 +173,11 @@ function PainPointsInput({
       {painPoints.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {painPoints.map((point, idx) => (
-            <Chip
-              key={idx}
-              variant="tertiary"
-              onClose={() => onRemove(idx)}
-            >
+            <Chip key={idx} variant="tertiary" className="gap-1">
               {point}
+              <button onClick={() => onRemove(idx)} className="ml-1 hover:text-text-primary">
+                <Icon icon="solar:close-circle-bold" width={14} />
+              </button>
             </Chip>
           ))}
         </div>

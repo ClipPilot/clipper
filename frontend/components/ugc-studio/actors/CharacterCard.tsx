@@ -100,9 +100,10 @@ export function CharacterCard({
                   {character.public ? "Shared" : "Private"}
                 </span>
               </div>
-              <Tooltip content={character.public ? "Make private" : "Share with community"}>
-                <div>
-                  <Switch
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <div>
+                    <Switch
  isSelected={character.public}
  isDisabled={isUpdating}
  onChange={async () => {
@@ -110,7 +111,6 @@ export function CharacterCard({
  setIsUpdating(true);
  try {
  const response = await actorsAPI.update(character.id, { isPublic: !character.public });
- // Preserve image URLs from original character since API response may not include computed fields
  const updatedCharacter = {
  ...response.character,
  imageUrls: response.character.imageUrls || character.imageUrls,
@@ -124,7 +124,9 @@ export function CharacterCard({
  }
  }}
  />
-                </div>
+                  </div>
+                </Tooltip.Trigger>
+                <Tooltip.Content>{character.public ? "Make private" : "Share with community"}</Tooltip.Content>
               </Tooltip>
             </div>
           </div>

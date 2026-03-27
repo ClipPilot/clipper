@@ -50,7 +50,7 @@ export function WidgetWrapper({
           <span className="font-medium text-text-primary text-sm">{title}</span>
         </div>
         {isEditMode && onColorChange && (
-          <Popover placement="bottom-end">
+          <Popover>
             <Popover.Trigger>
               <button className="p-1 rounded hover:bg-surface-hover transition-colors">
                 <Icon
@@ -60,7 +60,7 @@ export function WidgetWrapper({
                 />
               </button>
             </Popover.Trigger>
-            <Popover.Content className="bg-surface-elevated border border-border-base p-3">
+            <Popover.Content placement="bottom end" className="bg-surface-elevated border border-border-base p-3">
               <div className="flex gap-2">
                 {WIDGET_COLOR_OPTIONS.map((option) => (
                   <button

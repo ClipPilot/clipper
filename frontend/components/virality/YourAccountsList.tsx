@@ -139,7 +139,7 @@ const onClose = overlayState.close;
 
       <Modal>
         <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-sm bg-surface-base border border-border-accent">
-          {(onClose) => {
+          {({ close: onCloseDialog }) => {
             const account = accounts.find((a) => a.id === pendingDeleteId);
             return (
               <>
@@ -167,7 +167,7 @@ const onClose = overlayState.close;
                 <Modal.Footer>
                   <Button
  variant="tertiary"
- onPress={onClose}
+ onPress={onCloseDialog}
  className="bg-surface-elevated hover:bg-surface-raised text-text-primary"
  >
                     Cancel

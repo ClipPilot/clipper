@@ -191,28 +191,28 @@ export function SceneCard({
 </Dropdown.Popover>
             </Dropdown>
             {scene.mergedSceneTypes && scene.mergedSceneTypes.length > 1 && (
-              <Tooltip
- content={
- <div className="text-xs">
- <p className="font-medium mb-1">Combined beats:</p>
- {scene.mergedSceneTypes.map((type, i) => (
- <p key={i} className="flex items-center gap-1">
- <Icon icon={SCENE_TYPE_CONFIG[type].icon} width={12} />
- {SCENE_TYPE_CONFIG[type].label}
- </p>
- ))}
- </div>
- }
- placement="bottom"
- >
-                <Chip
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Chip
  size="sm"
  variant="tertiary"
  className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 cursor-help"
  >
-                  <Icon icon="solar:layers-bold" width={12} />
-                  {scene.mergedSceneTypes.length} beats
-                </Chip>
+                    <Icon icon="solar:layers-bold" width={12} />
+                    {scene.mergedSceneTypes.length} beats
+                  </Chip>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="bottom">
+                  <div className="text-xs">
+                    <p className="font-medium mb-1">Combined beats:</p>
+                    {scene.mergedSceneTypes.map((type, i) => (
+                      <p key={i} className="flex items-center gap-1">
+                        <Icon icon={SCENE_TYPE_CONFIG[type].icon} width={12} />
+                        {SCENE_TYPE_CONFIG[type].label}
+                      </p>
+                    ))}
+                  </div>
+                </Tooltip.Content>
               </Tooltip>
             )}
             <span className="text-xs text-text-muted">
@@ -267,8 +267,9 @@ export function SceneCard({
               </Dropdown.Menu>
 </Dropdown.Popover>
             </Dropdown>
-            <Tooltip content="Regenerate scene" placement="bottom">
-              <Button
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
  isIconOnly
  size="sm"
  variant="tertiary"
@@ -276,8 +277,10 @@ export function SceneCard({
  isPending={isRegenerating}
  className="text-text-muted hover:text-accent-400"
  >
-                <Icon icon="solar:refresh-bold" width={16} />
-              </Button>
+                  <Icon icon="solar:refresh-bold" width={16} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="bottom">Regenerate scene</Tooltip.Content>
             </Tooltip>
           </div>
         </div>
@@ -515,8 +518,9 @@ export function SceneCard({
           </div>
 
           <div className="flex items-center gap-1">
-            <Tooltip content="Move up" placement="top">
-              <Button
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
  isIconOnly
  size="md"
  variant="tertiary"
@@ -524,11 +528,14 @@ export function SceneCard({
  isDisabled={index === 0}
  className="text-text-muted hover:text-text-primary"
  >
-                <Icon icon="solar:arrow-up-linear" width={20} />
-              </Button>
+                  <Icon icon="solar:arrow-up-linear" width={20} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="top">Move up</Tooltip.Content>
             </Tooltip>
-            <Tooltip content="Move down" placement="top">
-              <Button
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
  isIconOnly
  size="md"
  variant="tertiary"
@@ -536,22 +543,28 @@ export function SceneCard({
  isDisabled={index === totalScenes - 1}
  className="text-text-muted hover:text-text-primary"
  >
-                <Icon icon="solar:arrow-down-linear" width={20} />
-              </Button>
+                  <Icon icon="solar:arrow-down-linear" width={20} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="top">Move down</Tooltip.Content>
             </Tooltip>
-            <Tooltip content="Add scene below" placement="top">
-              <Button
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
  isIconOnly
  size="md"
  variant="tertiary"
  onPress={onAddBelow}
  className="text-text-muted hover:text-green-400"
  >
-                <Icon icon="solar:add-circle-linear" width={20} />
-              </Button>
+                  <Icon icon="solar:add-circle-linear" width={20} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="top">Add scene below</Tooltip.Content>
             </Tooltip>
-            <Tooltip content={canRemove ? "Delete scene" : "Minimum 3 scenes required"} placement="top">
-              <Button
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
  isIconOnly
  size="md"
  variant="tertiary"
@@ -559,8 +572,10 @@ export function SceneCard({
  isDisabled={!canRemove}
  className="text-text-muted hover:text-red-400 disabled:opacity-30"
  >
-                <Icon icon="solar:trash-bin-2-linear" width={20} />
-              </Button>
+                  <Icon icon="solar:trash-bin-2-linear" width={20} />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="top">{canRemove ? "Delete scene" : "Minimum 3 scenes required"}</Tooltip.Content>
             </Tooltip>
           </div>
         </div>

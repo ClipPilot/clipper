@@ -18,7 +18,7 @@ function getStatusColor(status: UGCVideoJob["status"], isFinalized: boolean) {
     case "completed":
       return isFinalized ? "success" : "warning";
     case "generating":
-      return "primary";
+      return "accent";
     case "queued":
       return "warning";
     case "failed":

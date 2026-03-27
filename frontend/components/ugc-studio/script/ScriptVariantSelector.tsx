@@ -38,23 +38,21 @@ export function ScriptVariantSelector({
                 </span>
               </div>
             </div>
-            <Tooltip
- content={script.title}
- delay={500}
- closeDelay={0}
- >
-              <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
-                {script.title}
-              </p>
+            <Tooltip delay={500} closeDelay={0}>
+              <Tooltip.Trigger>
+                <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
+                  {script.title}
+                </p>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{script.title}</Tooltip.Content>
             </Tooltip>
-            <Tooltip
- content={script.hook}
- delay={500}
- closeDelay={0}
- >
-              <p className="text-xs text-text-secondary line-clamp-2 cursor-default">
-                {script.hook}
-              </p>
+            <Tooltip delay={500} closeDelay={0}>
+              <Tooltip.Trigger>
+                <p className="text-xs text-text-secondary line-clamp-2 cursor-default">
+                  {script.hook}
+                </p>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{script.hook}</Tooltip.Content>
             </Tooltip>
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span>{script.scenes.length} scenes</span>

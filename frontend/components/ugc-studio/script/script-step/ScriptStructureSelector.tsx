@@ -127,21 +127,21 @@ export function ScriptStructureSelector({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium text-text-primary">Build your structure:</p>
-              <Tooltip
- content={
- <div className="max-w-xs p-2 text-xs space-y-2">
- <p className="font-medium">Shot Types:</p>
- <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
- <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
- <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
- <p><span className="text-amber-400 font-medium">Visual</span> — Silent scene with no voiceover. Tells the story through visuals only — products, environments, actions.</p>
- </div>
- }
- placement="right"
- >
-                <div className="cursor-help">
-                  <Icon icon="solar:info-circle-linear" className="text-text-muted" width={16} />
-                </div>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <div className="cursor-help">
+                    <Icon icon="solar:info-circle-linear" className="text-text-muted" width={16} />
+                  </div>
+                </Tooltip.Trigger>
+                <Tooltip.Content placement="right">
+                  <div className="max-w-xs p-2 text-xs space-y-2">
+                    <p className="font-medium">Shot Types:</p>
+                    <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
+                    <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
+                    <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
+                    <p><span className="text-amber-400 font-medium">Visual</span> — Silent scene with no voiceover. Tells the story through visuals only — products, environments, actions.</p>
+                  </div>
+                </Tooltip.Content>
               </Tooltip>
             </div>
             <Button

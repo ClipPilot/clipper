@@ -66,7 +66,7 @@ export function AccountFilterPopover({
   };
 
   return (
-    <Popover isOpen={isOpen} onOpenChange={handleOpen} placement="bottom-start">
+    <Popover isOpen={isOpen} onOpenChange={handleOpen}>
       <Popover.Trigger>
         <Button
  variant="tertiary"
@@ -85,7 +85,7 @@ export function AccountFilterPopover({
             ) : null}
 </Button>
       </Popover.Trigger>
-      <Popover.Content className="w-72 p-0 bg-white/[0.04]">
+      <Popover.Content placement="bottom start" className="w-72 p-0 bg-white/[0.04]">
         <div className="p-3 space-y-3">
           <div className="relative">
             <Icon icon="solar:magnifer-linear" width={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />

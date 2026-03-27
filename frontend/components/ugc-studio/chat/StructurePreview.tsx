@@ -84,21 +84,19 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-medium text-text-primary">{scene.slug}</span>
-                    <Tooltip
- content={SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}
- placement="top"
- size="sm"
- delay={200}
- >
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium cursor-help ${
-                        scene.sceneType === "a-roll"
-                          ? "bg-blue-500/10 text-blue-400"
-                          : scene.sceneType === "visual"
-                            ? "bg-amber-500/10 text-amber-400"
-                            : "bg-emerald-500/10 text-emerald-400"
-                      }`}>
-                        {scene.sceneType}
-                      </span>
+                    <Tooltip delay={200}>
+                      <Tooltip.Trigger>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium cursor-help ${
+                          scene.sceneType === "a-roll"
+                            ? "bg-blue-500/10 text-blue-400"
+                            : scene.sceneType === "visual"
+                              ? "bg-amber-500/10 text-amber-400"
+                              : "bg-emerald-500/10 text-emerald-400"
+                        }`}>
+                          {scene.sceneType}
+                        </span>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content placement="top">{SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}</Tooltip.Content>
                     </Tooltip>
                   </div>
 

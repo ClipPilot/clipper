@@ -22,15 +22,12 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
                 Create AI-powered character swaps and more with UGC Studio.
               </p>
             </div>
-            <Button
- as="a"
- href="/dashboard/pricing"
- className="bg-accent-400 text-white font-semibold"
- size="lg"
- >
-              <Icon icon="solar:arrow-up-bold" width={20} />
-              Upgrade to Studio
-            </Button>
+            <a href="/dashboard/pricing">
+              <Button className="bg-accent-400 text-white font-semibold" size="lg">
+                <Icon icon="solar:arrow-up-bold" width={20} />
+                Upgrade to Studio
+              </Button>
+            </a>
             <p className="text-xs text-text-muted">
               Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan
             </p>

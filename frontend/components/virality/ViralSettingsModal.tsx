@@ -152,8 +152,7 @@ export function ViralSettingsModal({
   };
 
   return (
-    <Modal
- hideCloseButton>
+    <Modal>
       <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="max-w-full h-full h-full flex flex-col">
         {/* Sticky header */}
         <Modal.Header>
@@ -498,14 +497,16 @@ export function ViralSettingsModal({
               </div>
 
               <div className="flex gap-2">
-                <Input onChange={(e) => ((v) => { setNewEmail(v); setEmailError(""); })(e.target.value)}
+                <div className="flex-1">
+                  <Input onChange={(e) => ((v: string) => { setNewEmail(v); setEmailError(""); })(e.target.value)}
  type="email"
  placeholder="email@example.com"
  value={newEmail}
  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
- isInvalid={!!emailError}
- errorMessage={emailError}
+ className={emailError ? "border-red-500" : ""}
  />
+                  {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+                </div>
                 <Button
  size="sm"
  className="bg-accent-400 text-white font-semibold h-9 px-4"

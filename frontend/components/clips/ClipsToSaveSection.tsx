@@ -236,7 +236,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
               <Button
  key={i}
  size="sm"
- variant={currentPage === i ? "solid" : "flat"}
+ variant={currentPage === i ? "primary" : "ghost"}
  className={currentPage === i ? "bg-accent-400" : ""}
  onPress={() => setCurrentPage(i)}
  isIconOnly

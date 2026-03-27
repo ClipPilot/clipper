@@ -42,12 +42,15 @@ export function StatCards({ items, gridClassName }: StatCardsProps) {
                     {stat.title}
                   </p>
                   {stat.tooltip && (
-                    <HTooltip content={stat.tooltip} placement="top" size="sm">
-                      <Icon
-                        icon="solar:info-circle-linear"
-                        width={12}
-                        className="text-default-400 cursor-help shrink-0"
-                      />
+                    <HTooltip>
+                      <HTooltip.Trigger>
+                        <Icon
+                          icon="solar:info-circle-linear"
+                          width={12}
+                          className="text-default-400 cursor-help shrink-0"
+                        />
+                      </HTooltip.Trigger>
+                      <HTooltip.Content placement="top">{stat.tooltip}</HTooltip.Content>
                     </HTooltip>
                   )}
                 </div>

@@ -113,7 +113,7 @@ export const EditFolderModal: React.FC<EditFolderModalProps> = ({
                 <TextArea
  placeholder="Add a for this folder..."
  value={message}
- onValueChange={setMessage}
+ onChange={(e) => setMessage(e.target.value)}
  rows={3}
  />
                 <FieldError />
