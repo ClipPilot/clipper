@@ -558,9 +558,7 @@ function MyClipsPageContent() {
                 selectedKeys={[clipTypeFilter]}
                 selectionMode="single"
                 onSelectionChange={(keys) => setClipTypeFilter(Array.from(keys)[0] as string)}
-                classNames={{
-                  base: "bg-surface-base border border-border-base",
-                }}
+                className="bg-surface-base border border-border-base"
               >
                 <Dropdown.Item key="all">All</Dropdown.Item>
                 <Dropdown.Item key="clips">Clips</Dropdown.Item>
@@ -586,9 +584,7 @@ function MyClipsPageContent() {
                 selectedKeys={[campaignUploadFilter]}
                 selectionMode="single"
                 onSelectionChange={(keys) => setCampaignUploadFilter(Array.from(keys)[0] as "all" | "only" | "hide")}
-                classNames={{
-                  base: "bg-surface-base border border-border-base",
-                }}
+                className="bg-surface-base border border-border-base"
               >
                 <Dropdown.Item key="all">Show All</Dropdown.Item>
                 <Dropdown.Item key="only">Only Campaign Uploads</Dropdown.Item>
@@ -614,9 +610,7 @@ function MyClipsPageContent() {
                 onSelectionChange={(keys) => {
                   setClipsSort(Array.from(keys)[0] as "newest" | "oldest");
                 }}
-                classNames={{
-                  base: "bg-surface-base border border-border-base",
-                }}
+                className="bg-surface-base border border-border-base"
               >
                 <Dropdown.Item key="newest">Newest</Dropdown.Item>
                 <Dropdown.Item key="oldest">Oldest</Dropdown.Item>
