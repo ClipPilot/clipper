@@ -1,0 +1,117 @@
+name: _Deploy Lambda Function
+
+on:
+  workflow_call:
+    inputs:
+      lambda-name:
+        description: "Lambda base name (e.g., face-detect, cpm-billing)"
+        required: true
+        type: string
+      dockerfile:
+        description: Path to Dockerfile
+        required: true
+        type: string
+      docker-context:
+        description: Docker build context
+        required: true
+        type: string
+      lambda-functions:
+        description: "Comma-separated Lambda function names to update"
+        required: true
+        type: string
+      environment:
+        description: Environment suffix (prod or staging)
+        required: true
+        type: string
+      github-environment:
+        description: GitHub environment name for secrets
+        required: true
+        type: string
+      ecr-repository-override:
+        description: "Override ECR repo name (for non-standard naming)"
+        required: false
+        type: string
+        default: ""
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.lambda-name }} lambda (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.github-environment }}
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute ECR repository name
+        id: names
+        run: |
+          if [[ -n "${{ inputs.ecr-repository-override }}" ]]; then
+            echo "ecr-repo=${{ inputs.ecr-repository-override }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.environment }}" == "prod" ]]; then
+            echo "ecr-repo=clipster-${{ inputs.lambda-name }}-lambda" >> $GITHUB_OUTPUT
+          else
+            echo "ecr-repo=clipster-${{ inputs.lambda-name }}-lambda-${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.names.outputs.ecr-repo }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build --provenance=false \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -f ${{ inputs.dockerfile }} ${{ inputs.docker-context }}
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Lambda functions
+        env:
+          IMAGE_URI: ${{ steps.build-image.outputs.image }}
+        run: |
+          IFS=',' read -ra FUNCTIONS <<< "${{ inputs.lambda-functions }}"
+          for fn in "${FUNCTIONS[@]}"; do
+            fn=$(echo "$fn" | xargs)
+            echo "Updating $fn..."
+            aws lambda update-function-code \
+              --function-name "$fn" \
+              --image-uri "$IMAGE_URI" &
+          done
+          wait
+
+      - name: Wait for Lambda updates
+        run: |
+          IFS=',' read -ra FUNCTIONS <<< "${{ inputs.lambda-functions }}"
+          for fn in "${FUNCTIONS[@]}"; do
+            fn=$(echo "$fn" | xargs)
+            echo "Waiting for $fn..."
+            aws lambda wait function-updated \
+              --function-name "$fn" &
+          done
+          wait
+
+      - name: Verify deployment
+        run: |
+          echo "Lambda deployment completed!"
+          echo "Functions: ${{ inputs.lambda-functions }}"
+          echo "Image: ${{ steps.build-image.outputs.image }}"

@@ -336,17 +336,38 @@ Key resources:
 
 ## CI/CD (GitHub Actions)
 
+### Pipeline Architecture
+
+A single unified `ci.yml` orchestrator detects what changed (via `dorny/paths-filter`) and conditionally runs only the relevant jobs. Reusable workflows (`_deploy-ecs.yml`, `_deploy-lambda.yml`) provide DRY deploy templates.
+
 ### Workflows
 
 | Workflow | Trigger | What it does |
 |----------|---------|-------------|
-| `test-backend.yml` | PR/push to main/staging (backend/** or shared-db/**) | Runs `pnpm test` in backend |
-| `deploy-backend.yml` | Push to main (backend/**) | Build Docker -> ECR -> Deploy ECS |
-| `deploy-worker.yml` | Push to main (backend/src/worker/**) | Build Docker -> ECR -> Deploy ECS worker |
-| `deploy-*-lambda.yml` | Push to main (lambda paths) | Build Docker -> ECR -> Update Lambda |
-| `terraform-deploy.yml` | Push to main (infra/**) | Terraform plan -> apply |
+| `ci.yml` | Push to main/staging, tags `v*`, PRs, workflow_dispatch | Unified pipeline: test -> terraform -> deploy (only changed services) |
+| `_deploy-ecs.yml` | Called by ci.yml | Reusable: build Docker -> ECR -> deploy ECS service |
+| `_deploy-lambda.yml` | Called by ci.yml | Reusable: build Docker -> ECR -> update Lambda function(s) |
+| `release.yml` | Push to main | release-please: auto version bumps, tags, changelogs from conventional commits |
+| `rollback.yml` | workflow_dispatch only | One-click rollback for ECS services and Lambda functions |
 | `claude-code-review.yml` | Pull requests | AI code review |
-| `*-staging.yml` | Staging-specific deployments | Same pattern, staging resources |
+| `claude.yml` | Issue/PR comments with @claude | Claude Code agent |
+
+### Release Management
+
+Uses `release-please` with conventional commits (`feat:`, `fix:`, `chore:`, etc.):
+- Push to main with conventional commits -> release-please creates/updates a Release PR
+- Merge the Release PR -> git tag (`v1.2.0`) + GitHub Release with auto-generated changelog
+- Tag creation triggers production deployment of all services
+- `feat:` bumps MINOR, `fix:` bumps PATCH, `feat!:` bumps MAJOR
+
+### Rollback
+
+- **Quick (ECS/Lambda)**: Use `rollback.yml` via workflow_dispatch — redeploys previous Docker image
+- **Full**: `git revert <commit>` on main triggers full redeploy
+
+### Manual Deploy
+
+Trigger `ci.yml` via workflow_dispatch with service selector (all/backend/worker/etc.) and environment (production/staging).
 
 ### Build & Test Commands
 
@@ -441,8 +462,29 @@ pnpm build          # TypeScript compile
 4. Enqueue from service layer via `sqs.service`
 
 ### Deploying Changes
-- **Backend/Worker**: Push to `main` branch; CI auto-deploys via ECR -> ECS
-- **Lambdas**: Push to `main` with changes in lambda directory; CI auto-deploys
-- **Infrastructure**: Push to `main` with changes in `infra/`; Terraform auto-applies
-- **Frontend**: Deployed via AWS Amplify (auto-deploys on main)
-- **Staging**: Use `staging` branch or staging-specific workflows
+
+All deployments go through the unified `ci.yml` pipeline:
+
+- **Staging**: Push/merge to `staging` branch -> auto-deploys changed services to staging
+- **Production**: Merge the Release PR to `main` -> creates tag -> deploys all services to production
+- **Push to main (no Release PR)**: Only runs tests + terraform apply. No service deploys until Release PR is merged.
+- **Frontend**: Deployed via AWS Amplify (auto-deploys on main/staging)
+- **Manual deploy**: Trigger `ci.yml` via workflow_dispatch, select service + environment
+- **Rollback**: Trigger `rollback.yml` via workflow_dispatch, select service + target image
+
+### Commit Convention
+
+Use conventional commits for automatic versioning and changelogs:
+
+- `feat: add webhook retry logic` -> bumps MINOR version
+- `fix: clip preview not loading` -> bumps PATCH version
+- `feat!: redesign auth flow` -> bumps MAJOR version (breaking change)
+- `chore: update dependencies` -> included in changelog, no version bump
+- `refactor: extract clip service` -> included in changelog, no version bump
+
+### Release Flow
+
+1. Merge feature branches to `staging` (auto-deploys to staging)
+2. Merge `staging` to `main` via PR (runs tests + terraform only, NO service deploys)
+3. `release-please` creates/updates a Release PR on main with bumped version + changelog
+4. Merge the Release PR -> creates git tag `v1.2.0` -> triggers production deploy of all services
