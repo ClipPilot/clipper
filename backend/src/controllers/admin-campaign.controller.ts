@@ -1,10 +1,10 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
 import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
 import { campaignContractService } from "../services/massPosting/campaignContract.service";
 import { adPostingService, AdPostingError } from "../services/adPosting.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function getAllCampaigns(req: AdminRequest, res: Response) {
   try {
@@ -18,9 +18,7 @@ export async function getAllCampaigns(req: AdminRequest, res: Response) {
 
     return res.json(result);
   } catch (error) {
-    console.error("Get all campaigns error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaigns" });
+    return handleControllerError(res, "Get all campaigns error", error, "Failed to fetch campaigns");
   }
 }
 
@@ -32,12 +30,10 @@ export async function getCampaignDetail(req: AdminRequest, res: Response) {
     const campaign = await campaignService.getCampaignDetail(id);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Get campaign detail error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaign" });
+    return handleControllerError(res, "Get campaign detail error", error, "Failed to fetch campaign");
   }
 }
 
@@ -62,12 +58,10 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
 
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Approve campaign error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to approve campaign" });
+    return handleControllerError(res, "Approve campaign error", error, "Failed to approve campaign");
   }
 }
 
@@ -84,12 +78,10 @@ export async function rejectCampaign(req: AdminRequest, res: Response) {
     const campaign = await campaignService.rejectCampaign(id, rejectionReason, adminNotes);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Reject campaign error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to reject campaign" });
+    return handleControllerError(res, "Reject campaign error", error, "Failed to reject campaign");
   }
 }
 
@@ -110,12 +102,10 @@ export async function updateCampaign(req: AdminRequest, res: Response) {
 
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Update campaign error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to update campaign" });
+    return handleControllerError(res, "Update campaign error", error, "Failed to update campaign");
   }
 }
 
@@ -127,15 +117,13 @@ export async function pauseCampaign(req: AdminRequest, res: Response) {
     const campaign = await campaignService.pauseCampaign(id);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Pause campaign error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
     if (error.message?.includes("Can only pause")) {
       return res.status(400).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to pause campaign" });
+    return handleControllerError(res, "Pause campaign error", error, "Failed to pause campaign");
   }
 }
 
@@ -147,15 +135,13 @@ export async function endCampaign(req: AdminRequest, res: Response) {
     const campaign = await campaignService.endCampaign(id);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("End campaign error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
     if (error.message?.includes("Can only end")) {
       return res.status(400).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to end campaign" });
+    return handleControllerError(res, "End campaign error", error, "Failed to end campaign");
   }
 }
 
@@ -172,9 +158,7 @@ export async function getCampaignVideos(req: AdminRequest, res: Response) {
     const result = await campaignVideoService.listVideos(campaignId, { page, pageSize, filter: validFilter });
     return res.json(result);
   } catch (error) {
-    console.error("Get campaign videos error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaign videos" });
+    return handleControllerError(res, "Get campaign videos error", error, "Failed to fetch campaign videos");
   }
 }
 
@@ -203,12 +187,10 @@ export async function getCampaignPosts(req: AdminRequest, res: Response) {
 
     return res.json(result);
   } catch (error: any) {
-    console.error("Get campaign posts error:", error);
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaign posts" });
+    return handleControllerError(res, "Get campaign posts error", error, "Failed to fetch campaign posts");
   }
 }
 
@@ -220,9 +202,7 @@ export async function getMasterAgreement(req: AdminRequest, res: Response) {
     const agreement = await campaignContractService.getOrGenerateMasterAgreement(teamId);
     return res.json({ agreement });
   } catch (error) {
-    console.error("Get master agreement error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get master agreement" });
+    return handleControllerError(res, "Get master agreement error", error, "Failed to get master agreement");
   }
 }
 
@@ -234,9 +214,7 @@ export async function voidAndRegenerateMasterContract(req: AdminRequest, res: Re
     const agreement = await campaignContractService.voidAndRegenerateMasterAgreement(teamId);
     return res.json({ agreement });
   } catch (error) {
-    console.error("Void and regenerate master contract error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to void and regenerate master contract" });
+    return handleControllerError(res, "Void and regenerate master contract error", error, "Failed to void and regenerate master contract");
   }
 }
 
@@ -259,11 +237,9 @@ export async function postCampaignClip(req: AdminRequest, res: Response) {
 
     return res.status(202).json({ message: "Campaign posting started", ...result });
   } catch (error: any) {
-    console.error("Post campaign clip error:", error);
     if (error instanceof AdPostingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to start campaign posting" });
+    return handleControllerError(res, "Post campaign clip error", error, "Failed to start campaign posting");
   }
 }

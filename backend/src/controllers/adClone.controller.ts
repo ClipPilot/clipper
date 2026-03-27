@@ -11,7 +11,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -39,10 +39,7 @@ export class AdCloneController {
         ...result,
       });
     } catch (error) {
-      console.error("[AD_CLONE] Init structure error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate structure"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Init structure error", error, "Failed to generate structure");
     }
   }
 
@@ -78,10 +75,7 @@ export class AdCloneController {
         uploadUrls: result.uploadUrls,
       });
     } catch (error) {
-      console.error("[AD_CLONE] Create project error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to create project"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Create project error", error, "Failed to create project");
     }
   }
 
@@ -112,10 +106,7 @@ export class AdCloneController {
         uploadUrls,
       });
     } catch (error) {
-      console.error("[AD_CLONE] Get upload URLs error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URLs"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Get upload URLs error", error, "Failed to get upload URLs");
     }
   }
 
@@ -141,10 +132,7 @@ export class AdCloneController {
         message: "Upload confirmed",
       });
     } catch (error) {
-      console.error("[AD_CLONE] Confirm upload error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to confirm upload"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Confirm upload error", error, "Failed to confirm upload");
     }
   }
 
@@ -187,10 +175,7 @@ export class AdCloneController {
         message: "Analysis started. Poll for status.",
       });
     } catch (error) {
-      console.error("[AD_CLONE] Start analysis error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to start analysis"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Start analysis error", error, "Failed to start analysis");
     }
   }
 
@@ -210,10 +195,7 @@ export class AdCloneController {
         message: "Script updated",
       });
     } catch (error) {
-      console.error("[AD_CLONE] Update script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update script"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Update script error", error, "Failed to update script");
     }
   }
 
@@ -230,10 +212,7 @@ export class AdCloneController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[AD_CLONE] Link video job error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to link video job"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Link video job error", error, "Failed to link video job");
     }
   }
 
@@ -335,10 +314,7 @@ export class AdCloneController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[AD_CLONE] Get status error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get status"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Get status error", error, "Failed to get status");
     }
   }
 
@@ -406,10 +382,7 @@ export class AdCloneController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[AD_CLONE] Get project error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get project"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Get project error", error, "Failed to get project");
     }
   }
 
@@ -525,10 +498,7 @@ export class AdCloneController {
         clipId: clip.id,
       });
     } catch (error) {
-      console.error("[AD_CLONE] Finalize project error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to finalize project"),
-      });
+      return handleControllerError(res, "[AD_CLONE] Finalize project error", error, "Failed to finalize project");
     }
   }
 }
