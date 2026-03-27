@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input, Checkbox, Divider } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Checkbox,
+  Separator,
+  TextField,
+  Label,
+  FieldError,
+  InputGroup,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import ContinueWithGoogle from "./ContinueWithGoogle";
 
@@ -34,12 +43,10 @@ export default function SignUpForm({
     e.preventDefault();
     onClearError();
     setLocalError("");
-
     if (password !== confirmPassword) {
       setLocalError("Passwords do not match");
       return;
     }
-
     await onSubmit(email, password, firstName, lastName);
   };
 
@@ -56,124 +63,91 @@ export default function SignUpForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 gap-4">
-          <Input
-            isRequired
-            label="First Name"
-            placeholder="John"
-            variant="flat"
-            classNames={{
-              inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 rounded-xl",
-            }}
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-          <Input
-            isRequired
-            label="Last Name"
-            placeholder="Doe"
-            variant="flat"
-            classNames={{
-              inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 rounded-xl",
-            }}
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
+          <TextField fullWidth isRequired variant="secondary">
+            <Label>First Name</Label>
+            <Input placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            <FieldError />
+          </TextField>
+          <TextField fullWidth isRequired variant="secondary">
+            <Label>Last Name</Label>
+            <Input placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            <FieldError />
+          </TextField>
         </div>
 
-        <Input
-          isRequired
-          label="Email Address"
-          placeholder="you@example.com"
-          type="email"
-          variant="flat"
-          classNames={{
-            inputWrapper:
-              "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 rounded-xl",
-          }}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <TextField fullWidth type="email" isRequired variant="secondary">
+          <Label>Email Address</Label>
+          <Input placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FieldError />
+        </TextField>
 
-        <Input
-          isRequired
-          label="Password"
-          type={isVisible ? "text" : "password"}
-          variant="flat"
-          endContent={
-            <button type="button" onClick={() => setIsVisible(!isVisible)}>
-              <Icon
-                className="text-text-tertiary text-xl"
-                icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-              />
-            </button>
-          }
-          classNames={{
-            inputWrapper:
-              "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 rounded-xl",
-          }}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <TextField fullWidth isRequired variant="secondary">
+          <Label>Password</Label>
+          <InputGroup>
+            <InputGroup.Input
+              type={isVisible ? "text" : "password"}
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsVisible(!isVisible)}>
+                <Icon icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
+          <FieldError />
+        </TextField>
 
-        <Input
-          isRequired
-          label="Confirm Password"
-          type={isConfirmVisible ? "text" : "password"}
-          variant="flat"
-          endContent={
-            <button type="button" onClick={() => setIsConfirmVisible(!isConfirmVisible)}>
-              <Icon
-                className="text-text-tertiary text-xl"
-                icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-              />
-            </button>
-          }
-          classNames={{
-            inputWrapper:
-              "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 rounded-xl",
-          }}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
+        <TextField fullWidth isRequired variant="secondary">
+          <Label>Confirm Password</Label>
+          <InputGroup>
+            <InputGroup.Input
+              type={isConfirmVisible ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsConfirmVisible(!isConfirmVisible)}>
+                <Icon icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
+          <FieldError />
+        </TextField>
 
-        <div className="flex items-start gap-2">
-          <Checkbox isRequired size="sm" isSelected={agreedToTerms} onValueChange={setAgreedToTerms} />
-          <span className="text-xs text-text-secondary leading-relaxed">
-            I agree to the{" "}
-            <a href="https://cuttr.com/terms" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Terms</a> and{" "}
-            <a href="https://cuttr.com/privacy" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Privacy Policy</a>
-          </span>
-        </div>
+        <Checkbox isRequired isSelected={agreedToTerms} onChange={setAgreedToTerms} id="agree-terms">
+          <Checkbox.Control>
+            <Checkbox.Indicator />
+          </Checkbox.Control>
+          <Checkbox.Content>
+            <Label htmlFor="agree-terms" className="text-xs text-text-secondary leading-relaxed">
+              I agree to the{" "}
+              <a href="https://cuttr.com/terms" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Terms</a> and{" "}
+              <a href="https://cuttr.com/privacy" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Privacy Policy</a>
+            </Label>
+          </Checkbox.Content>
+        </Checkbox>
 
-        <Button
-          className="bg-accent-400 text-white font-semibold rounded-xl"
-          size="lg"
-          type="submit"
-          isLoading={isLoading}
-        >
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" size="lg" type="submit" isPending={isLoading}>
           Create Account
         </Button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-4 my-2">
-        <Divider className="flex-1" />
+        <Separator className="flex-1" />
         <span className="text-xs text-text-tertiary">OR</span>
-        <Divider className="flex-1" />
+        <Separator className="flex-1" />
       </div>
 
-      {/* Google Sign Up */}
       <ContinueWithGoogle />
 
       <p className="text-sm text-center text-text-secondary mt-2">
         Already have an account?{" "}
-        <button className="text-accent-400 font-medium hover:underline" onClick={onLogin}>
+        <span className="text-accent-400 font-medium hover:underline cursor-pointer" onClick={onLogin}>
           Log In
-        </button>
+        </span>
       </p>
     </>
   );

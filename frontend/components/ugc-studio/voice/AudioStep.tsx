@@ -1,7 +1,7 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { Button, Card, CardBody } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedVoiceAtom } from "@/store/ugc";
 import { VoiceSelector } from "./VoiceSelector";
@@ -26,8 +26,8 @@ export function AudioStep({ onContinue, teamId }: AudioStepProps) {
       </div>
 
       {selectedVoice && (
-        <Card className="bg-gradient-to-r from-accent-400/10 to-purple-500/10 border border-accent-400/30">
-          <CardBody className="p-4">
+        <div className="rounded-xl bg-gradient-to-r from-accent-400/10 to-purple-500/10 border border-accent-400/30 overflow-hidden">
+          <div className="p-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center shrink-0">
                 <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={24} />
@@ -47,26 +47,26 @@ export function AudioStep({ onContinue, teamId }: AudioStepProps) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Button
-                  variant="bordered"
-                  size="sm"
-                  className="border-border-base text-text-secondary"
-                  onPress={() => setSelectedVoice(null)}
-                >
+ variant="outline"
+ size="sm"
+ className="border-border-base text-text-secondary"
+ onPress={() => setSelectedVoice(null)}
+ >
                   Change
                 </Button>
                 {onContinue && (
                   <Button
-                    className="bg-accent-400 text-white font-semibold"
-                    endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-                    onPress={onContinue}
-                  >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={onContinue}
+ >
                     Continue
-                  </Button>
+                    <Icon icon="solar:arrow-right-bold" width={18} />
+</Button>
                 )}
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
       <VoiceSelector selectedVoice={selectedVoice} onVoiceChange={setSelectedVoice} teamId={teamId} />

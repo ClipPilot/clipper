@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { Progress } from "@heroui/react";
+import { ProgressBar } from "@heroui/react";
 import type { UGCScene } from "../script/types";
 
 interface StoryboardThumbnailProps {

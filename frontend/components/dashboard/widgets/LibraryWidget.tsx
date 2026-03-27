@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, Image } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
@@ -57,11 +57,10 @@ export function LibraryWidget({ color, onColorChange }: LibraryWidgetProps) {
           <Icon icon="solar:video-library-linear" width={48} className="text-text-tertiary" />
           <p className="text-sm text-text-secondary text-center">No clips yet</p>
           <Button
-            size="sm"
-            color="primary"
-            variant="flat"
-            onPress={() => router.push("/dashboard/create")}
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={() => router.push("/dashboard/create")}
+ >
             Create your first clip
           </Button>
         </div>
@@ -75,12 +74,11 @@ export function LibraryWidget({ color, onColorChange }: LibraryWidgetProps) {
                 className="relative aspect-[9/16] rounded-lg overflow-hidden bg-surface-hover group"
               >
                 {clip.clipUrl ? (
-                  <Image
-                    src={clip.clipUrl}
-                    alt={clip.title || "Clip"}
-                    className="w-full h-full object-cover"
-                    removeWrapper
-                  />
+                  <img
+ src={clip.clipUrl}
+ alt={clip.title || "Clip"}
+ className="w-full h-full object-cover"
+ />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Icon icon="solar:video-frame-linear" width={20} className="text-text-tertiary" />
@@ -93,14 +91,14 @@ export function LibraryWidget({ color, onColorChange }: LibraryWidgetProps) {
             ))}
           </div>
           <Button
-            size="sm"
-            variant="light"
-            className="mt-3 w-full"
-            onPress={() => router.push("/dashboard/clips")}
-            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
-          >
+ size="sm"
+ variant="tertiary"
+ className="mt-3 w-full"
+ onPress={() => router.push("/dashboard/clips")}
+ >
             View All
-          </Button>
+            <Icon icon="solar:arrow-right-linear" width={14} />
+</Button>
         </div>
       )}
     </WidgetWrapper>

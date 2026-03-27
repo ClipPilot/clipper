@@ -19,7 +19,9 @@ import {
   clipsSortAtom,
   campaignUploadFilterAtom,
 } from "@/store/clips";
-import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Tooltip } from "@heroui/react";
+import { Button, Card, Dropdown, Tooltip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { Clip, clipsAPI } from "@/api/clips";
@@ -40,7 +42,7 @@ import ClipViewModal from "@/components/clips/ClipViewModal";
 import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
 import { useSocket } from "@/hooks/useSocket";
 import { getSocket } from "@/lib/socket";
-import { addToast } from "@heroui/react";
+import {  } from "@heroui/react";
 import {
   useClipsData,
   useFolders,
@@ -265,7 +267,7 @@ function MyClipsPageContent() {
         const copyLabel = update.copyIndex && update.platformTotal && update.platformTotal > 1
           ? ` #${update.copyIndex}`
           : "";
-        addToast({
+        toast({
           title: `${update.platformName}${copyLabel} ready`,
           description: `Uploaded to Drive (${update.completedItems}/${update.totalItems})`,
           color: "success",
@@ -275,7 +277,7 @@ function MyClipsPageContent() {
         const copyLabel = update.copyIndex && update.platformTotal && update.platformTotal > 1
           ? ` copy ${update.copyIndex}`
           : "";
-        addToast({
+        toast({
           title: `${update.platformName}${copyLabel} failed`,
           description: update.error || "Upload failed",
           color: "danger",
@@ -284,7 +286,7 @@ function MyClipsPageContent() {
         const success = update.successCount ?? update.completedItems;
         const failed = update.failedCount ?? 0;
         const failedText = failed > 0 ? ` (${failed} failed)` : "";
-        addToast({
+        toast({
           title: "Ad posting complete",
           description: `${success} of ${update.totalItems} cop${update.totalItems > 1 ? "ies" : "y"} uploaded${failedText}`,
           color: failed > 0 ? "warning" : "success",
@@ -509,7 +511,7 @@ function MyClipsPageContent() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      addToast({
+      toast({
         title: "Download failed",
         description: error instanceof Error ? error.message : "Could not download folder",
         color: "danger",
@@ -541,17 +543,17 @@ function MyClipsPageContent() {
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Library</h1>
           <div className="flex items-center gap-2">
             <Dropdown>
-              <DropdownTrigger>
-                <Button
-                  variant="flat"
-                  className="bg-surface-base border border-border-base"
-                  startContent={<Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />}
-                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
-                >
+<Button
+ variant="tertiary"
+ className="bg-surface-base border border-border-base"
+ >
+                  <Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />
                   {clipTypeFilter === "all" ? "All" : clipTypeFilter === "clips" ? "Clips" : clipTypeFilter === "ai-video" ? "AI Video Creator" : clipTypeFilter === "face-swap" ? "Face Swap" : "Ad Clone"}
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
+                  <Icon icon="solar:alt-arrow-down-linear" width={16} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
                 aria-label="Clip type filter"
                 selectedKeys={[clipTypeFilter]}
                 selectionMode="single"
@@ -560,25 +562,26 @@ function MyClipsPageContent() {
                   base: "bg-surface-base border border-border-base",
                 }}
               >
-                <DropdownItem key="all">All</DropdownItem>
-                <DropdownItem key="clips">Clips</DropdownItem>
-                <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
-                <DropdownItem key="face-swap">Face Swap</DropdownItem>
-                <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
-              </DropdownMenu>
+                <Dropdown.Item key="all">All</Dropdown.Item>
+                <Dropdown.Item key="clips">Clips</Dropdown.Item>
+                <Dropdown.Item key="ai-video">AI Video Creator</Dropdown.Item>
+                <Dropdown.Item key="face-swap">Face Swap</Dropdown.Item>
+                <Dropdown.Item key="ad-clone">Ad Clone</Dropdown.Item>
+              </Dropdown.Menu>
+</Dropdown.Popover>
             </Dropdown>
             <Dropdown>
-              <DropdownTrigger>
-                <Button
-                  variant="flat"
-                  className={`bg-surface-base border border-border-base ${campaignUploadFilter !== "all" ? "border-accent-400" : ""}`}
-                  startContent={<Icon icon="solar:video-library-bold-duotone" className="text-accent-400" width={18} />}
-                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
-                >
+<Button
+ variant="tertiary"
+ className={`bg-surface-base border border-border-base ${campaignUploadFilter !== "all" ? "border-accent-400" : ""}`}
+ >
+                  <Icon icon="solar:video-library-bold-duotone" className="text-accent-400" width={18} />
                   {campaignUploadFilter === "all" ? "Uploads" : campaignUploadFilter === "only" ? "Only Uploads" : "No Uploads"}
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
+                  <Icon icon="solar:alt-arrow-down-linear" width={16} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
                 aria-label="Campaign uploads filter"
                 selectedKeys={[campaignUploadFilter]}
                 selectionMode="single"
@@ -587,23 +590,24 @@ function MyClipsPageContent() {
                   base: "bg-surface-base border border-border-base",
                 }}
               >
-                <DropdownItem key="all">Show All</DropdownItem>
-                <DropdownItem key="only">Only Campaign Uploads</DropdownItem>
-                <DropdownItem key="hide">Hide Campaign Uploads</DropdownItem>
-              </DropdownMenu>
+                <Dropdown.Item key="all">Show All</Dropdown.Item>
+                <Dropdown.Item key="only">Only Campaign Uploads</Dropdown.Item>
+                <Dropdown.Item key="hide">Hide Campaign Uploads</Dropdown.Item>
+              </Dropdown.Menu>
+</Dropdown.Popover>
             </Dropdown>
             <Dropdown>
-              <DropdownTrigger>
-                <Button
-                  variant="flat"
-                  className="bg-surface-base border border-border-base"
-                  startContent={<Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />}
-                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
-                >
+<Button
+ variant="tertiary"
+ className="bg-surface-base border border-border-base"
+ >
+                  <Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />
                   {clipsSort === "newest" ? "Newest" : "Oldest"}
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
+                  <Icon icon="solar:alt-arrow-down-linear" width={16} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
                 aria-label="Sort order"
                 selectedKeys={[clipsSort]}
                 selectionMode="single"
@@ -614,9 +618,10 @@ function MyClipsPageContent() {
                   base: "bg-surface-base border border-border-base",
                 }}
               >
-                <DropdownItem key="newest">Newest</DropdownItem>
-                <DropdownItem key="oldest">Oldest</DropdownItem>
-              </DropdownMenu>
+                <Dropdown.Item key="newest">Newest</Dropdown.Item>
+                <Dropdown.Item key="oldest">Oldest</Dropdown.Item>
+              </Dropdown.Menu>
+</Dropdown.Popover>
             </Dropdown>
           </div>
         </div>
@@ -638,16 +643,16 @@ function MyClipsPageContent() {
           {!isSearchMode && (selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" || folderTree.length > 0) && (
             <div className="lg:hidden">
               <Button
-                className="w-full bg-surface-base border border-border-base justify-between"
-                variant="flat"
-                onPress={() => setIsMobileFolderOpen(!isMobileFolderOpen)}
-                startContent={<Icon icon="solar:folder-bold-duotone" className="text-accent-400" width={18} />}
-                endContent={<Icon icon={isMobileFolderOpen ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={16} />}
-              >
+ className="w-full bg-surface-base border border-border-base justify-between"
+ variant="tertiary"
+ onPress={() => setIsMobileFolderOpen(!isMobileFolderOpen)}
+ >
+                <Icon icon="solar:folder-bold-duotone" className="text-accent-400" width={18} />
                 <span className="flex-1 text-left text-text-primary">
                   {selectedFolderId === null ? "All Folders" : folderPath[folderPath.length - 1]?.name || "Folder"}
                 </span>
-              </Button>
+                <Icon icon={isMobileFolderOpen ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={16} />
+</Button>
 
               {/* Mobile folder tree dropdown */}
               {isMobileFolderOpen && (
@@ -739,33 +744,33 @@ function MyClipsPageContent() {
                     {selectedFolderId !== null && savedClips.length > 0 && (
                       <Tooltip content="Download folder as ZIP">
                         <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          isLoading={isDownloadingFolder}
-                          onPress={() => handleDownloadFolder()}
-                        >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ isPending={isDownloadingFolder}
+ onPress={() => handleDownloadFolder()}
+ >
                           <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
                         </Button>
                       </Tooltip>
                     )}
                     <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1">
                       <Button
-                        isIconOnly
-                        size="sm"
-                        variant={viewMode === "grid" ? "solid" : "light"}
-                        className={viewMode === "grid" ? "bg-accent-400" : ""}
-                        onPress={() => setViewMode("grid")}
-                      >
+ isIconOnly
+ size="sm"
+ variant={viewMode === "grid" ? "solid" : "light"}
+ className={viewMode === "grid" ? "bg-accent-400" : ""}
+ onPress={() => setViewMode("grid")}
+ >
                         <Icon icon="solar:widget-bold" className="text-lg" />
                       </Button>
                       <Button
-                        isIconOnly
-                        size="sm"
-                        variant={viewMode === "list" ? "solid" : "light"}
-                        className={viewMode === "list" ? "bg-accent-400" : ""}
-                        onPress={() => setViewMode("list")}
-                      >
+ isIconOnly
+ size="sm"
+ variant={viewMode === "list" ? "solid" : "light"}
+ className={viewMode === "list" ? "bg-accent-400" : ""}
+ onPress={() => setViewMode("list")}
+ >
                         <Icon icon="solar:list-bold" className="text-lg" />
                       </Button>
                     </div>
@@ -804,11 +809,11 @@ function MyClipsPageContent() {
                       {searchPagination.hasMore && (
                         <div className="flex justify-center py-8">
                           <Button
-                            variant="flat"
-                            onPress={() => clipSearchRef.current?.loadMore()}
-                            isLoading={isSearching}
-                            className="bg-surface-base border border-border-base"
-                          >
+ variant="tertiary"
+ onPress={() => clipSearchRef.current?.loadMore()}
+ isPending={isSearching}
+ className="bg-surface-base border border-border-base"
+ >
                             Load more results
                           </Button>
                         </div>
@@ -816,7 +821,7 @@ function MyClipsPageContent() {
                     </>
                   ) : (
                     <Card className="bg-surface-base border border-border-base">
-                      <CardBody className="flex flex-col items-center justify-center py-16">
+                      <Card.Content className="flex flex-col items-center justify-center py-16">
                         <Icon
                           icon="solar:magnifer-zoom-out-bold-duotone"
                           className="text-6xl text-text-tertiary mb-4"
@@ -827,7 +832,7 @@ function MyClipsPageContent() {
                         <p className="text-text-tertiary text-center text-sm max-w-md">
                           Try adjusting your search terms or removing some filters
                         </p>
-                      </CardBody>
+                      </Card.Content>
                     </Card>
                   )
                 ) : isLoadingClips ? (
@@ -884,7 +889,7 @@ function MyClipsPageContent() {
                   </>
                 ) : (
                   <Card className="bg-surface-base border border-border-base">
-                    <CardBody className="flex flex-col items-center justify-center py-16">
+                    <Card.Content className="flex flex-col items-center justify-center py-16">
                       <Icon
                         icon={selectedFolderId === null ? "solar:video-frame-play-vertical-bold-duotone" : "solar:inbox-outline"}
                         className="text-6xl text-text-tertiary mb-4"
@@ -897,7 +902,7 @@ function MyClipsPageContent() {
                           ? "Generate clips and save the ones you like to see them here"
                           : "Drag clips here to organize them"}
                       </p>
-                    </CardBody>
+                    </Card.Content>
                   </Card>
                 )}
               </div>

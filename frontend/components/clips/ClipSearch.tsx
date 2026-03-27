@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { Button, Input, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Button, Input, Chip, Dropdown } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { Clip, Tag, clipsAPI } from "@/api/clips";
 import { useAtomValue } from "jotai";
@@ -122,55 +123,44 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1">
+        <div className="flex-1 relative">
+          <Icon
+            icon={isSearching ? "svg-spinners:ring-resize" : "solar:magnifer-linear"}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-lg pointer-events-none"
+          />
           <Input
+            onChange={(e) => (handleSearchChange)(e.target.value)}
             placeholder="Search videos"
             value={searchQuery}
-            onValueChange={handleSearchChange}
-            startContent={
-              <Icon
-                icon={isSearching ? "svg-spinners:ring-resize" : "solar:magnifer-linear"}
-                className="text-text-tertiary text-lg"
-              />
-            }
-            endContent={
-              isSearchMode && (
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={clearSearch}
-                  className="min-w-6 w-6 h-6"
-                >
-                  <Icon icon="solar:close-circle-bold" className="text-text-tertiary" />
-                </Button>
-              )
-            }
-            classNames={{
-              inputWrapper: "bg-surface-base border border-border-base hover:border-accent-400/50",
-            }}
+            className="w-full rounded-lg border border-border-base bg-surface-elevated pl-9 pr-9 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-400/40 focus:border-accent-400 transition-colors"
           />
+          {isSearchMode && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-surface-hover transition-colors"
+            >
+              <Icon icon="solar:close-circle-bold" className="text-text-tertiary text-lg" />
+            </button>
+          )}
         </div>
         {tags.length > 0 && (
           <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="flat"
-                className="bg-surface-base border border-border-base"
-                startContent={<Icon icon="solar:tag-bold" className="text-lg" />}
-                endContent={
-                  selectedTagIds.length > 0 && (
+<Button
+ variant="tertiary"
+ className="bg-surface-base border border-border-base"
+ >
+                <Icon icon="solar:tag-bold" className="text-lg" />
+                <span className="hidden sm:inline">Filter by Tags</span>
+                <span className="sm:hidden">Tags</span>
+                {selectedTagIds.length > 0 && (
                     <Chip size="sm" className="bg-accent-400 text-white h-5 min-w-5">
                       {selectedTagIds.length}
                     </Chip>
-                  )
-                }
-              >
-                <span className="hidden sm:inline">Filter by Tags</span>
-                <span className="sm:hidden">Tags</span>
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
+                  )}
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
               aria-label="Filter by tags"
               selectionMode="multiple"
               selectedKeys={new Set(selectedTagIds.map(String))}
@@ -180,19 +170,13 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
               }}
             >
               {tags.map((tag) => (
-                <DropdownItem
-                  key={tag.id.toString()}
-                  startContent={
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: tag.color }}
-                    />
-                  }
-                >
+                <Dropdown.Item key={tag.id.toString()}>
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                   {tag.name}
-                </DropdownItem>
+                </Dropdown.Item>
               ))}
-            </DropdownMenu>
+            </Dropdown.Menu>
+</Dropdown.Popover>
           </Dropdown>
         )}
       </div>
@@ -204,30 +188,24 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
             if (!tag) return null;
             return (
               <Chip
-                key={tagId}
-                onClose={() => handleTagToggle(tagId)}
-                variant="flat"
-                classNames={{
-                  base: "bg-surface-elevated",
-                  content: "text-text-primary",
-                }}
-                startContent={
-                  <div
+ key={tagId}
+ onClose={() => handleTagToggle(tagId)}
+ variant="tertiary"
+ >
+                <div
                     className="w-2 h-2 rounded-full ml-1"
                     style={{ backgroundColor: tag.color }}
                   />
-                }
-              >
                 {tag.name}
               </Chip>
             );
           })}
           <Button
-            size="sm"
-            variant="light"
-            onPress={clearSearch}
-            className="text-text-tertiary h-7"
-          >
+ size="sm"
+ variant="tertiary"
+ onPress={clearSearch}
+ className="text-text-tertiary h-7"
+ >
             Clear all
           </Button>
         </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardBody, Button, addToast } from "@heroui/react";
+import { Button } from "@heroui/react";
+import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
 import { intakeAPI, IntakeFormData } from "@/api/intake";
 import { campaignAPI } from "@/api/campaign";
@@ -21,7 +22,6 @@ interface IntakeFormProps {
   mode?: "application" | "create";
 }
 
-// ── All form state in one bag ──
 interface FormState {
   campaignName: string;
   brandDescription: string;
@@ -49,7 +49,6 @@ interface StepContext {
   buildFormData: () => IntakeFormData;
 }
 
-// ── Validation: return true if user can proceed from this step ──
 const STEP_VALIDATION_MAP: Record<string, (s: FormState) => boolean> = {
   brand: (s) => s.campaignName.trim().length > 0 && s.brandDescription.trim().length > 0,
   socials: (s) => s.companySocials.some((c) => c.url.trim().length > 0),
@@ -60,7 +59,6 @@ const STEP_VALIDATION_MAP: Record<string, (s: FormState) => boolean> = {
   review: () => true,
 };
 
-// ── Step registry: add a new step here + one entry in INTAKE_STEPS ──
 const STEP_RENDER_MAP: Record<string, (ctx: StepContext) => React.ReactNode> = {
   brand: ({ formState, setters }) => (
     <StepBrandInfo
@@ -105,7 +103,6 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(true);
 
-  // ── Form state ──
   const [campaignName, setCampaignName] = useState("");
   const [brandDescription, setBrandDescription] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
@@ -134,7 +131,6 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
     setBudget,
   };
 
-  // ── Load existing form data ──
   useEffect(() => {
     if (!teamId) return;
     intakeAPI
@@ -162,14 +158,12 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
     budget,
   }), [campaignName, brandDescription, companyWebsite, companySocials, competitorSocials, icps, budget]);
 
-  // ── Auto-save on step change ──
   const saveForm = useCallback(async () => {
     if (!teamId) return;
     setIsSaving(true);
     try {
       await intakeAPI.saveIntakeForm(teamId, buildFormData());
     } catch {
-      // silent — auto-save is best-effort
     } finally {
       setIsSaving(false);
     }
@@ -187,7 +181,6 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
   const handleNext = () => goToStep(currentStep + 1);
   const handleBack = () => goToStep(currentStep - 1);
 
-  // ── Submit ──
   const handleSubmit = async () => {
     if (!teamId) return;
     setIsSubmitting(true);
@@ -204,19 +197,19 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
           company_socials: companySocials,
           competitor_socials: competitorSocials,
         });
-        addToast({ title: "Campaign created", description: `"${campaign.name}" has been submitted for review.`, color: "success" });
+        toast({ title: "Campaign created", description: `"${campaign.name}" has been submitted for review.`, color: "success" });
         onSubmitted(campaign.id);
       } else if (isAppeal) {
         await intakeAPI.submitAppeal(teamId, data);
-        addToast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
+        toast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
         onSubmitted();
       } else {
         await intakeAPI.submitApplication(teamId, data);
-        addToast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
+        toast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
         onSubmitted();
       }
     } catch (err: any) {
-      addToast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
+      toast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
     } finally {
       setIsSubmitting(false);
     }
@@ -232,7 +225,6 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
             {mode === "create" ? "New Campaign" : isAppeal ? "Update Your Application" : "Mass Posting Application"}
@@ -246,18 +238,18 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
           </p>
         </div>
 
-        {/* Step Indicator */}
         <div className="flex items-center gap-1 mb-8 overflow-x-auto pb-2">
           {INTAKE_STEPS.map((step, i) => (
             <React.Fragment key={step.key}>
-              <button
-                onClick={() => i <= currentStep && goToStep(i)}
-                disabled={i > currentStep}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              <Button
+                variant="tertiary"
+                onPress={() => i <= currentStep && goToStep(i)}
+                isDisabled={i > currentStep}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors !bg-transparent ${
                   i === currentStep
-                    ? "bg-accent-400/10 text-accent-400"
+                    ? "text-accent-400"
                     : i < currentStep
-                      ? "text-success-500 hover:bg-surface-elevated cursor-pointer"
+                      ? "text-green-500 cursor-pointer"
                       : "text-text-tertiary opacity-50 cursor-not-allowed"
                 }`}
               >
@@ -267,9 +259,9 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
                 />
                 <span className="hidden sm:inline">{step.label}</span>
                 <span className="sm:hidden">{i + 1}</span>
-              </button>
+              </Button>
               {i < INTAKE_STEPS.length - 1 && (
-                <div className={`w-8 h-0.5 flex-shrink-0 ${i < currentStep ? "bg-success-500" : "bg-border-base"}`} />
+                <div className={`w-8 h-0.5 flex-shrink-0 ${i < currentStep ? "bg-green-500" : "bg-border-base"}`} />
               )}
             </React.Fragment>
           ))}
@@ -281,31 +273,30 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application"
           )}
         </div>
 
-        {/* Step Content — driven by STEP_RENDER_MAP */}
-        <Card className="bg-surface-base border border-border-base">
-          <CardBody className="p-4 sm:p-6 lg:p-8">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="p-4 sm:p-6 lg:p-8">
             {renderCurrentStep ? renderCurrentStep(stepCtx) : null}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
 
-        {/* Navigation */}
         {currentStep < LAST_STEP && (
           <div className="flex justify-between mt-6">
             <Button
-              variant="flat"
+              variant="ghost"
+              className="!bg-transparent text-text-secondary hover:text-text-primary"
               isDisabled={currentStep === 0}
               onPress={handleBack}
-              startContent={<Icon icon="solar:arrow-left-linear" />}
             >
+              <Icon icon="solar:arrow-left-linear" />
               Back
             </Button>
             <Button
-              color="primary"
+              className="bg-accent-400 text-white"
               isDisabled={!canProceed}
               onPress={handleNext}
-              endContent={<Icon icon="solar:arrow-right-linear" />}
             >
               Continue
+              <Icon icon="solar:arrow-right-linear" />
             </Button>
           </div>
         )}

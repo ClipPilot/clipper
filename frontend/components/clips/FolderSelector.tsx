@@ -1,14 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Button,
+import { Button,
   Popover,
-  PopoverTrigger,
-  PopoverContent,
   Spinner,
-  useDisclosure,
-} from "@heroui/react";
+  useOverlayState } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI, Folder, FolderTreeNode } from "@/api/clips";
 import { CreateFolderModal } from "./CreateFolderModal";
@@ -113,7 +109,7 @@ export function FolderSelector({
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
-  const { isOpen: isCreateModalOpen, onOpen: openCreateModal, onClose: closeCreateModal } = useDisclosure();
+  const { isOpen: isCreateModalOpen, open: openCreateModal, close: closeCreateModal } = useOverlayState();
 
   const fetchFolders = useCallback(async () => {
     if (!teamId) return;
@@ -184,12 +180,12 @@ export function FolderSelector({
           content: "bg-surface-base border border-border-accent p-0 w-72",
         }}
       >
-        <PopoverTrigger>
+        <Popover.Trigger>
           <Button
-            variant="bordered"
-            className={`w-full justify-start border-border-base bg-surface-elevated ${sizeClasses[size]}`}
-            startContent={
-              selectedFolder ? (
+ variant="outline"
+ className={`w-full justify-start border-border-base bg-surface-elevated ${sizeClasses[size]}`}
+ >
+            {selectedFolder ? (
                 <Icon
                   icon="solar:folder-bold-duotone"
                   style={{ color: selectedFolder.color || "#3B82F6" }}
@@ -201,10 +197,11 @@ export function FolderSelector({
                   className="text-text-muted"
                   width={18}
                 />
-              )
-            }
-            endContent={
-              <div className="flex items-center gap-1 ml-auto">
+              )}
+            <span className="truncate text-text-primary">
+              {selectedFolder?.name || placeholder}
+            </span>
+            <div className="flex items-center gap-1 ml-auto">
                 {selectedFolderId && (
                   <button
                     onClick={handleClear}
@@ -219,18 +216,13 @@ export function FolderSelector({
                   width={16}
                 />
               </div>
-            }
-          >
-            <span className="truncate text-text-primary">
-              {selectedFolder?.name || placeholder}
-            </span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent>
+</Button>
+        </Popover.Trigger>
+        <Popover.Content>
           <div className="max-h-64 overflow-y-auto py-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Spinner size="sm" color="primary" />
+                <Spinner size="sm" color="accent" />
               </div>
             ) : folderTree.length === 0 ? (
               <div className="px-3 py-6 text-center">
@@ -241,11 +233,11 @@ export function FolderSelector({
                 />
                 <p className="text-sm text-text-secondary mb-3">No folders yet</p>
                 <Button
-                  size="sm"
-                  className="bg-accent-400 text-white"
-                  onPress={openCreateModal}
-                  startContent={<Icon icon="solar:add-circle-bold" width={16} />}
-                >
+ size="sm"
+ className="bg-accent-400 text-white"
+ onPress={openCreateModal}
+ >
+                  <Icon icon="solar:add-circle-bold" width={16} />
                   Create Folder
                 </Button>
               </div>
@@ -290,18 +282,18 @@ export function FolderSelector({
               <div className="border-t border-border-base" />
               <div className="p-2">
                 <Button
-                  size="sm"
-                  variant="light"
-                  className="w-full justify-start text-text-secondary"
-                  onPress={openCreateModal}
-                  startContent={<Icon icon="solar:add-folder-bold" width={16} />}
-                >
+ size="sm"
+ variant="tertiary"
+ className="w-full justify-start text-text-secondary"
+ onPress={openCreateModal}
+ >
+                  <Icon icon="solar:add-folder-bold" width={16} />
                   New Folder
                 </Button>
               </div>
             </>
           )}
-        </PopoverContent>
+        </Popover.Content>
       </Popover>
 
       <CreateFolderModal

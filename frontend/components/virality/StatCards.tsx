@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Tooltip as HTooltip, cn } from "@heroui/react";
+import { Tooltip as HTooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 export interface StatCardItem {
@@ -23,11 +23,11 @@ export function StatCards({ items, gridClassName }: StatCardsProps) {
   return (
     <div className={gridClassName ?? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4"}>
       {items.map((stat) => (
-        <Card
-          key={stat.title}
-          className="bg-surface-base border border-border-base h-full"
-        >
-          <CardBody className="p-4">
+        <div
+ key={stat.title}
+ className="rounded-xl border border-border-base bg-surface-base overflow-hidden h-full"
+ >
+          <div className="p-4">
             <div className="flex items-start gap-3">
               <div className={`p-2.5 rounded-xl ${stat.iconBg} shrink-0`}>
                 <Icon
@@ -78,8 +78,8 @@ export function StatCards({ items, gridClassName }: StatCardsProps) {
                 )}
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );

@@ -1,18 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Tabs,
-  Tab,
-  Card,
-  CardBody,
+import { Tabs,
   Spinner,
   Button,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+  Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
 import { actorsAPI } from "@/api/actors";
@@ -173,15 +165,15 @@ export function CharacterStep({
   if (teamsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
 
   if (!teamId) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-base">
+        <div className="py-16 flex flex-col items-center justify-center text-center px-6">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
@@ -193,8 +185,8 @@ export function CharacterStep({
           <p className="text-text-secondary text-sm">
             Please select a team to continue
           </p>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -210,8 +202,8 @@ export function CharacterStep({
       </div>
 
       {selectedCharacter && (
-        <Card className="bg-gradient-to-r from-accent-400/10 to-purple-500/10 border border-accent-400/30 mb-6">
-          <CardBody className="p-4">
+        <div className="rounded-xl border border-accent-400/30 overflow-hidden bg-gradient-to-r from-accent-400/10 to-purple-500/10 mb-6">
+          <div className="p-4">
             <div className="flex items-center gap-4">
               <div className="relative w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden bg-surface-elevated shrink-0">
                 {selectedCharacter.primaryImageUrl ||
@@ -264,80 +256,68 @@ export function CharacterStep({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Button
-                  variant="bordered"
-                  size="sm"
-                  className="border-border-base text-text-secondary"
-                  onPress={() => onCharacterSelect(null)}
-                >
+ variant="outline"
+ size="sm"
+ className="border-border-base text-text-secondary"
+ onPress={() => onCharacterSelect(null)}
+ >
                   Change
                 </Button>
                 {onContinue && (
                   <Button
-                    className="bg-accent-400 text-white font-semibold"
-                    endContent={
-                      <Icon icon="solar:arrow-right-bold" width={18} />
-                    }
-                    onPress={onContinue}
-                  >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={onContinue}
+ >
                     Continue
-                  </Button>
+                    <Icon icon="solar:arrow-right-bold" width={18} />
+</Button>
                 )}
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Tabs
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(key as CharacterSource)}
-        classNames={{
-          tabList:
-            "bg-surface-elevated/50 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl gap-1 sm:gap-2 border border-border-base flex-wrap sm:flex-nowrap",
-          cursor: "bg-accent-400 shadow-lg",
-          tab: "px-3 sm:px-6 py-2 sm:py-2.5 text-text-secondary data-[selected=true]:text-white font-medium rounded-lg sm:rounded-xl transition-all text-xs sm:text-sm",
-          tabContent: "group-data-[selected=true]:text-white",
-        }}
-        fullWidth
-      >
-        <Tab
-          key="create-new"
-          title={
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Icon
-                icon="solar:magic-stick-3-bold-duotone"
-                className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
-              />
-              <span className="hidden xs:inline sm:inline">Create New</span>
-            </div>
-          }
-        >
-          <div className="pt-6 sm:pt-8">
-            <CreateCharacterFlow
-              teamId={teamId}
-              onCharacterCreated={handleCharacterCreated}
-            />
-          </div>
-        </Tab>
+      <Tabs selectedKey={activeTab} onSelectionChange={(key) => setActiveTab(key as CharacterSource)}>
+        <Tabs.ListContainer>
+          <Tabs.List aria-label="Character source">
+            <Tabs.Tab id="create-new">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Icon icon="solar:magic-stick-3-bold-duotone" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <span>Create New</span>
+              </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="my-actors">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Icon icon="solar:user-circle-bold-duotone" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <span>My Actors</span>
+                {myActorsTotal > 0 && (
+                  <span className="text-[10px] sm:text-xs bg-white/20 px-1 sm:px-1.5 py-0.5 rounded-full">{myActorsTotal}</span>
+                )}
+              </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="community">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Icon icon="solar:users-group-rounded-bold-duotone" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+                <span>Community</span>
+                {communityTotal > 0 && (
+                  <span className="text-[10px] sm:text-xs bg-white/20 px-1 sm:px-1.5 py-0.5 rounded-full">{communityTotal}</span>
+                )}
+              </div>
+              <Tabs.Indicator />
+            </Tabs.Tab>
+          </Tabs.List>
+        </Tabs.ListContainer>
 
-        <Tab
-          key="my-actors"
-          title={
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Icon
-                icon="solar:user-circle-bold-duotone"
-                className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
-              />
-              <span className="hidden sm:inline">My Actors</span>
-              <span className="sm:hidden">Mine</span>
-              {myActorsTotal > 0 && (
-                <span className="text-[10px] sm:text-xs bg-white/20 px-1 sm:px-1.5 py-0.5 rounded-full">
-                  {myActorsTotal}
-                </span>
-              )}
-            </div>
-          }
-        >
+        <Tabs.Panel id="create-new">
+          <div className="pt-6 sm:pt-8">
+            <CreateCharacterFlow teamId={teamId} onCharacterCreated={handleCharacterCreated} />
+          </div>
+        </Tabs.Panel>
+
+        <Tabs.Panel id="my-actors">
           <div className="pt-6 sm:pt-8 space-y-4 sm:space-y-6">
             {mainActors.length > 0 && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -345,17 +325,17 @@ export function CharacterStep({
                   {mainActors.length} actors
                 </div>
                 <Dropdown>
-                  <DropdownTrigger>
-                    <Button
-                      variant="bordered"
-                      size="sm"
-                      className="border-border-base w-full sm:w-auto"
-                    >
+<Button
+ variant="outline"
+ size="sm"
+ className="border-border-base w-full sm:w-auto"
+ >
                       <Icon icon="solar:sort-bold" width={16} />
                       {myActorsSort === "recent" ? "Recent" : "Popular"}
                     </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                     selectedKeys={[myActorsSort]}
                     selectionMode="single"
                     onSelectionChange={(keys) =>
@@ -364,27 +344,22 @@ export function CharacterStep({
                       )
                     }
                   >
-                    <DropdownItem
-                      key="recent"
-                      startContent={
-                        <Icon icon="solar:clock-circle-bold" width={16} />
-                      }
-                    >
+                    <Dropdown.Item key="recent">
+                      <Icon icon="solar:clock-circle-bold" width={16} />
                       Recent
-                    </DropdownItem>
-                    <DropdownItem
-                      key="popular"
-                      startContent={<Icon icon="solar:fire-bold" width={16} />}
-                    >
+                    </Dropdown.Item>
+                    <Dropdown.Item key="popular">
+                      <Icon icon="solar:fire-bold" width={16} />
                       Popular
-                    </DropdownItem>
-                  </DropdownMenu>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+</Dropdown.Popover>
                 </Dropdown>
               </div>
             )}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
               </div>
             ) : mainActors.length > 0 ? (
               <>
@@ -398,19 +373,19 @@ export function CharacterStep({
                 {myActors.length < myActorsTotal && (
                   <div className="flex justify-center pt-4">
                     <Button
-                      variant="bordered"
-                      className="border-border-base"
-                      onPress={() => loadMyActors(false)}
-                      isLoading={loadingMore}
-                    >
+ variant="outline"
+ className="border-border-base"
+ onPress={() => loadMyActors(false)}
+ isPending={loadingMore}
+ >
                       Load More
                     </Button>
                   </div>
                 )}
               </>
             ) : (
-              <Card className="bg-gradient-to-br from-surface-elevated to-surface-base border border-border-base border-dashed">
-                <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+              <div className="rounded-xl border border-border-base border-dashed overflow-hidden bg-gradient-to-br from-surface-elevated to-surface-base">
+                <div className="py-16 flex flex-col items-center justify-center text-center px-6">
                   <div className="w-20 h-20 rounded-2xl bg-accent-400/10 flex items-center justify-center mb-6">
                     <Icon
                       icon="solar:user-plus-bold-duotone"
@@ -425,38 +400,19 @@ export function CharacterStep({
                     Create your first AI actor to start making amazing UGC ads
                   </p>
                   <Button
-                    className="bg-accent-400 text-white font-semibold"
-                    startContent={
-                      <Icon icon="solar:magic-stick-3-bold" width={18} />
-                    }
-                    onPress={() => setActiveTab("create-new")}
-                  >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={() => setActiveTab("create-new")}
+ >
+                    <Icon icon="solar:magic-stick-3-bold" width={18} />
                     Create Your First Actor
                   </Button>
-                </CardBody>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
-        </Tab>
+        </Tabs.Panel>
 
-        <Tab
-          key="community"
-          title={
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Icon
-                icon="solar:users-group-rounded-bold-duotone"
-                className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
-              />
-              <span className="hidden sm:inline">Community</span>
-              <span className="sm:hidden">Public</span>
-              {communityTotal > 0 && (
-                <span className="text-[10px] sm:text-xs bg-white/20 px-1 sm:px-1.5 py-0.5 rounded-full">
-                  {communityTotal}
-                </span>
-              )}
-            </div>
-          }
-        >
+        <Tabs.Panel id="community">
           <div className="pt-6 sm:pt-8 space-y-4 sm:space-y-6">
             {communityActors.length > 0 && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -465,17 +421,17 @@ export function CharacterStep({
                   actors
                 </div>
                 <Dropdown>
-                  <DropdownTrigger>
-                    <Button
-                      variant="bordered"
-                      size="sm"
-                      className="border-border-base w-full sm:w-auto"
-                    >
+<Button
+ variant="outline"
+ size="sm"
+ className="border-border-base w-full sm:w-auto"
+ >
                       <Icon icon="solar:sort-bold" width={16} />
                       {communitySort === "recent" ? "Recent" : "Popular"}
                     </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu
+<Dropdown.Popover>
+
+<Dropdown.Menu
                     selectedKeys={[communitySort]}
                     selectionMode="single"
                     onSelectionChange={(keys) =>
@@ -484,27 +440,22 @@ export function CharacterStep({
                       )
                     }
                   >
-                    <DropdownItem
-                      key="popular"
-                      startContent={<Icon icon="solar:fire-bold" width={16} />}
-                    >
+                    <Dropdown.Item key="popular">
+                      <Icon icon="solar:fire-bold" width={16} />
                       Popular
-                    </DropdownItem>
-                    <DropdownItem
-                      key="recent"
-                      startContent={
-                        <Icon icon="solar:clock-circle-bold" width={16} />
-                      }
-                    >
+                    </Dropdown.Item>
+                    <Dropdown.Item key="recent">
+                      <Icon icon="solar:clock-circle-bold" width={16} />
                       Recent
-                    </DropdownItem>
-                  </DropdownMenu>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+</Dropdown.Popover>
                 </Dropdown>
               </div>
             )}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
               </div>
             ) : communityActors.length > 0 ? (
               <>
@@ -516,19 +467,19 @@ export function CharacterStep({
                 {communityActors.length < communityTotal && (
                   <div className="flex justify-center pt-4">
                     <Button
-                      variant="bordered"
-                      className="border-border-base"
-                      onPress={() => loadCommunityActors(false)}
-                      isLoading={loadingMore}
-                    >
+ variant="outline"
+ className="border-border-base"
+ onPress={() => loadCommunityActors(false)}
+ isPending={loadingMore}
+ >
                       Load More
                     </Button>
                   </div>
                 )}
               </>
             ) : (
-              <Card className="bg-gradient-to-br from-surface-elevated to-surface-base border border-border-base border-dashed">
-                <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+              <div className="rounded-xl border border-border-base border-dashed overflow-hidden bg-gradient-to-br from-surface-elevated to-surface-base">
+                <div className="py-16 flex flex-col items-center justify-center text-center px-6">
                   <div className="w-20 h-20 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6">
                     <Icon
                       icon="solar:users-group-rounded-bold-duotone"
@@ -542,11 +493,11 @@ export function CharacterStep({
                   <p className="text-text-secondary text-sm max-w-sm">
                     Be the first to share your actors with the community
                   </p>
-                </CardBody>
-              </Card>
+                </div>
+              </div>
             )}
           </div>
-        </Tab>
+        </Tabs.Panel>
       </Tabs>
 
       {teamId && (

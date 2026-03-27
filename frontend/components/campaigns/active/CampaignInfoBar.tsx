@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, cn } from "@heroui/react";
+import { cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { Campaign, CampaignWallet, CampaignCard } from "@/api/campaign";
 
@@ -73,16 +73,15 @@ export function CampaignInfoBar({
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {stats.map((stat) => (
-        <Card
+        <div
           key={stat.title}
           className={cn(
-            "bg-surface-base border border-border-base",
+            "rounded-xl border border-border-base bg-surface-base overflow-hidden",
             stat.onClick && "cursor-pointer hover:border-accent-400/40 transition-colors",
           )}
-          isPressable={!!stat.onClick}
-          onPress={stat.onClick}
+          onClick={stat.onClick}
         >
-          <CardBody className="p-4">
+          <div className="p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] text-text-tertiary font-medium tracking-wide">
                 {stat.title}
@@ -115,8 +114,8 @@ export function CampaignInfoBar({
                 />
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );

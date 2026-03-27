@@ -1,20 +1,12 @@
 "use client";
 
 import { useState, useRef } from "react";
-import {
-  Card,
-  CardBody,
-  CardHeader,
+import { Card,
   Button,
   Input,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-  Avatar,
-} from "@heroui/react";
+  useOverlayState,
+  Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { teamAPI, Team } from "@/api/team";
 
@@ -35,7 +27,10 @@ export default function TeamSettingsCard({
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isRemovingLogo, setIsRemovingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const overlayState = useOverlayState();
+const isOpen = overlayState.isOpen;
+const onOpen = overlayState.open;
+const onClose = overlayState.close;
 
   const handleRename = async () => {
     if (!teamName.trim() || teamName === team.name) return;
@@ -109,11 +104,8 @@ export default function TeamSettingsCard({
   return (
     <>
       <Card
-        classNames={{
-          base: "bg-surface-elevated border border-border-base",
-        }}
-      >
-        <CardHeader className="border-b border-border-base">
+ >
+        <Card.Header className="border-b border-border-base">
           <div className="flex items-center gap-2">
             <Icon
               icon="solar:settings-bold-duotone"
@@ -122,25 +114,21 @@ export default function TeamSettingsCard({
             />
             <h3 className="text-lg font-semibold text-text-primary">Team Settings</h3>
           </div>
-        </CardHeader>
-        <CardBody className="gap-6 p-6">
+        </Card.Header>
+        <Card.Content className="gap-6 p-6">
           <div className="space-y-2">
             <label className="text-sm text-text-secondary">Team Name</label>
             <div className="flex gap-2">
               <Input
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                classNames={{
-                  input: "text-text-primary",
-                }}
-              />
-              <Button
-                color="primary"
-                onPress={handleRename}
-                isLoading={isRenaming}
-                isDisabled={!teamName.trim() || teamName === team.name}
-                className="bg-accent-400 text-white"
-              >
+ value={teamName}
+ onChange={(e) => setTeamName(e.target.value)}
+ />
+              <Button variant="primary"
+ onPress={handleRename}
+ isPending={isRenaming}
+ isDisabled={!teamName.trim() || teamName === team.name}
+ className="bg-accent-400 text-white"
+ >
                 Save
               </Button>
             </div>
@@ -162,13 +150,7 @@ export default function TeamSettingsCard({
               <div className="flex items-center gap-5 p-4 rounded-xl bg-surface-base border-2 border-dashed border-border-base hover:border-accent-400/50 hover:bg-accent-400/5 transition-all">
                 <div className="relative">
                   <Avatar
-                    src={team.logo_url}
-                    name={team.name}
-                    classNames={{
-                      base: "w-20 h-20 bg-surface-elevated border-2 border-border-base group-hover:border-accent-400/30 transition-colors",
-                      name: "text-xl font-semibold text-text-secondary",
-                    }}
-                  />
+ />
                   {isUploadingLogo && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
                       <Icon icon="solar:spinner-bold" className="text-white text-2xl animate-spin" />
@@ -199,14 +181,13 @@ export default function TeamSettingsCard({
             </div>
             {team.logo_url && (
               <Button
-                size="sm"
-                variant="light"
-                color="danger"
-                onPress={handleRemoveLogo}
-                isLoading={isRemovingLogo}
-                startContent={!isRemovingLogo && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
-                className="mt-1"
-              >
+ size="sm"
+ variant="danger-soft"
+ onPress={handleRemoveLogo}
+ isPending={isRemovingLogo}
+ className="mt-1"
+ >
+                {!isRemovingLogo && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
                 Remove logo
               </Button>
             )}
@@ -220,54 +201,44 @@ export default function TeamSettingsCard({
                 undone.
               </p>
               <Button
-                color="danger"
-                variant="flat"
-                onPress={onOpen}
-                startContent={<Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />}
-              >
+ variant="danger-soft"
+ onPress={onOpen}
+ >
+                <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
                 Delete Team
               </Button>
             </div>
           </div>
-        </CardBody>
+        </Card.Content>
       </Card>
 
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        classNames={{
-          base: "bg-surface-base border border-border-base",
-          header: "border-b border-border-base",
-          footer: "border-t border-border-base",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="text-text-primary">
+      <Modal>
+        <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
+          <Modal.Header className="text-text-primary">
             Delete Team
-          </ModalHeader>
-          <ModalBody className="py-6">
+          </Modal.Header>
+          <Modal.Body className="py-6">
             <p className="text-text-secondary">
               Are you sure you want to delete <span className="font-semibold">{team.name}</span>?
               This will remove all members and data. This action cannot be undone.
             </p>
-          </ModalBody>
-          <ModalFooter>
+          </Modal.Body>
+          <Modal.Footer>
             <Button
-              variant="light"
-              onPress={onClose}
-              className="text-text-secondary"
-            >
+ variant="tertiary"
+ onPress={onClose}
+ className="text-text-secondary"
+ >
               Cancel
             </Button>
-            <Button
-              color="danger"
-              onPress={handleDelete}
-              isLoading={isDeleting}
-            >
+            <Button variant="danger"
+ onPress={handleDelete}
+ isPending={isDeleting}
+ >
               Delete Team
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </>
   );

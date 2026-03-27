@@ -2,16 +2,10 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import {
-  Button,
-  Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
+import { Button,
   Chip,
-  Divider,
-  cn,
-} from "@heroui/react";
+  Separator,
+  cn } from "@heroui/react";
 import { Tier } from "./pricing-types";
 
 interface PricingTierCardProps {
@@ -30,32 +24,27 @@ export function PricingTierCard({
   onUpgrade,
 }: PricingTierCardProps) {
   return (
-    <Card
+    <div
       className={cn(
-        "bg-surface-elevated/80 border border-border-base p-3 backdrop-blur-md h-full flex flex-col",
+        "rounded-xl border border-border-base bg-surface-base overflow-hidden p-3 backdrop-blur-md h-full flex flex-col",
         {
           "border-accent-400/50 shadow-lg shadow-accent-400/10": tier.mostPopular,
         }
       )}
-      shadow="none"
     >
       {tier.mostPopular && (
         <Chip
-          classNames={{
-            base: "absolute top-4 right-4 bg-accent-400",
-            content: "text-white text-xs font-semibold",
-          }}
           size="sm"
         >
           Most Popular
         </Chip>
       )}
-      <CardHeader className="flex flex-col items-start gap-2 pb-6">
+      <div className="flex flex-col items-start gap-2 p-4 pb-6">
         <h2 className="text-xl font-semibold text-text-primary">{tier.title}</h2>
         <p className="text-sm text-text-secondary">{tier.description}</p>
-      </CardHeader>
-      <Divider className="bg-border-base" />
-      <CardBody className="gap-6 flex-1">
+      </div>
+      <Separator className="bg-border-base" />
+      <div className="p-4 space-y-6 flex-1">
         <div className="pt-2 min-h-[88px]">
           <div className="flex items-baseline gap-1 min-h-[48px]">
             <span className="text-4xl font-bold text-text-primary">
@@ -91,23 +80,22 @@ export function PricingTierCard({
             </li>
           ))}
         </ul>
-      </CardBody>
-      <CardFooter>
+      </div>
+      <div className="p-4 pt-0">
         <Button
           fullWidth
           className={cn({
             "bg-accent-400 text-white font-semibold":
               tier.mostPopular && !isDisabled,
           })}
-          color={tier.mostPopular && !isDisabled ? "primary" : "default"}
-          variant={isDisabled ? "flat" : tier.buttonVariant}
+          variant={isDisabled ? "tertiary" : tier.buttonVariant}
           isDisabled={isDisabled}
-          isLoading={isLoading}
+          isPending={isLoading}
           onPress={onUpgrade}
         >
           {buttonText}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }

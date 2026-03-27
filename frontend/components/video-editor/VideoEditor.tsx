@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
-import { Button, Spinner, addToast } from "@heroui/react";
+import { Button, Spinner, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI } from "@/api/clips";
 import {
@@ -45,13 +45,10 @@ export function VideoEditor() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Load clip and initialise caption/heading atoms
   useEditorClipLoader(clipId);
 
-  // Restore saved editor config when video metadata is available
   const handleLoadedMetadata = useEditorConfigRestore(clipId, videoRef);
 
-  // Gap-aware playback (skips deleted segments)
   const { isInGap, handleTimeUpdate, seekToTime, togglePlayPause } =
     useGapAwarePlayback(videoRef);
 
@@ -63,12 +60,7 @@ export function VideoEditor() {
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Failed to apply changes:", error);
-      addToast({
-        title: "Failed to apply",
-        description:
-          error instanceof Error ? error.message : "Something went wrong. Please try again.",
-        color: "danger",
-      });
+      toast.danger("Failed to apply", { description: error instanceof Error ? error.message : "Something went wrong. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -82,7 +74,7 @@ export function VideoEditor() {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
@@ -98,10 +90,10 @@ export function VideoEditor() {
           You don&apos;t have permission to edit this clip.
         </p>
         <Button
-          color="primary"
+          variant="primary"
           onPress={() => router.push("/dashboard/clips")}
-          startContent={<Icon icon="solar:arrow-left-outline" />}
         >
+          <Icon icon="solar:arrow-left-outline" />
           Back to Clips
         </Button>
       </div>
@@ -121,11 +113,10 @@ export function VideoEditor() {
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-7xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <Button
-              variant="light"
+              variant="tertiary"
               isIconOnly
               onPress={() => router.push("/dashboard/clips")}
             >
@@ -136,18 +127,16 @@ export function VideoEditor() {
             </h1>
           </div>
           <Button
-            color="primary"
+            variant="primary"
             onPress={handleApplyChanges}
             isDisabled={saving}
-            startContent={saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
           >
+            {saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
             {saving ? "Applying..." : "Apply Changes"}
           </Button>
         </div>
 
-        {/* Main Editor Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Video Preview — 2 cols on large screens */}
           <div className="lg:col-span-2">
             <EditorVideoPreview
               videoRef={videoRef}
@@ -160,13 +149,11 @@ export function VideoEditor() {
               isInGap={isInGap}
             />
 
-            {/* Timeline */}
             <div className="mt-4">
               <EditorTimelineV2 videoRef={videoRef} onSeek={seekToTime} />
             </div>
           </div>
 
-          {/* Tool Panel — 1 col */}
           <div className="lg:col-span-1">
             <EditorToolPanel />
           </div>

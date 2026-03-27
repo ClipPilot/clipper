@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, Progress, Button } from "@heroui/react";
+import { ProgressBar, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
@@ -52,8 +52,8 @@ export function VideoLoadingAnimation({
           </div>
 
           {/* Central card */}
-          <Card className="bg-surface-elevated/90 backdrop-blur-xl border border-border-base relative z-10">
-            <CardBody className="p-8">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated/90 backdrop-blur-xl relative z-10">
+            <div className="p-8">
               {/* Animated Cuttr logo */}
               <div className="flex justify-center mb-6">
                 <motion.div
@@ -145,22 +145,19 @@ export function VideoLoadingAnimation({
                   <span>Progress</span>
                   <span>{Math.round(progress)}%</span>
                 </div>
-                <Progress
-                  value={progress}
-                  size="md"
-                  classNames={{
-                    track: "bg-surface-base",
-                    indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
-                  }}
-                />
+                <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               </div>
 
               {/* Current status message */}
               <p className="text-xs text-text-muted text-center">
                 {progressMessage}
               </p>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </div>
 
 
@@ -168,11 +165,11 @@ export function VideoLoadingAnimation({
         {onCancel && (
           <div className="mt-6 flex justify-center">
             <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              onPress={onCancel}
-              startContent={<Icon icon="solar:close-circle-linear" width={18} />}
-            >
+ variant="outline"
+ className="border-border-base text-text-secondary"
+ onPress={onCancel}
+ >
+              <Icon icon="solar:close-circle-linear" width={18} />
               Close & Return to Menu
             </Button>
           </div>

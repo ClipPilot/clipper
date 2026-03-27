@@ -53,11 +53,11 @@ export default function MassPostingPage() {
           </p>
         </div>
         <Button
-          size="lg"
-          className="w-full bg-accent-400 text-white font-semibold"
-          onPress={() => router.push("/dashboard/publish-posts")}
-          startContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-        >
+ size="lg"
+ className="w-full bg-accent-400 text-white font-semibold"
+ onPress={() => router.push("/dashboard/publish-posts")}
+ >
+          <Icon icon="solar:arrow-right-bold" width={18} />
           Go to Publish Posts
         </Button>
       </div>

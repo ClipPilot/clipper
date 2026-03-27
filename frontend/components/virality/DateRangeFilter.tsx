@@ -81,27 +81,27 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
       {/* Custom preset dropdown */}
       <div className="relative" ref={dropdownRef}>
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary hover:text-text-primary"
-          onPress={() => setDropdownOpen((v) => !v)}
-          endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-        >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary hover:text-text-primary"
+ onPress={() => setDropdownOpen((v) => !v)}
+ >
           Custom
-        </Button>
+          <Icon icon="solar:alt-arrow-down-linear" width={14} />
+</Button>
         {dropdownOpen && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-surface-elevated border border-border-base rounded-lg shadow-lg py-1 min-w-[140px]">
+          <div className="absolute top-full left-0 mt-1 z-50 bg-white/[0.04] rounded-lg shadow-lg py-1 min-w-[140px]">
             {CUSTOM_PRESETS.map((preset) => (
-              <button
+              <div
                 key={preset.months}
-                className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-base hover:text-text-primary transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-base hover:text-text-primary transition-colors cursor-pointer"
                 onClick={() => {
                   onChange(subtractMonths(preset.months));
                   setDropdownOpen(false);
                 }}
               >
                 {preset.label}
-              </button>
+              </div>
             ))}
             <div className="border-t border-border-base mx-2 my-1" />
             <div className="flex items-center gap-1.5 px-3 py-2">
@@ -121,8 +121,8 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
                 <option value="months">Months</option>
                 <option value="years">Years</option>
               </select>
-              <button
-                className="ml-auto p-1 rounded-md bg-accent-400 text-white hover:bg-accent-500 transition-colors"
+              <div
+                className="ml-auto p-1 rounded-md bg-accent-400 text-white hover:bg-accent-500 transition-colors cursor-pointer"
                 onClick={() => {
                   const n = parseInt(customAmount, 10);
                   if (!n || n < 1) return;
@@ -132,7 +132,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
                 }}
               >
                 <Icon icon="solar:arrow-right-linear" width={14} />
-              </button>
+              </div>
             </div>
           </div>
         )}
@@ -144,12 +144,6 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
         onChange={handlePickerChange as any}
         maxValue={today(getLocalTimeZone()) as any}
         className="max-w-xs"
-        calendarProps={{
-          classNames: {
-            base: "bg-surface-base",
-            headerWrapper: "bg-surface-elevated",
-          },
-        }}
       />
     </div>
   );

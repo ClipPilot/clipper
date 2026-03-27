@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
-import { Card, CardBody, Button, Input, Textarea, Tooltip } from "@heroui/react";
+import { Button, Input, TextArea, Tooltip, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "../ProductImageUploader";
 import { ugcScriptAPI } from "@/api/ugc";
@@ -363,108 +363,105 @@ export function ScriptStep({
         isAutoSilent={isAutoSilent}
       />
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="space-y-4">
-          <Input
-            label="Product Name (Optional)"
-            placeholder="e.g., GlowSkin Serum"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            classNames={{
-              input: "bg-surface-base text-text-primary",
-              inputWrapper: "bg-surface-base border-border-base",
-            }}
-          />
-          <Textarea
-            isRequired
-            label="Script Direction"
-            labelPlacement="outside"
-            placeholder="Describe what you want... e.g., Make it funny, focus on the before/after, target skeptics"
-            value={scriptDirection}
-            onChange={(e) => setScriptDirection(e.target.value)}
-            minRows={3}
-          />
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated p-4 space-y-4">
+          <TextField>
+            <Label>Product Name (Optional)</Label>
+            <Input
+ placeholder="e.g., GlowSkin Serum"
+ value={productName}
+ onChange={(e) => setProductName(e.target.value)}
+ />
+            <FieldError />
+          </TextField>
+          <TextField isRequired>
+            <Label>Script Direction</Label>
+            <TextArea
+ placeholder="Describe what you want... e.g., Make it funny, focus on the before/after, target skeptics"
+ value={scriptDirection}
+ onChange={(e) => setScriptDirection(e.target.value)}
+ rows={3}
+ />
+            <FieldError />
+          </TextField>
           <Tooltip
-            content={
-              customPattern.some((s) => s.shot === "a-roll")
-                ? "Silent mode can't be used with A-roll scenes — remove A-roll scenes first"
-                : "No dialogue is generated — great for edit-style videos with music. Incompatible with A-roll scenes."
-            }
-            placement="right"
-            classNames={{ content: "bg-surface-elevated border border-border-base text-text-secondary text-xs max-w-xs" }}
-          >
+ content={
+ customPattern.some((s) => s.shot === "a-roll")
+ ? "Silent mode can't be used with A-roll scenes — remove A-roll scenes first"
+ : "No dialogue is generated — great for edit-style videos with music. Incompatible with A-roll scenes."
+ }
+ placement="right"
+ >
             <Button
-              size="sm"
-              variant={isAutoSilent ? "solid" : "bordered"}
-              isDisabled={!isAutoSilent && customPattern.some((s) => s.shot === "a-roll")}
-              className={
-                isAutoSilent
-                  ? "bg-accent-400 text-white font-medium"
-                  : "border-border-base text-text-secondary font-medium"
-              }
-              startContent={<Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />}
-              onPress={() => {
-                const next = !isAutoSilent;
-                setIsAutoSilent(next);
-                setIsSilentGlobal(next);
-                if (next) {
-                  setCustomPattern((prev) =>
-                    prev.map((s) => ({ ...s, shot: "visual" as const }))
-                  );
-                }
-              }}
-            >
+ size="sm"
+ variant={isAutoSilent ? "primary" : "outline"}
+ isDisabled={!isAutoSilent && customPattern.some((s) => s.shot === "a-roll")}
+ className={
+ isAutoSilent
+ ? "bg-accent-400 text-white font-medium"
+ : "border-border-base text-text-secondary font-medium"
+ }
+ onPress={() => {
+ const next = !isAutoSilent;
+ setIsAutoSilent(next);
+ setIsSilentGlobal(next);
+ if (next) {
+ setCustomPattern((prev) =>
+ prev.map((s) => ({ ...s, shot: "visual" as const }))
+ );
+ }
+ }}
+ >
+              <Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />
               {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
             </Button>
           </Tooltip>
-        </CardBody>
-      </Card>
+      </div>
 
       <div className="flex justify-center gap-3">
         {selectedStructureId === "auto" && !hasAutoStructure && (
           <Button
-            size="lg"
-            className="bg-accent-400 text-white font-semibold px-8"
-            isDisabled={!scriptDirection.trim() || isGeneratingAutoStructure}
-            isLoading={isGeneratingAutoStructure}
-            onPress={handleGenerateAutoStructure}
-            startContent={!isGeneratingAutoStructure ? <Icon icon="solar:magic-stick-3-bold" width={20} /> : undefined}
-          >
+ size="lg"
+ className="bg-accent-400 text-white font-semibold px-8"
+ isDisabled={!scriptDirection.trim() || isGeneratingAutoStructure}
+ isPending={isGeneratingAutoStructure}
+ onPress={handleGenerateAutoStructure}
+ >
+            {!isGeneratingAutoStructure ? <Icon icon="solar:magic-stick-3-bold" width={20} /> : undefined}
             Generate Structure
           </Button>
         )}
         {hasAutoStructure && (
           <>
             <Button
-              size="lg"
-              variant="bordered"
-              className="border-accent-400 text-accent-400 font-semibold px-6"
-              isDisabled={isGeneratingAutoStructure}
-              isLoading={isGeneratingAutoStructure}
-              onPress={handleGenerateAutoStructure}
-              startContent={!isGeneratingAutoStructure ? <Icon icon="solar:refresh-bold" width={18} /> : undefined}
-            >
+ size="lg"
+ variant="outline"
+ className="border-accent-400 text-accent-400 font-semibold px-6"
+ isDisabled={isGeneratingAutoStructure}
+ isPending={isGeneratingAutoStructure}
+ onPress={handleGenerateAutoStructure}
+ >
+              {!isGeneratingAutoStructure ? <Icon icon="solar:refresh-bold" width={18} /> : undefined}
               Regenerate Structure
             </Button>
             <Button
-              size="lg"
-              className="bg-accent-400 text-white font-semibold px-8"
-              isDisabled={!scriptDirection.trim() || isGenerating}
-              onPress={handleGenerate}
-              startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
-            >
+ size="lg"
+ className="bg-accent-400 text-white font-semibold px-8"
+ isDisabled={!scriptDirection.trim() || isGenerating}
+ onPress={handleGenerate}
+ >
+              <Icon icon="solar:magic-stick-3-bold" width={20} />
               Generate Script
             </Button>
           </>
         )}
         {selectedStructureId !== "auto" && (
           <Button
-            size="lg"
-            className="bg-accent-400 text-white font-semibold px-8"
-            isDisabled={!scriptDirection.trim() || isGenerating}
-            onPress={handleGenerate}
-            startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
-          >
+ size="lg"
+ className="bg-accent-400 text-white font-semibold px-8"
+ isDisabled={!scriptDirection.trim() || isGenerating}
+ onPress={handleGenerate}
+ >
+            <Icon icon="solar:magic-stick-3-bold" width={20} />
             Generate Script
           </Button>
         )}

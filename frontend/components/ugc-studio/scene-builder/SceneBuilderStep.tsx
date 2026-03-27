@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Card, CardBody, Button, Spinner, Progress } from "@heroui/react";
+import { Button, Spinner, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   scriptsAtom,
@@ -506,15 +506,15 @@ export function SceneBuilderStep({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Spinner size="lg" color="primary" />
+        <Spinner size="lg" color="accent" />
       </div>
     );
   }
 
   if (!currentScript || scenes.length === 0) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
@@ -526,8 +526,8 @@ export function SceneBuilderStep({
           <p className="text-text-secondary text-sm">
             Please go back and generate a script first
           </p>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -542,8 +542,8 @@ export function SceneBuilderStep({
         </p>
       </div>
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-4">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div
@@ -577,27 +577,24 @@ export function SceneBuilderStep({
             <div className="flex items-center gap-2">
               {onContinue && (
                 <Button
-                  className="bg-accent-400 text-white font-semibold"
-                  size="sm"
-                  isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene || hasArollWithoutDialogue}
-                  onPress={onContinue}
-                  endContent={<Icon icon="solar:arrow-right-bold" width={16} />}
-                >
+ className="bg-accent-400 text-white font-semibold"
+ size="sm"
+ isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene || hasArollWithoutDialogue}
+ onPress={onContinue}
+ >
                   Continue
-                </Button>
+                  <Icon icon="solar:arrow-right-bold" width={16} />
+</Button>
               )}
             </div>
           </div>
-          <Progress
-            value={progressPercent}
-            size="sm"
-            classNames={{
-              track: "bg-surface-base",
-              indicator: allComplete ? "bg-accent-400" : "bg-accent-400/70",
-            }}
-          />
-        </CardBody>
-      </Card>
+          <ProgressBar
+ value={progressPercent}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
+        </div>
+      </div>
 
       {/* Horizontal Storyboard Timeline */}
       <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
@@ -640,15 +637,18 @@ export function SceneBuilderStep({
                     onRemove={scenes.length > 3 ? () => handleRemoveScene(scene.id) : undefined}
                   />
                   {/* Add scene button */}
-                  <button
-                    onClick={() => handleAddScene(index)}
+                  <Button
+                    isIconOnly
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => handleAddScene(index)}
                     className="w-5 h-5 rounded-full border border-dashed border-border-base text-text-muted
                       hover:bg-accent-400/20 hover:text-accent-400 hover:border-accent-400
                       transition-all shrink-0 flex items-center justify-center"
                     title="Add scene"
                   >
                     <Icon icon="solar:add-circle-linear" width={12} />
-                  </button>
+                  </Button>
                   {/* Connector line between scenes */}
                   {index < scenes.length - 1 && (
                     <div className="w-4 h-0.5 bg-border-base shrink-0" />
@@ -768,14 +768,14 @@ export function SceneBuilderStep({
       {allComplete && !hasArollWithoutDialogue && onContinue && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-dark/95 backdrop-blur-sm border-t border-border-base sm:hidden">
           <Button
-            className="w-full bg-accent-400 text-white font-semibold"
-            size="lg"
-            isDisabled={isSavingBRoll || isRegeneratingScene}
-            onPress={onContinue}
-            endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-          >
+ className="w-full bg-accent-400 text-white font-semibold"
+ size="lg"
+ isDisabled={isSavingBRoll || isRegeneratingScene}
+ onPress={onContinue}
+ >
             Continue to Generate Video
-          </Button>
+            <Icon icon="solar:arrow-right-bold" width={18} />
+</Button>
         </div>
       )}
     </div>

@@ -2,25 +2,19 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import type { Key } from "@heroui/react";
 import {
-  Card,
-  CardBody,
-  CardHeader,
   Input,
   Button,
-  Divider,
+  Separator,
   Chip,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Skeleton,
   Switch,
   Select,
-  SelectItem,
-  addToast,
-} from "@heroui/react";
+  ListBox,
+  TextField,
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -36,6 +30,29 @@ import {
 import TopUpModal from "@/components/api-platform/TopUpModal";
 
 const TOP_UP_PRESETS = [1000, 2500, 5000, 10000]; // cents
+
+function CopyableJobId({ jobId }: { jobId: string }) {
+  const [copied, setCopied] = React.useState(false);
+  return (
+    <div
+      onClick={() => {
+        navigator.clipboard.writeText(jobId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      className="flex items-center gap-1.5 cursor-pointer group"
+    >
+      <span className="font-mono text-xs text-text-secondary group-hover:text-text-primary transition-colors">
+        {jobId}
+      </span>
+      {copied ? (
+        <Icon icon="solar:check-circle-bold" width={14} className="text-green-500 flex-shrink-0" />
+      ) : (
+        <Icon icon="solar:copy-bold" width={14} className="text-text-tertiary group-hover:text-text-primary transition-colors flex-shrink-0" />
+      )}
+    </div>
+  );
+}
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -103,7 +120,7 @@ export default function ApiPlatformPage() {
         setFaceSwapJobResult(result);
       }
     } catch {
-      addToast({ title: "Error", description: "Failed to load job results", color: "danger" });
+      toast.danger("Error", { description: "Failed to load job results" });
       setJobModalOpen(false);
     } finally {
       setJobModalLoading(false);
@@ -118,11 +135,7 @@ export default function ApiPlatformPage() {
       const data = await apiPlatformAPI.getWallet(teamId);
       setWallet(data);
     } catch {
-      addToast({
-        title: "Error",
-        description: "Failed to load wallet",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load wallet" });
     } finally {
       setWalletLoading(false);
     }
@@ -134,11 +147,7 @@ export default function ApiPlatformPage() {
       const data = await apiPlatformAPI.listKeys(teamId);
       setKeys(data.keys);
     } catch {
-      addToast({
-        title: "Error",
-        description: "Failed to load API keys",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load API keys" });
     } finally {
       setKeysLoading(false);
     }
@@ -180,11 +189,7 @@ export default function ApiPlatformPage() {
     if (!teamId) return;
     const cents = Math.round(parseFloat(topUpAmount) * 100);
     if (isNaN(cents) || cents < 500) {
-      addToast({
-        title: "Invalid amount",
-        description: "Minimum top-up is $5.00",
-        color: "danger",
-      });
+      toast.danger("Invalid amount", { description: "Minimum top-up is $5.00" });
       return;
     }
     setIsCreatingTopUp(true);
@@ -195,12 +200,7 @@ export default function ApiPlatformPage() {
       setTopUpAmountCents(cents);
       setTopUpModalOpen(true);
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to start top-up",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to start top-up" });
     } finally {
       setIsCreatingTopUp(false);
     }
@@ -217,12 +217,7 @@ export default function ApiPlatformPage() {
       setNewKeyName("");
       fetchKeys();
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to create API key",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to create API key" });
     } finally {
       setIsCreatingKey(false);
     }
@@ -233,19 +228,10 @@ export default function ApiPlatformPage() {
     setRevokingKeyId(keyId);
     try {
       await apiPlatformAPI.revokeKey(teamId, keyId);
-      addToast({
-        title: "Key revoked",
-        description: "The API key has been permanently revoked.",
-        color: "success",
-      });
+      toast.success("Key revoked", { description: "The API key has been permanently revoked." });
       fetchKeys();
     } catch (err) {
-      addToast({
-        title: "Error",
-        description:
-          err instanceof Error ? err.message : "Failed to revoke key",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to revoke key" });
     } finally {
       setRevokingKeyId(null);
     }
@@ -259,19 +245,9 @@ export default function ApiPlatformPage() {
     try {
       const updated = await apiPlatformAPI.updateAutoRefill(teamId, updates);
       setAutoRefill(updated);
-      addToast({
-        title: "Auto-refill updated",
-        description: updates.auto_refill !== undefined
-          ? updates.auto_refill ? "Auto-refill enabled" : "Auto-refill disabled"
-          : "Settings saved",
-        color: "success",
-      });
+      toast.success("Auto-refill updated", { description: updates.auto_refill !== undefined });
     } catch (err) {
-      addToast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to update auto-refill",
-        color: "danger",
-      });
+      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to update auto-refill" });
       fetchAutoRefill();
     } finally {
       setAutoRefillSaving(false);
@@ -279,22 +255,13 @@ export default function ApiPlatformPage() {
   };
 
   const renderCreatedKeyModal = () => (
-    <Modal
-      isOpen={createdKeyModal}
-      onClose={() => {
-        setCreatedKeyModal(false);
-        setCreatedKeyRaw("");
-        setCopied(false);
-      }}
-      size="lg"
-      classNames={{
-        base: "bg-surface-base border border-border-base",
-        header: "border-b border-border-base",
-        footer: "border-t border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
+    <Modal>
+      <Modal.Backdrop isOpen={createdKeyModal} onOpenChange={() => {
+ setCreatedKeyModal(false);
+ setCreatedKeyRaw("");
+ setCopied(false);
+ }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <Icon
               icon="solar:key-bold-duotone"
@@ -303,8 +270,8 @@ export default function ApiPlatformPage() {
             />
             <span className="text-text-primary">API Key Created</span>
           </div>
-        </ModalHeader>
-        <ModalBody className="py-6 gap-4">
+        </Modal.Header>
+        <Modal.Body className="py-6 gap-4">
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <Icon
               icon="solar:danger-triangle-bold-duotone"
@@ -316,7 +283,7 @@ export default function ApiPlatformPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-lg bg-surface-elevated space-y-4">
+          <div className="p-4 rounded-lg bg-white/[0.04] space-y-4">
             <div>
               <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Key Name</p>
               <p className="text-text-primary font-medium">{createdKeyName}</p>
@@ -328,19 +295,19 @@ export default function ApiPlatformPage() {
                   {createdKeyRaw}
                 </code>
                 <Button
-                  size="sm"
-                  isIconOnly
-                  variant="flat"
-                  className={
-                    copied
-                      ? "bg-green-500/20 text-green-500"
-                      : "bg-surface-dark text-text-secondary hover:text-text-primary"
-                  }
-                  onPress={() => {
-                    navigator.clipboard.writeText(createdKeyRaw);
-                    setCopied(true);
-                  }}
-                >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ className={
+ copied
+ ? "bg-green-500/20 text-green-500"
+ : "bg-surface-dark text-text-secondary hover:text-text-primary"
+ }
+ onPress={() => {
+ navigator.clipboard.writeText(createdKeyRaw);
+ setCopied(true);
+ }}
+ >
                   <Icon
                     icon={copied ? "solar:check-circle-bold-duotone" : "solar:copy-bold-duotone"}
                     width={18}
@@ -349,20 +316,20 @@ export default function ApiPlatformPage() {
               </div>
             </div>
           </div>
-        </ModalBody>
-        <ModalFooter>
+        </Modal.Body>
+        <Modal.Footer>
           <Button
-            className="bg-accent-400 text-white font-medium"
-            onPress={() => {
-              setCreatedKeyModal(false);
-              setCreatedKeyRaw("");
-              setCopied(false);
-            }}
-          >
+ className="bg-accent-400 text-white font-medium"
+ onPress={() => {
+ setCreatedKeyModal(false);
+ setCreatedKeyRaw("");
+ setCopied(false);
+ }}
+ >
             Done
           </Button>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 
@@ -418,8 +385,8 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-row items-center gap-3 p-6 pb-0">
               <Icon
                 icon="solar:wallet-bold-duotone"
                 className="text-accent-400"
@@ -433,8 +400,8 @@ export default function ApiPlatformPage() {
                   Fund your wallet to make API calls
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-6">
+            </div>
+            <div className="p-6 space-y-6">
               {walletLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
@@ -444,13 +411,13 @@ export default function ApiPlatformPage() {
               ) : wallet ? (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-lg bg-surface-elevated">
+                    <div className="p-4 rounded-lg bg-white/[0.04]">
                       <p className="text-sm text-text-tertiary mb-1">Balance</p>
                       <p className="text-2xl font-bold text-green-500">
                         {formatCents(wallet.balance_cents)}
                       </p>
                     </div>
-                    <div className="p-4 rounded-lg bg-surface-elevated">
+                    <div className="p-4 rounded-lg bg-white/[0.04]">
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Spent
                       </p>
@@ -458,7 +425,7 @@ export default function ApiPlatformPage() {
                         {formatCents(wallet.total_spent_cents)}
                       </p>
                     </div>
-                    <div className="p-4 rounded-lg bg-surface-elevated">
+                    <div className="p-4 rounded-lg bg-white/[0.04]">
                       <p className="text-sm text-text-tertiary mb-1">
                         Total Funded
                       </p>
@@ -468,7 +435,7 @@ export default function ApiPlatformPage() {
                     </div>
                   </div>
 
-                  <Divider className="bg-border-base" />
+                  <Separator className="bg-border-base" />
 
                   <div>
                     <p className="text-sm font-medium text-text-secondary mb-3">
@@ -477,49 +444,45 @@ export default function ApiPlatformPage() {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {TOP_UP_PRESETS.map((preset) => (
                         <Button
-                          key={preset}
-                          size="sm"
-                          variant="flat"
-                          className={
-                            topUpAmount === (preset / 100).toString()
-                              ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
-                              : "bg-surface-elevated text-text-secondary hover:text-text-primary"
-                          }
-                          onPress={() =>
-                            setTopUpAmount((preset / 100).toString())
-                          }
-                        >
+ key={preset}
+ size="sm"
+ variant="tertiary"
+ className={
+ topUpAmount === (preset / 100).toString()
+ ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
+ : "bg-white/[0.04] text-text-secondary hover:text-text-primary"
+ }
+ onPress={() =>
+ setTopUpAmount((preset / 100).toString())
+ }
+ >
                           {formatCents(preset)}
                         </Button>
                       ))}
                     </div>
                     <div className="flex gap-3">
-                      <Input
-                        placeholder="Amount in USD"
-                        value={topUpAmount}
-                        onValueChange={setTopUpAmount}
-                        startContent={
-                          <span className="text-text-tertiary text-sm">$</span>
-                        }
-                        type="number"
-                        min={5}
-                        step={1}
-                        classNames={{
-                          input: "bg-surface-elevated text-text-primary",
-                          inputWrapper:
-                            "bg-surface-elevated border-border-base hover:border-border-light",
-                        }}
-                      />
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm">$</span>
+                        <TextField variant="secondary">
+                          <Input
+                            onChange={(e) => setTopUpAmount(e.target.value)}
+                            placeholder="Amount in USD"
+                            value={topUpAmount}
+                            type="number"
+                            min={5}
+                            step={1}
+                            className="pl-7"
+                          />
+                        </TextField>
+                      </div>
                       <Button
-                        className="bg-accent-400 text-white font-medium flex-shrink-0"
-                        isLoading={isCreatingTopUp}
-                        onPress={handleTopUp}
-                        startContent={
-                          !isCreatingTopUp && (
+ className="bg-accent-400 text-white font-medium flex-shrink-0"
+ isPending={isCreatingTopUp}
+ onPress={handleTopUp}
+ >
+                        {!isCreatingTopUp && (
                             <Icon icon="solar:card-bold-duotone" width={18} />
-                          )
-                        }
-                      >
+                          )}
                         Top Up
                       </Button>
                     </div>
@@ -528,8 +491,8 @@ export default function ApiPlatformPage() {
               ) : (
                 <p className="text-text-tertiary">Failed to load wallet.</p>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         {/* Auto-Refill Section */}
@@ -538,8 +501,8 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.25 }}
         >
-          <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-row items-center gap-3 p-6 pb-0">
               <Icon
                 icon="solar:refresh-circle-bold-duotone"
                 className="text-accent-400"
@@ -553,13 +516,13 @@ export default function ApiPlatformPage() {
                   Automatically top up when balance is low
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-4">
+            </div>
+            <div className="p-6 space-y-4">
               {autoRefillLoading ? (
                 <Skeleton className="h-16 rounded-lg" />
               ) : autoRefill ? (
                 <>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.04]">
                     <div>
                       <p className="text-text-primary font-medium">
                         Enable Auto-Refill
@@ -571,15 +534,12 @@ export default function ApiPlatformPage() {
                       </p>
                     </div>
                     <Switch
-                      isSelected={autoRefill.auto_refill}
-                      isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
-                      onValueChange={(val) =>
-                        handleAutoRefillUpdate({ auto_refill: val })
-                      }
-                      classNames={{
-                        wrapper: "group-data-[selected=true]:bg-accent-400",
-                      }}
-                    />
+ isSelected={autoRefill.auto_refill}
+ isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
+ onChange={(val) =>
+ handleAutoRefillUpdate({ auto_refill: val })
+ }
+ />
                   </div>
 
                   {autoRefill.auto_refill && (
@@ -589,21 +549,24 @@ export default function ApiPlatformPage() {
                           Refill when balance drops below
                         </p>
                         <Select
-                          selectedKeys={[autoRefill.refill_threshold_cents.toString()]}
-                          onSelectionChange={(keys) => {
-                            const val = Array.from(keys)[0] as string;
-                            if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val) });
-                          }}
-                          isDisabled={autoRefillSaving}
-                          classNames={{
-                            trigger: "bg-surface-elevated border-border-base",
-                            value: "text-text-primary",
-                          }}
-                        >
-                          <SelectItem key="500">$5.00</SelectItem>
-                          <SelectItem key="1000">$10.00</SelectItem>
-                          <SelectItem key="2500">$25.00</SelectItem>
-                          <SelectItem key="5000">$50.00</SelectItem>
+ value={autoRefill.refill_threshold_cents.toString()}
+ onChange={(val: Key | null) => {
+ if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val as string) });
+ }}
+ isDisabled={autoRefillSaving}
+ >
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item id="500" textValue="$5.00">$5.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="1000" textValue="$10.00">$10.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="2500" textValue="$25.00">$25.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="5000" textValue="$50.00">$50.00<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
                         </Select>
                       </div>
                       <div>
@@ -611,21 +574,24 @@ export default function ApiPlatformPage() {
                           Amount to refill
                         </p>
                         <Select
-                          selectedKeys={[autoRefill.refill_amount_cents.toString()]}
-                          onSelectionChange={(keys) => {
-                            const val = Array.from(keys)[0] as string;
-                            if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val) });
-                          }}
-                          isDisabled={autoRefillSaving}
-                          classNames={{
-                            trigger: "bg-surface-elevated border-border-base",
-                            value: "text-text-primary",
-                          }}
-                        >
-                          <SelectItem key="1000">$10.00</SelectItem>
-                          <SelectItem key="2500">$25.00</SelectItem>
-                          <SelectItem key="5000">$50.00</SelectItem>
-                          <SelectItem key="10000">$100.00</SelectItem>
+ value={autoRefill.refill_amount_cents.toString()}
+ onChange={(val: Key | null) => {
+ if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val as string) });
+ }}
+ isDisabled={autoRefillSaving}
+ >
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              <ListBox.Item id="1000" textValue="$10.00">$10.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="2500" textValue="$25.00">$25.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="5000" textValue="$50.00">$50.00<ListBox.ItemIndicator /></ListBox.Item>
+                              <ListBox.Item id="10000" textValue="$100.00">$100.00<ListBox.ItemIndicator /></ListBox.Item>
+                            </ListBox>
+                          </Select.Popover>
                         </Select>
                       </div>
                     </div>
@@ -634,8 +600,8 @@ export default function ApiPlatformPage() {
               ) : (
                 <p className="text-text-tertiary">Failed to load auto-refill settings.</p>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         {/* API Keys Section */}
@@ -644,8 +610,8 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
-          <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-row items-center gap-3 p-6 pb-0">
               <Icon
                 icon="solar:key-bold-duotone"
                 className="text-accent-400"
@@ -659,41 +625,34 @@ export default function ApiPlatformPage() {
                   Create and manage your API keys
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-6">
-              {/* Create Key */}
+            </div>
+            <div className="p-6 space-y-6">
               <div className="flex gap-3">
-                <Input
-                  placeholder="Key name (e.g. Production, Testing)"
-                  value={newKeyName}
-                  onValueChange={setNewKeyName}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreateKey();
-                  }}
-                  classNames={{
-                    input: "bg-surface-elevated text-text-primary",
-                    inputWrapper:
-                      "bg-surface-elevated border-border-base hover:border-border-light",
-                  }}
-                />
+                <TextField variant="secondary" className="flex-1">
+                  <Input
+                    onChange={(e) => setNewKeyName(e.target.value)}
+                    placeholder="Key name (e.g. Production, Testing)"
+                    value={newKeyName}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateKey();
+                    }}
+                  />
+                </TextField>
                 <Button
-                  className="bg-accent-400 text-white font-medium flex-shrink-0"
-                  isLoading={isCreatingKey}
-                  isDisabled={!newKeyName.trim()}
-                  onPress={handleCreateKey}
-                  startContent={
-                    !isCreatingKey && (
+ className="bg-accent-400 text-white font-medium flex-shrink-0"
+ isPending={isCreatingKey}
+ isDisabled={!newKeyName.trim()}
+ onPress={handleCreateKey}
+ >
+                  {!isCreatingKey && (
                       <Icon icon="solar:add-circle-bold-duotone" width={18} />
-                    )
-                  }
-                >
+                    )}
                   Create Key
                 </Button>
               </div>
 
-              <Divider className="bg-border-base" />
+              <Separator className="bg-border-base" />
 
-              {/* Keys List */}
               {keysLoading ? (
                 <div className="space-y-3">
                   {[1, 2].map((i) => (
@@ -719,7 +678,7 @@ export default function ApiPlatformPage() {
                   {activeKeys.map((key) => (
                     <div
                       key={key.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated"
+                      className="flex items-center justify-between p-4 rounded-lg bg-white/[0.04]"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <Icon
@@ -751,23 +710,16 @@ export default function ApiPlatformPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Chip
-                          size="sm"
-                          variant="flat"
-                          classNames={{
-                            base: "bg-green-500/10",
-                            content: "text-green-500 text-xs font-medium",
-                          }}
-                        >
+                        <Chip size="sm" className="bg-green-500/15 text-green-500">
                           Active
                         </Chip>
                         <Button
-                          size="sm"
-                          variant="flat"
-                          className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                          isLoading={revokingKeyId === key.id}
-                          onPress={() => handleRevokeKey(key.id)}
-                        >
+ size="sm"
+ variant="tertiary"
+ className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
+ isPending={revokingKeyId === key.id}
+ onPress={() => handleRevokeKey(key.id)}
+ >
                           Revoke
                         </Button>
                       </div>
@@ -782,7 +734,7 @@ export default function ApiPlatformPage() {
                       {revokedKeys.map((key) => (
                         <div
                           key={key.id}
-                          className="flex items-center justify-between p-4 rounded-lg bg-surface-elevated opacity-50"
+                          className="flex items-center justify-between p-4 rounded-lg bg-white/[0.04] opacity-50"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <Icon
@@ -800,13 +752,9 @@ export default function ApiPlatformPage() {
                             </div>
                           </div>
                           <Chip
-                            size="sm"
-                            variant="flat"
-                            classNames={{
-                              base: "bg-red-500/10",
-                              content: "text-red-500 text-xs font-medium",
-                            }}
-                          >
+ size="sm"
+ variant="tertiary"
+ >
                             Revoked
                           </Chip>
                         </div>
@@ -815,8 +763,8 @@ export default function ApiPlatformPage() {
                   )}
                 </div>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         {/* Usage Logs Section */}
@@ -825,8 +773,8 @@ export default function ApiPlatformPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <Card className="bg-surface-base border border-border-base">
-            <CardHeader className="flex flex-row items-center gap-3 pb-0">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-row items-center gap-3 p-6 pb-0">
               <Icon
                 icon="solar:chart-bold-duotone"
                 className="text-accent-400"
@@ -842,8 +790,8 @@ export default function ApiPlatformPage() {
                     : "API request history"}
                 </p>
               </div>
-            </CardHeader>
-            <CardBody className="gap-4">
+            </div>
+            <div className="p-6 space-y-4">
               {usageLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
@@ -904,7 +852,7 @@ export default function ApiPlatformPage() {
                       }, []).map((log) => (
                         <tr
                           key={log.id}
-                          className="border-b border-border-base/50 hover:bg-surface-elevated/50"
+                          className="border-b border-border-base/50 hover:bg-white/[0.04]"
                         >
                           <td className="py-2.5 px-3 text-text-tertiary whitespace-nowrap">
                             {new Date(log.created_at).toLocaleString([], {
@@ -917,14 +865,9 @@ export default function ApiPlatformPage() {
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
                               <Chip
-                                size="sm"
-                                variant="flat"
-                                classNames={{
-                                  base: "bg-surface-elevated px-1.5",
-                                  content:
-                                    "text-text-secondary text-xs font-mono",
-                                }}
-                              >
+ size="sm"
+ variant="tertiary"
+ >
                                 {log.method}
                               </Chip>
                               <span className="text-text-primary font-mono text-xs truncate max-w-[200px]">
@@ -937,46 +880,20 @@ export default function ApiPlatformPage() {
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <Chip
-                              size="sm"
-                              variant="flat"
-                              classNames={{
-                                base:
-                                  log.status_code < 400
-                                    ? "bg-green-500/10"
-                                    : "bg-red-500/10",
-                                content:
-                                  log.status_code < 400
-                                    ? "text-green-500 text-xs"
-                                    : "text-red-500 text-xs",
-                              }}
-                            >
+ size="sm"
+ variant="tertiary"
+ >
                               {log.status_code}
                             </Chip>
                           </td>
                           <td className="py-2.5 px-3 text-text-secondary font-mono text-xs">
                             {log.metadata?.jobId ? (
                               <div className="flex items-center gap-1.5">
-                                <span className="truncate max-w-[80px]" title={String(log.metadata.jobId)}>
-                                  {String(log.metadata.jobId).length > 8
-                                    ? `${String(log.metadata.jobId).slice(0, 8)}…`
-                                    : log.metadata.jobId}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  isIconOnly
-                                  className="min-w-6 w-6 h-6"
-                                  onPress={() => {
-                                    navigator.clipboard.writeText(String(log.metadata!.jobId));
-                                    addToast({ title: "Copied", description: "Job ID copied to clipboard", color: "success" });
-                                  }}
-                                >
-                                  <Icon icon="solar:copy-bold" width={14} className="text-text-tertiary" />
-                                </Button>
+                                <CopyableJobId jobId={String(log.metadata.jobId)} />
                                 {log.status_code < 400 && (
                                   <Button
                                     size="sm"
-                                    variant="light"
+                                    variant="tertiary"
                                     isIconOnly
                                     className="min-w-6 w-6 h-6"
                                     onPress={() => openJobModal(log)}
@@ -998,8 +915,8 @@ export default function ApiPlatformPage() {
                   </table>
                 </div>
               )}
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -1023,156 +940,111 @@ export default function ApiPlatformPage() {
       />
 
       {/* Job Result Modal */}
-      <Modal
-        isOpen={jobModalOpen}
-        onClose={() => setJobModalOpen(false)}
-        size="2xl"
-        scrollBehavior="inside"
-        classNames={{
-          base: "bg-surface-base border border-border-base",
-          header: "border-b border-border-base",
-          body: "py-4",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="text-text-primary">
-            {jobModalType === "clip" ? "Clip Job Results" : "Face Swap Job Results"}
-          </ModalHeader>
-          <ModalBody>
-            {jobModalLoading ? (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <Icon icon="solar:refresh-bold-duotone" className="text-accent-400 animate-spin" width={32} />
-                <p className="text-text-secondary text-sm">Loading results...</p>
-              </div>
-            ) : jobModalType === "clip" && clipJobResult ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-text-tertiary text-sm">Status:</span>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: clipJobResult.status === "completed" ? "bg-green-500/10" : "bg-yellow-500/10",
-                      content: clipJobResult.status === "completed" ? "text-green-500 text-xs" : "text-yellow-500 text-xs",
-                    }}
-                  >
-                    {clipJobResult.status}
-                  </Chip>
-                  {clipJobResult.progress && (
-                    <span className="text-text-tertiary text-xs">
-                      ({clipJobResult.progress.completed}/{clipJobResult.progress.total})
-                    </span>
-                  )}
+      <Modal>
+        <Modal.Backdrop isOpen={jobModalOpen} onOpenChange={() => setJobModalOpen(false)}>
+          <Modal.Container>
+            <Modal.Dialog className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+              <Modal.CloseTrigger />
+              {jobModalLoading ? (
+                <div className="flex flex-col items-center justify-center gap-4 py-16">
+                  <div className="w-12 h-12 rounded-full bg-accent-400/10 flex items-center justify-center">
+                    <Icon icon="solar:refresh-bold-duotone" className="text-accent-400 animate-spin" width={24} />
+                  </div>
+                  <p className="text-text-secondary text-sm">Loading results...</p>
                 </div>
-                {clipJobResult.clips?.map((clip) => (
-                  <Card key={clip.clip_id} className="bg-surface-elevated border border-border-base">
-                    <CardBody className="gap-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-text-primary font-medium text-sm">
-                            {clip.title || `Clip #${clip.clip_id}`}
-                          </p>
-                          {clip.heading && (
-                            <p className="text-text-tertiary text-xs mt-0.5">{clip.heading}</p>
+              ) : jobModalType === "clip" && clipJobResult ? (
+                <>
+                  <div className="p-6 pb-4">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-9 h-9 rounded-xl bg-accent-400/15 flex items-center justify-center">
+                        <Icon icon="solar:clapperboard-edit-bold-duotone" className="text-accent-400" width={20} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-text-primary">Clip Job Results</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium ${clipJobResult.status === "completed" ? "text-green-500" : "text-yellow-500"}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${clipJobResult.status === "completed" ? "bg-green-500" : "bg-yellow-500"}`} />
+                            {clipJobResult.status}
+                          </span>
+                          {clipJobResult.progress && (
+                            <span className="text-xs text-text-tertiary">{clipJobResult.progress.completed}/{clipJobResult.progress.total} clips</span>
                           )}
                         </div>
-                        <Chip
-                          size="sm"
-                          variant="flat"
-                          classNames={{
-                            base: clip.status === "completed" ? "bg-green-500/10" : "bg-red-500/10",
-                            content: clip.status === "completed" ? "text-green-500 text-xs" : "text-red-500 text-xs",
-                          }}
-                        >
-                          {clip.status}
-                        </Chip>
                       </div>
-                      {clip.status === "completed" && clip.download_url && (
-                        <div className="space-y-2">
-                          <video
-                            src={clip.download_url}
-                            controls
-                            className="w-full max-h-[300px] rounded-lg bg-black"
-                          />
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            as="a"
-                            href={clip.download_url}
-                            target="_blank"
-                            startContent={<Icon icon="solar:download-bold" width={16} />}
-                          >
-                            Download
-                          </Button>
+                    </div>
+                  </div>
+                  <div className="px-6 pb-6 space-y-2 max-h-[60vh] overflow-y-auto">
+                    {clipJobResult.clips?.map((clip) => (
+                      <div key={clip.clip_id} className="rounded-lg bg-white/[0.04] p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-text-primary truncate">{clip.title || `Clip #${clip.clip_id}`}</p>
+                            {clip.heading && <p className="text-xs text-text-tertiary mt-0.5 truncate">{clip.heading}</p>}
+                          </div>
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium flex-shrink-0 ${clip.status === "completed" ? "text-green-500" : "text-red-400"}`}>
+                            <Icon icon={clip.status === "completed" ? "solar:check-circle-bold" : "solar:close-circle-bold"} width={14} />
+                            {clip.status}
+                          </span>
                         </div>
-                      )}
-                      {clip.status === "failed" && clip.error && (
-                        <p className="text-red-500 text-xs">{clip.error}</p>
-                      )}
-                    </CardBody>
-                  </Card>
-                ))}
-              </div>
-            ) : jobModalType === "face-swap" && faceSwapJobResult ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-text-tertiary text-sm">Status:</span>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: faceSwapJobResult.status === "completed"
-                        ? "bg-green-500/10"
-                        : faceSwapJobResult.status === "failed"
-                          ? "bg-red-500/10"
-                          : "bg-yellow-500/10",
-                      content: faceSwapJobResult.status === "completed"
-                        ? "text-green-500 text-xs"
-                        : faceSwapJobResult.status === "failed"
-                          ? "text-red-500 text-xs"
-                          : "text-yellow-500 text-xs",
-                    }}
-                  >
-                    {faceSwapJobResult.status}
-                  </Chip>
+                        {clip.status === "completed" && clip.download_url && (
+                          <div className="space-y-3">
+                            <video src={clip.download_url} controls className="w-full max-h-[250px] rounded-lg bg-black" />
+                            <a href={clip.download_url} target="_blank" rel="noopener noreferrer" className="inline-block">
+                              <Button size="sm" variant="secondary">
+                                <Icon icon="solar:download-bold" width={14} />
+                                Download
+                              </Button>
+                            </a>
+                          </div>
+                        )}
+                        {clip.status === "failed" && clip.error && (
+                          <p className="text-red-400 text-xs mt-1">{clip.error}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : jobModalType === "face-swap" && faceSwapJobResult ? (
+                <div className="p-6 space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                      <Icon icon="solar:mask-happly-bold-duotone" className="text-purple-400" width={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-text-primary">Face Swap Results</h3>
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium mt-0.5 ${faceSwapJobResult.status === "completed" ? "text-green-500" : faceSwapJobResult.status === "failed" ? "text-red-400" : "text-yellow-500"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${faceSwapJobResult.status === "completed" ? "bg-green-500" : faceSwapJobResult.status === "failed" ? "bg-red-400" : "bg-yellow-500"}`} />
+                        {faceSwapJobResult.status}
+                      </span>
+                    </div>
+                  </div>
+                  {faceSwapJobResult.status === "completed" && faceSwapJobResult.download_url && (
+                    <div className="space-y-3">
+                      <video src={faceSwapJobResult.download_url} controls className="w-full max-h-[250px] rounded-lg bg-black" />
+                      <a href={faceSwapJobResult.download_url} target="_blank" rel="noopener noreferrer" className="inline-block">
+                        <Button size="sm" variant="secondary">
+                          <Icon icon="solar:download-bold" width={14} />
+                          Download
+                        </Button>
+                      </a>
+                    </div>
+                  )}
+                  {faceSwapJobResult.status === "failed" && faceSwapJobResult.error && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <p className="text-red-400 text-sm">{faceSwapJobResult.error}</p>
+                    </div>
+                  )}
+                  {faceSwapJobResult.status === "processing" && (
+                    <div className="flex flex-col items-center gap-3 py-4">
+                      <Icon icon="solar:refresh-bold-duotone" className="text-yellow-400 animate-spin" width={24} />
+                      <p className="text-text-secondary text-sm">Still processing...</p>
+                    </div>
+                  )}
                 </div>
-                {faceSwapJobResult.status === "completed" && faceSwapJobResult.download_url && (
-                  <div className="space-y-2">
-                    <video
-                      src={faceSwapJobResult.download_url}
-                      controls
-                      className="w-full max-h-[400px] rounded-lg bg-black"
-                    />
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      as="a"
-                      href={faceSwapJobResult.download_url}
-                      target="_blank"
-                      startContent={<Icon icon="solar:download-bold" width={16} />}
-                    >
-                      Download
-                    </Button>
-                  </div>
-                )}
-                {faceSwapJobResult.status === "failed" && faceSwapJobResult.error && (
-                  <p className="text-red-500 text-sm">{faceSwapJobResult.error}</p>
-                )}
-                {faceSwapJobResult.status === "processing" && (
-                  <div className="text-center py-4">
-                    <Icon icon="solar:refresh-bold-duotone" className="text-yellow-500 animate-spin mx-auto mb-2" width={24} />
-                    <p className="text-text-secondary text-sm">Still processing...</p>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={() => setJobModalOpen(false)}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
+              ) : null}
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
       </Modal>
     </motion.div>
   );

@@ -66,23 +66,23 @@ export function ExistingScriptsDrawer({
           >
             <div className="flex items-center justify-between p-4 border-b border-border-base">
               <h3 className="text-lg font-semibold text-text-primary">Existing Scripts</h3>
-              <Button isIconOnly variant="light" size="sm" onPress={onClose}>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={onClose}>
                 <Icon icon="solar:close-circle-bold" width={20} />
               </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {scripts.map((script) => (
-                <button
-                  key={script.id}
+              {scripts.map((script, index) => (
+                <div
+                  key={`${script.id}-${index}`}
                   onClick={() => onSelectScript(script.id)}
-                  className="w-full text-left p-3 rounded-xl bg-surface-elevated hover:bg-surface-elevated/80 border border-border-base transition-colors space-y-1"
+                  className="w-full text-left p-3 rounded-xl bg-surface-base border border-border-base hover:border-accent-400/40 transition-all cursor-pointer space-y-1"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-text-primary truncate">
                       {script.title}
                     </span>
-                    <span className="text-xs text-text-muted shrink-0 ml-2">
+                    <span className="text-xs text-text-tertiary shrink-0 ml-2">
                       {script.sceneCount} scenes
                     </span>
                   </div>
@@ -91,7 +91,7 @@ export function ExistingScriptsDrawer({
                       {script.scriptDirection}
                     </p>
                   )}
-                </button>
+                </div>
               ))}
 
               {isLoading && (
@@ -102,11 +102,11 @@ export function ExistingScriptsDrawer({
 
               {hasMore && !isLoading && (
                 <Button
-                  variant="flat"
-                  size="sm"
-                  className="w-full"
-                  onPress={() => loadScripts(scripts.length)}
-                >
+ variant="tertiary"
+ size="sm"
+ className="w-full"
+ onPress={() => loadScripts(scripts.length)}
+ >
                   Load More
                 </Button>
               )}

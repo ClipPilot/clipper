@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { Character } from "../../actors/types";
 
@@ -18,8 +17,7 @@ export function CharacterPreviewCard({
   const actorImages = character.imageUrls || [];
 
   return (
-    <Card className="bg-surface-elevated border border-border-base">
-      <CardBody className="p-4">
+    <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated p-4">
         <div className="flex items-center gap-4">
           <div className="relative w-20 h-24 rounded-xl overflow-hidden bg-surface-base flex-shrink-0">
             {actorImages[selectedImageIndex] ? (
@@ -52,10 +50,10 @@ export function CharacterPreviewCard({
         {actorImages.length > 1 && (
           <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
             {actorImages.map((url, index) => (
-              <button
+              <div
                 key={index}
                 onClick={() => onImageIndexChange(index)}
-                className={`relative w-14 h-[70px] rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                className={`relative w-14 h-[70px] rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
                   selectedImageIndex === index
                     ? "border-accent-400 ring-2 ring-accent-400/30"
                     : "border-border-base hover:border-accent-400/50"
@@ -71,11 +69,10 @@ export function CharacterPreviewCard({
                     <Icon icon="solar:star-bold" className="text-white" width={8} />
                   </div>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         )}
-      </CardBody>
-    </Card>
+    </div>
   );
 }

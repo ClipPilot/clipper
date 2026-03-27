@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Button, Card } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 
@@ -103,30 +103,33 @@ export function ReferencesStep({
 
       <div className="grid grid-cols-3 gap-4">
         {referenceImages.map((image, index) => (
-          <Card
+          <div
             key={image.key}
-            className="aspect-square bg-surface-elevated border border-border-base relative group overflow-hidden"
+            className="aspect-square border border-border-base rounded-xl relative group overflow-hidden"
           >
             <img
               src={image.previewUrl}
               alt={`Reference ${index + 1}`}
               className="w-full h-full object-cover"
             />
-            <button
-              onClick={() => handleRemove(index)}
-              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            <Button
+              isIconOnly
+              size="sm"
+              variant="tertiary"
+              onPress={() => handleRemove(index)}
+              className="absolute top-2 right-2 w-7 h-7 min-w-7 rounded-full bg-red-500/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <Icon icon="solar:trash-bin-2-bold" className="text-white" width={14} />
-            </button>
-          </Card>
+              <Icon icon="solar:trash-bin-2-bold" width={14} />
+            </Button>
+          </div>
         ))}
 
         {referenceImages.length < MAX_REFERENCES && (
           <div
-            className={`aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${
+            className={`aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${
               isDragging
                 ? "border-accent-400 bg-accent-400/10"
-                : "border-border-base hover:border-accent-400/50 bg-surface-elevated/50"
+                : "border-border-light hover:border-accent-400/50 bg-surface-base"
             }`}
             onDragOver={(e) => {
               e.preventDefault();

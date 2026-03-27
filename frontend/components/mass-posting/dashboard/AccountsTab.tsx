@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardBody, Chip, Spinner } from "@heroui/react";
+import { Chip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -62,13 +62,13 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
 
   const renderAccountCard = (account: MassPostingAccount) => {
     return (
-      <Card
+      <div
         key={account.id}
-        className="bg-surface-base border border-border-base"
+        className="rounded-xl border border-border-base bg-surface-base overflow-hidden"
       >
-        <CardBody className="p-4">
+        <div className="p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-surface-elevated flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-white/[0.04] flex items-center justify-center">
               <Icon
                 icon={platformIcon(account.platform)}
                 width={20}
@@ -81,11 +81,7 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
               </p>
               <Chip
                 size="sm"
-                variant="flat"
-                classNames={{
-                  base: `${platformChipClass(account.platform)} h-5 px-1.5`,
-                  content: "text-[10px] px-0.5",
-                }}
+                variant="tertiary"
               >
                 {platformDisplayName(account.platform)}
               </Chip>
@@ -97,8 +93,8 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
               {account.totalReposts}
             </span>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   };
 
@@ -124,7 +120,7 @@ export function AccountsTab({ dateRange, onDateRangeChange }: AccountsTabProps) 
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" color="primary" />
+            <Spinner size="lg" color="accent" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">

@@ -5,10 +5,10 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  forwardRef,
-} from "react";
+  forwardRef } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
+import { Card, Modal, Button } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { ugcVideoAPI, UGCVideoJob } from "@/api/ugc/video";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -69,8 +69,7 @@ export const MyVideoJobsSection = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      refetch: fetchJobs,
-    }),
+      refetch: fetchJobs }),
     [fetchJobs]
   );
 
@@ -101,8 +100,7 @@ export const MyVideoJobsSection = forwardRef<
           progressMessage: update.progressMessage,
           finalVideoUrl: update.finalVideoUrl,
           totalDurationSeconds: update.totalDurationSeconds,
-          errorMessage: update.error,
-        };
+          errorMessage: update.error };
         return updated;
       });
     };
@@ -140,12 +138,12 @@ export const MyVideoJobsSection = forwardRef<
   if (isLoading) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8 flex items-center justify-center">
+        <Card.Content className="p-8 flex items-center justify-center">
           <Icon
             icon="solar:refresh-circle-bold-duotone"
             className="text-3xl text-accent-400 animate-spin"
           />
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -153,7 +151,7 @@ export const MyVideoJobsSection = forwardRef<
   if (jobs.length === 0) {
     return (
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-8 text-center">
+        <Card.Content className="p-8 text-center">
           <Icon
             icon="solar:video-frame-play-bold-duotone"
             className="text-4xl text-text-tertiary mx-auto mb-3"
@@ -162,7 +160,7 @@ export const MyVideoJobsSection = forwardRef<
           <p className="text-xs text-text-tertiary mt-1">
             Create your first UGC video above
           </p>
-        </CardBody>
+        </Card.Content>
       </Card>
     );
   }
@@ -181,35 +179,31 @@ export const MyVideoJobsSection = forwardRef<
       </div>
       {totalPages > 1 && (
         <div className="flex justify-center pt-4">
-          <Pagination
-            total={totalPages}
+          <PaginationControl total={totalPages}
             page={currentPage}
             onChange={setCurrentPage}
-            color="primary"
-            size="sm"
-            showControls
           />
         </div>
       )}
 
       {/* Delete confirmation modal */}
-      <Modal isOpen={!!deletingJobId} onClose={() => !isDeleting && setDeletingJobId(null)} size="sm">
-        <ModalContent>
-          <ModalHeader className="text-text-primary">Delete Video</ModalHeader>
-          <ModalBody>
+      <Modal>
+        <Modal.Backdrop isOpen={!!deletingJobId} onOpenChange={() => !isDeleting && setDeletingJobId(null)}><Modal.Container><Modal.Dialog className="sm:max-w-sm">
+          <Modal.Header className="text-text-primary">Delete Video</Modal.Header>
+          <Modal.Body>
             <p className="text-text-secondary">
               Are you sure you want to delete this video? This action cannot be undone.
             </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={() => setDeletingJobId(null)} isDisabled={isDeleting}>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="tertiary" onPress={() => setDeletingJobId(null)} isDisabled={isDeleting}>
               Cancel
             </Button>
-            <Button color="danger" onPress={handleConfirmDelete} isLoading={isDeleting}>
+            <Button variant="danger" onPress={handleConfirmDelete} isPending={isDeleting}>
               Delete
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </div>
   );

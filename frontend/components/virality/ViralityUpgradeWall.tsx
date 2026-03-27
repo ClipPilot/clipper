@@ -30,11 +30,11 @@ export function ViralityUpgradeWall() {
         </div>
         <div className="flex flex-col items-center gap-3 w-full">
           <Button
-            size="lg"
-            className="w-full bg-purple-500 text-white font-semibold"
-            onPress={() => router.push("/dashboard/pricing")}
-            startContent={<Icon icon="solar:rocket-bold" width={18} />}
-          >
+ size="lg"
+ className="w-full bg-purple-500 text-white font-semibold"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+            <Icon icon="solar:rocket-bold" width={18} />
             Upgrade to Studio
           </Button>
           <p className="text-xs text-text-tertiary">

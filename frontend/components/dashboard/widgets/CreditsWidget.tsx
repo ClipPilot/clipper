@@ -1,6 +1,6 @@
 "use client";
 
-import { Progress, Chip, Button } from "@heroui/react";
+import { ProgressBar, Chip, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useUsageStats } from "@/hooks/useUsageStats";
@@ -61,32 +61,30 @@ export function CreditsWidget({ color, onColorChange }: CreditsWidgetProps) {
                 {usageStats?.remaining ?? 0}
               </span>
               <Chip
-                size="sm"
-                color={getPlanColor(selectedTeam?.plan || "free")}
-                variant="flat"
-              >
+ size="sm"
+ color={getPlanColor(selectedTeam?.plan || "free")}
+ variant="tertiary"
+ >
                 {selectedTeam?.plan || "Free"}
               </Chip>
             </div>
             <p className="text-xs text-text-secondary mb-3">credits remaining</p>
-            <Progress
-              value={usagePercent}
-              color={getProgressColor()}
-              size="sm"
-              className="mb-1"
-            />
+            <ProgressBar value={usagePercent} className="mb-1">
+              <ProgressBar.Track>
+                <ProgressBar.Fill />
+              </ProgressBar.Track>
+            </ProgressBar>
             <p className="text-xs text-text-tertiary">
               {usageStats?.clipsCreated ?? 0} / {usageStats?.limit ?? 0} used
             </p>
           </div>
           {selectedTeam?.plan === "free" && (
             <Button
-              size="sm"
-              color="primary"
-              variant="flat"
-              onPress={() => router.push("/dashboard/pricing")}
-              startContent={<Icon icon="solar:arrow-up-bold" width={14} />}
-            >
+ size="sm"
+ variant="tertiary"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+              <Icon icon="solar:arrow-up-bold" width={14} />
               Upgrade
             </Button>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button, Card, CardBody, Input, cn } from "@heroui/react";
+import { Button, Input, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { formatNumber } from "@/lib/formatters";
 import type { CompetitorWithAccounts, ViralityPost } from "@/api/virality";
@@ -84,8 +84,8 @@ export function CompetitorCard({
   ];
 
   return (
-    <Card className="bg-surface-base border border-border-base overflow-hidden">
-      <CardBody className="p-4 flex flex-col gap-0">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-4 flex flex-col gap-0">
         {/* Top: identity */}
         <div className="flex items-center gap-3">
           <div
@@ -104,20 +104,14 @@ export function CompetitorCard({
           </div>
           <div className="flex-1 min-w-0">
             {isEditing ? (
-              <Input
-                size="sm"
-                value={editingName}
-                onValueChange={onEditNameChange}
-                autoFocus
-                classNames={{
-                  inputWrapper: "bg-surface-elevated border-border-base h-7 min-h-0",
-                  input: "text-xs",
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onEditSave(competitor.id);
-                  if (e.key === "Escape") onEditCancel();
-                }}
-              />
+              <Input onChange={(e) => (onEditNameChange)(e.target.value)}
+ value={editingName}
+ autoFocus
+ onKeyDown={(e) => {
+ if (e.key === "Enter") onEditSave(competitor.id);
+ if (e.key === "Escape") onEditCancel();
+ }}
+ />
             ) : (
               <>
                 <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
@@ -134,20 +128,20 @@ export function CompetitorCard({
           {isEditing ? (
             <div className="flex items-center gap-1 shrink-0">
               <Button
-                size="sm"
-                isIconOnly
-                className="bg-accent-400 text-white h-7 w-7 min-w-0"
-                onPress={() => onEditSave(competitor.id)}
-              >
+ size="sm"
+ isIconOnly
+ className="bg-accent-400 text-white h-7 w-7 min-w-0"
+ onPress={() => onEditSave(competitor.id)}
+ >
                 <Icon icon="solar:check-read-linear" width={14} />
               </Button>
               <Button
-                size="sm"
-                isIconOnly
-                variant="flat"
-                className="bg-surface-elevated h-7 w-7 min-w-0"
-                onPress={onEditCancel}
-              >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ className="bg-surface-elevated h-7 w-7 min-w-0"
+ onPress={onEditCancel}
+ >
                 <Icon icon="solar:close-circle-linear" width={14} />
               </Button>
             </div>
@@ -155,21 +149,21 @@ export function CompetitorCard({
             <div className="flex items-center gap-1 shrink-0">
               {!isMyPerformance && (
                 <Button
-                  size="sm"
-                  isIconOnly
-                  variant="light"
-                  className="text-text-tertiary h-7 w-7 min-w-0"
-                  onPress={() => onEditStart(competitor.id, competitor.name)}
-                >
+ size="sm"
+ isIconOnly
+ variant="ghost"
+ className="!bg-transparent text-text-tertiary hover:text-text-primary h-7 w-7 min-w-0"
+ onPress={() => onEditStart(competitor.id, competitor.name)}
+ >
                   <Icon icon="solar:pen-2-linear" width={14} />
                 </Button>
               )}
               <Button
-                size="sm"
-                variant="flat"
-                className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
-                onPress={() => onViewCompetitor(competitor.id)}
-              >
+ size="sm"
+ variant="tertiary"
+ className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
+ onPress={() => onViewCompetitor(competitor.id)}
+ >
                 {isMyPerformance && competitor.accounts.length === 0 ? "Add Accounts" : "View"}
               </Button>
             </div>
@@ -208,7 +202,7 @@ export function CompetitorCard({
         </motion.div>
 
         {/* Expand/collapse toggle */}
-        <button
+        <div
           onClick={onToggleExpand}
           className="w-full flex items-center justify-center pt-2 group cursor-pointer"
         >
@@ -222,8 +216,8 @@ export function CompetitorCard({
               )}
             />
           </div>
-        </button>
-      </CardBody>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -83,24 +83,24 @@ export function ScriptEditingPhase({
       <div className="flex justify-between items-center pt-4">
         <div className="flex items-center gap-2">
           <Button
-            variant="bordered"
-            className="border-border-base text-text-secondary"
-            onPress={onGoBack}
-            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-          >
+ variant="outline"
+ className="border-border-base text-text-secondary"
+ onPress={onGoBack}
+ >
+            <Icon icon="solar:arrow-left-linear" width={16} />
             Edit & Regenerate
           </Button>
         </div>
         <Button
-          size="lg"
-          className="bg-accent-400 text-white font-semibold"
-          onPress={onContinue}
-          isLoading={isSaving}
-          isDisabled={isSavingBRoll || hasArollWithoutDialogue}
-          endContent={!isSaving && <Icon icon="solar:arrow-right-linear" width={16} />}
-        >
+ size="lg"
+ className="bg-accent-400 text-white font-semibold"
+ onPress={onContinue}
+ isPending={isSaving}
+ isDisabled={isSavingBRoll || hasArollWithoutDialogue}
+ >
           {isSaving ? "Saving..." : "Continue to Audio"}
-        </Button>
+          {!isSaving && <Icon icon="solar:arrow-right-linear" width={16} />}
+</Button>
       </div>
     </div>
   );

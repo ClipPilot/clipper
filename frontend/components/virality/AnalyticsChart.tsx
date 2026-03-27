@@ -50,8 +50,8 @@ function SyncTick({ x, y, payload, index, chartData }: any) {
         <text
           x={0} y={0} dy={12}
           textAnchor="middle"
-          fontSize="var(--heroui-font-size-tiny)"
-          fill="hsl(var(--heroui-default-500))"
+          fontSize="11px"
+          fill="var(--text-tertiary)"
         >
           {date}
         </text>
@@ -59,8 +59,8 @@ function SyncTick({ x, y, payload, index, chartData }: any) {
       <text
         x={0} y={0} dy={showDate ? 24 : 12}
         textAnchor="middle"
-        fontSize="var(--heroui-font-size-tiny)"
-        fill="hsl(var(--heroui-default-400))"
+        fontSize="11px"
+        fill="var(--text-tertiary)"
       >
         {time}
       </text>
@@ -272,7 +272,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
         <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
-              <dt className="text-medium text-text-primary font-medium inline-flex items-center gap-1.5">
+              <dt className="text-base text-text-primary font-medium inline-flex items-center gap-1.5">
                 Analytics
                 <HTooltip content={`Times shown in ${TIMEZONE}`} placement="top" size="sm">
                   <Icon
@@ -310,18 +310,20 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
             <div className="mt-2 flex w-full items-center">
               <div className="-my-3 flex w-full items-center gap-x-3 overflow-x-auto py-3">
                 {metrics.map(({ key, title, value, change, tooltip }) => (
-                  <button
+                  <div
                     key={key}
                     className={cn(
-                      "rounded-medium flex w-full flex-col gap-2 p-3 transition-colors",
-                      { "bg-default-100": activeMetric === key }
+                      "rounded-lg flex w-full flex-col gap-2 p-3 transition-all cursor-pointer border",
+                      activeMetric === key
+                        ? "bg-accent-400/10 border-accent-400/30"
+                        : "bg-transparent border-transparent hover:bg-white/[0.03]"
                     )}
                     onClick={() => setActiveMetric(key)}
                   >
                     <span
                       className={cn(
-                        "text-small text-default-500 font-medium transition-colors inline-flex items-center gap-1",
-                        { "text-primary": activeMetric === key }
+                        "text-sm font-medium transition-colors inline-flex items-center gap-1",
+                        activeMetric === key ? "text-accent-400" : "text-text-tertiary"
                       )}
                     >
                       {title}
@@ -330,13 +332,13 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                           <Icon
                             icon="solar:info-circle-linear"
                             width={14}
-                            className="text-default-400 cursor-help"
+                            className="text-text-tertiary cursor-help"
                           />
                         </HTooltip>
                       )}
                     </span>
                     <div className="flex items-center gap-x-3">
-                      <span className="text-foreground text-xl sm:text-3xl font-bold">
+                      <span className="text-text-primary text-xl sm:text-3xl font-bold">
                         {formatChartValue(value)}
                       </span>
                       {change !== null && (
@@ -352,7 +354,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                         </span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -404,7 +406,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                   })}
                 </defs>
                 <CartesianGrid
-                  stroke="hsl(var(--heroui-default-200))"
+                  stroke="var(--border-base)"
                   strokeDasharray="3 3"
                   vertical={false}
                 />
@@ -421,114 +423,113 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                   tickLine={false}
                   domain={yDomain}
                   width={50}
-                  style={{ fontSize: "var(--heroui-font-size-tiny)" }}
+                  style={{ fontSize: "11px" }}
                   tickFormatter={formatChartValue}
                 />
                 <Tooltip
-                  content={({ payload }) => {
-                    const hourKey = payload?.[0]?.payload?.hourKey;
-                    if (!hourKey) return null;
-                    const label = formatHourKey(hourKey);
-                    const tipData = tooltipByHour[hourKey];
-                    const tipChange = tooltipChangeByHour[hourKey];
-                    const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
+ content={({ payload }) => {
+ const hourKey = payload?.[0]?.payload?.hourKey;
+ if (!hourKey) return null;
+ const label = formatHourKey(hourKey);
+ const tipData = tooltipByHour[hourKey];
+ const tipChange = tooltipChangeByHour[hourKey];
+ const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
 
-                    const renderChange = (change: number | null | undefined) => {
-                      if (change == null) return null;
-                      const isUp = change >= 0;
-                      return (
-                        <span className={cn(
-                          "text-[10px] font-semibold inline-flex items-center gap-0.5 px-1 py-px rounded",
-                          isUp ? "text-green-400 bg-green-400/10" : "text-red-400 bg-red-400/10"
-                        )}>
-                          <Icon icon={isUp ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={8} />
-                          {Math.abs(change).toFixed(0)}%
-                        </span>
-                      );
-                    };
+ const renderChange = (change: number | null | undefined) => {
+ if (change == null) return null;
+ const isUp = change >= 0;
+ return (
+ <span className={cn(
+ "text-[10px] font-semibold inline-flex items-center gap-0.5 px-1 py-px rounded",
+ isUp ? "text-green-400 bg-green-400/10" : "text-red-400 bg-red-400/10"
+ )}>
+ <Icon icon={isUp ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={8} />
+ {Math.abs(change).toFixed(0)}%
+ </span>
+ );
+ };
 
-                    const metricRows = tipData ? [
-                      { label: "Views", value: tipData.views, change: tipChange?.views, icon: "solar:eye-bold" },
-                      { label: "Likes", value: tipData.likes, change: tipChange?.likes, icon: "solar:heart-bold" },
-                      { label: "Comments", value: tipData.comments, change: tipChange?.comments, icon: "solar:chat-round-dots-bold" },
-                    ] : [];
+ const metricRows = tipData ? [
+ { label: "Views", value: tipData.views, change: tipChange?.views, icon: "solar:eye-bold" },
+ { label: "Likes", value: tipData.likes, change: tipChange?.likes, icon: "solar:heart-bold" },
+ { label: "Comments", value: tipData.comments, change: tipChange?.comments, icon: "solar:chat-round-dots-bold" },
+ ] : [];
 
-                    return (
-                      <div className="rounded-xl bg-foreground shadow-lg min-w-[200px] overflow-hidden">
-                        {/* Header */}
-                        <div className="px-3 py-2 border-b border-foreground-200/10">
-                          <span className="text-tiny text-foreground-500 font-medium">
-                            {label.date} &middot; {label.time}
-                          </span>
-                        </div>
+ return (
+ <div className="rounded-xl bg-surface-base border border-border-base shadow-xl min-w-[200px] overflow-hidden">
+ <div className="px-3 py-2 border-b border-border-base">
+ <span className="text-xs text-text-tertiary font-medium">
+ {label.date} &middot; {label.time}
+ </span>
+ </div>
 
-                        <div className="px-3 py-2 flex flex-col gap-y-2">
-                          {/* Metric rows */}
-                          {metricRows.map((m) => (
-                            <div key={m.label} className="flex items-center justify-between gap-x-4">
-                              <div className="flex items-center gap-1.5">
-                                <Icon icon={m.icon} width={12} className="text-foreground-500" />
-                                <span className="text-tiny text-foreground-400">{m.label}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-small text-background font-semibold">
-                                  {formatChartValue(m.value)}
-                                </span>
-                                {renderChange(m.change)}
-                              </div>
-                            </div>
-                          ))}
+ <div className="px-3 py-2 flex flex-col gap-y-2">
+ {/* Metric rows */}
+ {metricRows.map((m) => (
+ <div key={m.label} className="flex items-center justify-between gap-x-4">
+ <div className="flex items-center gap-1.5">
+ <Icon icon={m.icon} width={12} className="text-text-tertiary" />
+ <span className="text-xs text-text-tertiary">{m.label}</span>
+ </div>
+ <div className="flex items-center gap-1.5">
+ <span className="text-sm text-text-primary font-semibold">
+ {formatChartValue(m.value)}
+ </span>
+ {renderChange(m.change)}
+ </div>
+ </div>
+ ))}
 
-                          {/* Account breakdown */}
-                          {overlayEntries.length > 0 && (
-                            <div className="border-t border-foreground-200/10 pt-2 mt-0.5 flex flex-col gap-y-1.5">
-                              {overlayEntries.map((p, index) => {
-                                const account = accounts.find(
-                                  (a) => `account_${a.id}` === p.dataKey
-                                );
-                                return (
-                                  <div
-                                    key={index}
-                                    className="flex items-center justify-between gap-x-3"
-                                  >
-                                    <div className="flex items-center gap-1.5">
-                                      <span
-                                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                                        style={{ backgroundColor: p.color }}
-                                      />
-                                      <span className="text-tiny text-foreground-400 truncate max-w-[120px]">
-                                        @{account?.username || "Unknown"}
-                                      </span>
-                                    </div>
-                                    <span className="text-tiny text-background font-semibold">
-                                      {formatChartValue(p.value as number)}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+ {/* Account breakdown */}
+ {overlayEntries.length > 0 && (
+ <div className="border-t border-border-base pt-2 mt-0.5 flex flex-col gap-y-1.5">
+ {overlayEntries.map((p, index) => {
+ const account = accounts.find(
+ (a) => `account_${a.id}` === p.dataKey
+ );
+ return (
+ <div
+ key={index}
+ className="flex items-center justify-between gap-x-3"
+ >
+ <div className="flex items-center gap-1.5">
+ <span
+ className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+ style={{ backgroundColor: p.color }}
+ />
+ <span className="text-xs text-text-tertiary truncate max-w-[120px]">
+ @{account?.username || "Unknown"}
+ </span>
+ </div>
+ <span className="text-xs text-text-primary font-semibold">
+ {formatChartValue(p.value as number)}
+ </span>
+ </div>
+ );
+ })}
+ </div>
+ )}
 
-                          {/* All accounts label when no selection */}
-                          {accounts.length === 0 && (
-                            <div className="border-t border-foreground-200/10 pt-1.5 mt-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="inline-block w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: TOTAL_COLOR }}
-                                />
-                                <span className="text-tiny text-foreground-500">
-                                  All Accounts ({axisAccounts.length})
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }}
-                  cursor={{ stroke: "hsl(var(--heroui-default-300))", strokeWidth: 1, strokeDasharray: "4 4" }}
-                />
+ {/* All accounts label when no selection */}
+ {accounts.length === 0 && (
+ <div className="border-t border-border-base pt-1.5 mt-0.5">
+ <div className="flex items-center gap-1.5">
+ <span
+ className="inline-block w-2 h-2 rounded-full"
+ style={{ backgroundColor: TOTAL_COLOR }}
+ />
+ <span className="text-xs text-text-tertiary">
+ All Accounts ({axisAccounts.length})
+ </span>
+ </div>
+ </div>
+ )}
+ </div>
+ </div>
+ );
+ }}
+ cursor={{ stroke: "var(--border-light)", strokeWidth: 1, strokeDasharray: "4 4" }}
+ />
                 {/* Individual overlay account lines (rendered first = below) */}
                 {accounts.map((account, i) => {
                   const color = getColor(account, i);
@@ -538,7 +539,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       activeDot={{
                         stroke: color,
                         strokeWidth: 2,
-                        fill: "hsl(var(--heroui-background))",
+                        fill: "var(--surface-base)",
                         r: 4,
                       }}
                       animationDuration={800}
@@ -558,7 +559,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     activeDot={{
                       stroke: TOTAL_COLOR,
                       strokeWidth: 2,
-                      fill: "hsl(var(--heroui-background))",
+                      fill: "var(--surface-base)",
                       r: 4,
                     }}
                     animationDuration={800}

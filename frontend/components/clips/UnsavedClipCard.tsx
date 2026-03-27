@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Card, CardBody, CardFooter, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Card, Button, Modal } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
 import { SecureVideoPlayer, SecureVideoPlayerRef } from "./SecureVideoPlayer";
@@ -38,7 +38,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
     if (score >= 80) return "text-success-600 bg-success-600/10";
-    if (score >= 60) return "text-warning-600 bg-warning-600/10";
+    if (score >= 60) return "text-yellow-600 bg-warning-600/10";
     return "text-text-tertiary bg-surface-elevated";
   };
 
@@ -63,7 +63,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 
   return (
     <Card className="bg-surface-base border border-border-accent overflow-hidden">
-      <CardBody className="p-0 cursor-pointer" onClick={handleCardClick}>
+      <Card.Content className="p-0 cursor-pointer" onClick={handleCardClick}>
         <div className="aspect-[9/16]">
           {clip.clipUrl ? (
             <SecureVideoPlayer
@@ -112,17 +112,16 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
             </div>
           </div>
         </div>
-      </CardBody>
+      </Card.Content>
 
-      <CardFooter className="px-3 py-2.5 border-t border-border-base flex gap-2">
-        <Button
-          className="flex-1 justify-center"
-          color="primary"
-          size="sm"
-          onPress={handleSave}
-          isLoading={saving}
-          isDisabled={saving}
-        >
+      <Card.Footer className="px-3 py-2.5 border-t border-border-base flex gap-2">
+        <Button variant="primary"
+ className="flex-1 justify-center"
+ size="sm"
+ onPress={handleSave}
+ isPending={saving}
+ isDisabled={saving}
+ >
           <span className="flex items-center gap-1.5">
             {!saving && <Icon icon="solar:diskette-bold" className="text-sm" />}
             <span className="text-xs sm:text-sm">{saving ? "Saving..." : "Save"}</span>
@@ -136,55 +135,49 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 
         {onReject && (
           <Button
-            size="sm"
-            variant="flat"
-            color="danger"
-            isIconOnly
-            className="flex-shrink-0"
-            onPress={() => setIsRejectModalOpen(true)}
-            isDisabled={saving}
-          >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ className="flex-shrink-0"
+ onPress={() => setIsRejectModalOpen(true)}
+ isDisabled={saving}
+ >
             <Icon icon="solar:close-circle-bold" className="text-lg" />
           </Button>
         )}
-      </CardFooter>
+      </Card.Footer>
 
-      <Modal
-        isOpen={isRejectModalOpen}
-        onClose={() => setIsRejectModalOpen(false)}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
+      <Modal>
+        <Modal.Backdrop isOpen={isRejectModalOpen} onOpenChange={() => setIsRejectModalOpen(false)}><Modal.Container><Modal.Dialog className="sm:max-w-sm">
+          <Modal.Header className="flex flex-col gap-1">
             <div className="flex items-center gap-2 text-danger">
               <Icon icon="solar:danger-triangle-bold" className="text-xl" />
               Reject Clip
             </div>
-          </ModalHeader>
-          <ModalBody>
+          </Modal.Header>
+          <Modal.Body>
             <p className="text-text-secondary">
               Are you sure you want to reject this clip? The clip will be marked as rejected and won't count towards your saved clips.
             </p>
-          </ModalBody>
-          <ModalFooter>
+          </Modal.Body>
+          <Modal.Footer>
             <Button
-              variant="light"
-              onPress={() => setIsRejectModalOpen(false)}
-            >
+ variant="tertiary"
+ onPress={() => setIsRejectModalOpen(false)}
+ >
               Cancel
             </Button>
-            <Button
-              color="danger"
-              onPress={() => {
-                onReject?.(clip.id);
-                setIsRejectModalOpen(false);
-              }}
-              startContent={<Icon icon="solar:close-circle-bold" />}
-            >
+            <Button variant="danger"
+ onPress={() => {
+ onReject?.(clip.id);
+ setIsRejectModalOpen(false);
+ }}
+ >
+              <Icon icon="solar:close-circle-bold" />
               Reject
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </Card>
   );

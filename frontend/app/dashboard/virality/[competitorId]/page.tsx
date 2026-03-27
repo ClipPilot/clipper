@@ -3,16 +3,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import {
-  Button,
+import { Button,
   Input,
-  addToast,
+  toast,
   Spinner,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+  Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
@@ -87,7 +82,7 @@ export default function CompetitorDetailPage() {
       );
       setPostsByAccount(postsMap);
     } catch (err: any) {
-      addToast({ title: "Failed to load competitor", description: err.message, color: "danger" });
+      toast.danger("Failed to load competitor", { description: err.message });
     } finally {
       setIsLoading(false);
       setIsRecalculating(false);
@@ -135,10 +130,10 @@ export default function CompetitorDetailPage() {
     if (!selectedTeam?.id) return;
     try {
       await viralityAPI.deletePost(selectedTeam.id, postId);
-      addToast({ title: "Post removed from tracking", color: "success" });
+      toast.success("Post removed from tracking");
       await fetchData(true);
     } catch (err: any) {
-      addToast({ title: "Failed to delete post", description: err.message, color: "danger" });
+      toast.danger("Failed to delete post", { description: err.message });
     }
   }, [selectedTeam?.id, fetchData]);
 
@@ -154,9 +149,9 @@ export default function CompetitorDetailPage() {
       await Promise.all(
         accountIds.map((id) => viralityAPI.syncAccount(selectedTeam.id, id))
       );
-      addToast({ title: "Sync started for all accounts", color: "primary" });
+      toast("Sync started for all accounts");
     } catch (err: any) {
-      addToast({ title: "Failed to start sync", description: err.message, color: "danger" });
+      toast.danger("Failed to start sync", { description: err.message });
     }
   };
 
@@ -165,10 +160,10 @@ export default function CompetitorDetailPage() {
     try {
       await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, { name: editName.trim() });
       setIsEditingName(false);
-      addToast({ title: "Name updated", color: "success" });
+      toast.success("Name updated");
       await fetchData();
     } catch (err: any) {
-      addToast({ title: "Failed to update name", description: err.message, color: "danger" });
+      toast.danger("Failed to update name", { description: err.message });
     }
   };
 
@@ -341,7 +336,7 @@ export default function CompetitorDetailPage() {
       <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center gap-3">
         <Icon icon="solar:danger-triangle-linear" width={48} className="text-text-tertiary" />
         <p className="text-text-secondary">Competitor not found</p>
-        <Button variant="flat" onPress={() => router.push("/dashboard/virality")}>
+        <Button variant="tertiary" onPress={() => router.push("/dashboard/virality")}>
           Back to Competitors
         </Button>
       </div>
@@ -365,31 +360,28 @@ export default function CompetitorDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
-              variant="flat"
-              isIconOnly
-              className="bg-surface-base"
-              onPress={() => router.push("/dashboard/virality")}
-            >
+ variant="tertiary"
+ isIconOnly
+ className="!bg-transparent text-text-secondary hover:text-text-primary"
+ onPress={() => router.push("/dashboard/virality")}
+ >
               <Icon icon="solar:arrow-left-linear" width={20} />
             </Button>
             <div>
               {isEditingName ? (
                 <div className="flex items-center gap-2">
-                  <Input
-                    size="sm"
-                    value={editName}
-                    onValueChange={setEditName}
-                    classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSaveName();
-                      if (e.key === "Escape") setIsEditingName(false);
-                    }}
-                  />
-                  <Button size="sm" isIconOnly variant="flat" className="bg-accent-400 text-white" onPress={handleSaveName}>
+                  <Input onChange={(e) => (setEditName)(e.target.value)}
+ value={editName}
+ autoFocus
+ onKeyDown={(e) => {
+ if (e.key === "Enter") handleSaveName();
+ if (e.key === "Escape") setIsEditingName(false);
+ }}
+ />
+                  <Button size="sm" isIconOnly variant="tertiary" className="bg-accent-400 text-white" onPress={handleSaveName}>
                     <Icon icon="solar:check-read-linear" width={16} />
                   </Button>
-                  <Button size="sm" isIconOnly variant="flat" className="bg-surface-elevated" onPress={() => setIsEditingName(false)}>
+                  <Button size="sm" isIconOnly variant="tertiary" className="bg-surface-elevated" onPress={() => setIsEditingName(false)}>
                     <Icon icon="solar:close-circle-linear" width={16} />
                   </Button>
                 </div>
@@ -397,47 +389,48 @@ export default function CompetitorDetailPage() {
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-bold text-text-primary">{competitor.name}</h1>
                   <Button
-                    size="sm"
-                    isIconOnly
-                    variant="light"
-                    onPress={() => { setEditName(competitor.name); setIsEditingName(true); }}
-                  >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ onPress={() => { setEditName(competitor.name); setIsEditingName(true); }}
+ >
                     <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
                   </Button>
                   {competitor.accounts.length === 1 ? (
                     <Button
-                      size="sm"
-                      isIconOnly
-                      variant="light"
-                      as="a"
-                      href={competitor.accounts[0].profile_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ as="a"
+ href={competitor.accounts[0].profile_url}
+ target="_blank"
+ rel="noopener noreferrer"
+ >
                       <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
                     </Button>
                   ) : competitor.accounts.length > 1 ? (
                     <Dropdown>
-                      <DropdownTrigger>
-                        <Button size="sm" isIconOnly variant="light">
+<Button size="sm" isIconOnly variant="tertiary">
                           <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
                         </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu aria-label="Open profile">
+<Dropdown.Popover>
+
+<Dropdown.Menu aria-label="Open profile">
                         {competitor.accounts.map((a) => (
-                          <DropdownItem
+                          <Dropdown.Item
                             key={a.id}
-                            startContent={<Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />}
                             onPress={() => window.open(a.profile_url, "_blank", "noopener,noreferrer")}
                           >
+                            <Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />
                             {a.account_type === "hashtag"
                               ? `#${a.username}`
                               : a.account_type === "keyword"
                                 ? a.username
                                 : `@${a.username}`}
-                          </DropdownItem>
+                          </Dropdown.Item>
                         ))}
-                      </DropdownMenu>
+                      </Dropdown.Menu>
+</Dropdown.Popover>
                     </Dropdown>
                   ) : null}
                 </div>
@@ -460,13 +453,11 @@ export default function CompetitorDetailPage() {
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
-              className="bg-accent-400 text-white"
-              startContent={
-                isSyncing ? <Spinner size="sm" color="white" /> : <Icon icon="solar:refresh-bold" width={18} />
-              }
-              isDisabled={isSyncing || competitor.accounts.length === 0}
-              onPress={handleSyncAll}
-            >
+ className="bg-accent-400 text-white"
+ isDisabled={isSyncing || competitor.accounts.length === 0}
+ onPress={handleSyncAll}
+ >
+              {isSyncing ? <Spinner size="sm" color="current" /> : <Icon icon="solar:refresh-bold" width={18} />}
               {isSyncing ? "Syncing..." : "Sync All"}
             </Button>
           </div>
@@ -489,7 +480,7 @@ export default function CompetitorDetailPage() {
         {/* Syncing accounts banner */}
         {syncingAccountIds.length > 0 && (
           <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
-            <Spinner size="sm" color="primary" />
+            <Spinner size="sm" color="accent" />
             <p className="text-sm text-text-secondary">
               Syncing{" "}
               {competitor.accounts

@@ -2,17 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  Card,
-  CardBody,
   Button,
-  addToast,
+  toast,
   Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
-} from "@heroui/react";
+  useOverlayState } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
@@ -34,7 +27,10 @@ export function YourAccountsList({
   const { selectedTeam } = useTeams();
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const overlayState = useOverlayState();
+const isOpen = overlayState.isOpen;
+const onOpen = overlayState.open;
+const onClose = overlayState.close;
 
   const ranked = useMemo(() => {
     return accounts
@@ -64,10 +60,10 @@ export function YourAccountsList({
     onClose();
     try {
       await userPerformanceAPI.deleteAccount(selectedTeam.id, pendingDeleteId);
-      addToast({ title: "Account removed", color: "success" });
+      toast.success("Account removed");
       onAccountDeleted();
     } catch (err: any) {
-      addToast({ title: "Failed to remove account", description: err.message, color: "danger" });
+      toast.danger("Failed to remove account", { description: err.message });
     } finally {
       setDeletingId(null);
       setPendingDeleteId(null);
@@ -76,8 +72,8 @@ export function YourAccountsList({
 
   if (ranked.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             ACCOUNTS
           </p>
@@ -91,14 +87,14 @@ export function YourAccountsList({
               No accounts added yet
             </p>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-3">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-3">
         <p className="text-[10px] text-text-tertiary font-medium tracking-wide mb-2">
           ACCOUNTS
         </p>
@@ -127,38 +123,38 @@ export function YourAccountsList({
                 <span className="hidden sm:inline">{totalPosts} posts</span>
               </span>
               <Button
-                size="sm"
-                isIconOnly
-                variant="light"
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-text-tertiary hover:text-red-500 w-5 h-5 min-w-5"
-                isLoading={deletingId === account.id}
-                onPress={() => handleDeleteClick(account.id)}
-              >
+ size="sm"
+ isIconOnly
+ variant="tertiary"
+ className="opacity-0 group-hover:opacity-100 transition-opacity text-text-tertiary hover:text-red-500 w-5 h-5 min-w-5"
+ isPending={deletingId === account.id}
+ onPress={() => handleDeleteClick(account.id)}
+ >
                 <Icon icon="solar:trash-bin-trash-linear" width={12} />
               </Button>
             </div>
           ))}
         </div>
-      </CardBody>
+      </div>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="sm">
-        <ModalContent className="bg-surface-base border border-border-accent">
+      <Modal>
+        <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-sm bg-surface-base border border-border-accent">
           {(onClose) => {
             const account = accounts.find((a) => a.id === pendingDeleteId);
             return (
               <>
-                <ModalHeader className="flex flex-col items-start border-b border-border-base pb-4">
+                <Modal.Header>
                   <div className="flex gap-3 items-center">
-                    <div className="w-10 h-10 rounded-full bg-danger-500/10 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                       <Icon
                         icon="solar:trash-bin-trash-bold-duotone"
-                        className="text-2xl text-danger-500"
+                        className="text-2xl text-red-500"
                       />
                     </div>
                     <h3 className="text-xl font-bold text-text-primary">Remove Account</h3>
                   </div>
-                </ModalHeader>
-                <ModalBody className="py-6">
+                </Modal.Header>
+                <Modal.Body className="py-6">
                   <p className="text-text-secondary">
                     Are you sure you want to remove this account? All synced posts and metrics will be deleted.
                   </p>
@@ -167,28 +163,27 @@ export function YourAccountsList({
                       <span className="text-text-tertiary">Account:</span> @{account.username}
                     </p>
                   )}
-                </ModalBody>
-                <ModalFooter className="border-t border-border-base pt-4">
+                </Modal.Body>
+                <Modal.Footer>
                   <Button
-                    variant="flat"
-                    onPress={onClose}
-                    className="bg-surface-elevated hover:bg-surface-raised text-text-primary"
-                  >
+ variant="tertiary"
+ onPress={onClose}
+ className="bg-surface-elevated hover:bg-surface-raised text-text-primary"
+ >
                     Cancel
                   </Button>
-                  <Button
-                    color="danger"
-                    onPress={handleConfirmDelete}
-                    className="bg-danger-500 hover:bg-danger-600 text-white font-semibold"
-                  >
+                  <Button variant="danger"
+ onPress={handleConfirmDelete}
+ className="bg-red-500 hover:bg-red-600 text-white font-semibold"
+ >
                     Remove
                   </Button>
-                </ModalFooter>
+                </Modal.Footer>
               </>
             );
           }}
-        </ModalContent>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
-    </Card>
+    </div>
   );
 }

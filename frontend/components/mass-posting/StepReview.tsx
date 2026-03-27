@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Button, Chip, Divider } from "@heroui/react";
+import { Button, Chip, Separator } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { IntakeFormData } from "@/api/intake";
 import { SOCIAL_PLATFORMS, getActiveTier } from "@/constants/massPosting";
@@ -27,14 +27,12 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </p>
       </div>
 
-      {/* Campaign & Brand Info */}
       <ReviewSection title="Campaign & Brand Info" icon="solar:buildings-bold-duotone">
         <ReviewField label="Campaign Name" value={data.name} />
         <ReviewField label="Description" value={data.brand_description} />
         <ReviewField label="Website" value={data.company_website_url} />
       </ReviewSection>
 
-      {/* Socials */}
       <ReviewSection title="Social Accounts" icon="solar:share-circle-bold-duotone">
         {data.company_socials?.map((s, i) => (
           <ReviewField
@@ -45,7 +43,6 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         ))}
       </ReviewSection>
 
-      {/* Competitors */}
       {data.competitor_socials && data.competitor_socials.length > 0 && (
         <ReviewSection title="Competitors" icon="solar:users-group-two-rounded-bold-duotone">
           {data.competitor_socials.map((c, i) => (
@@ -63,7 +60,6 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </ReviewSection>
       )}
 
-      {/* ICPs */}
       <ReviewSection title="Ideal Customer Profiles" icon="solar:users-group-rounded-bold-duotone">
         {data.icps?.map((icp, i) => (
           <div key={i} className="mb-4 last:mb-0">
@@ -81,7 +77,7 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
             {icp.painPoints && icp.painPoints.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {icp.painPoints.map((pp, j) => (
-                  <Chip key={j} size="sm" variant="flat">
+                  <Chip key={j} size="sm" variant="tertiary">
                     {pp}
                   </Chip>
                 ))}
@@ -91,34 +87,29 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         ))}
       </ReviewSection>
 
-      {/* Budget */}
       {data.budget && (
         <ReviewSection title="Budget" icon="solar:wallet-money-bold-duotone">
           <ReviewField label="Monthly Budget" value={`$${data.budget.toLocaleString()}`} />
           {activeTier && (
-            <>
-              <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
-            </>
+            <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
           )}
         </ReviewSection>
       )}
 
-      <Divider />
+      <Separator />
 
       <Button
+        variant="primary"
         fullWidth
         size="lg"
-        color="primary"
-        isLoading={isSubmitting}
+        isPending={isSubmitting}
         onPress={onSubmit}
-        startContent={
-          !isSubmitting && (
-            <Icon
-              icon={isAppeal ? "solar:pen-new-round-bold" : "solar:send-square-bold"}
-            />
-          )
-        }
       >
+        {!isSubmitting && (
+          <Icon
+            icon={isAppeal ? "solar:pen-new-round-bold" : "solar:send-square-bold"}
+          />
+        )}
         {isSubmitting
           ? "Submitting..."
           : isAppeal
@@ -128,8 +119,6 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
     </div>
   );
 }
-
-// ── Shared review helpers ───────────────────────────────────────
 
 function ReviewSection({
   title,

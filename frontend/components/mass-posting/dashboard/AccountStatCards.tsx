@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, cn } from "@heroui/react";
+import { cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { AccountStats } from "@/types/massPosting";
 
@@ -36,11 +36,11 @@ export function AccountStatCards({ stats }: AccountStatCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       {cards.map((stat) => (
-        <Card
+        <div
           key={stat.title}
-          className="bg-surface-base border border-border-base"
+          className="rounded-xl border border-border-base bg-surface-base overflow-hidden"
         >
-          <CardBody className="p-4">
+          <div className="p-4">
             <p className="text-[11px] text-text-tertiary font-medium tracking-wide mb-2">
               {stat.title}
             </p>
@@ -61,8 +61,8 @@ export function AccountStatCards({ stats }: AccountStatCardsProps) {
                 />
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );

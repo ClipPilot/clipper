@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button, TextField, Label, FieldError, InputGroup } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface ResetPasswordFormProps {
@@ -38,60 +38,46 @@ export default function ResetPasswordForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">New Password</label>
-          <Input
-            isRequired
-            endContent={
-              <button type="button" onClick={() => setIsVisible(!isVisible)} className="focus:outline-none">
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            name="newPassword"
-            placeholder="Enter your new password"
-            type={isVisible ? "text" : "password"}
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-        </div>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <TextField fullWidth isRequired variant="secondary">
+          <Label>New Password</Label>
+          <InputGroup>
+            <InputGroup.Input
+              name="newPassword"
+              placeholder="Enter your new password"
+              type={isVisible ? "text" : "password"}
+              value={newPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsVisible(!isVisible)}>
+                <Icon icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
+          <FieldError />
+        </TextField>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Confirm Password</label>
-          <Input
-            isRequired
-            endContent={
-              <button type="button" onClick={() => setIsConfirmVisible(!isConfirmVisible)} className="focus:outline-none">
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            name="confirmNewPassword"
-            placeholder="Confirm your new password"
-            type={isConfirmVisible ? "text" : "password"}
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-        </div>
+        <TextField fullWidth isRequired variant="secondary">
+          <Label>Confirm Password</Label>
+          <InputGroup>
+            <InputGroup.Input
+              name="confirmNewPassword"
+              placeholder="Confirm your new password"
+              type={isConfirmVisible ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button isIconOnly variant="tertiary" size="sm" onPress={() => setIsConfirmVisible(!isConfirmVisible)}>
+                <Icon icon={isConfirmVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
+          <FieldError />
+        </TextField>
 
-        <Button className="bg-accent-400 text-white font-semibold mt-2 rounded-xl" type="submit" size="lg" isLoading={isLoading}>
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" type="submit" size="lg" isPending={isLoading}>
           Reset Password
         </Button>
       </form>

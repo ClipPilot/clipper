@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 
 @theme inline {
   --font-luckiest-guy: var(--font-luckiest-guy);
@@ -10,19 +11,42 @@
 
 @config "../tailwind.config.js";
 
-/* Light mode (default) */
+/* Light mode (default) — override HeroUI v3 defaults with Cuttr brand */
 :root {
   /* Background & Foreground */
   --background: #ffffff;
   --foreground: #0a0a14;
 
-  /* Surface colors */
+  /* HeroUI v3 surface overrides */
+  --surface: #ffffff;
+  --surface-foreground: #0a0a14;
+  --surface-secondary: #f1f3f5;
+  --surface-secondary-foreground: #0a0a14;
+  --surface-tertiary: #e9ecef;
+  --surface-tertiary-foreground: #0a0a14;
+  --overlay: #ffffff;
+  --overlay-foreground: #0a0a14;
+  --muted: #868e96;
+  --default: #f1f3f5;
+  --default-foreground: #0a0a14;
+
+  /* HeroUI v3 accent (brand purple) */
+  --accent: #4F47E6;
+  --accent-foreground: #ffffff;
+
+  /* HeroUI v3 form fields */
+  --field-background: #ffffff;
+  --field-foreground: #0a0a14;
+  --field-placeholder: #868e96;
+  --field-border: #dee2e6;
+
+  /* Cuttr custom surface tokens */
   --surface-dark: #f8f9fa;
   --surface-base: #ffffff;
   --surface-elevated: #f1f3f5;
   --surface-hover: #e9ecef;
 
-  /* Text colors */
+  /* Cuttr text colors */
   --text-primary: #0a0a14;
   --text-secondary: #495057;
   --text-tertiary: #6c757d;
@@ -30,7 +54,7 @@
   --text-disabled: #adb5bd;
   --text-inverse: #ffffff;
 
-  /* Border colors */
+  /* Cuttr border colors */
   --border-base: #dee2e6;
   --border-light: #e9ecef;
 }
@@ -41,13 +65,36 @@
   --background: #0a0a14;
   --foreground: #ffffff;
 
-  /* Surface colors */
+  /* HeroUI v3 surface overrides */
+  --surface: #0f0f1a;
+  --surface-foreground: #ffffff;
+  --surface-secondary: #16161f;
+  --surface-secondary-foreground: #ffffff;
+  --surface-tertiary: #1a1a2e;
+  --surface-tertiary-foreground: #ffffff;
+  --overlay: #16161f;
+  --overlay-foreground: #ffffff;
+  --muted: #71717a;
+  --default: #27272a;
+  --default-foreground: #ffffff;
+
+  /* HeroUI v3 accent (brand purple) */
+  --accent: #4F47E6;
+  --accent-foreground: #ffffff;
+
+  /* HeroUI v3 form fields */
+  --field-background: #16161f;
+  --field-foreground: #ffffff;
+  --field-placeholder: #52525b;
+  --field-border: #27272a;
+
+  /* Cuttr custom surface tokens */
   --surface-dark: #0a0a14;
   --surface-base: #0f0f1a;
   --surface-elevated: #16161f;
   --surface-hover: #1a1a2e;
 
-  /* Text colors */
+  /* Cuttr text colors */
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-tertiary: #71717a;
@@ -55,7 +102,7 @@
   --text-disabled: #3f3f46;
   --text-inverse: #0a0a14;
 
-  /* Border colors */
+  /* Cuttr border colors */
   --border-base: #27272a;
   --border-light: #3f3f46;
 }

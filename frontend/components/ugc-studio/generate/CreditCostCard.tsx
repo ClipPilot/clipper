@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface CreditCostCardProps {
@@ -31,8 +31,8 @@ export function CreditCostCard({
   buttonClass,
 }: CreditCostCardProps) {
   return (
-    <Card className={`bg-gradient-to-br ${gradientClasses} border ${borderClass}`}>
-      <CardBody className="p-5">
+    <div className={`rounded-xl bg-gradient-to-br ${gradientClasses} border ${borderClass} overflow-hidden`}>
+      <div className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-14 h-14 rounded-2xl ${iconBgClass} flex items-center justify-center`}>
@@ -53,17 +53,29 @@ export function CreditCostCard({
             </div>
           </div>
           <Button
-            size="lg"
-            className={`${buttonClass} px-8`}
-            onPress={onGenerate}
-            isDisabled={isDisabled}
-            isLoading={isGenerating}
-            startContent={!isGenerating ? <Icon icon="solar:play-bold" width={20} /> : undefined}
-          >
-            {isGenerating ? "Starting..." : "Generate Video"}
+ size="lg"
+ className={`${buttonClass} px-8`}
+ onPress={onGenerate}
+ isDisabled={isDisabled || isGenerating}
+ >
+            {isGenerating ? (
+              <span className="flex items-center gap-1">
+                Starting
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:300ms]" />
+                </span>
+              </span>
+            ) : (
+              <>
+                <Icon icon="solar:play-bold" width={20} />
+                Generate Video
+              </>
+            )}
           </Button>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

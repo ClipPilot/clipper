@@ -25,10 +25,10 @@ export function DashboardHeader() {
         </p>
       </div>
       <Button
-        className="bg-accent-400 text-white font-semibold"
-        startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-        onPress={() => router.push("/dashboard/publish-posts")}
-      >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={() => router.push("/dashboard/publish-posts")}
+ >
+        <Icon icon="solar:add-circle-bold" width={18} />
         New Post
       </Button>
       </div>

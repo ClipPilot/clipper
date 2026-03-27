@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, Button, addToast } from "@heroui/react";
+import { Card, Button, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip, clipsAPI } from "@/api/clips";
 import { UnsavedClipCard } from "./UnsavedClipCard";
@@ -81,27 +81,14 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
       onClipSaved(clipId);
       onUsageUpdated?.();
 
-      addToast({
-        title: "Clip saved",
-        description: "The clip has been saved to your library.",
-        color: "success",
-      });
+      toast.success("Clip saved", { description: "The clip has been saved to your library." });
     } catch (error: any) {
       console.error("Failed to save clip:", error);
 
       if (error.message?.includes("limit")) {
-        addToast({
-          title: "Clip limit reached",
-          description:
-            "You've reached your clip limit. Upgrade your plan to save more clips.",
-          color: "warning",
-        });
+        toast.warning("Clip limit reached", { description: "You've reached your clip limit. Upgrade your plan to save more clips." });
       } else {
-        addToast({
-          title: "Failed to save clip",
-          description: error.message || "Something went wrong",
-          color: "danger",
-        });
+        toast.danger("Failed to save clip", { description: error.message || "Something went wrong" });
       }
     } finally {
       setSavingClipIds((prev) => {
@@ -122,7 +109,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
         <h2 className="text-lg sm:text-xl font-bold text-text-primary flex items-center gap-2">
           <Icon
             icon="solar:gallery-check-bold-duotone"
-            className="text-xl sm:text-2xl text-warning-500 flex-shrink-0"
+            className="text-xl sm:text-2xl text-yellow-500 flex-shrink-0"
           />
           <span>Clips to Save</span>
           <span className="text-xs sm:text-sm font-normal text-text-tertiary">
@@ -139,16 +126,16 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
       </div>
 
       <Card className="bg-surface-base border border-warning-500/30 mb-4">
-        <CardBody className="p-3 sm:p-4 flex items-start sm:items-center gap-3">
+        <Card.Content className="p-3 sm:p-4 flex items-start sm:items-center gap-3">
           <Icon
             icon="solar:info-circle-bold"
-            className="text-lg sm:text-xl text-warning-500 flex-shrink-0 mt-0.5 sm:mt-0"
+            className="text-lg sm:text-xl text-yellow-500 flex-shrink-0 mt-0.5 sm:mt-0"
           />
           <p className="text-xs sm:text-sm text-text-secondary">
             Clips cannot be downloaded here. Save to add to your library to download.
             <span className="hidden sm:inline"> Saving counts toward your usage quota. Unsaved clips expire after 7 days.</span>
           </p>
-        </CardBody>
+        </Card.Content>
       </Card>
 
       <div className="space-y-4">
@@ -236,39 +223,39 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-6">
           <Button
-            size="sm"
-            variant="flat"
-            isDisabled={currentPage === 0}
-            onPress={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-            startContent={<Icon icon="solar:alt-arrow-left-outline" />}
-          >
+ size="sm"
+ variant="tertiary"
+ isDisabled={currentPage === 0}
+ onPress={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+ >
+            <Icon icon="solar:alt-arrow-left-outline" />
             Previous
           </Button>
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }, (_, i) => (
               <Button
-                key={i}
-                size="sm"
-                variant={currentPage === i ? "solid" : "flat"}
-                className={currentPage === i ? "bg-accent-400" : ""}
-                onPress={() => setCurrentPage(i)}
-                isIconOnly
-              >
+ key={i}
+ size="sm"
+ variant={currentPage === i ? "solid" : "flat"}
+ className={currentPage === i ? "bg-accent-400" : ""}
+ onPress={() => setCurrentPage(i)}
+ isIconOnly
+ >
                 {i + 1}
               </Button>
             ))}
           </div>
           <Button
-            size="sm"
-            variant="flat"
-            isDisabled={currentPage === totalPages - 1}
-            onPress={() =>
-              setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
-            }
-            endContent={<Icon icon="solar:alt-arrow-right-outline" />}
-          >
+ size="sm"
+ variant="tertiary"
+ isDisabled={currentPage === totalPages - 1}
+ onPress={() =>
+ setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
+ }
+ >
             Next
-          </Button>
+            <Icon icon="solar:alt-arrow-right-outline" />
+</Button>
         </div>
       )}
     </div>

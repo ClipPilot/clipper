@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@heroui/react";
-
 interface ChipOption {
   value: string;
   label: string;
@@ -46,35 +44,33 @@ export function ChipSelector({
   const gridCols = {
     2: "grid-cols-2",
     3: "grid-cols-3",
-    4: "grid-cols-4",
-    5: "grid-cols-5",
-    6: "grid-cols-6",
+    4: "grid-cols-2 sm:grid-cols-4",
+    5: "grid-cols-3 sm:grid-cols-5",
+    6: "grid-cols-3 sm:grid-cols-6",
   }[columns];
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-text-primary">{label}</label>
+      <label className="text-sm font-medium text-text-secondary">{label}</label>
       <div className={`grid ${gridCols} gap-2`}>
         {options.map((option) => (
-          <Button
+          <div
             key={option.value}
-            size="sm"
-            variant={isSelected(option.value) ? "solid" : "bordered"}
-            className={`justify-start px-3 h-10 ${
+            onClick={() => handleSelect(option.value)}
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
               isSelected(option.value)
                 ? "bg-accent-400 text-white border-accent-400"
-                : "bg-transparent border-border-base text-text-secondary hover:border-accent-400/50 hover:text-text-primary"
+                : "bg-surface-elevated border-border-base text-text-secondary hover:border-accent-400/50 hover:text-text-primary"
             }`}
-            onPress={() => handleSelect(option.value)}
           >
             {showColorPreview && option.color && (
               <span
-                className="w-4 h-4 rounded-full mr-2 flex-shrink-0 border border-white/20"
+                className="w-3.5 h-3.5 rounded-full flex-shrink-0 border border-white/20"
                 style={{ backgroundColor: option.color }}
               />
             )}
             <span className="truncate">{option.label}</span>
-          </Button>
+          </div>
         ))}
       </div>
     </div>

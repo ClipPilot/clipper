@@ -9,23 +9,19 @@ import {
   TableRow,
   TableCell,
   Chip,
-  Pagination,
   Spinner,
-  Tooltip,
-} from "@heroui/react";
+  Tooltip } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { formatDateTime } from "@/lib/formatters";
 import {
   platformIcon,
   platformIconColor,
-  platformChipClass,
-} from "@/lib/platformUtils";
+  platformChipClass } from "@/lib/platformUtils";
 import { FilterBar } from "./FilterBar";
 import type {
   TeamPost,
-  PostsPagination,
-  QueuedGroup,
-} from "@/types/massPosting";
+  PostsQueuedGroup } from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
 
 const STATUS_CONFIG: Record<
@@ -37,24 +33,20 @@ const STATUS_CONFIG: Record<
     dotClass: "bg-blue-400",
     icon: "solar:refresh-bold",
     iconClass: "animate-spin",
-    label: "Processing",
-  },
+    label: "Processing" },
   scheduled: {
     color: "text-green-400",
     dotClass: "bg-green-400",
-    label: "Queued",
-  },
+    label: "Queued" },
   failed: {
     color: "text-red-400",
     dotClass: "bg-red-400",
     icon: "solar:danger-triangle-bold",
-    label: "Failed",
-  },
-};
+    label: "Failed" } };
 
 interface QueuedPostsTabProps {
   posts: TeamPost[];
-  pagination: PostsPagination | null;
+  pagination: Posts| null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
 }
@@ -63,8 +55,7 @@ export function QueuedPostsTab({
   posts,
   pagination,
   isLoading,
-  onParamsChange,
-}: QueuedPostsTabProps) {
+  onParamsChange }: QueuedPostsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
@@ -79,8 +70,7 @@ export function QueuedPostsTab({
         page,
         sortBy: "created_at",
         sortOrder: "desc",
-        ...overrides,
-      };
+        ...overrides };
       onParamsChange(params);
     },
     [searchQuery, platformFilter, dateRange, page, onParamsChange]
@@ -97,8 +87,7 @@ export function QueuedPostsTab({
           clip_title: post.clip_title,
           clip_url: post.clip_url,
           posts: [],
-          earliestCreatedAt: post.created_at,
-        });
+          earliestCreatedAt: post.created_at });
       }
       const group = map.get(key)!;
       group.posts.push(post);
@@ -149,7 +138,7 @@ export function QueuedPostsTab({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
         </div>
       ) : grouped.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
@@ -161,9 +150,8 @@ export function QueuedPostsTab({
           aria-label="Queued posts table"
           removeWrapper
           classNames={{
-            th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-            td: "py-4 px-4 border-t border-border-base",
-          }}
+            th: "bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
+            td: "py-4 px-4 border-t border-border-base" }}
         >
           <TableHeader>
             <TableColumn>VIDEO CONTENT</TableColumn>
@@ -180,12 +168,12 @@ export function QueuedPostsTab({
               return (
                 <TableRow
                   key={group.clip_id ?? group.posts[0]?.id}
-                  className="hover:bg-surface-elevated/50 transition-colors"
+                  className="hover:bg-white/[0.02] transition-colors"
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {group.clip_url ? (
-                        <div className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-surface-elevated flex-shrink-0">
+                        <div className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-white/[0.04] flex-shrink-0">
                           <video
                             src={group.clip_url}
                             className="w-full h-full object-cover"
@@ -194,7 +182,7 @@ export function QueuedPostsTab({
                           />
                         </div>
                       ) : (
-                        <div className="w-[72px] h-[48px] rounded-md bg-surface-elevated flex-shrink-0 flex items-center justify-center">
+                        <div className="w-[72px] h-[48px] rounded-md bg-white/[0.04] flex-shrink-0 flex items-center justify-center">
                           <Icon icon="solar:videocamera-record-bold-duotone" width={24} className="text-text-tertiary" />
                         </div>
                       )}
@@ -223,10 +211,10 @@ export function QueuedPostsTab({
                         }
                         return Array.from(counts.entries()).map(([platform, count]) => (
                           <Tooltip
-                            key={platform}
-                            content={`${platform}${count > 1 ? ` ×${count}` : ""}`}
-                            placement="top"
-                          >
+ key={platform}
+ content={`${platform}${count > 1 ? ` ×${count}` : ""}`}
+ placement="top"
+ >
                             <span
                               className={`relative w-7 h-7 rounded-full flex items-center justify-center ${platformChipClass(platform)}`}
                             >
@@ -294,19 +282,13 @@ export function QueuedPostsTab({
           )}
         </p>
         {totalPages > 1 && (
-          <Pagination
-            total={totalPages}
-            page={page}
-            onChange={(p) => {
-              setPage(p);
-              fireParams({ page: p });
-            }}
-            size="sm"
-            classNames={{
-              item: "bg-surface-elevated text-text-secondary",
-              cursor: "bg-accent-400 text-white",
-            }}
-          />
+          <PaginationControl total={totalPages}
+ page={page}
+ onChange={(p) => {
+ setPage(p);
+ fireParams({ page: p });
+ }}
+ />
         )}
       </div>
     </div>
