@@ -534,11 +534,12 @@ jobs:
   # ------------------------------------------------------------------------------
   deploy-backend:
     name: Deploy Backend
-    needs: [detect-changes, test-backend]
+    needs: [detect-changes, test-backend, terraform-apply]
     if: |
       always() &&
       needs.detect-changes.outputs.backend == 'true' &&
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
@@ -556,11 +557,12 @@ jobs:
 
   deploy-worker:
     name: Deploy Worker
-    needs: [detect-changes, test-backend]
+    needs: [detect-changes, test-backend, terraform-apply]
     if: |
       always() &&
       needs.detect-changes.outputs.worker == 'true' &&
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
@@ -578,11 +580,12 @@ jobs:
 
   deploy-agent-service:
     name: Deploy Agent Service
-    needs: [detect-changes, test-backend]
+    needs: [detect-changes, test-backend, terraform-apply]
     if: |
       always() &&
       needs.detect-changes.outputs.agent-service == 'true' &&
       (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
         (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
@@ -604,8 +607,10 @@ jobs:
   # ------------------------------------------------------------------------------
   deploy-face-detect:
     name: Deploy Face Detect Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.face-detect == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -624,8 +629,10 @@ jobs:
 
   deploy-scene-detect:
     name: Deploy Scene Detect Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.scene-detect == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -644,8 +651,10 @@ jobs:
 
   deploy-facecam-detect:
     name: Deploy Facecam Detect Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.facecam-detect == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -664,8 +673,10 @@ jobs:
 
   deploy-sscd-similarity:
     name: Deploy SSCD Similarity Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.sscd-similarity == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -684,8 +695,10 @@ jobs:
 
   deploy-virality-sync:
     name: Deploy Virality Sync Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.virality-sync == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -708,8 +721,10 @@ jobs:
 
   deploy-cpm-billing:
     name: Deploy CPM Billing Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.cpm-billing == 'true' &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
@@ -728,8 +743,10 @@ jobs:
 
   deploy-expire-clips:
     name: Deploy Expire Clips Lambda
-    needs: detect-changes
+    needs: [detect-changes, terraform-apply]
     if: |
+      always() &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped') &&
       needs.detect-changes.outputs.expire-clips == 'true' &&
       needs.detect-changes.outputs.environment == 'prod' &&
       (
