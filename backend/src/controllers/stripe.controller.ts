@@ -1,15 +1,14 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
 import { ENV } from "../config/env";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId, priceId, successUrl, cancelUrl } = req.body;
 
@@ -25,24 +24,21 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
     const url = await stripeService.createCheckoutSession(
       parseInt(teamId),
       priceId,
-      req.user.email,
+      req.user!.email,
       successUrl || `${req.headers.origin}/dashboard/pricing?success=true`,
       cancelUrl || `${req.headers.origin}/dashboard/pricing?canceled=true`
     );
 
     return res.json({ url });
   } catch (err) {
-    console.error("Checkout session error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to create checkout session" });
+    return handleControllerError(res, "Checkout session error", err, "Failed to create checkout session");
   }
 };
 
 export const createPortalSession = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId, returnUrl } = req.body;
 
@@ -56,18 +52,15 @@ export const createPortalSession = async (req: AuthRequest, res: Response) => {
     );
 
     return res.json({ url });
-  } catch (err: any) {
-    console.error("Portal session error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: err.message || "Failed to create portal session" });
+  } catch (err) {
+    return handleControllerError(res, "Portal session error", err, "Failed to create portal session");
   }
 };
 
 export const getSubscription = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId } = req.params;
 
@@ -76,9 +69,7 @@ export const getSubscription = async (req: AuthRequest, res: Response) => {
 
     return res.json({ subscription, plan });
   } catch (err) {
-    console.error("Get subscription error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get subscription" });
+    return handleControllerError(res, "Get subscription error", err, "Failed to get subscription");
   }
 };
 
@@ -145,9 +136,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 
     return res.json({ received: true });
   } catch (err) {
-    console.error("Webhook handler error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Webhook handler failed" });
+    return handleControllerError(res, "Webhook handler error", err, "Webhook handler failed");
   }
 };
 
@@ -159,9 +148,8 @@ export const getPrices = async (_req: Request, res: Response) => {
 
 export const changePlan = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId, newPriceId } = req.body;
 
@@ -183,9 +171,7 @@ export const changePlan = async (req: AuthRequest, res: Response) => {
       newPlan: result.newPlan,
       message: `Your plan will change to ${result.newPlan} on ${new Date(result.effectiveDate).toLocaleDateString()}.`,
     });
-  } catch (err: any) {
-    console.error("Change plan error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: err.message || "Failed to change plan" });
+  } catch (err) {
+    return handleControllerError(res, "Change plan error", err, "Failed to change plan");
   }
 };

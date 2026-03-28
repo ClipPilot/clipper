@@ -4,7 +4,7 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 import type { AspectRatio } from "../services/ai-ugc/falImage.service";
 import type { StylePreset } from "../services/ai-ugc/graphicsPrompts";
 
@@ -113,10 +113,7 @@ export class GraphicsController {
         throw genError;
       }
     } catch (error) {
-      console.error("[GRAPHICS] Generate error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate graphics"),
-      });
+      return handleControllerError(res, "[GRAPHICS] Generate error", error, "Failed to generate graphics");
     }
   }
 
@@ -145,10 +142,7 @@ export class GraphicsController {
         s3Key,
       });
     } catch (error) {
-      console.error("[GRAPHICS] Upload URL error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "[GRAPHICS] Upload URL error", error, "Failed to get upload URL");
     }
   }
 }

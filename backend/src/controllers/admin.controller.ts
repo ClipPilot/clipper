@@ -1,8 +1,8 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
 import { AdminRequest } from "../middleware/admin.middleware";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function login(req: AdminRequest, res: Response) {
   try {
@@ -25,9 +25,7 @@ export async function login(req: AdminRequest, res: Response) {
       requires2FA: true,
     });
   } catch (error) {
-    console.error("Admin login error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Login failed" });
+    return handleControllerError(res, "Admin login error", error, "Login failed");
   }
 }
 
@@ -52,9 +50,7 @@ export async function verify2FA(req: AdminRequest, res: Response) {
     const token = adminService.generateToken(email);
     return res.json({ token, email });
   } catch (error) {
-    console.error("Admin 2FA verification error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Verification failed" });
+    return handleControllerError(res, "Admin 2FA verification error", error, "Verification failed");
   }
 }
 
@@ -79,9 +75,7 @@ export async function resend2FA(req: AdminRequest, res: Response) {
       email,
     });
   } catch (error) {
-    console.error("Admin resend 2FA error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to resend code" });
+    return handleControllerError(res, "Admin resend 2FA error", error, "Failed to resend code");
   }
 }
 
@@ -95,9 +89,7 @@ export async function getAllTeams(req: AdminRequest, res: Response) {
     });
     return res.json(result);
   } catch (error) {
-    console.error("Get teams error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch teams" });
+    return handleControllerError(res, "Get teams error", error, "Failed to fetch teams");
   }
 }
 
@@ -115,9 +107,7 @@ export async function getTeam(req: AdminRequest, res: Response) {
 
     return res.json({ team });
   } catch (error) {
-    console.error("Get team error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch team" });
+    return handleControllerError(res, "Get team error", error, "Failed to fetch team");
   }
 }
 
@@ -147,9 +137,7 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
       priceId: result.priceId,
     });
   } catch (error) {
-    console.error("Setup enterprise error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to setup enterprise" });
+    return handleControllerError(res, "Setup enterprise error", error, "Failed to setup enterprise");
   }
 }
 
@@ -193,9 +181,7 @@ export async function changePlan(req: AdminRequest, res: Response) {
       .status(400)
       .json({ error: "Only enterprise plan changes are currently supported" });
   } catch (error) {
-    console.error("Change plan error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to change plan" });
+    return handleControllerError(res, "Change plan error", error, "Failed to change plan");
   }
 }
 
@@ -204,9 +190,7 @@ export async function getAllReferrals(req: AdminRequest, res: Response) {
     const referrals = await referralService.getAllReferralsAdmin();
     return res.json({ referrals });
   } catch (error) {
-    console.error("Get all referrals error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get referrals" });
+    return handleControllerError(res, "Get all referrals error", error, "Failed to get referrals");
   }
 }
 
@@ -230,8 +214,6 @@ export async function setReferralReward(req: AdminRequest, res: Response) {
 
     return res.json({ success: true });
   } catch (error) {
-    console.error("Set referral reward error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to set referral reward" });
+    return handleControllerError(res, "Set referral reward error", error, "Failed to set referral reward");
   }
 }

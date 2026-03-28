@@ -1,7 +1,6 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { tagService } from "../services/tag.service";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export class TagController {
   async getTags(req: Request, res: Response) {
@@ -16,11 +15,7 @@ export class TagController {
 
       return res.status(200).json({ tags: tagsList });
     } catch (error) {
-      console.error("Get tags error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get tags"),
-      });
+      return handleControllerError(res, "Get tags error", error, "Failed to get tags");
     }
   }
 
@@ -37,11 +32,7 @@ export class TagController {
 
       return res.status(200).json({ tag });
     } catch (error) {
-      console.error("Get tag error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Tag not found"),
-      });
+      return handleControllerError(res, "Get tag error", error, "Tag not found", 404);
     }
   }
 
@@ -69,11 +60,7 @@ export class TagController {
         tag,
       });
     } catch (error) {
-      console.error("Create tag error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to create tag"),
-      });
+      return handleControllerError(res, "Create tag error", error, "Failed to create tag");
     }
   }
 
@@ -102,11 +89,7 @@ export class TagController {
         tag: updatedTag,
       });
     } catch (error) {
-      console.error("Update tag error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update tag"),
-      });
+      return handleControllerError(res, "Update tag error", error, "Failed to update tag", 404);
     }
   }
 
@@ -125,11 +108,7 @@ export class TagController {
         message: "Tag deleted successfully",
       });
     } catch (error) {
-      console.error("Delete tag error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete tag"),
-      });
+      return handleControllerError(res, "Delete tag error", error, "Failed to delete tag", 404);
     }
   }
 
@@ -145,12 +124,7 @@ export class TagController {
 
       return res.status(200).json({ tags: clipTags });
     } catch (error) {
-      console.error("Get clip tags error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to get clip tags"),
-      });
+      return handleControllerError(res, "Get clip tags error", error, "Failed to get clip tags");
     }
   }
 
@@ -171,12 +145,7 @@ export class TagController {
         tags: clipTags,
       });
     } catch (error) {
-      console.error("Add tag to clip error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to add tag to clip"),
-      });
+      return handleControllerError(res, "Add tag to clip error", error, "Failed to add tag to clip");
     }
   }
 
@@ -197,14 +166,7 @@ export class TagController {
         tags: clipTags,
       });
     } catch (error) {
-      console.error("Remove tag from clip error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to remove tag from clip",
-      });
+      return handleControllerError(res, "Remove tag from clip error", error, "Failed to remove tag from clip");
     }
   }
 
@@ -228,12 +190,7 @@ export class TagController {
         tags: clipTags,
       });
     } catch (error) {
-      console.error("Set clip tags error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to set clip tags"),
-      });
+      return handleControllerError(res, "Set clip tags error", error, "Failed to set clip tags");
     }
   }
 }

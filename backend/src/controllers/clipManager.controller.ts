@@ -8,7 +8,7 @@ import { tagService } from "../services/tag.service";
 import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
 import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
@@ -85,11 +85,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
-      console.error("Get clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get clips"),
-      });
+      return handleControllerError(res, "Get clips error", error, "Failed to get clips");
     }
   }
 
@@ -123,11 +119,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
-      console.error("Get pending clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get pending clips"),
-      });
+      return handleControllerError(res, "Get pending clips error", error, "Failed to get pending clips");
     }
   }
 
@@ -167,11 +159,7 @@ export class ClipManagerController {
         },
       });
     } catch (error) {
-      console.error("Get completed clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get completed clips"),
-      });
+      return handleControllerError(res, "Get completed clips error", error, "Failed to get completed clips");
     }
   }
 
@@ -224,11 +212,7 @@ export class ClipManagerController {
         },
       });
     } catch (error) {
-      console.error("Get clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Clip not found"),
-      });
+      return handleControllerError(res, "Get clip error", error, "Clip not found", 404);
     }
   }
 
@@ -274,9 +258,7 @@ export class ClipManagerController {
       const stream = s3Response.Body as NodeJS.ReadableStream;
       stream.pipe(res);
     } catch (error) {
-      console.error("Stream clip error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({ error: "Failed to stream video" });
+      return handleControllerError(res, "Stream clip error", error, "Failed to stream video");
     }
   }
 
@@ -322,11 +304,7 @@ export class ClipManagerController {
         clip: { ...updatedClip, tags },
       });
     } catch (error) {
-      console.error("Update clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update clip"),
-      });
+      return handleControllerError(res, "Update clip error", error, "Failed to update clip", 404);
     }
   }
 
@@ -356,11 +334,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ clips: clipsWithUrlsAndTags });
     } catch (error) {
-      console.error("Get clips by folder error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get clips"),
-      });
+      return handleControllerError(res, "Get clips by folder error", error, "Failed to get clips");
     }
   }
 
@@ -394,11 +368,7 @@ export class ClipManagerController {
         message: "Clip deleted successfully",
       });
     } catch (error) {
-      console.error("Delete clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete clip"),
-      });
+      return handleControllerError(res, "Delete clip error", error, "Failed to delete clip", 404);
     }
   }
 
@@ -457,11 +427,7 @@ export class ClipManagerController {
         clipId,
       });
     } catch (error) {
-      console.error("Update captions error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue captions update"),
-      });
+      return handleControllerError(res, "Update captions error", error, "Failed to queue captions update");
     }
   }
 
@@ -537,11 +503,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ captionsData });
     } catch (error) {
-      console.error("Generate captions error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate captions"),
-      });
+      return handleControllerError(res, "Generate captions error", error, "Failed to generate captions");
     } finally {
       localPath.forEach(safeUnlink);
     }
@@ -600,11 +562,7 @@ export class ClipManagerController {
         clipId,
       });
     } catch (error) {
-      console.error("Update text overlay error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue text overlay"),
-      });
+      return handleControllerError(res, "Update text overlay error", error, "Failed to queue text overlay");
     }
   }
 
@@ -638,11 +596,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ heading });
     } catch (error) {
-      console.error("Generate heading error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate heading"),
-      });
+      return handleControllerError(res, "Generate heading error", error, "Failed to generate heading");
     }
   }
 
@@ -701,11 +655,7 @@ export class ClipManagerController {
         clipId,
       });
     } catch (error) {
-      console.error("Update overlays error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue overlays update"),
-      });
+      return handleControllerError(res, "Update overlays error", error, "Failed to queue overlays update");
     }
   }
 
@@ -783,11 +733,7 @@ export class ClipManagerController {
         usage: updatedUsage,
       });
     } catch (error) {
-      console.error("Save clip error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to save clip"),
-      });
+      return handleControllerError(res, "Save clip error", error, "Failed to save clip");
     }
   }
 
@@ -833,11 +779,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
-      console.error("Get unsaved clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get unsaved clips"),
-      });
+      return handleControllerError(res, "Get unsaved clips error", error, "Failed to get unsaved clips");
     }
   }
 
@@ -889,12 +831,7 @@ export class ClipManagerController {
         },
       });
     } catch (error) {
-      console.error("Get saved clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to get saved clips"),
-      });
+      return handleControllerError(res, "Get saved clips error", error, "Failed to get saved clips");
     }
   }
 
@@ -926,11 +863,7 @@ export class ClipManagerController {
         message: "Clip rejected successfully",
       });
     } catch (error) {
-      console.error("Reject clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to reject clip"),
-      });
+      return handleControllerError(res, "Reject clip error", error, "Failed to reject clip", 404);
     }
   }
 
@@ -962,11 +895,7 @@ export class ClipManagerController {
         shareToken: updatedClip.share_token,
       });
     } catch (error) {
-      console.error("Generate share link error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate share link"),
-      });
+      return handleControllerError(res, "Generate share link error", error, "Failed to generate share link");
     }
   }
 
@@ -988,11 +917,7 @@ export class ClipManagerController {
         message: "Share link removed successfully",
       });
     } catch (error) {
-      console.error("Remove share link error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to remove share link"),
-      });
+      return handleControllerError(res, "Remove share link error", error, "Failed to remove share link");
     }
   }
 
@@ -1021,11 +946,7 @@ export class ClipManagerController {
         },
       });
     } catch (error) {
-      console.error("Get shared clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: "Shared clip not found",
-      });
+      return handleControllerError(res, "Get shared clip error", error, "Shared clip not found", 404);
     }
   }
 
@@ -1054,11 +975,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ downloadUrl });
     } catch (error) {
-      console.error("Download shared clip error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: "Shared clip not found",
-      });
+      return handleControllerError(res, "Download shared clip error", error, "Shared clip not found", 404);
     }
   }
   async searchClips(req: AuthRequest, res: Response) {
@@ -1165,11 +1082,7 @@ export class ClipManagerController {
         },
       });
     } catch (error) {
-      console.error("Search clips error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to search clips"),
-      });
+      return handleControllerError(res, "Search clips error", error, "Failed to search clips");
     }
   }
 
@@ -1281,11 +1194,7 @@ export class ClipManagerController {
         clipId,
       });
     } catch (error) {
-      console.error("Submit video edit error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue video edit"),
-      });
+      return handleControllerError(res, "Submit video edit error", error, "Failed to queue video edit");
     }
   }
 
@@ -1338,16 +1247,9 @@ export class ClipManagerController {
         s3Key,
       });
     } catch (error) {
-      console.error("Get music upload URL error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "Get music upload URL error", error, "Failed to get upload URL");
     }
   }
-  /**
-   * Get presigned URL for media overlay upload
-   */
   async getOverlayUploadUrl(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
@@ -1388,11 +1290,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ uploadUrl, s3Key });
     } catch (error) {
-      console.error("Get overlay upload URL error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "Get overlay upload URL error", error, "Failed to get upload URL");
     }
   }
   /**
@@ -1431,11 +1329,7 @@ export class ClipManagerController {
 
       return res.status(200).json({ urls: urlMap });
     } catch (error) {
-      console.error("Get overlay view URLs error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get overlay URLs"),
-      });
+      return handleControllerError(res, "Get overlay view URLs error", error, "Failed to get overlay URLs");
     }
   }
 
@@ -1500,12 +1394,8 @@ export class ClipManagerController {
 
       await archive.finalize();
     } catch (error) {
-      console.error("Download folder as ZIP error:", error);
-      Sentry.captureException(error);
       if (!res.headersSent) {
-        return res.status(500).json({
-          error: sanitizeErrorForFrontend(error, "Failed to download folder"),
-        });
+        return handleControllerError(res, "Download folder as ZIP error", error, "Failed to download folder");
       }
     }
   }
@@ -1548,11 +1438,7 @@ export class ClipManagerController {
 
       res.json({ urls, folderName: `clips-folder-${folderId}` });
     } catch (error) {
-      console.error("Download folder URLs error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get download URLs"),
-      });
+      return handleControllerError(res, "Download folder URLs error", error, "Failed to get download URLs");
     }
   }
 }
