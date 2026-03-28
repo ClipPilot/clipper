@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/ClipPilot/clipper/compare/v1.1.1...v1.1.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* remove unused sanitizeErrorForFrontend import in folder controller ([#143](https://github.com/ClipPilot/clipper/issues/143)) ([6f9da0a](https://github.com/ClipPilot/clipper/commit/6f9da0a3d6daf25718aee4b599f071e1a6643ab4))
+* use GH_PAT for releases and deploy all services on tag push ([075616b](https://github.com/ClipPilot/clipper/commit/075616be39fc2f984436193befb40fabdbe0981f))
+
 ## [1.1.1](https://github.com/ClipPilot/clipper/compare/v1.1.0...v1.1.1) (2026-03-28)
 
 
