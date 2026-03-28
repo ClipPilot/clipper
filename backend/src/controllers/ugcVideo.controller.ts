@@ -17,7 +17,7 @@ import { eq, and, desc, count, sql } from "drizzle-orm";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 import { ugcScriptService, detectSilentMode } from "../services/ai-ugc/ugcScript.service";
 import type { ShotType } from "../types/ugcScript.types";
 
@@ -186,10 +186,7 @@ export class UGCVideoController {
         offset,
       });
     } catch (error) {
-      console.error("[UGC_VIDEO] List jobs error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to list video jobs"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] List jobs error", error, "Failed to list video jobs");
     }
   }
 
@@ -394,11 +391,7 @@ export class UGCVideoController {
         message: "Video generation started. Poll for status.",
       });
     } catch (error) {
-      console.error("[UGC_VIDEO] Generate video error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to queue video generation"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] Generate video error", error, "Failed to queue video generation");
     }
   }
 
@@ -457,10 +450,7 @@ export class UGCVideoController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[UGC_VIDEO] Get status error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get job status"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] Get status error", error, "Failed to get job status");
     }
   }
 
@@ -506,10 +496,7 @@ export class UGCVideoController {
         completedAt: job.completed_at,
       });
     } catch (error) {
-      console.error("[UGC_VIDEO] Get script video error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get video"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] Get script video error", error, "Failed to get video");
     }
   }
 
@@ -650,11 +637,7 @@ export class UGCVideoController {
         clipPath: clip.clip_path,
       });
     } catch (error) {
-      console.error("[UGC_VIDEO] Finalize video error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to finalize video"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] Finalize video error", error, "Failed to finalize video");
     }
   }
 
@@ -722,10 +705,7 @@ export class UGCVideoController {
       console.log(`[UGC_VIDEO] Deleted job ${jobId}`);
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[UGC_VIDEO] Delete job error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete video job"),
-      });
+      return handleControllerError(res, "[UGC_VIDEO] Delete job error", error, "Failed to delete video job");
     }
   }
 }

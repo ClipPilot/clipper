@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
@@ -8,6 +7,7 @@ import { cpmBillingService } from "../services/massPosting/cpmBilling.service";
 import { campaignContractService } from "../services/massPosting/campaignContract.service";
 import { stripe } from "../config/stripe.config";
 import { stripeService } from "../services/stripe.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 // ── Campaign CRUD ────────────────────────────────
 
@@ -27,12 +27,10 @@ export async function createCampaign(req: AuthRequest, res: Response) {
 
     return res.status(201).json({ campaign });
   } catch (error: any) {
-    console.error("Create campaign error:", error);
     if (error.message?.includes("already have a pending") || error.message?.includes("already been accepted")) {
       return res.status(409).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create campaign" });
+    return handleControllerError(res, "Create campaign error", error, "Failed to create campaign");
   }
 }
 
@@ -50,9 +48,7 @@ export async function listCampaigns(req: AuthRequest, res: Response) {
 
     return res.json(result);
   } catch (error) {
-    console.error("List campaigns error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to list campaigns" });
+    return handleControllerError(res, "List campaigns error", error, "Failed to list campaigns");
   }
 }
 
@@ -70,9 +66,7 @@ export async function getCampaign(req: AuthRequest, res: Response) {
     const gates = await campaignService.checkGates(campaignId);
     return res.json({ campaign, gates });
   } catch (error) {
-    console.error("Get campaign error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaign" });
+    return handleControllerError(res, "Get campaign error", error, "Failed to fetch campaign");
   }
 }
 
@@ -91,12 +85,10 @@ export async function appealCampaign(req: AuthRequest, res: Response) {
 
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Appeal campaign error:", error);
     if (error.message?.includes("Can only appeal")) {
       return res.status(409).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to submit appeal" });
+    return handleControllerError(res, "Appeal campaign error", error, "Failed to submit appeal");
   }
 }
 
@@ -118,12 +110,10 @@ export async function addVideos(req: AuthRequest, res: Response) {
     const videos = await campaignVideoService.addClipsFromLibrary(campaignId, teamId, clipIds);
     return res.status(201).json({ videos });
   } catch (error: any) {
-    console.error("Add videos error:", error);
     if (error.message?.includes("not found or not owned")) {
       return res.status(400).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to add videos" });
+    return handleControllerError(res, "Add videos error", error, "Failed to add videos");
   }
 }
 
@@ -143,9 +133,7 @@ export async function uploadVideo(req: AuthRequest, res: Response) {
     const result = await campaignVideoService.createCustomUpload(campaignId, teamId, fileName, contentType);
     return res.json(result);
   } catch (error) {
-    console.error("Upload video error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create upload URL" });
+    return handleControllerError(res, "Upload video error", error, "Failed to create upload URL");
   }
 }
 
@@ -162,12 +150,10 @@ export async function completeVideoUpload(req: AuthRequest, res: Response) {
     const video = await campaignVideoService.completeCustomUpload(campaignId, videoId, teamId, userId);
     return res.json({ video });
   } catch (error: any) {
-    console.error("Complete video upload error:", error);
     if (error.message === "Video not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to complete upload" });
+    return handleControllerError(res, "Complete video upload error", error, "Failed to complete upload");
   }
 }
 
@@ -182,12 +168,10 @@ export async function removeVideo(req: AuthRequest, res: Response) {
     await campaignVideoService.removeVideo(campaignId, videoId);
     return res.json({ success: true });
   } catch (error: any) {
-    console.error("Remove video error:", error);
     if (error.message === "Video not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to remove video" });
+    return handleControllerError(res, "Remove video error", error, "Failed to remove video");
   }
 }
 
@@ -212,9 +196,7 @@ export async function listVideos(req: AuthRequest, res: Response) {
     });
     return res.json(result);
   } catch (error) {
-    console.error("List videos error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to list videos" });
+    return handleControllerError(res, "List videos error", error, "Failed to list videos");
   }
 }
 
@@ -271,9 +253,7 @@ export async function getWallet(req: AuthRequest, res: Response) {
 
     return res.json({ wallet, card: paymentMethod });
   } catch (error) {
-    console.error("Get wallet error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch wallet" });
+    return handleControllerError(res, "Get wallet error", error, "Failed to fetch wallet");
   }
 }
 
@@ -355,9 +335,7 @@ export async function createTopUp(req: AuthRequest, res: Response) {
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {
-    console.error("Create top-up error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create top-up" });
+    return handleControllerError(res, "Create top-up error", error, "Failed to create top-up");
   }
 }
 
@@ -385,9 +363,7 @@ export async function createSetupIntent(req: AuthRequest, res: Response) {
       clientSecret: setupIntent.client_secret,
     });
   } catch (error) {
-    console.error("Create setup intent error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create setup intent" });
+    return handleControllerError(res, "Create setup intent error", error, "Failed to create setup intent");
   }
 }
 
@@ -413,9 +389,7 @@ export async function saveCard(req: AuthRequest, res: Response) {
       card: pm.card ? { brand: pm.card.brand, last4: pm.card.last4, exp_month: pm.card.exp_month, exp_year: pm.card.exp_year } : null,
     });
   } catch (error) {
-    console.error("Save card error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to save card" });
+    return handleControllerError(res, "Save card error", error, "Failed to save card");
   }
 }
 
@@ -430,9 +404,7 @@ export async function getTopUpStatus(req: AuthRequest, res: Response) {
     const credited = await campaignBillingService.isTopUpCredited(campaignId, piId);
     return res.json({ credited });
   } catch (error) {
-    console.error("Get top-up status error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to check top-up status" });
+    return handleControllerError(res, "Get top-up status error", error, "Failed to check top-up status");
   }
 }
 
@@ -454,12 +426,10 @@ export async function fundWithCredits(req: AuthRequest, res: Response) {
     const result = await campaignBillingService.fundWithCredits(campaignId, teamId, creditCount);
     return res.json({ confirmed: true, ...result });
   } catch (error: any) {
-    console.error("Fund with credits error:", error);
     if (error.message === "Insufficient credits") {
       return res.status(400).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fund with credits" });
+    return handleControllerError(res, "Fund with credits error", error, "Failed to fund with credits");
   }
 }
 
@@ -473,9 +443,7 @@ export async function getMasterAgreement(req: AuthRequest, res: Response) {
     const agreement = await campaignContractService.getOrGenerateMasterAgreement(teamId);
     return res.json({ agreement });
   } catch (error) {
-    console.error("Get master agreement error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch agreement" });
+    return handleControllerError(res, "Get master agreement error", error, "Failed to fetch agreement");
   }
 }
 
@@ -504,12 +472,10 @@ export async function signMasterAgreement(req: AuthRequest, res: Response) {
 
     return res.json({ agreement });
   } catch (error: any) {
-    console.error("Sign master agreement error:", error);
     if (error.message === "Agreement already signed") {
       return res.status(409).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to sign agreement" });
+    return handleControllerError(res, "Sign master agreement error", error, "Failed to sign agreement");
   }
 }
 
@@ -523,9 +489,7 @@ export async function getCampaignClipIds(req: AuthRequest, res: Response) {
     const result = await campaignVideoService.getClipIdsInCampaigns(teamId);
     return res.json(result);
   } catch (error) {
-    console.error("Get campaign clip IDs error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch campaign clip IDs" });
+    return handleControllerError(res, "Get campaign clip IDs error", error, "Failed to fetch campaign clip IDs");
   }
 }
 
@@ -542,15 +506,13 @@ export async function endCampaign(req: AuthRequest, res: Response) {
     const campaign = await campaignService.endCampaign(campaignId);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("End campaign error:", error);
     if (error.message?.includes("Can only end")) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to end campaign" });
+    return handleControllerError(res, "End campaign error", error, "Failed to end campaign");
   }
 }
 
@@ -569,12 +531,8 @@ export async function getCpmBillingBreakdown(req: AuthRequest, res: Response) {
       teamId,
     );
     return res.json(breakdown);
-  } catch (error: any) {
-    console.error("CPM billing breakdown error:", error);
-    Sentry.captureException(error);
-    return res
-      .status(500)
-      .json({ error: "Failed to fetch billing breakdown" });
+  } catch (error) {
+    return handleControllerError(res, "CPM billing breakdown error", error, "Failed to fetch billing breakdown");
   }
 }
 
@@ -591,14 +549,12 @@ export async function startCampaign(req: AuthRequest, res: Response) {
     const campaign = await campaignService.startCampaign(teamId, campaignId);
     return res.json({ campaign });
   } catch (error: any) {
-    console.error("Start campaign error:", error);
     if (error.message?.includes("must be") || error.message?.includes("gates")) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message === "Campaign not found") {
       return res.status(404).json({ error: error.message });
     }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to start campaign" });
+    return handleControllerError(res, "Start campaign error", error, "Failed to start campaign");
   }
 }

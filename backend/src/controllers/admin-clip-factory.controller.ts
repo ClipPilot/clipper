@@ -1,10 +1,10 @@
 import { Response } from "express";
-import * as Sentry from "@sentry/node";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { adminClipFactoryService } from "../services/admin-clip-factory.service";
 import { teamService } from "../services/team.service";
 import { isValidPromptType } from "../constants/promptTypes";
 import { isValidConversionMode } from "../constants/conversionModes";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 const VALID_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
 
@@ -22,9 +22,7 @@ export async function getPresignedUrl(req: AdminRequest, res: Response) {
     const result = await adminClipFactoryService.getPresignedUploadUrl(parseInt(teamId), fileName, contentType);
     return res.json(result);
   } catch (err) {
-    console.error("Error generating presigned URL:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to generate upload URL" });
+    return handleControllerError(res, "Error generating presigned URL", err, "Failed to generate upload URL");
   }
 }
 
@@ -42,9 +40,7 @@ export async function initiateMultipart(req: AdminRequest, res: Response) {
     const result = await adminClipFactoryService.initiateMultipartUpload(parseInt(teamId), fileName, contentType, fileSize);
     return res.json(result);
   } catch (err) {
-    console.error("Error initiating multipart upload:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to initiate upload" });
+    return handleControllerError(res, "Error initiating multipart upload", err, "Failed to initiate upload");
   }
 }
 
@@ -62,9 +58,7 @@ export async function completeMultipart(req: AdminRequest, res: Response) {
     const result = await adminClipFactoryService.completeMultipartUpload(s3Key, uploadId, normalizedParts);
     return res.json(result);
   } catch (err) {
-    console.error("Error completing multipart upload:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to complete upload" });
+    return handleControllerError(res, "Error completing multipart upload", err, "Failed to complete upload");
   }
 }
 
@@ -121,9 +115,7 @@ export async function startClipFactory(req: AdminRequest, res: Response) {
 
     return res.json(result);
   } catch (err) {
-    console.error("Error starting clip factory:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to start clip jobs" });
+    return handleControllerError(res, "Error starting clip factory", err, "Failed to start clip jobs");
   }
 }
 
@@ -142,9 +134,7 @@ export async function getClipFactoryStatus(req: AdminRequest, res: Response) {
     const result = await adminClipFactoryService.getJobStatuses(rawVideoPublicIds, parseInt(teamId));
     return res.json(result);
   } catch (err) {
-    console.error("Error getting clip factory status:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get job status" });
+    return handleControllerError(res, "Error getting clip factory status", err, "Failed to get job status");
   }
 }
 
@@ -158,9 +148,7 @@ export async function getClipFactoryBatchStatus(req: AdminRequest, res: Response
     const result = await adminClipFactoryService.getBatchStatus(batchId);
     return res.json(result);
   } catch (err) {
-    console.error("Error getting batch status:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get batch status" });
+    return handleControllerError(res, "Error getting batch status", err, "Failed to get batch status");
   }
 }
 
@@ -174,10 +162,7 @@ export async function cancelClipFactoryBatch(req: AdminRequest, res: Response) {
     const result = await adminClipFactoryService.cancelBatch(batchId);
     return res.json(result);
   } catch (err) {
-    console.error("Error cancelling batch:", err);
-    Sentry.captureException(err);
-    const message = err instanceof Error ? err.message : "Failed to cancel batch";
-    return res.status(500).json({ error: message });
+    return handleControllerError(res, "Error cancelling batch", err, "Failed to cancel batch");
   }
 }
 
@@ -191,8 +176,6 @@ export async function getActiveJobs(req: AdminRequest, res: Response) {
     const jobs = await adminClipFactoryService.getActiveJobs(parseInt(teamId));
     return res.json({ jobs });
   } catch (err) {
-    console.error("Error getting active jobs:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get active jobs" });
+    return handleControllerError(res, "Error getting active jobs", err, "Failed to get active jobs");
   }
 }

@@ -3,6 +3,15 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userService } from "../services/user.service";
 import { teamService } from "../services/team.service";
+import { sanitizeErrorForFrontend } from "./errorSanitizer";
+
+export function requireUser(req: AuthRequest, res: Response): string | null {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  return req.user.id;
+}
 
 export function parseId(value: string): number | null {
   const n = parseInt(value);
@@ -19,18 +28,14 @@ export function handleControllerError(
   res: Response,
   label: string,
   error: any,
-  fallbackMessage: string
+  fallbackMessage: string,
+  statusCode: number = 500
 ) {
   console.error(`${label}:`, error);
   Sentry.captureException(error);
-
-  if (error.message?.includes("not found")) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error.message?.includes("already being tracked")) {
-    return res.status(409).json({ error: error.message });
-  }
-  return res.status(500).json({ error: fallbackMessage });
+  return res
+    .status(statusCode)
+    .json({ error: sanitizeErrorForFrontend(error, fallbackMessage) });
 }
 
 export async function verifyTeamAccessOrFail(

@@ -1,9 +1,8 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 export class AuthController {
   async signUp(req: Request, res: Response) {
     try {
@@ -35,11 +34,7 @@ export class AuthController {
         session: result.session,
       });
     } catch (error) {
-      console.error("Signup error:", error);
-      Sentry.captureException(error);
-      return res.status(400).json({
-        error: sanitizeErrorForFrontend(error, "Failed to sign up"),
-      });
+      return handleControllerError(res, "Signup error", error, "Failed to sign up", 400);
     }
   }
 
@@ -68,11 +63,7 @@ export class AuthController {
         rememberMe: result.rememberMe,
       });
     } catch (error) {
-      console.error("Signin error:", error);
-      Sentry.captureException(error);
-      return res.status(401).json({
-        error: sanitizeErrorForFrontend(error, "Failed to sign in"),
-      });
+      return handleControllerError(res, "Signin error", error, "Failed to sign in", 401);
     }
   }
 
@@ -103,14 +94,7 @@ export class AuthController {
         session: result.session,
       });
     } catch (error) {
-      console.error("Supabase signin error:", error);
-      Sentry.captureException(error);
-      return res.status(401).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to sign in with Google",
-      });
+      return handleControllerError(res, "Supabase signin error", error, "Failed to sign in with Google", 401);
     }
   }
 
@@ -131,11 +115,7 @@ export class AuthController {
         message: "Signed out successfully",
       });
     } catch (error) {
-      console.error("Signout error:", error);
-      Sentry.captureException(error);
-      return res.status(400).json({
-        error: sanitizeErrorForFrontend(error, "Failed to sign out"),
-      });
+      return handleControllerError(res, "Signout error", error, "Failed to sign out", 400);
     }
   }
 
@@ -162,11 +142,7 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error("Get user error:", error);
-      Sentry.captureException(error);
-      return res.status(401).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get user"),
-      });
+      return handleControllerError(res, "Get user error", error, "Failed to get user", 401);
     }
   }
 
@@ -187,12 +163,7 @@ export class AuthController {
         user: result.user,
       });
     } catch (error) {
-      console.error("Refresh session error:", error);
-      Sentry.captureException(error);
-      return res.status(401).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to refresh session"),
-      });
+      return handleControllerError(res, "Refresh session error", error, "Failed to refresh session", 401);
     }
   }
 
@@ -210,12 +181,7 @@ export class AuthController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Reset password error:", error);
-      Sentry.captureException(error);
-      return res.status(400).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to send reset email"),
-      });
+      return handleControllerError(res, "Reset password error", error, "Failed to send reset email", 400);
     }
   }
 
@@ -252,23 +218,17 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error("Update password error:", error);
-      Sentry.captureException(error);
-      return res.status(400).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to update password"),
-      });
+      return handleControllerError(res, "Update password error", error, "Failed to update password", 400);
     }
   }
   async updateProfile(req: AuthRequest, res: Response) {
     try {
-      if (!req.user?.id) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
+      const userId = requireUser(req, res);
+      if (!userId) return;
 
       const { firstName, lastName, emailNotificationsEnabled } = req.body;
 
-      const dbUser = await userService.getUserBySupabaseUid(req.user.id);
+      const dbUser = await userService.getUserBySupabaseUid(userId);
       const updated = await userService.updateUser(dbUser.id, {
         firstName,
         lastName,
@@ -286,12 +246,7 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error("Update profile error:", error);
-      Sentry.captureException(error);
-      return res.status(400).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to update profile"),
-      });
+      return handleControllerError(res, "Update profile error", error, "Failed to update profile", 400);
     }
   }
 }

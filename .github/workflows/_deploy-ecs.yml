@@ -1,29 +1,44 @@
-name: Deploy Backend to ECS
+name: _Deploy ECS Service
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'backend/**'
-      - 'packages/shared-db/**'
-      - 'packages/shared-email/**'
-      - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      service-name:
+        description: Service name (backend, worker, agent-service)
+        required: true
+        type: string
+      dockerfile:
+        description: Path to Dockerfile relative to repo root
+        required: true
+        type: string
+      docker-context:
+        description: Docker build context
+        required: false
+        default: "."
+        type: string
+      container-name:
+        description: Container name in task definition
+        required: true
+        type: string
+      environment:
+        description: Environment suffix (prod or staging)
+        required: true
+        type: string
+      github-environment:
+        description: GitHub environment name for secrets
+        required: true
+        type: string
 
 env:
   AWS_REGION: us-west-2
-  ECR_REPOSITORY: clipster-backend-prod
-  ECS_CLUSTER: clipster-cluster-prod
-  ECS_SERVICE: clipster-backend-prod
-  CONTAINER_NAME: backend
 
 jobs:
   deploy:
-    name: Deploy Backend
+    name: Deploy ${{ inputs.service-name }} (${{ inputs.environment }})
     runs-on: ubuntu-latest
-    environment: production
-
+    environment: ${{ inputs.github-environment }}
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,31 +54,25 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up PNPM
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: clipster-${{ inputs.service-name }}-${{ inputs.environment }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f backend/Dockerfile .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
-          # Push images
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -f ${{ inputs.dockerfile }} ${{ inputs.docker-context }}
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Download task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition clipster-backend-prod \
+            --task-definition clipster-${{ inputs.service-name }}-${{ inputs.environment }} \
             --query taskDefinition > task-definition.json
 
       - name: Fill in the new image ID in the Amazon ECS task definition
@@ -71,20 +80,20 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
+          container-name: ${{ inputs.container-name }}
           image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
+          service: clipster-${{ inputs.service-name }}-${{ inputs.environment }}
+          cluster: clipster-cluster-${{ inputs.environment }}
           wait-for-service-stability: true
 
       - name: Verify deployment
         run: |
           echo "Deployment completed successfully!"
-          echo "Service: ${{ env.ECS_SERVICE }}"
-          echo "Cluster: ${{ env.ECS_CLUSTER }}"
+          echo "Service: clipster-${{ inputs.service-name }}-${{ inputs.environment }}"
+          echo "Cluster: clipster-cluster-${{ inputs.environment }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"

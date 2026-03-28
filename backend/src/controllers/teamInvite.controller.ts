@@ -1,15 +1,14 @@
-import * as Sentry from "@sentry/node";
 import { Response, Request } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamInviteService } from "../services/teamInvite.service";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
 export const createInviteController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -21,7 +20,7 @@ export const createInviteController = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: "Email is required" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner" && userRole !== "manager") {
@@ -37,26 +36,21 @@ export const createInviteController = async (req: AuthRequest, res: Response) =>
 
     res.status(201).json({ invite });
   } catch (err) {
-    console.error("Error in createInviteController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to create invite",
-    });
+    return handleControllerError(res, "Error in createInviteController", err, "Failed to create invite");
   }
 };
 
 export const getTeamInvitesController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
 
     if (!hasAccess) {
@@ -67,11 +61,7 @@ export const getTeamInvitesController = async (req: AuthRequest, res: Response) 
 
     res.json({ invites });
   } catch (err) {
-    console.error("Error in getTeamInvitesController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get invites",
-    });
+    return handleControllerError(res, "Error in getTeamInvitesController", err, "Failed to get invites");
   }
 };
 
@@ -98,43 +88,33 @@ export const getInviteByTokenController = async (req: Request, res: Response) =>
 
     res.json({ invite });
   } catch (err) {
-    console.error("Error in getInviteByTokenController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get invite",
-    });
+    return handleControllerError(res, "Error in getInviteByTokenController", err, "Failed to get invite");
   }
 };
 
 export const acceptInviteController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { token } = req.params;
     if (!token) {
       return res.status(400).json({ error: "Token is required" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const result = await teamInviteService.acceptInvite(token, user.id);
 
     res.json({ message: "Invite accepted successfully", ...result });
   } catch (err) {
-    console.error("Error in acceptInviteController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to accept invite",
-    });
+    return handleControllerError(res, "Error in acceptInviteController", err, "Failed to accept invite");
   }
 };
 
 export const revokeInviteController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     const inviteId = parseInt(req.params.inviteId);
@@ -143,7 +123,7 @@ export const revokeInviteController = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: "Invalid team ID or invite ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner" && userRole !== "manager") {
@@ -154,19 +134,14 @@ export const revokeInviteController = async (req: AuthRequest, res: Response) =>
 
     res.json({ message: "Invite revoked successfully" });
   } catch (err) {
-    console.error("Error in revokeInviteController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to revoke invite",
-    });
+    return handleControllerError(res, "Error in revokeInviteController", err, "Failed to revoke invite");
   }
 };
 
 export const resendInviteController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     const inviteId = parseInt(req.params.inviteId);
@@ -175,7 +150,7 @@ export const resendInviteController = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: "Invalid team ID or invite ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner" && userRole !== "manager") {
@@ -186,10 +161,6 @@ export const resendInviteController = async (req: AuthRequest, res: Response) =>
 
     res.json({ message: "Invite resent successfully" });
   } catch (err) {
-    console.error("Error in resendInviteController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to resend invite",
-    });
+    return handleControllerError(res, "Error in resendInviteController", err, "Failed to resend invite");
   }
 };

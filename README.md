@@ -1,6 +1,8 @@
-# AI Clipping Monorepo
+# Cuttr (Clipper)
 
-A monorepo for the AI Clipping application, featuring a shared database package that can be used across backend, frontend, and other services.
+AI-powered video clipping and content creation platform. Automatically detects and extracts compelling video clips from long-form content using face detection, scene detection, transcription, and virality metrics.
+
+**Production**: [platform.cuttr.com](https://platform.cuttr.com) | **API**: [api.cuttr.com](https://api.cuttr.com) | **Admin**: [admin.cuttr.com](https://admin.cuttr.com)
 
 ## Project Structure
 
@@ -253,19 +255,76 @@ const items = await db.select().from(myNewTable);
 4. Build the package: `pnpm build`
 5. Backend will automatically pick up the changes
 
-## Production Deployment
+## CI/CD Pipeline
 
-1. Set `NODE_ENV=production` in backend environment
-2. Set `ENV=prod` when running migrations
-3. Ensure `PROD_DATABASE_URL` is configured
-4. Run migrations: `ENV=prod pnpm db:migrate`
-5. Build and deploy: `pnpm build:backend`
+### Overview
 
-## Tips
+A single unified `ci.yml` orchestrator detects what changed and conditionally deploys only the affected services. Reusable workflows (`_deploy-ecs.yml`, `_deploy-lambda.yml`) eliminate duplication.
 
-- Use `pnpm db:studio` to visualize and edit your database with Drizzle Studio
-- The backend automatically switches database URLs based on `NODE_ENV`
-- Always test migrations in development before applying to staging/production
-- Keep your schema changes backward compatible when possible
+```
+.github/workflows/
+  ci.yml                 -- THE pipeline (test, terraform, deploy)
+  _deploy-ecs.yml        -- Reusable: ECS service deploys
+  _deploy-lambda.yml     -- Reusable: Lambda deploys
+  release.yml            -- Auto versioning + tags + changelog
+  rollback.yml           -- One-click rollback
+  claude-code-review.yml -- AI code review on PRs
+  claude.yml             -- @claude in issues/PRs
+```
 
-- To start workers, CD into backend and pnpm dev:worker
+### How Deployments Work
+
+**Push to `staging`** -- Deploys only changed services to the staging environment.
+
+```
+feature/* --merge--> staging ---> ci.yml detects changes ---> deploys to staging
+```
+
+**Push to `main`** -- Runs tests and terraform only. No service deploys. `release-please` creates/updates a Release PR.
+
+```
+staging --merge--> main ---> tests + terraform apply (no service deploys)
+                         ---> release-please opens/updates Release PR
+```
+
+**Merge the Release PR** -- Creates a git tag (`v1.2.0`). The tag triggers production deployment of all services.
+
+```
+Release PR --merge--> main ---> tag v1.2.0 created ---> deploys ALL services to production
+```
+
+**Pull Requests** -- Runs tests + terraform plan (posts comment on PR). No deployments.
+
+**Manual Deploy** -- Go to Actions > CI/CD Pipeline > Run workflow. Select a service and environment.
+
+**Rollback** -- Go to Actions > Rollback > Run workflow. Select service type (ECS/Lambda), service name, and environment.
+
+### Commit Convention
+
+Use [conventional commits](https://www.conventionalcommits.org/) for automatic versioning:
+
+| Prefix | Example | Version bump |
+|--------|---------|-------------|
+| `feat:` | `feat: add webhook retry logic` | MINOR (1.1.0 -> 1.2.0) |
+| `fix:` | `fix: clip preview not loading` | PATCH (1.2.0 -> 1.2.1) |
+| `feat!:` | `feat!: redesign auth flow` | MAJOR (1.2.1 -> 2.0.0) |
+| `chore:` | `chore: update dependencies` | No bump (in changelog) |
+| `refactor:` | `refactor: extract clip service` | No bump (in changelog) |
+
+### Release Flow
+
+1. Merge feature branches to `staging` (auto-deploys to staging)
+2. Merge `staging` to `main` via PR (runs tests + terraform only)
+3. `release-please` creates/updates a Release PR with bumped version + changelog
+4. Merge the Release PR when ready -- creates git tag -- deploys production
+
+### Quick Reference
+
+| I want to... | Do this |
+|---|---|
+| Deploy to staging | Merge to `staging` branch |
+| Deploy to production | Merge the Release PR on `main` |
+| Deploy one service manually | Actions > CI/CD Pipeline > Run workflow |
+| Roll back a broken deploy | Actions > Rollback > Run workflow |
+| See what version is deployed | Check GitHub Releases or `git tag` |
+| See what changed in a release | Read `CHANGELOG.md` or the GitHub Release |

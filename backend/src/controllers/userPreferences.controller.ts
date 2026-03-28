@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPreferencesService } from "../services/userPreferences.service";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export class UserPreferencesController {
   async getPreferences(req: AuthRequest, res: Response) {
@@ -10,10 +10,7 @@ export class UserPreferencesController {
       const preferences = await userPreferencesService.getPreferences(userId);
       return res.status(200).json(preferences);
     } catch (error) {
-      console.error("Get preferences error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get preferences"),
-      });
+      return handleControllerError(res, "Get preferences error", error, "Failed to get preferences");
     }
   }
 
@@ -29,10 +26,7 @@ export class UserPreferencesController {
 
       return res.status(200).json(preferences);
     } catch (error) {
-      console.error("Update preferences error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update preferences"),
-      });
+      return handleControllerError(res, "Update preferences error", error, "Failed to update preferences");
     }
   }
 
@@ -42,10 +36,7 @@ export class UserPreferencesController {
       await userPreferencesService.resetToDefault(userId);
       return res.status(200).json({ message: "Preferences reset to default" });
     } catch (error) {
-      console.error("Reset preferences error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to reset preferences"),
-      });
+      return handleControllerError(res, "Reset preferences error", error, "Failed to reset preferences");
     }
   }
 }

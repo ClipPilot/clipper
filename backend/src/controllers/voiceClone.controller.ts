@@ -1,11 +1,11 @@
 import { Response } from "express";
-import * as Sentry from "@sentry/node";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { clonedVoices } from "@clipper/shared-db/src/schema";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { elevenLabsService } from "../services/ai-ugc/elevenlabs.service";
 import { s3Service } from "../services/s3.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 class VoiceCloneController {
   async cloneVoice(req: AuthRequest, res: Response) {
@@ -70,9 +70,7 @@ class VoiceCloneController {
         },
       });
     } catch (error) {
-      console.error("[VoiceClone] Clone failed:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({ error: "Failed to clone voice" });
+      return handleControllerError(res, "[VoiceClone] Clone failed", error, "Failed to clone voice");
     }
   }
 
@@ -102,9 +100,7 @@ class VoiceCloneController {
 
       return res.json({ success: true, voices: voicesWithUrls });
     } catch (error) {
-      console.error("[VoiceClone] List failed:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({ error: "Failed to list cloned voices" });
+      return handleControllerError(res, "[VoiceClone] List failed", error, "Failed to list cloned voices");
     }
   }
 
@@ -134,9 +130,7 @@ class VoiceCloneController {
 
       return res.json({ success: true });
     } catch (error) {
-      console.error("[VoiceClone] Delete failed:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({ error: "Failed to delete cloned voice" });
+      return handleControllerError(res, "[VoiceClone] Delete failed", error, "Failed to delete cloned voice");
     }
   }
 }
