@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/ClipPilot/clipper/compare/v1.1.0...v1.1.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* only deploy changed services on tag push ([e5e3dcd](https://github.com/ClipPilot/clipper/commit/e5e3dcdaba61474faa4070b802bc378a87ae8e1c))
+* revert to GITHUB_TOKEN for release-please ([744a278](https://github.com/ClipPilot/clipper/commit/744a27871b9cbbaef22f610b57fa888e06e87299))
+
 ## [1.1.0](https://github.com/ClipPilot/clipper/compare/v1.0.0...v1.1.0) (2026-03-27)
 
 
