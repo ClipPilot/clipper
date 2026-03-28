@@ -430,7 +430,7 @@ export class ComfyController {
         duration: Math.round(totalDuration),
       });
     } catch (error) {
-      return handleControllerError(res, "Create UGC face swap job error", error, "Failed to queue job");
+      return handleControllerError(res, "Create face swap job", error, "Failed to queue job");
     } finally {
       if (tempVideoPath && fs.existsSync(tempVideoPath)) {
         fs.unlinkSync(tempVideoPath);
