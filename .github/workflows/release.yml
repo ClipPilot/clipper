@@ -73,3 +73,6 @@ jobs:
           echo "Updating PR #${PR_NUMBER} label"
           gh pr edit "$PR_NUMBER" --remove-label "autorelease: pending" --add-label "autorelease: tagged"
           echo "Done! Tagged $TAG for PR #${PR_NUMBER}"
+
+          echo "Triggering CI/CD deploy for tag $TAG"
+          gh workflow run ci.yml --ref "$TAG"
