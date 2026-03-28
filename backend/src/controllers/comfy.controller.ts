@@ -515,7 +515,7 @@ export class ComfyController {
         },
       });
     } catch (error) {
-      return handleControllerError(res, "Get job error", error, "Failed to get job");
+      return handleControllerError(res, "Get job", error, "Failed to get job");
     }
   }
 
