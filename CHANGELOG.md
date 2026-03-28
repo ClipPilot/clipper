@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/ClipPilot/clipper/compare/v1.2.1...v1.2.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* clean up error label in comfy controller ([#147](https://github.com/ClipPilot/clipper/issues/147)) ([0cbe432](https://github.com/ClipPilot/clipper/commit/0cbe432a61d3a669eab0fd21f0508d1add1d98e8))
+
 ## [1.2.1](https://github.com/ClipPilot/clipper/compare/v1.2.0...v1.2.1) (2026-03-28)
 
 
