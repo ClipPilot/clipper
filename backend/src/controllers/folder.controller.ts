@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { folderService } from "../services/folder.service";
 import { teamService } from "../services/team.service";
 import { handleControllerError } from "../utils/controllerHelpers";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+
 
 export class FolderController {
   async getFolders(req: Request, res: Response) {
@@ -177,8 +177,7 @@ export class FolderController {
         folder: updatedFolder,
       });
     } catch (error) {
-      const errorMessage = sanitizeErrorForFrontend(error, "Failed to move folder");
-      const statusCode = errorMessage.includes("Cannot move") ? 400 : 404;
+      const statusCode = error instanceof Error && error.message.includes("Cannot move") ? 400 : 404;
       return handleControllerError(res, "Move folder error", error, "Failed to move folder", statusCode);
     }
   }
