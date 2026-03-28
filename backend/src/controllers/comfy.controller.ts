@@ -140,7 +140,7 @@ export class ComfyController {
 
       return res.status(200).json(urls);
     } catch (error) {
-      return handleControllerError(res, "Get UGC upload URLs error", error, "Failed to get upload URLs");
+      return handleControllerError(res, "Get upload URLs", error, "Failed to get upload URLs");
     }
   }
 
