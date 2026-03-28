@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/ClipPilot/clipper/compare/v1.2.2...v1.2.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* clean up error label ([#150](https://github.com/ClipPilot/clipper/issues/150)) ([78441b0](https://github.com/ClipPilot/clipper/commit/78441b09537a42995f1e21ce3ca02e349f555106))
+* trigger CI/CD deploy after creating release tag ([d91ed03](https://github.com/ClipPilot/clipper/commit/d91ed03bdc0b76e881587878d633b796c9297feb))
+
 ## [1.2.2](https://github.com/ClipPilot/clipper/compare/v1.2.1...v1.2.2) (2026-03-28)
 
 
