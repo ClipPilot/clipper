@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/ClipPilot/clipper/compare/v1.2.0...v1.2.1) (2026-03-28)
+
+
+### Bug Fixes
+
+* add workflow_dispatch trigger to release workflow ([c863709](https://github.com/ClipPilot/clipper/commit/c863709acfa81b2d84cf18a7f6fade22aad46be5))
+* auto-tag pending release PRs when release-please skips ([3ce62c5](https://github.com/ClipPilot/clipper/commit/3ce62c529543f3a81af5f6d416931d046d8a9792))
+
 ## [1.2.0](https://github.com/ClipPilot/clipper/compare/v1.1.2...v1.2.0) (2026-03-28)
 
 
