@@ -3,7 +3,7 @@ import path from "path";
 import { VideoEditJob } from "../../services/sqs.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
-import { notifyClipsRefresh } from "../notify";
+import { notifyClipsRefresh, notifyClipUpdate } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
 import {
@@ -247,15 +247,21 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
     // ==========================================================================
     if (heading && heading.text.trim()) {
       console.log(`[VIDEO-EDIT] Step 5: Adding heading overlay`);
+      const headingStyle = heading.style || "stroke";
+      const headingBg = heading.headingBgColor || "#000000";
+      const isLightBg = headingBg === "#FFFFFF" || headingBg.toLowerCase() === "white";
+      const headingColor = headingStyle === "instagram"
+        ? (isLightBg ? "#000000" : "#FFFFFF")
+        : (heading.color || "#FFFFFF");
       const headingPath = await regenerateClipWithTextOverlay(currentVideoPath, {
         text: heading.text,
-        color: heading.color || "#FFFFFF",
+        color: headingColor,
         font: heading.font || "Montserrat",
         x: heading.x ?? 50,
         y: heading.y ?? 10,
         fontSize: heading.fontSize ?? 48,
-        style: heading.style || "stroke",
-        headingBgColor: heading.headingBgColor || "#000000",
+        style: headingStyle,
+        headingBgColor: headingBg,
       });
 
       currentVideoPath = headingPath;
@@ -321,6 +327,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
     console.log(`[VIDEO-EDIT] Successfully processed clip ${clipId}`);
 
     // Notify frontend
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
   } catch (error) {
     console.error(`[VIDEO-EDIT] Error processing clip ${clipId}:`, error);
@@ -332,6 +339,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
       sanitizeErrorForFrontend(error, "Operation failed. Please try again.")
     );
 
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
 
     throw error;

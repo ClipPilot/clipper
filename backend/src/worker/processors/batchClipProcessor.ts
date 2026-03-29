@@ -11,8 +11,6 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
-import { emailNotiService } from "../../services/emailNoti.service";
-import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 
 import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
@@ -347,23 +345,7 @@ export async function processBatchClipVideoJob(
       throw new Error(`All ${failedCount} clips failed to process`);
     }
 
-    // Send email notification
-    try {
-      const user = await userService.getUserById(userId);
-      const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
-      const fileNames = videos
-        .map((v) => v.originalFileName || `Video ${v.videoIndex + 1}`)
-        .join(", ");
-      await emailNotiService.sendClipsReady(user.email, {
-        userName: user.first_name || "there",
-        clipCount: clipIds.length,
-        sourceFileName: `${videos.length} videos: ${fileNames}`,
-        clipsUrl: `${frontendUrl}/clips`,
-      });
-      console.log(`Batch clips ready email sent to ${user.email}`);
-    } catch (emailError) {
-      console.error("Failed to send batch clips ready email:", emailError);
-    }
+    console.log(`All ${clipIds.length} batch clips processed successfully`);
   } catch (error) {
     console.error("Error processing batch clips:", error);
 

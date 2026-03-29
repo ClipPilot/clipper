@@ -4,7 +4,7 @@ import { UpdateCaptionsJob } from "../../services/sqs.service";
 import { regenerateClipWithCaptions } from "../../services/clips/clip.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
-import { notifyClipsRefresh } from "../notify";
+import { notifyClipsRefresh, notifyClipUpdate } from "../notify";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
@@ -72,6 +72,7 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
     console.log(`Successfully updated captions for clip ${clipId}`);
 
     // Notify frontend to refresh clips
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
   } catch (error) {
     console.error("Error updating captions:", error);
@@ -85,6 +86,7 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
     );
 
     // Notify frontend
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
 
     throw error;
