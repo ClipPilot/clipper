@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.5](https://github.com/ClipPilot/clipper/compare/v1.2.4...v1.2.5) (2026-03-29)
+
+
+### Bug Fixes
+
+* add missing setSavedClips destructuring for clip-updated handler ([373a7cb](https://github.com/ClipPilot/clipper/commit/373a7cb7557d9273f59593c857649e3cfd2f1e79))
+* Library refresh and layout ([9bead00](https://github.com/ClipPilot/clipper/commit/9bead005de677ed7e73b49b125afacdfe9f445a6))
+
 ## [1.2.4](https://github.com/ClipPilot/clipper/compare/v1.2.3...v1.2.4) (2026-03-29)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "clipper-monorepo",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "private": true,
   "description": "AI Clipping monorepo - Backend, Frontend, and Shared Packages",
   "workspaces": [
