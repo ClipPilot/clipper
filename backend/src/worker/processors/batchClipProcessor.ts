@@ -249,7 +249,9 @@ export async function processBatchClipVideoJob(
               editorConfig: {
                 heading: {
                   text: autoHeading,
-                  color: options.textColor || "#FFFFFF",
+                  color: (options.textStyle || "stroke") === "instagram"
+                    ? ((options.textBgColor || "#000000") === "#FFFFFF" ? "#000000" : "#FFFFFF")
+                    : (options.textColor || "#FFFFFF"),
                   font: options.textFont || "Montserrat",
                   x: 50,
                   y: 10,
