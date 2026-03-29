@@ -125,6 +125,7 @@ function MyClipsPageContent() {
     rejectClip,
     moveClipToFolder,
     refreshSavedClips,
+    setSavedClips,
     setUnsavedClips,
   } = useClipsData();
 
