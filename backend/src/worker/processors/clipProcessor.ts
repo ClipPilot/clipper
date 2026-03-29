@@ -327,10 +327,9 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
                   editorConfig: {
                     heading: {
                       text: autoHeading,
-                      color: options.textColor
-                        || ((options.textStyle || "stroke") === "instagram"
-                          ? ((options.textBgColor || "#000000") === "#FFFFFF" ? "#000000" : "#FFFFFF")
-                          : "#FFFFFF"),
+                      color: (options.textStyle || "stroke") === "instagram"
+                        ? ((options.textBgColor || "#000000") === "#FFFFFF" ? "#000000" : "#FFFFFF")
+                        : (options.textColor || "#FFFFFF"),
                       font: options.textFont || "Montserrat",
                       x: 50,
                       y: 10,
