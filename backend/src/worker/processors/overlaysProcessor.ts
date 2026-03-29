@@ -39,8 +39,9 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
       const rawBg = heading.headingBgColor || "#000000";
       const headingBg = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
       const isLightBg = headingBg === "#FFFFFF" || headingBg.toLowerCase() === "white";
-      const headingColor = heading.color
-        || (headingStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
+      const headingColor = headingStyle === "instagram"
+        ? (isLightBg ? "#000000" : "#FFFFFF")
+        : (heading.color || "#FFFFFF");
       const headingPath = await regenerateClipWithTextOverlay(currentVideoPath, {
         text: heading.text,
         color: headingColor,

@@ -291,8 +291,9 @@ export const createCombinedClipService = async (
     const rawBg = options.textBgColor || "#000000";
     const bgColor = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
     const isLightBg = bgColor === "#FFFFFF" || bgColor.toLowerCase() === "white";
-    const fillColor = options.textColor
-      || (textStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
+    const fillColor = textStyle === "instagram"
+      ? (isLightBg ? "#000000" : "#FFFFFF")
+      : (options.textColor || "#FFFFFF");
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
     await addTextOverlay(
@@ -664,8 +665,9 @@ export const createBatchCombinedClipService = async (
     const rawBg = options.textBgColor || "#000000";
     const bgColor = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
     const isLightBg = bgColor === "#FFFFFF" || bgColor.toLowerCase() === "white";
-    const fillColor = options.textColor
-      || (textStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
+    const fillColor = textStyle === "instagram"
+      ? (isLightBg ? "#000000" : "#FFFFFF")
+      : (options.textColor || "#FFFFFF");
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
     await addTextOverlay(

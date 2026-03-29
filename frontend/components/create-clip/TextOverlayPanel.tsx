@@ -212,7 +212,10 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     color={textStyle === s.key ? "primary" : "default"}
                     onPress={() => {
                       setTextStyle(s.key);
-                      if (s.key === "instagram") setTextFont("Proxima Nova");
+                      if (s.key === "instagram") {
+                        setTextFont("Proxima Nova");
+                        setTextColor(textBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF");
+                      }
                     }}
                     startContent={<Icon icon={s.icon} />}
                     size="sm"
