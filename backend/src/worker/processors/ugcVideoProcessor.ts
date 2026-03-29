@@ -237,6 +237,7 @@ export async function processUGCVideoJob(
       emotion: scene.emotion,
       ambientSound: scene.ambientSound,
       bRollShots: scene.bRollShots, // Pass through B-roll shots for montage processing
+      voiceId: scene.voiceId,
     }));
 
     // Track current scene for real-time updates

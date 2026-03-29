@@ -65,6 +65,7 @@ export interface UGCScene {
   shotType: ShotType;
   cameraAngle: CameraAngle;
   ambientSound?: string;
+  characterIndex?: number;
   bRollShots?: BRollShot[] | null;
   mergedSceneTypes?: SceneType[] | null;
 }

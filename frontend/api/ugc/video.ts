@@ -5,6 +5,7 @@ export interface GenerateUGCVideoRequest {
   teamId: number;
   scriptId: string;
   voiceId?: string;
+  voiceConfig?: Array<{ characterId: number; voiceId: string }>;
   isSilent?: boolean;
 }
 

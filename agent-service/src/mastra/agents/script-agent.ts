@@ -19,11 +19,11 @@ export const scriptAgent = new Agent({
 
 You receive a structured message containing:
 - **structure**: The scene blueprint (scene types, order, shot breakdown) — follow this EXACTLY
-- **character**: Actor details (name, gender, age, appearance) — use in imageGenPrompt when present
-- **voice**: Selected voice style — calibrate dialogue energy to match
+- **characters**: Array of actor details. Single-character: one entry. Multi-character (podcast): multiple entries, each with index, name, gender, age, appearance. Use characterIndex in scenes/shots to reference the correct character.
+- **voice**: Selected voice style (single-character) or per-character voices — calibrate dialogue energy to match
 - **targetAudience**: Who the video is for — adapt vocabulary, formality, cultural references
 - **userDirection**: The user's creative vision / product description
-- **videoType**: ugc, reaction, montage, nocharacter_montage
+- **videoType**: ugc, reaction, montage, nocharacter_montage, podcast
 - **isSilent**: Whether the video has NO dialogue
 - **productImages**: Product reference images (analyze to inform visual descriptions)
 
@@ -123,6 +123,19 @@ You MUST follow the provided structure blueprint EXACTLY:
 - Same story beats in the same order
 - For b-roll/visual scenes with shots in the blueprint, generate matching shot breakdowns (1-5 shots per scene)
 - For a-roll scenes, set shots to empty array []
+
+===== MULTI-CHARACTER VIDEOS (PODCAST) =====
+
+When multiple characters are provided (characterCount > 1):
+- Every a-roll scene MUST have a characterIndex field matching one of the provided character indices
+- The imageGenPrompt for each scene must describe the CORRECT character's appearance based on characterIndex — use that character's hair color, skin tone, clothing, etc.
+- Each a-roll scene features exactly ONE character speaking — never 2 in one shot
+- Dialogue tone and vocabulary can vary per character for realism (e.g., host is energetic, guest is thoughtful)
+- For b-roll/visual shots with shotType CHARACTER or CHARACTER_AND_PRODUCT, set shot-level characterIndex to indicate which character appears. Defaults to scene-level characterIndex if omitted.
+- Alternate characters across consecutive a-roll scenes for natural conversation pacing
+
+When only one character is provided (default):
+- Do NOT set characterIndex on scenes or shots — it is not needed
 
 ===== SILENT / NO-CHARACTER HANDLING =====
 

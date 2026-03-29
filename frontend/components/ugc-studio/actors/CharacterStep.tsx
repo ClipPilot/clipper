@@ -27,6 +27,9 @@ const PAGE_SIZE = 12;
 interface CharacterStepProps {
   selectedCharacter: Character | null;
   onCharacterSelect: (character: Character | null) => void;
+  selectedCharacters?: Character[];
+  onCharactersChange?: (characters: Character[]) => void;
+  maxSelections?: number;
   onContinue?: () => void;
   showCreateTab?: boolean;
 }
@@ -34,9 +37,13 @@ interface CharacterStepProps {
 export function CharacterStep({
   selectedCharacter,
   onCharacterSelect,
+  selectedCharacters = [],
+  onCharactersChange,
+  maxSelections = 1,
   onContinue,
   showCreateTab = false,
 }: CharacterStepProps) {
+  const isMultiSelect = maxSelections > 1;
   const { selectedTeam, isLoading: teamsLoading } = useTeams();
   const [activeTab, setActiveTab] = useState<CharacterSource>(showCreateTab ? "create-new" : "my-actors");
   const [myActors, setMyActors] = useState<Character[]>([]);
@@ -198,18 +205,93 @@ export function CharacterStep({
     );
   }
 
+  const handleMultiSelect = (char: Character) => {
+    if (!onCharactersChange) return;
+    const alreadySelected = selectedCharacters.find((c) => c.id === char.id);
+    if (alreadySelected) {
+      onCharactersChange(selectedCharacters.filter((c) => c.id !== char.id));
+    } else if (selectedCharacters.length < maxSelections) {
+      onCharactersChange([...selectedCharacters, char]);
+    }
+  };
+
+  const handleDetailSelect = (char: Character) => {
+    if (isMultiSelect) {
+      handleMultiSelect(char);
+    } else {
+      onCharacterSelect(char);
+    }
+    setDetailCharacter(null);
+  };
+
+  const multiSelectReady = isMultiSelect && selectedCharacters.length >= 2;
+  const singleSelectReady = !isMultiSelect && selectedCharacter;
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center mb-4 sm:mb-6 px-2">
         <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-1 sm:mb-2">
-          Choose Your Actor
+          {isMultiSelect ? `Select Up to ${maxSelections} Actors` : "Choose Your Actor"}
         </h2>
         <p className="text-text-secondary text-sm sm:text-base">
-          Create a new AI actor or select from your library
+          {isMultiSelect
+            ? `Pick ${maxSelections} actors for your podcast — each will speak in different scenes`
+            : "Create a new AI actor or select from your library"}
         </p>
       </div>
 
-      {selectedCharacter && (
+      {isMultiSelect && selectedCharacters.length > 0 && (
+        <Card className="bg-gradient-to-r from-accent-400/10 to-purple-500/10 border border-accent-400/30 mb-6">
+          <CardBody className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-text-secondary font-medium">
+                Selected ({selectedCharacters.length}/{maxSelections})
+              </span>
+              {onContinue && multiSelectReady && (
+                <Button
+                  className="bg-accent-400 text-white font-semibold"
+                  size="sm"
+                  endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
+                  onPress={onContinue}
+                >
+                  Continue
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              {selectedCharacters.map((char, idx) => (
+                <div key={char.id} className="flex items-center gap-2 bg-surface-elevated rounded-xl p-2 pr-3">
+                  <div className="relative w-10 h-12 rounded-lg overflow-hidden bg-surface-base shrink-0">
+                    {(char.primaryImageUrl || char.imageUrls?.[char.primary_image_index || 0]) ? (
+                      <img
+                        src={char.primaryImageUrl || char.imageUrls?.[char.primary_image_index || 0]}
+                        alt={char.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Icon icon="solar:user-circle-bold-duotone" className="text-text-muted" width={20} />
+                      </div>
+                    )}
+                    <div className="absolute -top-0.5 -left-0.5 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center text-[10px] text-white font-bold">
+                      {idx + 1}
+                    </div>
+                  </div>
+                  <span className="text-sm font-medium text-text-primary truncate max-w-[100px]">{char.name}</span>
+                  <button
+                    className="ml-1 text-text-muted hover:text-red-400 transition-colors"
+                    onClick={() => onCharactersChange?.(selectedCharacters.filter((c) => c.id !== char.id))}
+                  >
+                    <Icon icon="solar:close-circle-bold" width={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {!isMultiSelect && selectedCharacter && (
         <Card className="bg-gradient-to-r from-accent-400/10 to-purple-500/10 border border-accent-400/30 mb-6">
           <CardBody className="p-4">
             <div className="flex items-center gap-4">
@@ -390,7 +472,8 @@ export function CharacterStep({
               <>
                 <CharacterGrid
                   characters={mainActors}
-                  selectedId={selectedCharacter?.id}
+                  selectedId={isMultiSelect ? undefined : selectedCharacter?.id}
+                  selectedIds={isMultiSelect ? selectedCharacters.map((c) => c.id) : undefined}
                   onSelect={(char) => setDetailCharacter(char)}
                   showShareToggle
                   onShareToggle={handleShareToggle}
@@ -510,7 +593,8 @@ export function CharacterStep({
               <>
                 <CharacterGrid
                   characters={communityActors}
-                  selectedId={selectedCharacter?.id}
+                  selectedId={isMultiSelect ? undefined : selectedCharacter?.id}
+                  selectedIds={isMultiSelect ? selectedCharacters.map((c) => c.id) : undefined}
                   onSelect={(char) => setDetailCharacter(char)}
                 />
                 {communityActors.length < communityTotal && (
@@ -564,10 +648,7 @@ export function CharacterStep({
         isOpen={!!detailCharacter}
         onClose={() => setDetailCharacter(null)}
         allCharacters={[...myActors, ...communityActors]}
-        onSelect={(char) => {
-          onCharacterSelect(char);
-          setDetailCharacter(null);
-        }}
+        onSelect={handleDetailSelect}
         onVariation={(char) => {
           setDetailCharacter(null);
           setVariationCharacter(char);

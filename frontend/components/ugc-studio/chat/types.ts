@@ -14,11 +14,13 @@ export interface InitAgentResult {
   videoType: string;
   isSilent: boolean;
   character: boolean;
+  characterCount?: number;
   targetAudience: string;
   structure: Array<{
     sceneType: string;
     slug: string;
     description: string;
+    characterIndex?: number;
     shots?: BRollShot[];
   }>;
 }
@@ -31,6 +33,7 @@ export interface ScriptAgentShot {
   cinematicPrompt: string;
   durationSeconds: number;
   productImageNeeded: boolean;
+  characterIndex?: number;
 }
 
 export interface ScriptAgentScene {
@@ -45,6 +48,7 @@ export interface ScriptAgentScene {
   imageGenPrompt: string;
   cinematicPrompt: string;
   ambientSound: string | null;
+  characterIndex?: number;
   shots: ScriptAgentShot[];
 }
 

@@ -181,6 +181,7 @@ export class UGCScriptController {
       const {
         teamId,
         characterId,
+        characters,
         structure,
         character,
         voice,
@@ -207,6 +208,7 @@ export class UGCScriptController {
       const result = await ugcScriptService.generateScriptViaAgent({
         teamId,
         characterId,
+        characters,
         structure,
         character,
         voice,
@@ -390,6 +392,8 @@ export class UGCScriptController {
         isSilent: fullScript.isSilent,
         hasCharacter: fullScript.hasCharacter,
         videoType: fullScript.videoType,
+        charactersConfig: fullScript.charactersConfig,
+        characterCount: fullScript.characterCount,
       });
     } catch (error) {
       console.error("[UGC_SCRIPT] Get full script error:", error);

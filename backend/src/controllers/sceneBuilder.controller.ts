@@ -136,6 +136,7 @@ interface SceneData {
   shotType: string;
   cameraAngle: string;
   cinematicPrompt: string;
+  characterIndex?: number;
   bRollShots?: BRollShotData[] | null;
 }
 
@@ -389,6 +390,7 @@ export class SceneBuilderController {
           shotType?: string;
           cameraAngle?: string;
           cinematicPrompt?: string;
+          characterIndex?: number;
           // Optional refinements
           userRefinement?: string;
           supportingImageKeys?: string[];
@@ -457,6 +459,8 @@ export class SceneBuilderController {
 
       const selectedScript = scriptsData[selectedVariantIndex];
 
+      const charactersConfig = script?.characters_config as Array<{ characterId: number; voiceId?: string }> | null;
+
       const jobIds: string[] = [];
       const BATCH_SIZE = 2;
       const DELAY_BETWEEN_BATCHES_MS = 1000;
@@ -514,6 +518,12 @@ export class SceneBuilderController {
           sceneRequest.userRefinement
         );
 
+        const dbSceneCharIndex = dbSceneData?.characterIndex;
+        const sceneCharIndex = sceneRequest.characterIndex ?? dbSceneCharIndex;
+        const sceneCharacterId = (sceneCharIndex !== undefined && charactersConfig)
+          ? charactersConfig[sceneCharIndex]?.characterId ?? characterId
+          : characterId;
+
         const [job] = await db
           .insert(sceneImageGenerationJobs)
           .values({
@@ -522,7 +532,7 @@ export class SceneBuilderController {
             script_id: scriptId,
             scene_id: sceneRequest.sceneId,
             scene_number: sceneRequest.sceneNumber,
-            character_id: characterId,
+            character_id: sceneCharacterId,
             prompt,
             user_refinement: sceneRequest.userRefinement || null,
             supporting_image_keys: sceneRequest.supportingImageKeys || [],
@@ -574,7 +584,7 @@ export class SceneBuilderController {
           scriptId,
           sceneId: sceneRequest.sceneId,
           sceneNumber: sceneRequest.sceneNumber,
-          characterId,
+          characterId: sceneCharacterId,
           sceneData: {
             sceneType: sceneData.sceneType,
             action: sceneData.action,

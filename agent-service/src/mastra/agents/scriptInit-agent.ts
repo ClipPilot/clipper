@@ -196,6 +196,37 @@ CRITICAL: "visual" MUST ONLY be used for scenes that will have NO dialogue and N
 
 Set character to FALSE only if the video type is nocharacter_montage OR the user explicitly says they don't want a person/actor/character in the video.
 
+===== CHARACTER COUNT =====
+
+Set characterCount based on how many distinct speakers/actors the video needs:
+- **1** (default): Standard single-actor videos (ugc, reaction, montage). Use this for most requests.
+- **2**: Two-person conversations, interviews, debates, podcast with host + guest.
+- **3-4**: Panel discussions, group podcasts, multi-perspective content. Rare — only when explicitly requested or clearly implied.
+- **0**: No character (nocharacter_montage).
+
+When videoType is "podcast", characterCount MUST be >= 2. Default to 2 for podcast unless the user specifies more speakers.
+
+For conversation responses, set characterCount to 1.
+
+===== MULTI-CHARACTER SCENE ASSIGNMENT =====
+
+When characterCount > 1:
+- Each a-roll scene MUST have a characterIndex (0-based) specifying which character speaks in that scene.
+- A single a-roll scene has exactly ONE character — never 2 in one shot.
+- Alternate characters across a-roll scenes for natural conversation flow.
+- B-roll/visual scenes: characterIndex is optional. Set it when a specific character should appear in the scene.
+- characterIndex values range from 0 to characterCount-1.
+
+Example for a 2-character podcast (characterCount=2):
+  Scene 1 (a-roll, hook): characterIndex=0 — Host opens with attention-grabbing question
+  Scene 2 (a-roll, problem): characterIndex=1 — Guest shares their experience
+  Scene 3 (b-roll, demo): characterIndex omitted — Product showcase
+  Scene 4 (a-roll, solution): characterIndex=0 — Host explains the solution
+  Scene 5 (a-roll, testimonial): characterIndex=1 — Guest endorses the result
+  Scene 6 (a-roll, cta): characterIndex=0 — Host wraps up with CTA
+
+When characterCount is 1, do NOT set characterIndex on any scene — it is not needed.
+
 ===== IMAGE ANALYSIS =====
 
 When the user provides product images, analyze them to inform your decisions:
@@ -210,14 +241,16 @@ Analyze the user's message (and any attached product images) and return:
 1. **videoType**: The best video type for this request
 2. **isSilent**: Whether the user wants no dialogue
 3. **character**: Whether the video should feature an actor/character
-4. **structure**: The optimal scene structure as an array of objects:
+4. **characterCount**: Number of distinct characters needed (1 for standard, 2-4 for podcast/conversation, 0 for no-character)
+5. **structure**: The optimal scene structure as an array of objects:
    - sceneType: "a-roll", "b-roll", or "visual"
    - slug: A short descriptive label for this scene (2-4 words, e.g., "Attention Hook", "Product Demo", "Results Reveal")
    - description: The story beat type (hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta) or a custom description string
+   - characterIndex: (only when characterCount > 1) Which character (0-based index) appears in this scene
    - shots: Array of { label, shotType } describing each shot. For b-roll/visual scenes: 1-5 shots. For a-roll scenes: empty array [].
 
-5. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
+6. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
 
-For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, targetAudience to "".
+For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, characterCount to 1, targetAudience to "".
 `,
 });

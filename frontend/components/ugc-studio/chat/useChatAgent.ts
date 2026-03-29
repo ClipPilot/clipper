@@ -55,6 +55,7 @@ function mapScenesToUGC(scenes: ScriptAgentScene[]): UGCScene[] {
     shotType: s.sceneType as UGCScene["shotType"],
     cameraAngle: "medium-shot" as UGCScene["cameraAngle"],
     ambientSound: s.ambientSound || undefined,
+    characterIndex: s.characterIndex,
     bRollShots:
       s.shots && s.shots.length > 0
         ? s.shots.map((shot) => ({
@@ -123,6 +124,7 @@ export function useChatAgent() {
   const waitingForAnalysisRef = useRef(false);
 
   const selectedCharacterRef = useRef<any>(null);
+  const selectedCharactersRef = useRef<Array<{ character: any; voiceId?: string; voiceName?: string }>>([]);
   const teamIdRef = useRef<number | null>(null);
   const pollingIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -162,7 +164,8 @@ export function useChatAgent() {
     async (script: UGCScript, generatedScriptId: string) => {
       const teamId = teamIdRef.current;
       const characterId = selectedCharacterRef.current?.id;
-      if (!teamId || !characterId) return;
+      const multiChars = selectedCharactersRef.current;
+      if (!teamId || (!characterId && multiChars.length === 0)) return;
 
       const scenesPayload = script.scenes.map((scene) => ({
         sceneId: scene.id,
@@ -173,6 +176,7 @@ export function useChatAgent() {
         emotion: scene.emotion,
         shotType: scene.shotType,
         cameraAngle: scene.cameraAngle,
+        characterIndex: scene.characterIndex,
         bRollShots: scene.bRollShots,
       }));
 
@@ -186,7 +190,7 @@ export function useChatAgent() {
         const result = await sceneBuilderAPI.generateAllSceneImages({
           teamId,
           scriptId: generatedScriptId,
-          characterId,
+          characterId: characterId || multiChars[0]?.character.id,
           scenes: scenesPayload,
         });
 
@@ -283,11 +287,13 @@ export function useChatAgent() {
             videoType: result.videoType,
             isSilent: result.isSilent,
             character: result.character,
+            characterCount: (result as any).characterCount,
             targetAudience: result.targetAudience,
             structure: result.scenes.map((s: any) => ({
               sceneType: s.sceneType,
               slug: s.slug,
               description: s.storyBeat,
+              characterIndex: s.characterIndex,
               shots: s.shots?.map((sh: any) => ({ label: sh.label, shotType: sh.shotType })) || [],
             })),
           };
@@ -623,11 +629,13 @@ export function useChatAgent() {
               videoType: result.videoType,
               isSilent: result.isSilent,
               character: result.character,
+              characterCount: (result as any).characterCount,
               targetAudience: result.targetAudience,
               structure: result.scenes.map((s: any) => ({
                 sceneType: s.sceneType,
                 slug: s.slug,
                 description: s.storyBeat,
+                characterIndex: s.characterIndex,
                 shots: s.shots?.map((sh: any) => ({ label: sh.label, shotType: sh.shotType })) || [],
               })),
             };
@@ -663,6 +671,7 @@ export function useChatAgent() {
                     videoType: result.videoType!,
                     isSilent: result.isSilent!,
                     character: result.character!,
+                    characterCount: (result as any).characterCount,
                     targetAudience: (result as any).targetAudience || "",
                     structure: result.structure,
                   }
@@ -705,6 +714,7 @@ export function useChatAgent() {
         isSilent: result.isSilent,
         videoType: result.videoType,
         hasCharacter: result.character,
+        characterCount: result.characterCount ?? (result.character ? 1 : 0),
         targetAudience: result.targetAudience || "",
         productImageKeys: imageKeys,
         customPattern,
@@ -780,6 +790,9 @@ export function useChatAgent() {
         triggerImageGeneration(ugcScript, result.scriptId);
       } else {
         // Standard UGC path: generate script via agent
+        const multiChars = selectedCharactersRef.current;
+        const isMultiChar = multiChars.length > 1;
+
         const result = await ugcScriptAPI.generateScriptAgent({
           teamId: teamIdRef.current,
           structure: blueprint.structure,
@@ -792,6 +805,18 @@ export function useChatAgent() {
                 appearance_config: character.appearance_config,
               }
             : null,
+          characters: isMultiChar
+            ? multiChars.map((c) => ({
+                characterId: c.character.id,
+                character: {
+                  name: c.character.name,
+                  gender: c.character.gender,
+                  age_range: c.character.age_range,
+                  appearance_config: c.character.appearance_config,
+                },
+                voiceId: c.voiceId,
+              }))
+            : undefined,
           voice: videoState.voice ? { name: videoState.voice.name } : null,
           targetAudience: blueprint.targetAudience || "",
           productImageKeys: allImageKeys,
@@ -870,6 +895,11 @@ export function useChatAgent() {
     }
   }, [setVideoState]);
 
+  const confirmCharacters = useCallback((chars: Array<{ character: any; voiceId?: string; voiceName?: string }>) => {
+    selectedCharactersRef.current = chars;
+    setVideoState((prev) => ({ ...prev, characters: chars }));
+  }, [setVideoState]);
+
   const regenerateAllImages = useCallback(() => {
     if (!videoState.scriptId || videoState.scenes.length === 0) return;
     const script: UGCScript = {
@@ -901,8 +931,10 @@ export function useChatAgent() {
     updateScene,
     loadExistingScript,
     confirmCharacter,
+    confirmCharacters,
     regenerateAllImages,
     selectedCharacterRef,
+    selectedCharactersRef,
     teamIdRef,
   };
 }

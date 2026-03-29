@@ -155,6 +155,7 @@ export interface SceneVideoData {
   ambientSound?: string | null;
   bRollShots?: BRollShotVideoData[];
   sharedAmbientAudioPath?: string;
+  voiceId?: string;
 }
 
 export interface ProcessedScene {
@@ -1159,12 +1160,14 @@ async function processScene(
     return processSilentBrollScene(scene, teamId, scriptId, onProgress);
   }
 
+  const effectiveVoiceId = scene.voiceId || voiceId;
+
   if (scene.shotType === "a-roll") {
     return processArollScene(
       scene,
       teamId,
       scriptId,
-      voiceId,
+      effectiveVoiceId,
       onProgress,
       speedBoost,
     );
@@ -1174,7 +1177,7 @@ async function processScene(
     scene,
     teamId,
     scriptId,
-    voiceId,
+    effectiveVoiceId,
     onProgress,
     speedBoost,
   );

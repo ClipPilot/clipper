@@ -50,6 +50,7 @@ export interface GenerateAllSceneImagesRequest {
     shotType?: string;
     cameraAngle?: string;
     bRollShots?: BRollShotData[] | null;
+    characterIndex?: number;
     // Optional refinements
     userRefinement?: string;
     supportingImageKeys?: string[];

@@ -302,6 +302,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   jobId: string;
   scriptId: string;
   voiceId: string;
+  voiceConfig?: Array<{ characterId: number; voiceId: string }>;
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
@@ -314,6 +315,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
     emotion: string;
     ambientSound?: string | null;
     regenerate?: boolean;
+    voiceId?: string;
     bRollShots?: Array<{
       action: string;
       cinematicPrompt: string;
@@ -633,6 +635,7 @@ class SQSService {
     userId: number;
     scriptId: string;
     voiceId: string;
+    voiceConfig?: Array<{ characterId: number; voiceId: string }>;
     scenes?: GenerateUGCVideoJob["scenes"];
     regenerateSceneId?: string;
     characterId?: number;
@@ -648,6 +651,7 @@ class SQSService {
       userId: params.userId,
       scriptId: params.scriptId,
       voiceId: params.voiceId,
+      voiceConfig: params.voiceConfig,
       scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
       ttsSpeed: params.ttsSpeed,

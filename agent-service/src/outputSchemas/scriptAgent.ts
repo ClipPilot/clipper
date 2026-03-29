@@ -22,6 +22,12 @@ export const scriptAgentShotSchema = z.object({
   productImageNeeded: z
     .boolean()
     .describe("Whether this shot requires a product reference image"),
+  characterIndex: z
+    .number()
+    .min(0)
+    .max(3)
+    .optional()
+    .describe("For CHARACTER or CHARACTER_AND_PRODUCT shots in multi-character videos: which character (by index) appears. Defaults to scene-level characterIndex if omitted."),
 });
 
 export const scriptAgentSceneSchema = z.object({
@@ -57,6 +63,12 @@ export const scriptAgentSceneSchema = z.object({
     .describe(
       "REQUIRED for a-roll scenes: detailed background audio description matching the environment (e.g. 'Recorded through iPhone mic — clear voice with slight room echo. Faint air conditioning hum.'). Set to null for b-roll/visual scenes.",
     ),
+  characterIndex: z
+    .number()
+    .min(0)
+    .max(3)
+    .optional()
+    .describe("Index of the character for this scene (0-based). Required for a-roll scenes in multi-character videos. Omit for single-character videos."),
   shots: z
     .array(scriptAgentShotSchema)
     .describe(

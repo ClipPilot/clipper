@@ -41,6 +41,13 @@ export const VIDEO_TYPES = {
     description:
       "Pure visual montage — no actor, no dialogue. All scenes are visual. Product-only aesthetic videos, focusing on the product or service through various clips and scenes.",
   },
+  podcast: {
+    name: "Podcast",
+    isSilent: false,
+    character: true,
+    description:
+      "Podcast/conversation-style video — 2-4 actors taking turns speaking to camera. Different actors appear in different a-roll scenes. Great for interviews, debates, discussions, and multi-perspective content. ALWAYS set characterCount to 2 unless user explicitly requests more speakers.",
+  },
 } as const;
 
 export const videoTypeEnum = z.enum(
@@ -55,6 +62,12 @@ export const structureSchema = z.array(
     sceneType: z.enum(["a-roll", "b-roll", "visual"]),
     slug: z.string(),
     description: z.union([storyBeatEnum, z.string()]),
+    characterIndex: z
+      .number()
+      .min(0)
+      .max(3)
+      .optional()
+      .describe("Index of the character for this scene (0-based). Required for a-roll scenes in multi-character videos (podcast). Omit for single-character videos."),
     shots: z
       .array(
         z.object({
@@ -75,6 +88,7 @@ export const initAgentSchema = z.object({
   ),
   isSilent: z.boolean().describe("Whether the video is silent. Set to false for conversation responses."),
   character: z.boolean().describe("Whether the video has a character. Set to true for conversation responses."),
+  characterCount: z.number().min(0).max(4).describe("Number of characters needed. 0 = no character, 1 = standard single-actor (default), 2-4 = multi-character (podcast, conversation). Set to 1 for conversation responses."),
   structure: structureSchema.describe("The scene structure array. Set to an empty array [] for conversation responses."),
   videoType: videoTypeEnum.describe("The video type. Set to 'ugc' for conversation responses."),
   targetAudience: z.string().describe(

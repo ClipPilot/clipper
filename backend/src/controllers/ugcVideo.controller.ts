@@ -199,7 +199,7 @@ export class UGCVideoController {
    */
   async generateVideo(req: AuthRequest, res: Response) {
     try {
-      const { teamId, scriptId, voiceId, isSilent: requestSilent } = req.body;
+      const { teamId, scriptId, voiceId, voiceConfig, isSilent: requestSilent } = req.body;
 
       if (!teamId || !scriptId) {
         return res.status(400).json({
@@ -248,10 +248,10 @@ export class UGCVideoController {
         script.custom_pattern as { type: string; shot: string }[] | null,
       );
 
-      // voiceId is required unless silent mode
-      if (!isSilent && !voiceId) {
+      const hasVoiceConfig = Array.isArray(voiceConfig) && voiceConfig.length > 0;
+      if (!isSilent && !voiceId && !hasVoiceConfig) {
         return res.status(400).json({
-          error: "voiceId is required for non-silent videos",
+          error: "voiceId or voiceConfig is required for non-silent videos",
         });
       }
 
@@ -303,7 +303,12 @@ export class UGCVideoController {
         .where(eq(ugcScripts.id, scriptId));
       const scenes: GenerateUGCVideoJob["scenes"] = [];
 
-      for (const scene of selectedScript.scenes as (SceneData & { slug?: string })[]) {
+      const charactersConfig = script.characters_config as Array<{ characterId: number; voiceId: string }> | null;
+      const effectiveVoiceConfig = voiceConfig as Array<{ characterId: number; voiceId: string }> | undefined
+        || charactersConfig
+        || null;
+
+      for (const scene of selectedScript.scenes as (SceneData & { slug?: string; characterIndex?: number })[]) {
         const sceneId = scene.id || scene.slug;
         const savedImage = savedImages.find((img) => img.scene_id === sceneId);
 
@@ -311,6 +316,14 @@ export class UGCVideoController {
           return res.status(400).json({
             error: `No image selected for scene ${scene.sceneNumber}. Please select images for all scenes first.`,
           });
+        }
+
+        let sceneVoiceId: string | undefined;
+        if (scene.characterIndex !== undefined && effectiveVoiceConfig) {
+          sceneVoiceId = effectiveVoiceConfig[scene.characterIndex]?.voiceId;
+        }
+        if (!sceneVoiceId && voiceId) {
+          sceneVoiceId = voiceId;
         }
 
         const sceneData: GenerateUGCVideoJob["scenes"][number] = {
@@ -324,6 +337,7 @@ export class UGCVideoController {
           action: scene.action,
           emotion: scene.emotion,
           ambientSound: scene.ambientSound,
+          voiceId: sceneVoiceId,
         };
 
         if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
@@ -362,7 +376,6 @@ export class UGCVideoController {
 
       await teamService.incrementTeamUsage(teamId, creditCost);
 
-      // Create the job record
       const [job] = await db
         .insert(ugcVideoGenerationJobs)
         .values({
@@ -370,7 +383,8 @@ export class UGCVideoController {
           user_id: req.user.dbUserId,
           script_id: scriptId,
           voice_id: voiceId || "",
-          status: "queued",
+          voice_config: effectiveVoiceConfig || undefined,
+          status: "queued" as const,
           progress: 0,
           progress_message: "Queued for video generation...",
         })
@@ -383,6 +397,7 @@ export class UGCVideoController {
         userId: req.user.dbUserId,
         scriptId,
         voiceId: voiceId || "",
+        voiceConfig: effectiveVoiceConfig || undefined,
         scenes,
         isSilent,
       });
