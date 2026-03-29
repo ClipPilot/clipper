@@ -12,8 +12,6 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
-import { emailNotiService } from "../../services/emailNoti.service";
-import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 
 import {
@@ -434,21 +432,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       throw new Error(`All ${failedCount} clips failed to process`);
     }
 
-    // Send email only after ALL clips are complete
-    try {
-      const user = await userService.getUserById(userId);
-      const frontendUrl =
-        process.env.FRONTEND_URL || "https://platform.cuttr.com";
-      await emailNotiService.sendClipsReady(user.email, {
-        userName: user.first_name || "there",
-        clipCount: clipIds.length,
-        sourceFileName: originalFileName || "your video",
-        clipsUrl: `${frontendUrl}/clips`,
-      });
-      console.log(`Clips ready email sent to ${user.email}`);
-    } catch (emailError) {
-      console.error("Failed to send clips ready email:", emailError);
-    }
+    console.log(`All ${clipIds.length} clips processed successfully`);
   } catch (error) {
     console.error("Error processing clips:", error);
 
