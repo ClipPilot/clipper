@@ -141,6 +141,17 @@ export interface BRollShotVideoData {
   imageKey: string;
 }
 
+export interface ArollShotVideoData {
+  dialogue: string;
+  action: string;
+  emotion: string;
+  characterIndex: number;
+  voiceId: string;
+  imageKey: string;
+  ambientSound?: string | null;
+  cinematicPrompt?: string;
+}
+
 export interface SceneVideoData {
   sceneId: string;
   sceneNumber: number;
@@ -154,6 +165,7 @@ export interface SceneVideoData {
   emotion: string;
   ambientSound?: string | null;
   bRollShots?: BRollShotVideoData[];
+  arollShots?: ArollShotVideoData[];
   sharedAmbientAudioPath?: string;
   voiceId?: string;
 }
@@ -1146,6 +1158,166 @@ async function processSilentBrollScene(
   };
 }
 
+async function processArollMultiScene(
+  scene: SceneVideoData,
+  teamId: number,
+  scriptId: string,
+  onProgress?: (message: string) => void,
+  speedBoost: number = SPEECH_SPEED_BOOST,
+): Promise<ProcessedScene> {
+  const { sceneId, sceneNumber, arollShots, ambientSound, sharedAmbientAudioPath } = scene;
+
+  if (!arollShots || arollShots.length < 2) {
+    throw new Error(`a-roll-multi scene ${sceneNumber} requires at least 2 arollShots`);
+  }
+
+  console.log(
+    `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Processing ${arollShots.length} podcast shots`,
+  );
+
+  onProgress?.(
+    `Scene ${sceneNumber}: Generating ${arollShots.length} podcast shots...`,
+  );
+
+  const shotVideoPaths = await Promise.all(
+    arollShots.map(async (shot, i) => {
+      const shotLabel = `Scene ${sceneNumber} Shot ${i + 1}`;
+      console.log(
+        `[UGC Assembly] ${shotLabel}: Char ${shot.characterIndex}, dialogue "${shot.dialogue.substring(0, 40)}..."`,
+      );
+
+      const {
+        audioKey,
+        duration: audioDuration,
+      } = await generateDialogueAudio(
+        shot.voiceId,
+        shot.dialogue,
+        teamId,
+        scriptId,
+        sceneNumber * 100 + i,
+        speedBoost,
+      );
+
+      console.log(
+        `[UGC Assembly] ${shotLabel}: Audio ${audioDuration.toFixed(2)}s`,
+      );
+
+      const imageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
+      const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
+
+      const { videoUrl: avatarVideoUrl } =
+        await veedFabricService.generateFabricVideoWithRetry({
+          imageUrl,
+          audioUrl,
+          resolution: "720p",
+        });
+
+      const shotVideoPath = path.join(
+        OUTPUT_DIR,
+        `podmulti_${sceneNumber}_shot${i}_${Date.now()}.mp4`,
+      );
+      await s3Service.downloadVideoFromUrl(avatarVideoUrl, shotVideoPath);
+
+      const trimmedPath = trimVideoToAudio(
+        shotVideoPath,
+        audioDuration,
+        sceneNumber * 100 + i,
+      );
+      if (fs.existsSync(shotVideoPath) && shotVideoPath !== trimmedPath) {
+        fs.unlinkSync(shotVideoPath);
+      }
+
+      console.log(
+        `[UGC Assembly] ${shotLabel}: Video trimmed to ${audioDuration.toFixed(2)}s`,
+      );
+
+      return trimmedPath;
+    }),
+  );
+
+  const concatenatedPath = path.join(
+    OUTPUT_DIR,
+    `podmulti_concat_${sceneNumber}_${Date.now()}.mp4`,
+  );
+  mergeUGCClips(shotVideoPaths, concatenatedPath);
+
+  for (const p of shotVideoPaths) {
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
+  let processedVideoPath = concatenatedPath;
+  const totalDuration = getMediaDuration(concatenatedPath);
+
+  console.log(
+    `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Concatenated ${arollShots.length} shots, total ${totalDuration.toFixed(2)}s`,
+  );
+
+  const effectiveAmbient = arollShots[0].ambientSound || ambientSound;
+  if (sharedAmbientAudioPath || (effectiveAmbient && effectiveAmbient.trim())) {
+    onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
+
+    try {
+      let ambientPath: string;
+      let shouldDeleteAmbient = false;
+
+      if (sharedAmbientAudioPath && fs.existsSync(sharedAmbientAudioPath)) {
+        console.log(
+          `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Using shared ambient audio for consecutive A-roll`,
+        );
+        ambientPath = sharedAmbientAudioPath;
+      } else {
+        const ambientBuffer = await elevenLabsService.generateSoundEffect({
+          text: effectiveAmbient!,
+          durationSeconds: totalDuration + 2,
+          promptInfluence: 0.3,
+        });
+        ambientPath = path.join(
+          OUTPUT_DIR,
+          `podmulti_ambient_${sceneNumber}_${Date.now()}.mp3`,
+        );
+        fs.writeFileSync(ambientPath, ambientBuffer);
+        shouldDeleteAmbient = true;
+      }
+
+      const mixedPath = path.join(
+        OUTPUT_DIR,
+        `podmulti_mixed_${sceneNumber}_${Date.now()}.mp4`,
+      );
+      const mixCmd = `ffmpeg -y -i "${processedVideoPath}" -stream_loop -1 -i "${ambientPath}" -filter_complex "[1:a]volume=0.35[ambient];[0:a][ambient]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} -t ${totalDuration.toFixed(3)} "${mixedPath}"`;
+      execSync(mixCmd, { stdio: "pipe" });
+
+      if (shouldDeleteAmbient && fs.existsSync(ambientPath)) fs.unlinkSync(ambientPath);
+      if (fs.existsSync(processedVideoPath)) fs.unlinkSync(processedVideoPath);
+      processedVideoPath = mixedPath;
+
+      console.log(
+        `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Ambient audio mixed`,
+      );
+    } catch (err) {
+      console.error(
+        `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Failed to add ambient audio:`,
+        err,
+      );
+    }
+  }
+
+  const videoKey = `teams/${teamId}/ugc-videos/${scriptId}/scene_${sceneNumber}_${Date.now()}.mp4`;
+  await s3Service.uploadFile(processedVideoPath, videoKey, "video/mp4");
+
+  console.log(
+    `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber} complete: ${totalDuration.toFixed(2)}s`,
+  );
+
+  return {
+    sceneId,
+    sceneNumber,
+    audioKey: "",
+    videoKey,
+    localVideoPath: processedVideoPath,
+    duration: totalDuration,
+  };
+}
+
 async function processScene(
   scene: SceneVideoData,
   teamId: number,
@@ -1155,6 +1327,10 @@ async function processScene(
   speedBoost: number = SPEECH_SPEED_BOOST,
   isSilent: boolean = false,
 ): Promise<ProcessedScene> {
+  if (scene.shotType === "a-roll-multi" && scene.arollShots?.length) {
+    return processArollMultiScene(scene, teamId, scriptId, onProgress, speedBoost);
+  }
+
   // Silent mode: skip all TTS, route everything through silent b-roll pipeline
   if (isSilent || !scene.dialogue || scene.dialogue.trim() === "") {
     return processSilentBrollScene(scene, teamId, scriptId, onProgress);
@@ -1214,9 +1390,9 @@ async function prepareConsecutiveArollAmbientAudio(
 
   for (let i = 0; i < sortedScenes.length; i++) {
     const scene = sortedScenes[i];
-    const isAroll = scene.shotType === "a-roll";
+    const isAroll = scene.shotType === "a-roll" || scene.shotType === "a-roll-multi";
     const nextScene = sortedScenes[i + 1];
-    const nextIsAroll = nextScene?.shotType === "a-roll";
+    const nextIsAroll = nextScene?.shotType === "a-roll" || nextScene?.shotType === "a-roll-multi";
 
     if (isAroll && sequenceStart === null) {
       sequenceStart = i;

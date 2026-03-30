@@ -50,6 +50,14 @@ export interface GenerateAllSceneImagesRequest {
     shotType?: string;
     cameraAngle?: string;
     bRollShots?: BRollShotData[] | null;
+    arollShots?: Array<{
+      dialogue: string;
+      action: string;
+      characterIndex: number;
+      ambientSound?: string | null;
+      cinematicPrompt?: string;
+      imageGenPrompt?: string;
+    }> | null;
     characterIndex?: number;
     // Optional refinements
     userRefinement?: string;

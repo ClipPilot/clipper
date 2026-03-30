@@ -48,7 +48,9 @@ export function ScriptEditingPhase({
 }: ScriptEditingPhaseProps) {
   const selectedScript = scripts[selectedVariantIndex];
   const hasArollWithoutDialogue = selectedScript?.scenes.some(
-    (scene) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+    (scene) =>
+      (scene.shotType === "a-roll" && !scene.dialogue?.trim()) ||
+      (scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s) => !s.dialogue?.trim())))
   );
 
   return (

@@ -17,6 +17,7 @@ const VIDEO_TYPE_LABELS: Record<string, string> = {
 
 const SHOT_TYPE_TOOLTIPS: Record<string, string> = {
   "a-roll": "Actor speaking directly to camera",
+  "a-roll-multi": "Podcast conversation — characters take turns speaking",
   "b-roll": "Product shots with voiceover narration",
   "visual": "Silent b-roll — no audio, music only",
 };

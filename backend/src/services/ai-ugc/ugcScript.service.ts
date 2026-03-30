@@ -168,7 +168,8 @@ export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
       while (
         j < scenes.length &&
         scenes[j].shotType === "a-roll" &&
-        consecutiveArolls.length < MAX_AROLL_MERGE_COUNT
+        consecutiveArolls.length < MAX_AROLL_MERGE_COUNT &&
+        (scenes[j] as any).characterIndex === (current as any).characterIndex
       ) {
         consecutiveArolls.push(scenes[j]);
         j++;
@@ -931,12 +932,27 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
         emotion: this.extractEmotionFromDialogue(scene.dialogue) || "confident",
         // Agent's duration → backend's estimatedDurationSeconds
         estimatedDurationSeconds: scene.duration || scene.estimatedDurationSeconds || 5,
-        // Agent's sceneType (a-roll/b-roll/visual) → backend's shotType (a-roll/b-roll)
-        shotType: scene.sceneType === "a-roll" ? "a-roll" : "b-roll",
+        // Agent's sceneType (a-roll/a-roll-multi/b-roll/visual) → backend's shotType
+        // a-roll-multi is ONLY allowed for podcast videoType; downgrade to a-roll otherwise
+        shotType: scene.sceneType === "a-roll" ? "a-roll"
+          : scene.sceneType === "a-roll-multi" && videoType === "podcast" ? "a-roll-multi"
+          : scene.sceneType === "a-roll-multi" ? "a-roll"
+          : "b-roll",
         cameraAngle: scene.cameraAngle || "medium-shot",
         cinematicPrompt: scene.cinematicPrompt || "",
         ambientSound: scene.ambientSound || null,
         characterIndex: scene.characterIndex ?? undefined,
+        arollShots: videoType === "podcast" && scene.arollShots && scene.arollShots.length > 0
+          ? scene.arollShots.map((shot: any) => ({
+              dialogue: shot.dialogue,
+              action: shot.action,
+              imageGenPrompt: shot.imageGenPrompt || "",
+              emotion: this.extractEmotionFromDialogue(shot.dialogue) || "confident",
+              characterIndex: shot.characterIndex,
+              ambientSound: shot.ambientSound ?? null,
+              cinematicPrompt: shot.cinematicPrompt || "",
+            }))
+          : null,
         // Agent's shots[] → backend's bRollShots[]
         bRollShots: scene.shots && scene.shots.length > 0
           ? scene.shots.map((shot: any) => ({
@@ -1032,6 +1048,16 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
               .map(
                 (shot, i) =>
                   `\n      Shot ${i + 1}: ${shot.action.slice(0, 80)}${shot.action.length > 80 ? "..." : ""} (${shot.durationSeconds}s)`,
+              )
+              .join("");
+        }
+        if ((s as any).arollShots?.length) {
+          const aShots = (s as any).arollShots as Array<{ dialogue: string; action: string; characterIndex: number }>;
+          shotDetails += `\n    A-Roll Shots (${aShots.length} conversation turns):` +
+            aShots
+              .map(
+                (shot, i) =>
+                  `\n      Turn ${i + 1} [char ${shot.characterIndex}]: "${shot.dialogue?.slice(0, 80) || shot.action.slice(0, 80)}${(shot.dialogue || shot.action).length > 80 ? "..." : ""}"`,
               )
               .join("");
         }

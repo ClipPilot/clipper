@@ -287,11 +287,20 @@ export interface GenerateSceneImageJob extends BaseJob {
     productImageNeeded: boolean;
     shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
   }>;
+  arollShots?: Array<{
+    characterIndex: number;
+    action: string;
+    dialogue: string;
+    imageGenPrompt?: string;
+    cinematicPrompt?: string;
+    ambientSound?: string | null;
+  }>;
   singleBRollShotIndex?: number;
   existingBRollImages?: string[];
   previousArollImageKey?: string;
   isConsecutiveAroll?: boolean;
   previousSceneSetting?: string;
+  settingAnchorKeys?: string[];
   adCloneReferenceVideoKey?: string;
   adCloneSceneTimestamp?: number;
   existingSceneImageKey?: string;
@@ -321,6 +330,16 @@ export interface GenerateUGCVideoJob extends BaseJob {
       cinematicPrompt: string;
       durationSeconds: number;
       imageKey: string;
+    }>;
+    arollShots?: Array<{
+      dialogue: string;
+      action: string;
+      emotion: string;
+      characterIndex: number;
+      voiceId: string;
+      imageKey: string;
+      ambientSound?: string | null;
+      cinematicPrompt?: string;
     }>;
   }>;
   regenerateSceneId?: string;
@@ -588,11 +607,13 @@ class SQSService {
     customStartImageKey?: string;
     customEndImageKey?: string;
     bRollShots?: GenerateSceneImageJob["bRollShots"];
+    arollShots?: GenerateSceneImageJob["arollShots"];
     singleBRollShotIndex?: number;
     existingBRollImages?: string[];
     previousArollImageKey?: string;
     isConsecutiveAroll?: boolean;
     previousSceneSetting?: string;
+    settingAnchorKeys?: string[];
     adCloneReferenceVideoKey?: string;
     adCloneSceneTimestamp?: number;
     existingSceneImageKey?: string;
@@ -615,11 +636,13 @@ class SQSService {
       customStartImageKey: params.customStartImageKey,
       customEndImageKey: params.customEndImageKey,
       bRollShots: params.bRollShots,
+      arollShots: params.arollShots,
       singleBRollShotIndex: params.singleBRollShotIndex,
       existingBRollImages: params.existingBRollImages,
       previousArollImageKey: params.previousArollImageKey,
       isConsecutiveAroll: params.isConsecutiveAroll,
       previousSceneSetting: params.previousSceneSetting,
+      settingAnchorKeys: params.settingAnchorKeys,
       adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
       adCloneSceneTimestamp: params.adCloneSceneTimestamp,
       existingSceneImageKey: params.existingSceneImageKey,

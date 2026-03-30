@@ -39,7 +39,7 @@ export interface ScriptAgentShot {
 export interface ScriptAgentScene {
   sceneNumber: number;
   slug: string;
-  sceneType: "a-roll" | "b-roll" | "visual";
+  sceneType: "a-roll" | "a-roll-multi" | "b-roll" | "visual";
   storyBeat: string;
   dialogue: string;
   isSilent: boolean;
@@ -49,6 +49,12 @@ export interface ScriptAgentScene {
   cinematicPrompt: string;
   ambientSound: string | null;
   characterIndex?: number;
+  arollShots?: Array<{
+    dialogue: string;
+    action: string;
+    characterIndex: number;
+    ambientSound: string | null;
+  }>;
   shots: ScriptAgentShot[];
 }
 

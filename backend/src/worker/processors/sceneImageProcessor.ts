@@ -118,9 +118,11 @@ export async function processSceneImageJob(
     previousArollImageKey,
     isConsecutiveAroll,
     previousSceneSetting,
+    settingAnchorKeys,
     adCloneReferenceVideoKey,
     adCloneSceneTimestamp,
     existingSceneImageKey,
+    arollShots,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -295,6 +297,234 @@ export async function processSceneImageJob(
           progress_message: isSingleShotRegen
             ? `Shot ${singleBRollShotIndex! + 1} regenerated`
             : `${bRollShots.length} B-roll montage shots generated`,
+          generated_images: generatedImages,
+          completed_at: new Date(),
+        })
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId));
+
+      return;
+    }
+
+    if (arollShots && arollShots.length > 0) {
+      console.log(
+        `[SCENE_IMAGE] Processing ${arollShots.length}-shot podcast a-roll-multi for scene ${sceneNumber}`,
+      );
+
+      const generatedImages: string[] = [];
+      const referenceByCharacter: Map<number, string> = new Map();
+
+      const productReferenceUrls =
+        productImageKeys && productImageKeys.length > 0
+          ? await getReferenceImageUrls(productImageKeys.slice(0, 2))
+          : [];
+
+      const supportingReferenceUrls =
+        supportingImageKeys && supportingImageKeys.length > 0
+          ? await getReferenceImageUrls(supportingImageKeys.slice(0, 2))
+          : [];
+
+      const charactersConfigRaw = await db
+        .select({ characters_config: schema.ugcScripts.characters_config })
+        .from(schema.ugcScripts)
+        .where(eq(schema.ugcScripts.id, scriptId))
+        .limit(1);
+
+      const charactersConfig = (charactersConfigRaw[0]?.characters_config as Array<{ characterId: number }> | null) || [];
+
+      if (charactersConfig.length === 0) {
+        console.warn(
+          `[SCENE_IMAGE] WARNING: characters_config is empty for script ${scriptId}. ` +
+          `A-roll-multi shots will all use the same character (${characterId}). ` +
+          `This script may have been generated before the multi-character fix was deployed.`,
+        );
+      } else {
+        console.log(
+          `[SCENE_IMAGE] characters_config loaded: ${JSON.stringify(charactersConfig)}`,
+        );
+      }
+
+      async function loadCharacterRefs(charIndex: number) {
+        const charConfig = charactersConfig[charIndex];
+        const effectiveCharId = charConfig?.characterId ?? (charIndex === 0 ? characterId : undefined);
+        if (!effectiveCharId) {
+          console.warn(`[SCENE_IMAGE] No character found for charIndex=${charIndex}, characters_config has ${charactersConfig.length} entries`);
+          return { url: null as string | null, appearance: undefined as CharacterAppearance | undefined };
+        }
+
+        const [character] = await db
+          .select()
+          .from(schema.characters)
+          .where(eq(schema.characters.id, effectiveCharId));
+
+        if (!character) return { url: null, appearance: undefined };
+
+        console.log(`[SCENE_IMAGE] Loaded character for index ${charIndex}: id=${effectiveCharId}, name=${character.name}`);
+
+        let url: string | null = null;
+        const characterImages = character.character_images as string[];
+        const primaryIndex = character.primary_image_index || 0;
+        if (characterImages?.[primaryIndex]) {
+          const urls = await getReferenceImageUrls([characterImages[primaryIndex]]);
+          if (urls.length > 0) url = urls[0];
+        }
+
+        let appearance: CharacterAppearance | undefined;
+        const config = character.appearance_config as Record<string, string> | null;
+        if (config) {
+          appearance = {
+            gender: character.gender,
+            ageRange: character.age_range,
+            skinTone: config.skinTone,
+            hairColor: config.hairColor,
+            hairStyle: config.hairStyle,
+            eyeColor: config.eyeColor,
+            bodyType: config.bodyType,
+          };
+        }
+
+        return { url, appearance };
+      }
+
+      const charRefCache: Map<number, { url: string | null; appearance: CharacterAppearance | undefined }> = new Map();
+
+      async function getCharRefs(charIndex: number) {
+        if (!charRefCache.has(charIndex)) {
+          charRefCache.set(charIndex, await loadCharacterRefs(charIndex));
+        }
+        return charRefCache.get(charIndex)!;
+      }
+
+      // Resolve setting anchor URLs if provided (non-anchor scenes)
+      let anchorUrls: string[] = [];
+      if (settingAnchorKeys && settingAnchorKeys.length > 0) {
+        anchorUrls = await getReferenceImageUrls(settingAnchorKeys);
+        console.log(
+          `[SCENE_IMAGE] Scene ${sceneNumber}: Using ${anchorUrls.length} setting anchors from first a-roll-multi scene`,
+        );
+      }
+
+      // Helper: generate a single aroll shot image
+      const generateArollShot = async (
+        shot: typeof arollShots[number],
+        i: number,
+        settingRefs: string[],
+      ): Promise<{ index: number; imageKey: string }> => {
+        await updateJobProgress(
+          jobId,
+          Math.round(((i + 1) / arollShots.length) * 80),
+          `Generating podcast shot ${i + 1} of ${arollShots.length}...`,
+        );
+
+        const charRefs = await getCharRefs(shot.characterIndex);
+
+        // For podcast shots, only pass the CHARACTER reference as the main image.
+        // Setting/environment refs are passed separately and the prompt explicitly
+        // instructs the model to copy ONLY the environment, not the person.
+        const shotRefs: string[] = [];
+        if (charRefs.url) shotRefs.push(charRefs.url);
+        if (settingRefs.length > 0) shotRefs.push(settingRefs[0]);
+
+        const shotCinematicPrompt = shot.cinematicPrompt || sceneData.cinematicPrompt;
+        const shotSceneData = {
+          ...sceneData,
+          action: shot.imageGenPrompt || shot.action,
+          dialogue: shot.dialogue,
+          cinematicPrompt: shotCinematicPrompt,
+        };
+
+        let podcastPromptPrefix = "";
+        if (settingRefs.length > 0) {
+          podcastPromptPrefix = `**PODCAST SHOT — MULTI-CHARACTER SCENE**
+The reference images are:
+1. FIRST image = the CHARACTER to depict. Use this person's EXACT face, identity, and features. This is the ONLY person who should appear in the generated image.
+2. SECOND image = ENVIRONMENT/SETTING reference. Copy the room, desk, microphone setup, lighting, and background EXACTLY. IGNORE the person in this image — they are a DIFFERENT character. Do NOT blend faces or features from the setting reference into the character.
+
+Generate an image of the character from image 1 sitting in the environment from image 2.\n\n`;
+        }
+
+        const shotPrompt = podcastPromptPrefix + buildSceneImagePrompt(
+          shotSceneData,
+          shotRefs.length > 0,
+          false,
+          productName,
+          undefined,
+          "start",
+          charRefs.appearance,
+          supportingReferenceUrls.length > 0,
+          false,
+          undefined,
+          false,
+          false,
+        );
+
+        const result = await falImageService.generateImageWithRetry({
+          prompt: shotPrompt,
+          aspectRatio: "9:16",
+          imageUrls: shotRefs.length > 0 ? shotRefs : undefined,
+        });
+
+        const response = await fetch(result.imageUrl);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const imageKey = await s3Service.uploadSceneImage(
+          buffer, teamId, scriptId, sceneId, i,
+        );
+
+        console.log(
+          `[SCENE_IMAGE] Podcast shot ${i + 1} (char ${shot.characterIndex}): ${imageKey}`,
+        );
+        return { index: i, imageKey };
+      };
+
+      if (anchorUrls.length > 0) {
+        // NON-ANCHOR SCENE: setting already established — use first anchor as setting ref
+        console.log(`[SCENE_IMAGE] Scene ${sceneNumber}: Generating all ${arollShots.length} shots in parallel (setting anchored)`);
+
+        const settingRef = [anchorUrls[0]];
+        const parallelResults = await Promise.all(
+          arollShots.map((shot, i) => generateArollShot(shot, i, settingRef)),
+        );
+
+        for (const { imageKey } of parallelResults.sort((a, b) => a.index - b.index)) {
+          generatedImages.push(imageKey);
+        }
+      } else {
+        // ANCHOR SCENE (first a-roll-multi): shot 0 has no setting ref, shot 1 uses shot 0 as setting ref
+        console.log(`[SCENE_IMAGE] Scene ${sceneNumber}: Anchor scene — sequential shots 0-1 then parallel`);
+
+        for (let i = 0; i < Math.min(2, arollShots.length); i++) {
+          const settingRef: string[] = [];
+          if (i > 0 && generatedImages[i - 1]) {
+            const prevUrl = await getReferenceImageUrls([generatedImages[i - 1]]);
+            if (prevUrl.length > 0) settingRef.push(prevUrl[0]);
+          }
+          const { imageKey } = await generateArollShot(arollShots[i], i, settingRef);
+          generatedImages.push(imageKey);
+          referenceByCharacter.set(arollShots[i].characterIndex, imageKey);
+        }
+
+        if (arollShots.length > 2) {
+          // Use first generated shot as the setting reference for all remaining shots
+          const settingRefUrl = await getReferenceImageUrls([generatedImages[0]]);
+
+          const remainingResults = await Promise.all(
+            arollShots.slice(2).map(async (shot, offsetIdx) => {
+              const i = offsetIdx + 2;
+              return generateArollShot(shot, i, settingRefUrl);
+            }),
+          );
+
+          for (const { imageKey } of remainingResults.sort((a, b) => a.index - b.index)) {
+            generatedImages.push(imageKey);
+          }
+        }
+      }
+
+      await db
+        .update(schema.sceneImageGenerationJobs)
+        .set({
+          status: "completed",
+          progress: 100,
+          progress_message: `${arollShots.length} podcast shots generated`,
           generated_images: generatedImages,
           completed_at: new Date(),
         })

@@ -70,6 +70,7 @@ export const regenerateThumbnailTool = createTool({
       shotType: scene.shotType,
       cameraAngle: scene.cameraAngle,
       bRollShots: scene.bRollShots,
+      arollShots: scene.arollShots,
     };
 
     if (userRefinement) {

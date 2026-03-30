@@ -29,8 +29,8 @@ export const addSceneTool = createTool({
       ])
       .describe("The story beat / narrative purpose of this scene"),
     shotType: z
-      .enum(["a-roll", "b-roll"])
-      .describe("a-roll (actor talking to camera) or b-roll (product visuals with voiceover)"),
+      .enum(["a-roll", "a-roll-multi", "b-roll"])
+      .describe("a-roll (actor talking to camera), a-roll-multi (podcast conversation with alternating characters), or b-roll (product visuals with voiceover)"),
     action: z
       .string()
       .describe("What the character/product is doing in this scene"),
@@ -97,12 +97,41 @@ export const addSceneTool = createTool({
       });
     }
 
+    let arollShots: Array<{
+      dialogue: string;
+      action: string;
+      emotion: string;
+      characterIndex: number;
+      ambientSound: string | null;
+      cinematicPrompt?: string;
+      imageGenPrompt?: string;
+    }> | null = null;
+
+    if (shotType === "a-roll-multi") {
+      arollShots = [
+        {
+          dialogue: content.dialogue || dialogue || "[curious] What do you think about this?",
+          action: action || "Speaking into podcast microphone",
+          emotion: content.emotion || "curious",
+          characterIndex: 0,
+          ambientSound: null,
+        },
+        {
+          dialogue: "[sincere] That's a great point, let me share my perspective.",
+          action: "Leaning toward microphone, nodding thoughtfully",
+          emotion: "sincere",
+          characterIndex: 1,
+          ambientSound: null,
+        },
+      ];
+    }
+
     const newScene = {
       id: newSceneId,
       sceneNumber: 0, // Will be set by renumber
       sceneType,
       action,
-      dialogue: content.dialogue || dialogue || "",
+      dialogue: shotType === "a-roll-multi" ? "" : (content.dialogue || dialogue || ""),
       emotion: content.emotion || "confident",
       estimatedDurationSeconds: duration,
       shotType,
@@ -110,6 +139,7 @@ export const addSceneTool = createTool({
       cinematicPrompt: content.cinematicPrompt,
       ambientSound: content.ambientSound,
       bRollShots,
+      arollShots,
       mergedSceneTypes: null,
     };
 

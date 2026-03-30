@@ -16,6 +16,7 @@ import {
   freshStartAtom,
   isSilentAtom,
 } from "@/store/ugc";
+import { videoStateAtom } from "@/store/videoState";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { CreditCostCard } from "@/components/ugc-studio/generate/CreditCostCard";
@@ -34,6 +35,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const isSilent = useAtomValue(isSilentAtom);
   const videoStatus = useAtomValue(videoStatusAtom);
   const [freshStart, setFreshStart] = useAtom(freshStartAtom);
+  const videoState = useAtomValue(videoStateAtom);
 
   const { usageStats } = useUsageStats(teamId);
 
@@ -78,10 +80,18 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     setIsGenerating(true);
 
     try {
+      const voiceConfig = videoState.characters.length > 1
+        ? videoState.characters.map((c) => ({
+            characterId: c.character.id,
+            voiceId: c.voiceId || "",
+          }))
+        : undefined;
+
       const response = await ugcVideoAPI.generateVideo({
         teamId,
         scriptId,
         voiceId: selectedVoice?.id,
+        voiceConfig,
         isSilent: isSilent || undefined,
       });
 

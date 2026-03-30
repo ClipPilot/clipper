@@ -56,6 +56,13 @@ function mapScenesToUGC(scenes: ScriptAgentScene[]): UGCScene[] {
     cameraAngle: "medium-shot" as UGCScene["cameraAngle"],
     ambientSound: s.ambientSound || undefined,
     characterIndex: s.characterIndex,
+    arollShots: s.arollShots?.map((shot) => ({
+      dialogue: shot.dialogue,
+      action: shot.action,
+      emotion: (extractEmotion(shot.dialogue) || "confident") as UGCScene["emotion"],
+      characterIndex: shot.characterIndex,
+      ambientSound: shot.ambientSound || null,
+    })) || null,
     bRollShots:
       s.shots && s.shots.length > 0
         ? s.shots.map((shot) => ({
@@ -178,6 +185,7 @@ export function useChatAgent() {
         cameraAngle: scene.cameraAngle,
         characterIndex: scene.characterIndex,
         bRollShots: scene.bRollShots,
+        arollShots: scene.arollShots,
       }));
 
       const initialImageState: Record<string, SceneImageState> = {};

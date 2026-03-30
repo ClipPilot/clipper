@@ -111,7 +111,8 @@ Each scene needs a cinematicPrompt describing the video generation:
 - Describe camera movement (slow zoom, pan, static, tracking)
 - Describe visual progression (what changes from start to end of scene)
 - Include timing cues (gradual, sudden, smooth)
-- For a-roll: natural speaking-to-camera movement, subtle breathing, eye contact
+- For a-roll: natural speaking-to-camera movement, subtle breathing, eye contact. Only ONE character per shot — never show two actors together.
+- For a-roll-multi: character speaks toward a microphone, NOT the camera. Only ONE character per shot — two actors must NEVER appear in the same shot.
 - For b-roll: product interaction, hands-on demo, satisfying reveals
 - For visual: atmospheric, cinematic, music-driven pacing
 
@@ -119,20 +120,54 @@ Each scene needs a cinematicPrompt describing the video generation:
 
 You MUST follow the provided structure blueprint EXACTLY:
 - Same number of scenes as the blueprint
-- Same scene types (a-roll, b-roll, visual) in the same order
+- Same scene types (a-roll, a-roll-multi, b-roll, visual) in the same order
 - Same story beats in the same order
 - For b-roll/visual scenes with shots in the blueprint, generate matching shot breakdowns (1-5 shots per scene)
 - For a-roll scenes, set shots to empty array []
+- For a-roll-multi scenes (podcast), set shots to empty array [] and populate arollShots with 2-6 alternating character turns
 
 ===== MULTI-CHARACTER VIDEOS (PODCAST) =====
 
-When multiple characters are provided (characterCount > 1):
-- Every a-roll scene MUST have a characterIndex field matching one of the provided character indices
-- The imageGenPrompt for each scene must describe the CORRECT character's appearance based on characterIndex — use that character's hair color, skin tone, clothing, etc.
-- Each a-roll scene features exactly ONE character speaking — never 2 in one shot
-- Dialogue tone and vocabulary can vary per character for realism (e.g., host is energetic, guest is thoughtful)
-- For b-roll/visual shots with shotType CHARACTER or CHARACTER_AND_PRODUCT, set shot-level characterIndex to indicate which character appears. Defaults to scene-level characterIndex if omitted.
-- Alternate characters across consecutive a-roll scenes for natural conversation pacing
+When videoType is "podcast" and 2+ characters are provided (characterCount >= 2):
+- Use sceneType "a-roll-multi" for ALL conversation scenes
+- Do NOT use regular "a-roll" for podcast conversation scenes
+- "a-roll-multi" scenes use the arollShots array (2-6 shots per scene)
+
+**a-roll-multi scene rules:**
+- scene-level dialogue = "" (empty string — dialogue lives in each shot)
+- scene-level isSilent = false
+- scene-level ambientSound = shared ambient for the scene (podcast studio environment)
+- shots array = [] (empty — shots is for b-roll only)
+- arollShots array = 2-6 shots, each shot is ONE character's turn
+
+**arollShots rules:**
+- Each shot has: dialogue, action, imageGenPrompt, cinematicPrompt, characterIndex, ambientSound
+- characterIndex MUST alternate between consecutive shots (e.g., 0,1,0,1 or 1,0,1,0)
+- EVERY shot features exactly ONE character — two actors must NEVER appear in the same shot together
+- Keep each shot concise: 1-3 sentences, ~3-8 seconds spoken
+- Characters face a podcast MICROPHONE, NOT the camera — no eye contact with camera ever
+- All shots in one scene share the SAME setting/environment (podcast studio)
+- Different postures and camera angles per shot for visual variety (side angle, three-quarter, close-up of face in profile)
+- **imageGenPrompt per shot**: MUST describe the SPECIFIC character for this shot (using their appearance from the characters array). Include hair color, skin tone, clothing, body type. Describe the podcast studio, microphone, camera angle. Each shot should have a DIFFERENT angle/framing for visual variety.
+- **cinematicPrompt per shot**: Describe subtle movement — leaning in, gesturing, nodding — for this specific character
+
+**PODCAST ENVIRONMENT CONSISTENCY — CRITICAL:**
+All a-roll-multi scenes and shots in a podcast video MUST share the EXACT SAME environment. Before writing any scenes, decide on ONE podcast studio setup and use it everywhere:
+- Pick ONE specific studio description (e.g., "modern podcast studio with dark acoustic panels, warm overhead LED strip lighting, wooden desk with two Shure SM7B microphones on boom arms, black headphones, two glasses of water")
+- EVERY imageGenPrompt (scene-level AND shot-level) MUST repeat this SAME studio description verbatim — same wall color, same desk, same microphone model, same lighting, same props
+- The ONLY things that should change between shots are: which character is in frame, their pose/expression, and the camera angle
+- Do NOT invent new backgrounds, different rooms, or alternate setups for different scenes — it's ONE continuous recording session
+- ambientSound should be IDENTICAL across all a-roll-multi scenes and shots (same studio, same mic, same room tone)
+
+**PODCAST FRAMING:**
+- Frame characters speaking into a podcast microphone at a desk/table setup
+- Use side-angle or three-quarter angle — character addresses the other host, NOT the viewer
+- cinematicPrompt should describe subtle natural movement — leaning in, gesturing, nodding
+- Dialogue tone and vocabulary can vary per character (e.g., host is energetic, guest is thoughtful)
+
+**b-roll in podcast videos:**
+- You CAN use regular b-roll scenes between a-roll-multi scenes for product demos, cutaways, etc.
+- For b-roll shots with shotType CHARACTER or CHARACTER_AND_PRODUCT, set shot-level characterIndex
 
 When only one character is provided (default):
 - Do NOT set characterIndex on scenes or shots — it is not needed

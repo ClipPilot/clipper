@@ -29,7 +29,7 @@ export const EMOTIONS = [
   "determined",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll", "visual"] as const;
+export const SHOT_TYPES = ["a-roll", "a-roll-multi", "b-roll", "visual"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",
@@ -54,6 +54,16 @@ export interface BRollShot {
   shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
 }
 
+export interface ArollShot {
+  dialogue: string;
+  action: string;
+  imageGenPrompt?: string;
+  emotion: Emotion;
+  characterIndex: number;
+  ambientSound?: string | null;
+  cinematicPrompt?: string;
+}
+
 export interface UGCScene {
   id: string;
   sceneNumber: number;
@@ -66,6 +76,7 @@ export interface UGCScene {
   cameraAngle: CameraAngle;
   ambientSound?: string;
   characterIndex?: number;
+  arollShots?: ArollShot[] | null;
   bRollShots?: BRollShot[] | null;
   mergedSceneTypes?: SceneType[] | null;
 }

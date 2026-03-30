@@ -32,6 +32,15 @@ interface BRollShotData {
   productImageNeeded: boolean;
 }
 
+interface ArollShotData {
+  dialogue: string;
+  action: string;
+  emotion: string;
+  characterIndex: number;
+  ambientSound?: string | null;
+  cinematicPrompt?: string;
+}
+
 interface SceneData {
   id: string;
   sceneNumber: number;
@@ -45,6 +54,7 @@ interface SceneData {
   durationSeconds: number;
   ambientSound?: string | null;
   bRollShots?: BRollShotData[] | null;
+  arollShots?: ArollShotData[] | null;
 }
 
 export class UGCVideoController {
@@ -255,9 +265,13 @@ export class UGCVideoController {
         });
       }
 
-      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
+      // Calculate credit cost (2 credits per original scene/shot)
+      // Merged a-rolls count individually, a-roll-multi shots count individually
       const CREDIT_PER_SCENE = 2;
       const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        if (scene.shotType === "a-roll-multi" && scene.arollShots?.length) {
+          return count + scene.arollShots.length;
+        }
         return count + (scene.mergedSceneTypes?.length || 1);
       }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
@@ -368,6 +382,35 @@ export class UGCVideoController {
           console.log(
             `[UGC_VIDEO] Scene ${scene.sceneNumber}: Built ${sceneData.bRollShots.length}-shot montage with keys:`,
             sceneData.bRollShots.map((s) => s.imageKey)
+          );
+        }
+
+        if (scene.arollShots && scene.arollShots.length > 0 && scene.shotType === "a-roll-multi") {
+          let shotKeys: string[] | undefined;
+          if (savedImage.generation_job_id) {
+            const [job] = await db
+              .select({ generated_images: sceneImageGenerationJobs.generated_images })
+              .from(sceneImageGenerationJobs)
+              .where(eq(sceneImageGenerationJobs.id, savedImage.generation_job_id))
+              .limit(1);
+            if (job?.generated_images) {
+              shotKeys = job.generated_images as string[];
+            }
+          }
+
+          sceneData.arollShots = scene.arollShots.map((shot, index) => ({
+            dialogue: shot.dialogue,
+            action: shot.action,
+            emotion: shot.emotion,
+            characterIndex: shot.characterIndex,
+            voiceId: effectiveVoiceConfig?.[shot.characterIndex]?.voiceId || voiceId || "",
+            imageKey: shotKeys?.[index] || savedImage.image_key,
+            ambientSound: shot.ambientSound,
+            cinematicPrompt: shot.cinematicPrompt,
+          }));
+
+          console.log(
+            `[UGC_VIDEO] Scene ${scene.sceneNumber}: Built ${sceneData.arollShots!.length}-shot podcast a-roll-multi`
           );
         }
 

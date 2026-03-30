@@ -590,7 +590,7 @@ export function SceneImageCard({
       className={`bg-surface-elevated border ${
         isCurrentlyGenerating
           ? "border-blue-500 animate-pulse"
-          : scene.shotType === "a-roll" && !scene.dialogue?.trim()
+          : (scene.shotType === "a-roll" && !scene.dialogue?.trim()) || (scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s: any) => !s.dialogue?.trim())))
             ? "border-red-500/60"
             : "border-accent-400/30"
       }`}
@@ -798,6 +798,13 @@ export function SceneImageCard({
           <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
             <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
             <span className="text-xs text-red-400">A-roll scenes require dialogue to proceed</span>
+          </div>
+        )}
+
+        {scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s: any) => !s.dialogue?.trim())) && (
+          <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+            <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
+            <span className="text-xs text-red-400">Podcast scenes require dialogue in all conversation turns</span>
           </div>
         )}
 

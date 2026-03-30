@@ -246,7 +246,9 @@ function SceneCard({
   const emotionConfig = EMOTION_CONFIG[emotion as Emotion];
   const emotionEmoji = EMOTION_EMOJIS[emotion];
   const hasShots = scene.bRollShots && scene.bRollShots.length > 0;
+  const hasArollShots = scene.arollShots && scene.arollShots.length > 0;
   const isBRoll = scene.shotType === "b-roll" || scene.shotType === "visual";
+  const isArollMulti = scene.shotType === "a-roll-multi";
   const isGenerating = imageState?.status === "generating" || imageState?.status === "regenerating";
   const isAnyImageGenerating = Object.values(sceneImages).some(
     (img) => img.status === "generating" || img.status === "regenerating",
@@ -314,6 +316,11 @@ function SceneCard({
             {scene.bRollShots!.length} shots
           </span>
         )}
+        {hasArollShots && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-purple-500/10 text-purple-400">
+            {scene.arollShots!.length} turns
+          </span>
+        )}
 
         {/* Duration */}
         <span className="text-xs text-text-muted ml-auto">
@@ -323,8 +330,8 @@ function SceneCard({
 
       {/* Content area */}
       <div className="px-4 pb-3 space-y-2.5">
-        {/* A-roll scene thumbnail */}
-        {!isBRoll && (
+        {/* A-roll scene thumbnail (single) */}
+        {!isBRoll && !isArollMulti && (
           <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-elevated relative shrink-0">
             {hasImage ? (
               <ClickableImage
@@ -341,6 +348,36 @@ function SceneCard({
                     icon="solar:gallery-add-bold-duotone"
                     width={16}
                     className="text-text-muted/30"
+                  />
+                )}
+              </div>
+            )}
+            {hasImage && !isGenerating && (
+              <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* A-roll-multi scene — single thumbnail (image gen creates one per scene) */}
+        {isArollMulti && (
+          <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-elevated relative shrink-0">
+            {hasImage ? (
+              <ClickableImage
+                src={imageState!.imageUrl!}
+                alt={`Scene ${scene.sceneNumber}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                {isGenerating ? (
+                  <Spinner size="sm" color="primary" />
+                ) : (
+                  <Icon
+                    icon="solar:microphone-3-bold-duotone"
+                    width={16}
+                    className="text-purple-400/40"
                   />
                 )}
               </div>
@@ -490,6 +527,76 @@ function SceneCard({
                         onChange={(v) => handleBRollShotActionChange(idx, v)}
                         className="text-[10px] text-text-secondary leading-relaxed"
                       />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {/* A-Roll Multi conversation turns */}
+        {hasArollShots && (
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-1.5">
+              <Icon icon="solar:microphone-3-bold-duotone" width={13} className="text-purple-400" />
+              <span className="text-[11px] font-semibold text-text-primary">
+                Conversation Turns
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {scene.arollShots!.map((shot, idx) => {
+                const shotImage =
+                  imageState?.generatedImages?.find((img) => img.index === idx);
+                const shotGenerating =
+                  isGenerating &&
+                  (imageState?.regeneratingShotIndex === undefined ||
+                    imageState?.regeneratingShotIndex === idx);
+
+                return (
+                  <div
+                    key={idx}
+                    className="group/shot flex items-start gap-2.5 bg-surface-elevated/50 rounded-lg p-2.5 relative"
+                  >
+                    {/* Shot thumbnail */}
+                    <div className="w-12 h-12 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden relative">
+                      {shotImage?.url ? (
+                        <>
+                          <ClickableImage
+                            src={shotImage.url}
+                            alt={`Turn ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          {shotGenerating && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <Spinner size="sm" color="primary" />
+                            </div>
+                          )}
+                        </>
+                      ) : shotGenerating ? (
+                        <Spinner size="sm" color="primary" />
+                      ) : (
+                        <Icon
+                          icon="solar:user-speak-bold-duotone"
+                          width={16}
+                          className="text-text-muted/40"
+                        />
+                      )}
+                    </div>
+
+                    {/* Shot details */}
+                    <div className="flex-1 min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold text-text-primary">
+                          Turn {idx + 1}
+                        </span>
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/10 text-purple-400 font-medium">
+                          Actor {shot.characterIndex + 1}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-text-secondary leading-relaxed">
+                        {shot.dialogue || shot.action}
+                      </p>
                     </div>
                   </div>
                 );

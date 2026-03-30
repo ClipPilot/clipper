@@ -52,7 +52,9 @@ export function SceneBuilderStep({
   const totalScenes = scenes.length;
   const allComplete = completedScenes === totalScenes && totalScenes > 0;
   const hasArollWithoutDialogue = scenes.some(
-    (scene) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+    (scene) =>
+      (scene.shotType === "a-roll" && !scene.dialogue?.trim()) ||
+      (scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s) => !s.dialogue?.trim())))
   );
   const progressPercent =
     totalScenes > 0 ? (completedScenes / totalScenes) * 100 : 0;
@@ -481,6 +483,7 @@ export function SceneBuilderStep({
           shotType: scene.shotType,
           cameraAngle: scene.cameraAngle,
           bRollShots: scene.bRollShots ?? null,
+          arollShots: scene.arollShots ?? null,
           // Optional refinements
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,
