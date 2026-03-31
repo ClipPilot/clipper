@@ -629,23 +629,15 @@ function PostsTable({ campaignId }: { campaignId: number }) {
                               title: post.clip_title || `Post #${post.id}`,
                             })
                           }
-                          className="relative group w-16 h-10 rounded overflow-hidden bg-black flex-shrink-0"
+                          className="relative group w-16 h-10 rounded overflow-hidden bg-surface-elevated flex-shrink-0 flex items-center justify-center"
                         >
-                          <video
-                            src={post.clip_url}
-                            className="w-full h-full object-cover"
-                            muted
-                            preload="metadata"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                            <svg
-                              className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
+                          <svg
+                            className="w-5 h-5 text-text-tertiary group-hover:text-white transition-colors"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
                         </button>
                       ) : (
                         <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
@@ -1229,23 +1221,15 @@ export default function CampaignPublishPage() {
                               `Video #${video.id}`,
                           })
                         }
-                        className="relative group w-24 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0"
+                        className="relative group w-24 h-14 rounded-lg overflow-hidden bg-surface-elevated flex-shrink-0 flex items-center justify-center"
                       >
-                        <video
-                          src={video.presigned_url}
-                          className="w-full h-full object-cover"
-                          muted
-                          preload="metadata"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                          <svg
-                            className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
+                        <svg
+                          className="w-6 h-6 text-text-tertiary group-hover:text-white transition-colors"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
                       </button>
                     ) : (
                       <div className="w-24 h-14 rounded-lg bg-surface-elevated flex-shrink-0 flex items-center justify-center text-text-tertiary text-xs">
