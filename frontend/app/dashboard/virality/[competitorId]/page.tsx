@@ -9,6 +9,7 @@ import { Button,
   Spinner,
   Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
@@ -324,11 +325,7 @@ export default function CompetitorDetailPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!competitor) {

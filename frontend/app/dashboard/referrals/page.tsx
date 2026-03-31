@@ -14,6 +14,7 @@ import {
   TableCell,
   Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { apiJson } from "@/lib/apiClient";
@@ -114,11 +115,7 @@ export default function ReferralsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="accent" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

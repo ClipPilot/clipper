@@ -6,10 +6,7 @@ import { Icon } from "@iconify/react";
 import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import StripeProvider from "@/components/providers/StripeProvider";
 import { apiPlatformAPI } from "@/api/apiPlatform";
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+import { formatCents } from "@/lib/formatters";
 
 type ModalStage = "form" | "crediting";
 

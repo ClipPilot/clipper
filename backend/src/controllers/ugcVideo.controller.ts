@@ -20,10 +20,8 @@ import { getTeamUsage } from "../middleware/subscription.middleware";
 import { handleControllerError } from "../utils/controllerHelpers";
 import { ugcScriptService, detectSilentMode } from "../services/ai-ugc/ugcScript.service";
 import type { ShotType } from "../types/ugcScript.types";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
+import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
 
 interface BRollShotData {
   action: string;
@@ -266,7 +264,7 @@ export class UGCVideoController {
       if (usage.totalRemaining < creditCost) {
         return res.status(403).json({
           error: `Insufficient credits. This video (${sceneCount} scenes) requires ${creditCost} credits, but you have ${usage.totalRemaining} remaining.`,
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: creditCost,
           available: usage.totalRemaining,
         });

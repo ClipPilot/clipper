@@ -39,11 +39,11 @@ import {
 import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+import { UGC_CREDIT_COST } from "../../constants/credits";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
-const UGC_CREDIT_COST = 5;
 const KLING_MAX_CHUNK_DURATION = 25;
 const WAVESPEED_MAX_CHUNK_DURATION = 120;
 const MIN_CHUNK_DURATION = 3;

@@ -196,21 +196,24 @@ class ViralityService extends AccountTrackingService {
   // ── Viral Alert Settings ──
 
   async getSettings(teamId: number) {
-    const [settings] = await db
-      .select()
-      .from(viralitySettings)
-      .where(eq(viralitySettings.team_id, teamId))
-      .limit(1);
+    const [settingsResult, enabledAccounts] = await Promise.all([
+      db
+        .select()
+        .from(viralitySettings)
+        .where(eq(viralitySettings.team_id, teamId))
+        .limit(1),
+      db
+        .select({ id: viralityAccounts.id })
+        .from(viralityAccounts)
+        .where(
+          and(
+            eq(viralityAccounts.team_id, teamId),
+            eq(viralityAccounts.alert_enabled, true)
+          )
+        ),
+    ]);
 
-    const enabledAccounts = await db
-      .select({ id: viralityAccounts.id })
-      .from(viralityAccounts)
-      .where(
-        and(
-          eq(viralityAccounts.team_id, teamId),
-          eq(viralityAccounts.alert_enabled, true)
-        )
-      );
+    const settings = settingsResult[0];
 
     return {
       percentThreshold: settings?.percent_threshold ?? 100,
