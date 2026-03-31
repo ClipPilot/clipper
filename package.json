@@ -5,7 +5,8 @@
   "description": "AI Clipping monorepo - Backend, Frontend, and Shared Packages",
   "workspaces": [
     "packages/*",
-    "backend"
+    "backend",
+    "frontend"
   ],
   "scripts": {
     "build:shared": "pnpm --filter @clipper/shared-db build && pnpm --filter @clipper/shared-email build",

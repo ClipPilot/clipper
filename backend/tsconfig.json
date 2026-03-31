@@ -13,7 +13,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "typeRoots": ["./node_modules/@types", "../node_modules/@types", "./src/types"],
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
