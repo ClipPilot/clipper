@@ -174,6 +174,7 @@ export class SceneBuilderController {
         singleBRollShotIndex,
         existingBRollImages,
         existingSceneImageKey,
+        settingAnchorKeys,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -364,6 +365,7 @@ export class SceneBuilderController {
         adCloneReferenceVideoKey,
         adCloneSceneTimestamp,
         existingSceneImageKey: existingSceneImageKey || undefined,
+        settingAnchorKeys: settingAnchorKeys || undefined,
       });
 
       return res.status(202).json({

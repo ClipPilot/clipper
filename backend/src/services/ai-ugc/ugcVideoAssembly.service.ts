@@ -1252,8 +1252,10 @@ async function processArollMultiScene(
     `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Concatenated ${arollShots.length} shots, total ${totalDuration.toFixed(2)}s`,
   );
 
-  const effectiveAmbient = arollShots[0].ambientSound || ambientSound;
-  if (sharedAmbientAudioPath || (effectiveAmbient && effectiveAmbient.trim())) {
+  const PODCAST_STUDIO_AMBIENT = "Quiet indoor room tone with soft air conditioning hum";
+  const rawAmbient = arollShots[0].ambientSound || ambientSound;
+  const effectiveAmbient = rawAmbient && rawAmbient.trim() ? rawAmbient : PODCAST_STUDIO_AMBIENT;
+  if (sharedAmbientAudioPath || effectiveAmbient) {
     onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
 
     try {
@@ -1267,9 +1269,9 @@ async function processArollMultiScene(
         ambientPath = sharedAmbientAudioPath;
       } else {
         const ambientBuffer = await elevenLabsService.generateSoundEffect({
-          text: effectiveAmbient!,
+          text: effectiveAmbient,
           durationSeconds: totalDuration + 2,
-          promptInfluence: 0.3,
+          promptInfluence: 0.15,
         });
         ambientPath = path.join(
           OUTPUT_DIR,
@@ -1283,7 +1285,7 @@ async function processArollMultiScene(
         OUTPUT_DIR,
         `podmulti_mixed_${sceneNumber}_${Date.now()}.mp4`,
       );
-      const mixCmd = `ffmpeg -y -i "${processedVideoPath}" -stream_loop -1 -i "${ambientPath}" -filter_complex "[1:a]volume=0.35[ambient];[0:a][ambient]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} -t ${totalDuration.toFixed(3)} "${mixedPath}"`;
+      const mixCmd = `ffmpeg -y -i "${processedVideoPath}" -stream_loop -1 -i "${ambientPath}" -filter_complex "[1:a]volume=0.20[ambient];[0:a][ambient]amix=inputs=2:duration=first[aout]" -map 0:v -map "[aout]" -c:v copy -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} -t ${totalDuration.toFixed(3)} "${mixedPath}"`;
       execSync(mixCmd, { stdio: "pipe" });
 
       if (shouldDeleteAmbient && fs.existsSync(ambientPath)) fs.unlinkSync(ambientPath);

@@ -77,10 +77,25 @@ export const regenerateThumbnailTool = createTool({
       body.userRefinement = userRefinement;
     }
 
+    // For a-roll-multi scenes, fetch existing generated images as setting anchors
+    // so the image processor can maintain background and attire consistency
+    if (scene.shotType === "a-roll-multi") {
+      const pool = getPool();
+      const existingResult = await pool.query(
+        `SELECT generated_images FROM scene_image_generation_jobs
+         WHERE script_id = $1 AND scene_id = $2 AND status = 'completed'
+         ORDER BY completed_at DESC LIMIT 1`,
+        [scriptId, scene.id],
+      );
+      const existingImages = existingResult.rows[0]?.generated_images as string[] | undefined;
+      if (existingImages && existingImages.length > 0) {
+        body.settingAnchorKeys = existingImages.slice(0, 2);
+      }
+    }
+
     if (singleBRollShotIndex !== undefined) {
       body.singleBRollShotIndex = singleBRollShotIndex;
 
-      // Query existing images so backend preserves other shots during single-shot regen
       const pool = getPool();
       const existingResult = await pool.query(
         `SELECT generated_images FROM scene_image_generation_jobs

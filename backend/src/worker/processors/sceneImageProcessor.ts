@@ -427,6 +427,7 @@ export async function processSceneImageJob(
         const shotCinematicPrompt = shot.cinematicPrompt || sceneData.cinematicPrompt;
         const shotSceneData = {
           ...sceneData,
+          shotType: "a-roll-multi",
           action: shot.imageGenPrompt || shot.action,
           dialogue: shot.dialogue,
           cinematicPrompt: shotCinematicPrompt,
