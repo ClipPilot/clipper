@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Button, Spinner, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { selectedTeamAtom } from "@/store/auth";
 import {} from "@/lib/plans";
 import { CreateCharacterFlow } from "@/components/ugc-studio/actors/CreateCharacterFlow";
@@ -19,13 +20,7 @@ const PAGE_SIZE = 12;
 
 export default function CharactersPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="accent" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageLoader />}>
       <CharactersPageContent />
     </Suspense>
   );

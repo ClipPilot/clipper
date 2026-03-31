@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Spinner } from "@heroui/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 
 export default function AdCloneCreateRedirect() {
   const router = useRouter();
@@ -11,9 +11,5 @@ export default function AdCloneCreateRedirect() {
     router.replace("/dashboard/ugc-studio/ai-video-creator/create");
   }, [router]);
 
-  return (
-    <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-      <Spinner size="lg" />
-    </div>
-  );
+  return <PageLoader />;
 }

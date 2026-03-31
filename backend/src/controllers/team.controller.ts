@@ -51,11 +51,12 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     const user = await verifyTeamAccessOrFail(req, teamId, res);
     if (!user) return;
 
-    const stats = await teamService.getTeamUsageStats(teamId);
-    const team = await teamService.getTeamById(teamId);
+    const [stats, team, clipsGenerated] = await Promise.all([
+      teamService.getTeamUsageStats(teamId),
+      teamService.getTeamById(teamId),
+      clipManagerService.getTeamClipsCount(teamId),
+    ]);
     const plan = team.plan || "free";
-
-    const clipsGenerated = await clipManagerService.getTeamClipsCount(teamId);
     const generationLimit = plan === "free" ? (stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations) : -1;
     const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 

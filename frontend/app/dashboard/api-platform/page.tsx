@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import type { Key } from "@heroui/react";
 import {
@@ -18,16 +18,12 @@ import {
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
-import {
-  apiPlatformAPI,
-  type ApiKey,
-  type Wallet,
-  type AutoRefillSettings,
-  type UsageLog,
-  type ClipJobStatus,
-  type FaceSwapJobStatus,
-} from "@/api/apiPlatform";
+import { formatCents } from "@/lib/formatters";
+import { type UsageLog } from "@/api/apiPlatform";
 import TopUpModal from "@/components/api-platform/TopUpModal";
+import { useApiWallet } from "@/hooks/useApiWallet";
+import { useApiKeys } from "@/hooks/useApiKeys";
+import { useApiUsageLogs } from "@/hooks/useApiUsageLogs";
 
 const TOP_UP_PRESETS = [1000, 2500, 5000, 10000]; // cents
 
@@ -54,213 +50,64 @@ function CopyableJobId({ jobId }: { jobId: string }) {
   );
 }
 
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
 export default function ApiPlatformPage() {
   const [selectedTeam] = useAtom(selectedTeamAtom);
-
-  // Wallet state
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [walletLoading, setWalletLoading] = useState(true);
-  const [topUpAmount, setTopUpAmount] = useState("");
-
-  // Top-up modal state
-  const [topUpModalOpen, setTopUpModalOpen] = useState(false);
-  const [topUpClientSecret, setTopUpClientSecret] = useState<string | null>(null);
-  const [topUpPaymentIntentId, setTopUpPaymentIntentId] = useState<string | null>(null);
-  const [topUpAmountCents, setTopUpAmountCents] = useState(0);
-  const [isCreatingTopUp, setIsCreatingTopUp] = useState(false);
-
-  // Keys state
-  const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [keysLoading, setKeysLoading] = useState(true);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [isCreatingKey, setIsCreatingKey] = useState(false);
-  const [revokingKeyId, setRevokingKeyId] = useState<number | null>(null);
-
-  // Auto-refill state
-  const [autoRefill, setAutoRefill] = useState<AutoRefillSettings | null>(null);
-  const [autoRefillLoading, setAutoRefillLoading] = useState(true);
-  const [autoRefillSaving, setAutoRefillSaving] = useState(false);
-
-  // Usage logs state
-  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([]);
-  const [usageTotal, setUsageTotal] = useState(0);
-  const [usageLoading, setUsageLoading] = useState(true);
-
-  // Created key modal
-  const [createdKeyModal, setCreatedKeyModal] = useState(false);
-  const [createdKeyRaw, setCreatedKeyRaw] = useState("");
-  const [createdKeyName, setCreatedKeyName] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  // Job result modal
-  const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [jobModalLoading, setJobModalLoading] = useState(false);
-  const [jobModalType, setJobModalType] = useState<"clip" | "face-swap">("clip");
-  const [clipJobResult, setClipJobResult] = useState<ClipJobStatus | null>(null);
-  const [faceSwapJobResult, setFaceSwapJobResult] = useState<FaceSwapJobStatus | null>(null);
-
-  const openJobModal = async (log: UsageLog) => {
-    if (!teamId || !log.metadata?.jobId) return;
-    const isClip = log.endpoint.includes("/v1/clip");
-    setJobModalType(isClip ? "clip" : "face-swap");
-    setClipJobResult(null);
-    setFaceSwapJobResult(null);
-    setJobModalOpen(true);
-    setJobModalLoading(true);
-    try {
-      if (isClip) {
-        const result = await apiPlatformAPI.getClipJobStatus(teamId, String(log.metadata.jobId));
-        setClipJobResult(result);
-      } else {
-        const result = await apiPlatformAPI.getFaceSwapJobStatus(teamId, String(log.metadata.jobId));
-        setFaceSwapJobResult(result);
-      }
-    } catch {
-      toast.danger("Error", { description: "Failed to load job results" });
-      setJobModalOpen(false);
-    } finally {
-      setJobModalLoading(false);
-    }
-  };
-
   const teamId = selectedTeam?.id;
 
-  const fetchWallet = useCallback(async () => {
-    if (!teamId) return;
-    try {
-      const data = await apiPlatformAPI.getWallet(teamId);
-      setWallet(data);
-    } catch {
-      toast.danger("Error", { description: "Failed to load wallet" });
-    } finally {
-      setWalletLoading(false);
-    }
-  }, [teamId]);
+  const {
+    wallet,
+    walletLoading,
+    topUpAmount,
+    setTopUpAmount,
+    topUpModalOpen,
+    topUpClientSecret,
+    topUpPaymentIntentId,
+    topUpAmountCents,
+    isCreatingTopUp,
+    handleTopUp,
+    closeTopUpModal,
+    onTopUpSuccess,
+    autoRefill,
+    autoRefillLoading,
+    autoRefillSaving,
+    handleAutoRefillUpdate,
+  } = useApiWallet();
 
-  const fetchKeys = useCallback(async () => {
-    if (!teamId) return;
-    try {
-      const data = await apiPlatformAPI.listKeys(teamId);
-      setKeys(data.keys);
-    } catch {
-      toast.danger("Error", { description: "Failed to load API keys" });
-    } finally {
-      setKeysLoading(false);
-    }
-  }, [teamId]);
+  const {
+    keys,
+    keysLoading,
+    newKeyName,
+    setNewKeyName,
+    isCreatingKey,
+    revokingKeyId,
+    handleCreateKey,
+    handleRevokeKey,
+    activeKeys,
+    revokedKeys,
+    createdKeyModal,
+    createdKeyRaw,
+    createdKeyName,
+    copied,
+    closeCreatedKeyModal,
+    copyCreatedKey,
+  } = useApiKeys();
 
-  const fetchAutoRefill = useCallback(async () => {
-    if (!teamId) return;
-    try {
-      const data = await apiPlatformAPI.getAutoRefill(teamId);
-      setAutoRefill(data);
-    } catch {
-      // Non-critical, don't toast
-    } finally {
-      setAutoRefillLoading(false);
-    }
-  }, [teamId]);
-
-  const fetchUsageLogs = useCallback(async () => {
-    if (!teamId) return;
-    try {
-      const data = await apiPlatformAPI.getUsageLogs(teamId, 20);
-      setUsageLogs(data.logs);
-      setUsageTotal(data.total);
-    } catch {
-      // Non-critical
-    } finally {
-      setUsageLoading(false);
-    }
-  }, [teamId]);
-
-  useEffect(() => {
-    fetchWallet();
-    fetchKeys();
-    fetchAutoRefill();
-    fetchUsageLogs();
-  }, [fetchWallet, fetchKeys, fetchAutoRefill, fetchUsageLogs]);
-
-  const handleTopUp = async () => {
-    if (!teamId) return;
-    const cents = Math.round(parseFloat(topUpAmount) * 100);
-    if (isNaN(cents) || cents < 500) {
-      toast.danger("Invalid amount", { description: "Minimum top-up is $5.00" });
-      return;
-    }
-    setIsCreatingTopUp(true);
-    try {
-      const { clientSecret, paymentIntentId } = await apiPlatformAPI.createTopUp(teamId, cents);
-      setTopUpClientSecret(clientSecret);
-      setTopUpPaymentIntentId(paymentIntentId);
-      setTopUpAmountCents(cents);
-      setTopUpModalOpen(true);
-    } catch (err) {
-      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to start top-up" });
-    } finally {
-      setIsCreatingTopUp(false);
-    }
-  };
-
-  const handleCreateKey = async () => {
-    if (!teamId || !newKeyName.trim()) return;
-    setIsCreatingKey(true);
-    try {
-      const created = await apiPlatformAPI.createKey(teamId, newKeyName.trim());
-      setCreatedKeyRaw(created.key);
-      setCreatedKeyName(created.name);
-      setCreatedKeyModal(true);
-      setNewKeyName("");
-      fetchKeys();
-    } catch (err) {
-      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to create API key" });
-    } finally {
-      setIsCreatingKey(false);
-    }
-  };
-
-  const handleRevokeKey = async (keyId: number) => {
-    if (!teamId) return;
-    setRevokingKeyId(keyId);
-    try {
-      await apiPlatformAPI.revokeKey(teamId, keyId);
-      toast.success("Key revoked", { description: "The API key has been permanently revoked." });
-      fetchKeys();
-    } catch (err) {
-      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to revoke key" });
-    } finally {
-      setRevokingKeyId(null);
-    }
-  };
-
-  const handleAutoRefillUpdate = async (
-    updates: Partial<Omit<AutoRefillSettings, "has_payment_method">>,
-  ) => {
-    if (!teamId) return;
-    setAutoRefillSaving(true);
-    try {
-      const updated = await apiPlatformAPI.updateAutoRefill(teamId, updates);
-      setAutoRefill(updated);
-      toast.success("Auto-refill updated", { description: updates.auto_refill !== undefined });
-    } catch (err) {
-      toast.danger("Error", { description: err instanceof Error ? err.message : "Failed to update auto-refill" });
-      fetchAutoRefill();
-    } finally {
-      setAutoRefillSaving(false);
-    }
-  };
+  const {
+    usageLogs,
+    usageTotal,
+    usageLoading,
+    jobModalOpen,
+    jobModalLoading,
+    jobModalType,
+    clipJobResult,
+    faceSwapJobResult,
+    openJobModal,
+    closeJobModal,
+  } = useApiUsageLogs();
 
   const renderCreatedKeyModal = () => (
     <Modal>
-      <Modal.Backdrop isOpen={createdKeyModal} onOpenChange={() => {
- setCreatedKeyModal(false);
- setCreatedKeyRaw("");
- setCopied(false);
- }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+      <Modal.Backdrop isOpen={createdKeyModal} onOpenChange={closeCreatedKeyModal}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
         <Modal.Header className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <Icon
@@ -295,19 +142,16 @@ export default function ApiPlatformPage() {
                   {createdKeyRaw}
                 </code>
                 <Button
- size="sm"
- isIconOnly
- variant="tertiary"
- className={
- copied
- ? "bg-green-500/20 text-green-500"
- : "bg-surface-dark text-text-secondary hover:text-text-primary"
- }
- onPress={() => {
- navigator.clipboard.writeText(createdKeyRaw);
- setCopied(true);
- }}
- >
+                  size="sm"
+                  isIconOnly
+                  variant="tertiary"
+                  className={
+                    copied
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-surface-dark text-text-secondary hover:text-text-primary"
+                  }
+                  onPress={copyCreatedKey}
+                >
                   <Icon
                     icon={copied ? "solar:check-circle-bold-duotone" : "solar:copy-bold-duotone"}
                     width={18}
@@ -319,22 +163,15 @@ export default function ApiPlatformPage() {
         </Modal.Body>
         <Modal.Footer>
           <Button
- className="bg-accent-400 text-white font-medium"
- onPress={() => {
- setCreatedKeyModal(false);
- setCreatedKeyRaw("");
- setCopied(false);
- }}
- >
+            className="bg-accent-400 text-white font-medium"
+            onPress={closeCreatedKeyModal}
+          >
             Done
           </Button>
         </Modal.Footer>
       </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
-
-  const activeKeys = keys.filter((k) => !k.revoked);
-  const revokedKeys = keys.filter((k) => k.revoked);
 
   return (
     <motion.div
@@ -444,18 +281,18 @@ export default function ApiPlatformPage() {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {TOP_UP_PRESETS.map((preset) => (
                         <Button
- key={preset}
- size="sm"
- variant="tertiary"
- className={
- topUpAmount === (preset / 100).toString()
- ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
- : "bg-white/[0.04] text-text-secondary hover:text-text-primary"
- }
- onPress={() =>
- setTopUpAmount((preset / 100).toString())
- }
- >
+                          key={preset}
+                          size="sm"
+                          variant="tertiary"
+                          className={
+                            topUpAmount === (preset / 100).toString()
+                              ? "bg-accent-400/20 text-accent-400 border border-accent-400/40"
+                              : "bg-white/[0.04] text-text-secondary hover:text-text-primary"
+                          }
+                          onPress={() =>
+                            setTopUpAmount((preset / 100).toString())
+                          }
+                        >
                           {formatCents(preset)}
                         </Button>
                       ))}
@@ -476,13 +313,13 @@ export default function ApiPlatformPage() {
                         </TextField>
                       </div>
                       <Button
- className="bg-accent-400 text-white font-medium flex-shrink-0"
- isPending={isCreatingTopUp}
- onPress={handleTopUp}
- >
+                        className="bg-accent-400 text-white font-medium flex-shrink-0"
+                        isPending={isCreatingTopUp}
+                        onPress={handleTopUp}
+                      >
                         {!isCreatingTopUp && (
-                            <Icon icon="solar:card-bold-duotone" width={18} />
-                          )}
+                          <Icon icon="solar:card-bold-duotone" width={18} />
+                        )}
                         Top Up
                       </Button>
                     </div>
@@ -534,12 +371,12 @@ export default function ApiPlatformPage() {
                       </p>
                     </div>
                     <Switch
- isSelected={autoRefill.auto_refill}
- isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
- onChange={(val) =>
- handleAutoRefillUpdate({ auto_refill: val })
- }
- />
+                      isSelected={autoRefill.auto_refill}
+                      isDisabled={!autoRefill.has_payment_method || autoRefillSaving}
+                      onChange={(val) =>
+                        handleAutoRefillUpdate({ auto_refill: val })
+                      }
+                    />
                   </div>
 
                   {autoRefill.auto_refill && (
@@ -549,12 +386,12 @@ export default function ApiPlatformPage() {
                           Refill when balance drops below
                         </p>
                         <Select
- value={autoRefill.refill_threshold_cents.toString()}
- onChange={(val: Key | null) => {
- if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val as string) });
- }}
- isDisabled={autoRefillSaving}
- >
+                          value={autoRefill.refill_threshold_cents.toString()}
+                          onChange={(val: Key | null) => {
+                            if (val) handleAutoRefillUpdate({ refill_threshold_cents: parseInt(val as string) });
+                          }}
+                          isDisabled={autoRefillSaving}
+                        >
                           <Select.Trigger>
                             <Select.Value />
                             <Select.Indicator />
@@ -574,12 +411,12 @@ export default function ApiPlatformPage() {
                           Amount to refill
                         </p>
                         <Select
- value={autoRefill.refill_amount_cents.toString()}
- onChange={(val: Key | null) => {
- if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val as string) });
- }}
- isDisabled={autoRefillSaving}
- >
+                          value={autoRefill.refill_amount_cents.toString()}
+                          onChange={(val: Key | null) => {
+                            if (val) handleAutoRefillUpdate({ refill_amount_cents: parseInt(val as string) });
+                          }}
+                          isDisabled={autoRefillSaving}
+                        >
                           <Select.Trigger>
                             <Select.Value />
                             <Select.Indicator />
@@ -639,14 +476,14 @@ export default function ApiPlatformPage() {
                   />
                 </TextField>
                 <Button
- className="bg-accent-400 text-white font-medium flex-shrink-0"
- isPending={isCreatingKey}
- isDisabled={!newKeyName.trim()}
- onPress={handleCreateKey}
- >
+                  className="bg-accent-400 text-white font-medium flex-shrink-0"
+                  isPending={isCreatingKey}
+                  isDisabled={!newKeyName.trim()}
+                  onPress={handleCreateKey}
+                >
                   {!isCreatingKey && (
-                      <Icon icon="solar:add-circle-bold-duotone" width={18} />
-                    )}
+                    <Icon icon="solar:add-circle-bold-duotone" width={18} />
+                  )}
                   Create Key
                 </Button>
               </div>
@@ -714,12 +551,12 @@ export default function ApiPlatformPage() {
                           Active
                         </Chip>
                         <Button
- size="sm"
- variant="tertiary"
- className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
- isPending={revokingKeyId === key.id}
- onPress={() => handleRevokeKey(key.id)}
- >
+                          size="sm"
+                          variant="tertiary"
+                          className="bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                          isPending={revokingKeyId === key.id}
+                          onPress={() => handleRevokeKey(key.id)}
+                        >
                           Revoke
                         </Button>
                       </div>
@@ -752,9 +589,9 @@ export default function ApiPlatformPage() {
                             </div>
                           </div>
                           <Chip
- size="sm"
- variant="tertiary"
- >
+                            size="sm"
+                            variant="tertiary"
+                          >
                             Revoked
                           </Chip>
                         </div>
@@ -865,9 +702,9 @@ export default function ApiPlatformPage() {
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
                               <Chip
- size="sm"
- variant="tertiary"
- >
+                                size="sm"
+                                variant="tertiary"
+                              >
                                 {log.method}
                               </Chip>
                               <span className="text-text-primary font-mono text-xs truncate max-w-[200px]">
@@ -880,9 +717,9 @@ export default function ApiPlatformPage() {
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <Chip
- size="sm"
- variant="tertiary"
- >
+                              size="sm"
+                              variant="tertiary"
+                            >
                               {log.status_code}
                             </Chip>
                           </td>
@@ -924,24 +761,17 @@ export default function ApiPlatformPage() {
 
       <TopUpModal
         isOpen={topUpModalOpen}
-        onClose={() => {
-          setTopUpModalOpen(false);
-          setTopUpClientSecret(null);
-          setTopUpPaymentIntentId(null);
-        }}
+        onClose={closeTopUpModal}
         clientSecret={topUpClientSecret}
         paymentIntentId={topUpPaymentIntentId}
         amountCents={topUpAmountCents}
         teamId={teamId!}
-        onSuccess={() => {
-          fetchWallet();
-          fetchAutoRefill();
-        }}
+        onSuccess={onTopUpSuccess}
       />
 
       {/* Job Result Modal */}
       <Modal>
-        <Modal.Backdrop isOpen={jobModalOpen} onOpenChange={() => setJobModalOpen(false)}>
+        <Modal.Backdrop isOpen={jobModalOpen} onOpenChange={closeJobModal}>
           <Modal.Container>
             <Modal.Dialog className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
               <Modal.CloseTrigger />

@@ -9,7 +9,7 @@ import {
   teamMembers,
   users,
 } from "@clipper/shared-db/src/schema";
-import { eq, count, and, sql } from "drizzle-orm";
+import { eq, count, and, sql, desc } from "drizzle-orm";
 import { stripe, ENTERPRISE_PRODUCT } from "../config/stripe.config";
 import { emailNotiService } from "./emailNoti.service";
 import adminConfig from "../config/admin.config.json";
@@ -157,50 +157,71 @@ class AdminService {
       .from(teams)
       .where(whereCondition);
 
-    const teamsWithDetails = await Promise.all(
-      allTeams.map(async (team) => {
-        const [sub] = await db
-          .select()
-          .from(subscriptions)
-          .where(eq(subscriptions.team_id, team.id))
-          .limit(1);
+    const teamIds = allTeams.map((t) => t.id);
 
-        const [usage] = await db
-          .select({
-            clips_created: usageStats.clips_created,
-            limit: usageStats.limit,
-          })
-          .from(usageStats)
-          .where(eq(usageStats.team_id, team.id))
-          .limit(1);
+    if (teamIds.length === 0) {
+      return {
+        teams: [],
+        pagination: { total: Number(total), limit, offset, hasMore: false },
+      };
+    }
 
-        // Get member count
-        const [memberCountResult] = await db
-          .select({ count: count() })
-          .from(teamMembers)
-          .where(eq(teamMembers.team_id, team.id));
+    const [subsMap, usageMap, memberCountMap, ownerMap] = await Promise.all([
+      db
+        .select()
+        .from(subscriptions)
+        .where(sql`${subscriptions.team_id} = ANY(${teamIds})`)
+        .then((rows) => new Map(rows.map((r) => [r.team_id, r]))),
 
-        // Get owner email
-        const ownerResult = await db
-          .select({
-            email: users.email,
-          })
-          .from(teamMembers)
-          .innerJoin(users, eq(teamMembers.user_id, users.id))
-          .where(
-            and(eq(teamMembers.team_id, team.id), eq(teamMembers.role, "owner"))
+      db
+        .select({
+          team_id: usageStats.team_id,
+          clips_created: usageStats.clips_created,
+          limit: usageStats.limit,
+        })
+        .from(usageStats)
+        .where(sql`${usageStats.team_id} = ANY(${teamIds})`)
+        .then((rows) => {
+          const map = new Map<number, { clips_created: number; limit: number }>();
+          for (const r of rows) {
+            if (!map.has(r.team_id)) map.set(r.team_id, r);
+          }
+          return map;
+        }),
+
+      db
+        .select({
+          team_id: teamMembers.team_id,
+          count: count(),
+        })
+        .from(teamMembers)
+        .where(sql`${teamMembers.team_id} = ANY(${teamIds})`)
+        .groupBy(teamMembers.team_id)
+        .then((rows) => new Map(rows.map((r) => [r.team_id, Number(r.count)]))),
+
+      db
+        .select({
+          team_id: teamMembers.team_id,
+          email: users.email,
+        })
+        .from(teamMembers)
+        .innerJoin(users, eq(teamMembers.user_id, users.id))
+        .where(
+          and(
+            sql`${teamMembers.team_id} = ANY(${teamIds})`,
+            eq(teamMembers.role, "owner")
           )
-          .limit(1);
+        )
+        .then((rows) => new Map(rows.map((r) => [r.team_id, r.email]))),
+    ]);
 
-        return {
-          ...team,
-          subscription: sub || null,
-          usage: usage || null,
-          memberCount: memberCountResult?.count || 0,
-          ownerEmail: ownerResult[0]?.email || null,
-        };
-      })
-    );
+    const teamsWithDetails = allTeams.map((team) => ({
+      ...team,
+      subscription: subsMap.get(team.id) || null,
+      usage: usageMap.get(team.id) || null,
+      memberCount: memberCountMap.get(team.id) || 0,
+      ownerEmail: ownerMap.get(team.id) || null,
+    }));
 
     return {
       teams: teamsWithDetails,

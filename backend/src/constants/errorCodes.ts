@@ -1,0 +1,3 @@
+export const INSUFFICIENT_CREDITS = "INSUFFICIENT_CREDITS" as const;
+export const PLAN_REQUIRED = "PLAN_REQUIRED" as const;
+export const SEAT_LIMIT_EXCEEDED = "SEAT_LIMIT_EXCEEDED" as const;

@@ -37,3 +37,7 @@ export function formatChartValue(value: number): string {
   if (value >= 1_000) return (value / 1_000).toFixed(0) + "K";
   return value.toLocaleString();
 }
+
+export function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}

@@ -26,10 +26,7 @@ import {
   type CampaignCard,
   type CampaignGates,
 } from "@/api/campaign";
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
+import { formatCents } from "@/lib/formatters";
 
 function formatDollars(dollars: number): string {
   return `$${dollars.toLocaleString()}`;

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Button, Input, useOverlayState, Spinner } from "@heroui/react";
 import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import {
   AccountsTable,
   PlatformFilter,
@@ -474,11 +475,7 @@ export default function ViralityPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
