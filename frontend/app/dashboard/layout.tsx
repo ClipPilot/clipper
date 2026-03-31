@@ -198,7 +198,7 @@ export default function DashboardLayout({
               <Popover
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
-                shouldCloseOnInteractOutside={() => true}
+
               >
                 <Popover.Trigger>
                   <Button variant="tertiary" className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors">
@@ -223,7 +223,7 @@ export default function DashboardLayout({
               <Popover
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
-                shouldCloseOnInteractOutside={() => true}
+
               >
                 <Popover.Trigger>
                   <Button
