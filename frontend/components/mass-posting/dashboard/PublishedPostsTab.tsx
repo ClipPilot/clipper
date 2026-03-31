@@ -2,28 +2,18 @@
 
 import { useState, useCallback } from "react";
 import {
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
   Chip,
-  Pagination,
   Button,
   Spinner,
   Modal,
-  ModalContent,
-  ModalBody,
-  useDisclosure,
-} from "@heroui/react";
+  useOverlayState } from "@heroui/react";
+import { PaginationControl } from "@/components/ui/PaginationControl";
 import { Icon } from "@iconify/react";
 import { formatDateTime } from "@/lib/formatters";
 import {
   platformIcon,
   platformIconColor,
-  platformChipClass,
-} from "@/lib/platformUtils";
+  platformChipClass } from "@/lib/platformUtils";
 import { FilterBar } from "./FilterBar";
 import type { TeamPost, PostsPagination } from "@/types/massPosting";
 import type { GetTeamPostsParams } from "@/api/adPosting";
@@ -43,13 +33,12 @@ export function PublishedPostsTab({
   isLoading,
   onParamsChange,
   dateRange,
-  onDateRangeChange,
-}: PublishedPostsTabProps) {
+  onDateRangeChange }: PublishedPostsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const fireParams = useCallback(
     (overrides: Partial<GetTeamPostsParams> = {}) => {
@@ -60,8 +49,7 @@ export function PublishedPostsTab({
         page,
         sortBy: "posted_time",
         sortOrder: "desc",
-        ...overrides,
-      };
+        ...overrides };
       onParamsChange(params);
     },
     [searchQuery, platformFilter, dateRange, page, onParamsChange],
@@ -146,13 +134,13 @@ export function PublishedPostsTab({
           }}
           rightContent={
             <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:export-bold" width={14} />}
-              onPress={handleExportCSV}
-              isDisabled={posts.length === 0}
-            >
+ size="sm"
+ variant="tertiary"
+ className="bg-white/[0.04] text-text-secondary h-9"
+ onPress={handleExportCSV}
+ isDisabled={posts.length === 0}
+ >
+              <Icon icon="solar:export-bold" width={14} />
               Export CSV
             </Button>
           }
@@ -160,7 +148,7 @@ export function PublishedPostsTab({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Spinner size="lg" color="primary" />
+            <Spinner size="lg" color="accent" />
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
@@ -172,124 +160,116 @@ export function PublishedPostsTab({
             <p className="text-sm">No published posts found</p>
           </div>
         ) : (
-          <Table
-            aria-label="Published posts table"
-            removeWrapper
-            classNames={{
-              th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
-              td: "py-4 px-4 border-t border-border-base",
-            }}
-          >
-            <TableHeader>
-              <TableColumn>CONTENT</TableColumn>
-              <TableColumn>ACCOUNT</TableColumn>
-              <TableColumn>PLATFORM</TableColumn>
-              <TableColumn>PUBLISHED DATE</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {posts.map((post) => {
-                const { date, time } = formatDateTime(post.posted_time);
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">CONTENT</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">ACCOUNT</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">PLATFORM</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">PUBLISHED DATE</th>
+                  <th className="bg-white/[0.04] text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 text-left">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.map((post) => {
+                  const { date, time } = formatDateTime(post.posted_time);
 
-                return (
-                  <TableRow
-                    key={post.id}
-                    className="hover:bg-surface-elevated/50 transition-colors"
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        {post.clip_url ? (
-                          <button
-                            onClick={() => handleVideoClick(post.clip_url)}
-                            className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-surface-elevated flex-shrink-0 group cursor-pointer"
-                          >
-                            <video
-                              src={post.clip_url}
-                              className="w-full h-full object-cover"
-                              muted
-                              preload="metadata"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  return (
+                    <tr
+                      key={post.id}
+                      className="hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <div className="flex items-center gap-3">
+                          {post.clip_url ? (
+                            <button
+                              onClick={() => handleVideoClick(post.clip_url)}
+                              className="relative w-[72px] h-[48px] rounded-md overflow-hidden bg-white/[0.04] flex-shrink-0 group cursor-pointer"
+                            >
+                              <video
+                                src={post.clip_url}
+                                className="w-full h-full object-cover"
+                                muted
+                                preload="metadata"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Icon
+                                  icon="solar:play-bold"
+                                  width={20}
+                                  className="text-white"
+                                />
+                              </div>
+                            </button>
+                          ) : (
+                            <div className="w-[72px] h-[48px] rounded-md bg-white/[0.04] flex-shrink-0 flex items-center justify-center">
                               <Icon
-                                icon="solar:play-bold"
-                                width={20}
-                                className="text-white"
+                                icon="solar:videocamera-record-bold-duotone"
+                                width={24}
+                                className="text-text-tertiary"
                               />
                             </div>
-                          </button>
-                        ) : (
-                          <div className="w-[72px] h-[48px] rounded-md bg-surface-elevated flex-shrink-0 flex items-center justify-center">
-                            <Icon
-                              icon="solar:videocamera-record-bold-duotone"
-                              width={24}
-                              className="text-text-tertiary"
-                            />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-text-primary truncate max-w-[320px]">
-                            {post.clip_title || `Post #${post.id}`}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                            <span className="text-xs text-text-tertiary">
-                              Published
-                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-text-primary truncate max-w-[320px]">
+                              {post.clip_title || `Post #${post.id}`}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                              <span className="text-xs text-text-tertiary">
+                                Published
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-text-secondary">
-                        {post.accountHandle || "—"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="sm"
-                        variant="flat"
-                        classNames={{
-                          base: `${platformChipClass(post.platform)} h-6 px-2`,
-                        }}
-                        startContent={
-                          <Icon icon={platformIcon(post.platform)} width={12} />
-                        }
-                      >
-                        <span className="text-xs capitalize">
-                          {post.platform}
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <span className="text-sm text-text-secondary">
+                          {post.accountHandle || "—"}
                         </span>
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm text-text-primary">{date}</p>
-                        <p className="text-xs text-text-tertiary">{time}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {post.post_url ? (
-                        <Button
-                          size="sm"
-                          variant="flat"
-                          isIconOnly
-                          className="bg-transparent hover:bg-surface-elevated"
-                          onPress={() => window.open(post.post_url!, "_blank")}
-                        >
-                          <Icon
-                            icon="solar:square-arrow-right-up-linear"
-                            width={16}
-                            className="text-text-secondary"
-                          />
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-text-tertiary">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <Chip
+ size="sm"
+ variant="tertiary"
+ >
+                          <Icon icon={platformIcon(post.platform)} width={12} />
+                          <span className="text-xs capitalize">
+                            {post.platform}
+                          </span>
+                        </Chip>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        <div>
+                          <p className="text-sm text-text-primary">{date}</p>
+                          <p className="text-xs text-text-tertiary">{time}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 border-t border-border-base">
+                        {post.post_url ? (
+                          <Button
+ size="sm"
+ variant="tertiary"
+ isIconOnly
+ className="bg-transparent hover:bg-white/[0.04]"
+ onPress={() => window.open(post.post_url!, "_blank")}
+ >
+                            <Icon
+                              icon="solar:square-arrow-right-up-linear"
+                              width={16}
+                              className="text-text-secondary"
+                            />
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-text-tertiary">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
@@ -309,38 +289,23 @@ export function PublishedPostsTab({
             )}
           </p>
           {totalPages > 1 && (
-            <Pagination
-              total={totalPages}
-              page={page}
-              onChange={(p) => {
-                setPage(p);
-                fireParams({ page: p });
-              }}
-              size="sm"
-              classNames={{
-                item: "bg-surface-elevated text-text-secondary",
-                cursor: "bg-accent-400 text-white",
-              }}
-            />
+            <PaginationControl total={totalPages}
+ page={page}
+ onChange={(p) => {
+ setPage(p);
+ fireParams({ page: p });
+ }}
+ />
           )}
         </div>
       </div>
 
-      {/* Video Preview Modal */}
-      <Modal
-        isOpen={isOpen}
-        onClose={() => {
-          onClose();
-          setVideoUrl(null);
-        }}
-        size="3xl"
-        classNames={{
-          base: "bg-surface-base border border-border-base",
-          closeButton: "text-text-secondary hover:text-text-primary",
-        }}
-      >
-        <ModalContent>
-          <ModalBody className="p-0">
+      <Modal>
+        <Modal.Backdrop isOpen={isOpen} onOpenChange={() => {
+ onClose();
+ setVideoUrl(null);
+ }}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+          <Modal.Body className="p-0">
             {videoUrl && (
               <video
                 src={videoUrl}
@@ -349,8 +314,8 @@ export function PublishedPostsTab({
                 className="w-full rounded-lg"
               />
             )}
-          </ModalBody>
-        </ModalContent>
+          </Modal.Body>
+        </Modal.Dialog></Modal.Container></Modal.Backdrop>
       </Modal>
     </>
   );

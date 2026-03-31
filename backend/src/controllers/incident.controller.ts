@@ -1,25 +1,17 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { incidentService } from "../services/incident.service";
 import { AdminRequest } from "../middleware/admin.middleware";
+import { handleControllerError } from "../utils/controllerHelpers";
 
-/**
- * Public — active incidents for status page
- */
 export async function getActiveIncidents(req: Request, res: Response) {
   try {
     const incidents = await incidentService.getActiveIncidents();
     return res.json({ incidents });
   } catch (error) {
-    console.error("Get active incidents error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch incidents" });
+    return handleControllerError(res, "Get active incidents error", error, "Failed to fetch incidents");
   }
 }
 
-/**
- * Admin — list all incidents
- */
 export async function getAllIncidents(req: AdminRequest, res: Response) {
   try {
     const { status, limit, offset } = req.query;
@@ -32,15 +24,10 @@ export async function getAllIncidents(req: AdminRequest, res: Response) {
 
     return res.json(result);
   } catch (error) {
-    console.error("Get all incidents error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch incidents" });
+    return handleControllerError(res, "Get all incidents error", error, "Failed to fetch incidents");
   }
 }
 
-/**
- * Admin — create incident
- */
 export async function createIncident(req: AdminRequest, res: Response) {
   try {
     const { title, status, affected_services, message } = req.body;
@@ -68,15 +55,10 @@ export async function createIncident(req: AdminRequest, res: Response) {
 
     return res.status(201).json({ incident });
   } catch (error) {
-    console.error("Create incident error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create incident" });
+    return handleControllerError(res, "Create incident error", error, "Failed to create incident");
   }
 }
 
-/**
- * Admin — update incident metadata
- */
 export async function updateIncident(req: AdminRequest, res: Response) {
   try {
     const id = parseInt(req.params.id);
@@ -93,20 +75,14 @@ export async function updateIncident(req: AdminRequest, res: Response) {
 
     return res.json({ incident });
   } catch (error) {
-    console.error("Update incident error:", error);
-    Sentry.captureException(error);
-
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
 
-    return res.status(500).json({ error: "Failed to update incident" });
+    return handleControllerError(res, "Update incident error", error, "Failed to update incident");
   }
 }
 
-/**
- * Admin — add status update to incident
- */
 export async function addIncidentUpdate(req: AdminRequest, res: Response) {
   try {
     const id = parseInt(req.params.id);
@@ -129,20 +105,14 @@ export async function addIncidentUpdate(req: AdminRequest, res: Response) {
 
     return res.json({ incident });
   } catch (error) {
-    console.error("Add incident update error:", error);
-    Sentry.captureException(error);
-
     if (error instanceof Error && error.message === "Incident not found") {
       return res.status(404).json({ error: "Incident not found" });
     }
 
-    return res.status(500).json({ error: "Failed to add incident update" });
+    return handleControllerError(res, "Add incident update error", error, "Failed to add incident update");
   }
 }
 
-/**
- * Admin — delete incident
- */
 export async function deleteIncident(req: AdminRequest, res: Response) {
   try {
     const id = parseInt(req.params.id);
@@ -154,8 +124,6 @@ export async function deleteIncident(req: AdminRequest, res: Response) {
     await incidentService.deleteIncident(id);
     return res.json({ success: true, message: "Incident deleted" });
   } catch (error) {
-    console.error("Delete incident error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to delete incident" });
+    return handleControllerError(res, "Delete incident error", error, "Failed to delete incident");
   }
 }

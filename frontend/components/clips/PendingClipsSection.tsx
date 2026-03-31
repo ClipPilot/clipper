@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-import { Card, CardBody, Progress, Button } from "@heroui/react";
+import { ProgressBar, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface Clip {
@@ -68,15 +68,11 @@ function VideoThumbnail({ videoUrl, isEdit }: { videoUrl: string; isEdit?: boole
         <span className="text-sm font-medium text-white">{isEdit ? "Applying Changes" : "Processing"}</span>
         {/* Animated progress bar */}
         <div className="w-24 mt-2">
-          <Progress
-            size="sm"
-            isIndeterminate
-            color={isEdit ? "primary" : "warning"}
-            classNames={{
-              track: "bg-white/20",
-              indicator: isEdit ? "bg-gradient-to-r from-primary-400 to-primary-500" : "bg-gradient-to-r from-warning-400 to-warning-500",
-            }}
-          />
+          <ProgressBar
+ isIndeterminate
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
         </div>
       </div>
     </div>
@@ -104,18 +100,14 @@ function PlaceholderThumbnail({ isEdit }: { isEdit?: boolean }) {
             />
           </div>
         </div>
-        <span className="text-sm font-medium text-text-primary">{isEdit ? "Applying Changes" : "Processing"}</span>
+        <span className="text-sm font-medium text-yellow-400">{isEdit ? "Applying Changes" : "Processing"}</span>
         {/* Animated progress bar */}
         <div className="w-24 mt-2">
-          <Progress
-            size="sm"
-            isIndeterminate
-            color={isEdit ? "primary" : "warning"}
-            classNames={{
-              track: "bg-surface-base",
-              indicator: isEdit ? "bg-gradient-to-r from-primary-400 to-primary-500" : "bg-gradient-to-r from-warning-400 to-warning-500",
-            }}
-          />
+          <ProgressBar
+ isIndeterminate
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
         </div>
       </div>
     </div>
@@ -170,21 +162,20 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {failedClips.map((clip) => (
-              <Card
+              <div
                 key={clip.id}
-                className="bg-surface-base border border-danger-500/30"
+                className="rounded-xl border border-danger-500/30 bg-surface-base p-3"
               >
-                <CardBody className="p-3">
                   <div className="relative w-full aspect-[9/16] bg-gradient-to-br from-danger-500/10 to-surface-base rounded-lg overflow-hidden flex flex-col items-center justify-center">
                     <div className="relative mb-3">
                       <div className="w-14 h-14 rounded-full border-4 border-danger-500/20 flex items-center justify-center">
                         <Icon
                           icon="solar:close-circle-bold"
-                          className="text-3xl text-danger-400"
+                          className="text-3xl text-red-400"
                         />
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-danger-400">Failed</span>
+                    <span className="text-sm font-medium text-red-400">Failed</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-text-tertiary truncate mr-1">
@@ -193,9 +184,8 @@ export default function PendingClipsSection({
                     {onCancel && (
                       <Button
                         size="sm"
-                        variant="flat"
-                        color="danger"
-                        isLoading={cancellingIds.has(clip.id)}
+                        variant="danger-soft"
+                        isPending={cancellingIds.has(clip.id)}
                         onPress={() => handleCancel(clip.id)}
                         className="min-w-fit h-6 text-xs px-2"
                       >
@@ -203,8 +193,7 @@ export default function PendingClipsSection({
                       </Button>
                     )}
                   </div>
-                </CardBody>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -226,13 +215,11 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {newClips.map((clip) => (
-              <Card
+              <div
                 key={clip.id}
-                isPressable
-                onPress={() => onClipClick(clip)}
-                className="bg-surface-base border border-warning-500/30 hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
+                onClick={() => onClipClick(clip)}
+                className="rounded-xl border border-warning-500/30 bg-surface-base p-2 cursor-pointer hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
               >
-                <CardBody className="p-2">
                   {clip.rawVideoUrl ? (
                     <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={false} />
                   ) : (
@@ -245,13 +232,12 @@ export default function PendingClipsSection({
                     {onCancel && (
                       <Button
                         size="sm"
-                        variant="flat"
-                        color="danger"
+                        variant="danger-soft"
                         isIconOnly
-                        isLoading={cancellingIds.has(clip.id)}
+                        isPending={cancellingIds.has(clip.id)}
                         onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
-                        title="Cancel processing"
+                        aria-label="Cancel processing"
                       >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />
@@ -259,8 +245,7 @@ export default function PendingClipsSection({
                       </Button>
                     )}
                   </div>
-                </CardBody>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
@@ -281,13 +266,11 @@ export default function PendingClipsSection({
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {editingClips.map((clip) => (
-              <Card
+              <div
                 key={clip.id}
-                isPressable
-                onPress={() => onClipClick(clip)}
-                className="bg-surface-base border border-primary-500/30 hover:border-primary-500/50 hover:scale-[1.02] transition-all duration-200"
+                onClick={() => onClipClick(clip)}
+                className="rounded-xl border border-primary-500/30 bg-surface-base p-2 cursor-pointer hover:border-primary-500/50 hover:scale-[1.02] transition-all duration-200"
               >
-                <CardBody className="p-2">
                   {clip.rawVideoUrl ? (
                     <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={true} />
                   ) : (
@@ -300,13 +283,12 @@ export default function PendingClipsSection({
                     {onCancel && (
                       <Button
                         size="sm"
-                        variant="flat"
-                        color="danger"
+                        variant="danger-soft"
                         isIconOnly
-                        isLoading={cancellingIds.has(clip.id)}
+                        isPending={cancellingIds.has(clip.id)}
                         onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
-                        title="Cancel editing"
+                        aria-label="Cancel editing"
                       >
                         {!cancellingIds.has(clip.id) && (
                           <Icon icon="solar:close-circle-bold" className="text-sm" />
@@ -314,8 +296,7 @@ export default function PendingClipsSection({
                       </Button>
                     )}
                   </div>
-                </CardBody>
-              </Card>
+              </div>
             ))}
           </div>
         </div>

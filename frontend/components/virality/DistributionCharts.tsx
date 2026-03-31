@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardBody, Tooltip as HeroTooltip } from "@heroui/react";
+import { Tooltip as HeroTooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   ResponsiveContainer,
@@ -35,7 +35,7 @@ function CustomTooltip({ active, payload, total }: CustomTooltipProps) {
   const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : "0";
 
   return (
-    <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[160px] p-2.5">
+    <div className="rounded-md bg-foreground text-xs shadow-small min-w-[160px] p-2.5">
       <div className="flex items-center gap-2 mb-1">
         <span
           className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
@@ -46,13 +46,13 @@ function CustomTooltip({ active, payload, total }: CustomTooltipProps) {
           width={14}
           className={platformIconColor(entry.platform)}
         />
-        <span className="text-small text-background font-medium">
+        <span className="text-sm text-background font-medium">
           @{entry.username}
         </span>
       </div>
-      <div className="text-small text-background flex justify-between gap-4">
+      <div className="text-sm text-background flex justify-between gap-4">
         <span>{formatNumber(entry.value)}</span>
-        <span className="text-foreground-400">{pct}%</span>
+        <span className="text-muted">{pct}%</span>
       </div>
     </div>
   );
@@ -72,18 +72,17 @@ function ChartTitle({ title, infoTooltip }: { title: string; infoTooltip?: strin
         {title}
       </p>
       {infoTooltip && (
-        <HeroTooltip
-          content={infoTooltip}
-          placement="top"
-          classNames={{ content: "max-w-[220px] text-tiny" }}
-        >
-          <span className="cursor-help">
-            <Icon
-              icon="solar:info-circle-linear"
-              width={14}
-              className="text-text-tertiary"
-            />
-          </span>
+        <HeroTooltip>
+          <HeroTooltip.Trigger>
+            <span className="cursor-help">
+              <Icon
+                icon="solar:info-circle-linear"
+                width={14}
+                className="text-text-tertiary"
+              />
+            </span>
+          </HeroTooltip.Trigger>
+          <HeroTooltip.Content placement="top" className="max-w-[220px] text-xs">{infoTooltip}</HeroTooltip.Content>
         </HeroTooltip>
       )}
     </div>
@@ -93,8 +92,8 @@ function ChartTitle({ title, infoTooltip }: { title: string; infoTooltip?: strin
 function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps) {
   if (data.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <ChartTitle title={title} infoTooltip={infoTooltip} />
           <div className="flex flex-col items-center justify-center h-[280px] gap-3">
             <Icon
@@ -106,14 +105,14 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
               Distribution data will appear after accounts are synced
             </p>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-5">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-5">
         <ChartTitle title={title} infoTooltip={infoTooltip} />
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>
@@ -156,11 +155,11 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
               />
             </Pie>
             <Tooltip
-              content={<CustomTooltip total={total} />}
-              wrapperStyle={{ pointerEvents: "none" }}
-              animationDuration={0}
-              isAnimationActive={false}
-            />
+ content={<CustomTooltip total={total} />}
+ wrapperStyle={{ pointerEvents: "none" }}
+ animationDuration={0}
+ isAnimationActive={false}
+ />
           </PieChart>
         </ResponsiveContainer>
 
@@ -196,8 +195,8 @@ function DonutChartCard({ title, data, total, infoTooltip }: DonutChartCardProps
             );
           })}
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }
 

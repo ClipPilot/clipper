@@ -2,12 +2,8 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardBody,
-  Button,
-  Spinner,
-} from "@heroui/react";
+import { Button,
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
@@ -71,22 +67,20 @@ export function VideoPreview({
         </div>
         <div className="flex items-center gap-3">
           <Button
-            className="bg-accent-400 text-white font-semibold"
-            onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : () => onFinalize(selectedFolderId)}
-            isLoading={isFinalizing}
-            isDisabled={isFinalizing}
-            startContent={
-              !isFinalizing && <Icon icon={isFinalized ? "solar:pen-bold" : "solar:check-circle-bold"} width={16} />
-            }
-          >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : () => onFinalize(selectedFolderId)}
+ isPending={isFinalizing}
+ isDisabled={isFinalizing}
+ >
+            {!isFinalizing && <Icon icon={isFinalized ? "solar:pen-bold" : "solar:check-circle-bold"} width={16} />}
             {isFinalizing ? "Finalizing..." : isFinalized ? "Edit" : "Finalize & Save"}
           </Button>
         </div>
       </div>
 
       {/* Main video player */}
-      <Card className="bg-surface-elevated border border-border-base overflow-hidden">
-        <CardBody className="p-0">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div>
           <div className="relative aspect-[9/16] max-h-[70vh] mx-auto bg-black">
             {videoStatus.finalVideoUrl ? (
               <>
@@ -123,7 +117,7 @@ export function VideoPreview({
               </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Spinner size="lg" color="primary" />
+                <Spinner size="lg" color="accent" />
               </div>
             )}
           </div>
@@ -181,13 +175,13 @@ export function VideoPreview({
               )}
             </div>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
 
       {/* Script used */}
       {scenes.length > 0 && (
-        <Card className="bg-surface-elevated border border-border-base">
-          <CardBody className="p-4">
+        <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+          <div className="p-4">
             <div className="flex items-center gap-2 mb-4">
               <Icon
                 icon="solar:document-text-bold-duotone"
@@ -234,15 +228,15 @@ export function VideoPreview({
                 </motion.div>
               ))}
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
       {!isFinalized && (
         <>
           {/* Folder Selection */}
-          <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-4">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+            <div className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -264,11 +258,11 @@ export function VideoPreview({
                   />
                 </div>
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-4">
+          <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+            <div className="p-4">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                   <Icon
@@ -287,8 +281,8 @@ export function VideoPreview({
                   </p>
                 </div>
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </>
       )}
 

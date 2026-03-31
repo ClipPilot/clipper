@@ -1,24 +1,22 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button, addToast } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
+import {} from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
 import {
   UploadedFile,
   VideoSegment,
-  ScalePlanRequired,
   VideoUploadCard,
   CharacterSelector,
   GeneratePanel,
   MyFaceSwapsSection,
-  MyFaceSwapsSectionRef,
-} from "@/components/ugc-studio";
+  MyFaceSwapsSectionRef } from "@/components/ugc-studio";
 import SpotlightTour, { type TourStep } from "@/components/ui/SpotlightTour";
 import TourHelpButton from "@/components/ui/TourHelpButton";
 
@@ -27,43 +25,35 @@ const FACE_SWAP_TOUR_STEPS: TourStep[] = [
     target: "faceswap-upload",
     title: "Upload Your Video",
     description: "Upload a video up to 5 minutes. This is the video whose face will be swapped.",
-    placement: "right",
-  },
+    placement: "right" },
   {
     target: "faceswap-characters",
     title: "Select Characters",
     description: "Choose from saved faces, example characters, or upload a new face image.",
-    placement: "left",
-  },
+    placement: "left" },
   {
     target: "faceswap-generate",
     title: "Choose Mode & Generate",
     description: "Pick Face Swap (faster) or Full Body mode, then hit Generate. Costs 5 credits per character.",
-    placement: "left",
-  },
+    placement: "left" },
   {
     target: "faceswap-my-swaps",
     title: "My Swaps",
     description: "Track your swap jobs here. Processing typically takes 5\u201340 minutes depending on mode.",
-    placement: "top",
-  },
+    placement: "top" },
 ];
 
 export default function FaceSwapPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
-
+  if (!selectedTeam) return null;
   return <FaceSwapContent selectedTeam={selectedTeam} router={router} />;
 }
 
 function FaceSwapContent({
   selectedTeam,
-  router,
-}: {
+  router }: {
   selectedTeam: { id: number; plan?: string };
   router: ReturnType<typeof useRouter>;
 }) {
@@ -148,8 +138,7 @@ function FaceSwapContent({
         spliceWithOriginal: true,
         folderId: selectedFolderId,
         voiceIds,
-        swapType,
-      });
+        swapType });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {
@@ -157,11 +146,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} ${swapType === "face" ? "face swap" : "swap"}${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take ${swapType === "face" ? "5-10" : "20-40"} minutes each. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} ${swapType === "face" ? "face swap" : "swap"}${characterCount > 1 ? "s" : ""} started!`, { description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take ${swapType === "face" ? "5-10" : "20-40"} minutes each. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (err) {
@@ -173,11 +158,7 @@ function FaceSwapContent({
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
 
-      addToast({
-        title: "Failed to start swaps",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed to start swaps", { description: errorMessage });
     }
   };
 
@@ -217,8 +198,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
-        voiceIds,
-      });
+        voiceIds });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {
@@ -226,11 +206,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. Face detection and swap will run in background. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} swap${characterCount > 1 ? "s" : ""} started!`, { description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. Face detection and swap will run in background. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (error) {
@@ -240,11 +216,7 @@ function FaceSwapContent({
       tempIds.forEach((tempId) => {
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
-      addToast({
-        title: "Failed",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed", { description: errorMessage });
     }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 
@@ -280,8 +252,7 @@ function FaceSwapContent({
         spliceWithOriginal: true,
         folderId: selectedFolderId,
         voiceIds,
-        swapType: "face",
-      });
+        swapType: "face" });
 
       result.jobIds.forEach((jobId, i) => {
         if (tempIds[i]) {
@@ -289,11 +260,7 @@ function FaceSwapContent({
         }
       });
 
-      addToast({
-        title: `${characterCount} face swap${characterCount > 1 ? "s" : ""} started!`,
-        description: `Processing... This typically takes 5-10 minutes. (${totalCredits} credits)`,
-        color: "success",
-      });
+      toast.success(`${characterCount} face swap${characterCount > 1 ? "s" : ""} started!`, { description: `Processing... This typically takes 5-10 minutes. (${totalCredits} credits)` });
 
       if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (error) {
@@ -303,11 +270,7 @@ function FaceSwapContent({
       tempIds.forEach((tempId) => {
         faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
       });
-      addToast({
-        title: "Failed to start face swap",
-        description: errorMessage,
-        color: "danger",
-      });
+      toast.danger("Failed to start face swap", { description: errorMessage });
     }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 
@@ -316,7 +279,7 @@ function FaceSwapContent({
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button
-            variant="light"
+            variant="ghost"
             isIconOnly
             onPress={() => router.push("/dashboard/ugc-studio")}
             className="text-text-secondary hover:text-text-primary"

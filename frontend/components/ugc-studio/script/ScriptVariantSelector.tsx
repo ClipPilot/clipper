@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Tooltip } from "@heroui/react";
+import { Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { UGCScript } from "./types";
 
@@ -18,17 +18,15 @@ export function ScriptVariantSelector({
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {scripts.map((script, index) => (
-        <Card
-          key={index}
-          isPressable
-          onPress={() => onSelect(index)}
-          className={`flex-shrink-0 w-64 border transition-all ${
-            selectedIndex === index
-              ? "border-accent-400 bg-accent-400/10"
-              : "border-border-base bg-surface-elevated hover:border-border-hover"
-          }`}
-        >
-          <CardBody className="p-3 space-y-2">
+        <div
+ key={index}
+ onClick={() => onSelect(index)}
+ className={`flex-shrink-0 w-64 rounded-xl border cursor-pointer transition-all overflow-hidden p-3 space-y-2 ${
+ selectedIndex === index
+ ? "border-accent-400 bg-accent-400/10"
+ : "border-border-base bg-surface-elevated hover:border-border-hover"
+ }`}
+ >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-text-secondary">
                 Variant {index + 1}
@@ -40,37 +38,28 @@ export function ScriptVariantSelector({
                 </span>
               </div>
             </div>
-            <Tooltip
-              content={script.title}
-              delay={500}
-              closeDelay={0}
-              classNames={{
-                content: "max-w-xs bg-surface-elevated text-text-primary text-sm p-2 rounded-lg border border-border-base"
-              }}
-            >
-              <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
-                {script.title}
-              </p>
+            <Tooltip delay={500} closeDelay={0}>
+              <Tooltip.Trigger>
+                <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
+                  {script.title}
+                </p>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{script.title}</Tooltip.Content>
             </Tooltip>
-            <Tooltip
-              content={script.hook}
-              delay={500}
-              closeDelay={0}
-              classNames={{
-                content: "max-w-sm bg-surface-elevated text-text-primary text-sm p-2 rounded-lg border border-border-base"
-              }}
-            >
-              <p className="text-xs text-text-secondary line-clamp-2 cursor-default">
-                {script.hook}
-              </p>
+            <Tooltip delay={500} closeDelay={0}>
+              <Tooltip.Trigger>
+                <p className="text-xs text-text-secondary line-clamp-2 cursor-default">
+                  {script.hook}
+                </p>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{script.hook}</Tooltip.Content>
             </Tooltip>
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span>{script.scenes.length} scenes</span>
               <span>•</span>
               <span>{script.totalEstimatedDuration}s</span>
             </div>
-          </CardBody>
-        </Card>
+        </div>
       ))}
     </div>
   );

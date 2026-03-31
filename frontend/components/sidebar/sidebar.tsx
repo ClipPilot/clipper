@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Progress, Tooltip, cn } from "@heroui/react";
+import { Button, ProgressBar, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
@@ -74,12 +74,15 @@ export default function Sidebar({
     const isActive = currentKey === item.key;
     const locked = isItemLocked(item);
 
-    const button = (
-      <button
+    const itemButton = (
+      <div
         key={item.key}
+        role="button"
+        tabIndex={0}
         onClick={() => handleNav(item)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleNav(item); }}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-lg transition-colors",
+          "w-full flex items-center gap-2.5 rounded-lg transition-colors cursor-pointer",
           isCollapsed ? "justify-center p-2" : "px-2.5 py-1.5",
           locked
             ? "opacity-50 hover:bg-surface-elevated"
@@ -122,7 +125,7 @@ export default function Sidebar({
             className="text-text-tertiary ml-auto flex-shrink-0"
           />
         )}
-      </button>
+      </div>
     );
 
     if (isCollapsed) {
@@ -130,22 +133,16 @@ export default function Sidebar({
         ? `${item.title} — Upgrade to ${getUpgradePlanName(item)}`
         : item.title;
       return (
-        <Tooltip
-          key={item.key}
-          content={tooltipContent}
-          placement="right"
-          delay={200}
-          classNames={{
-            content:
-              "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-          }}
-        >
-          {button}
+        <Tooltip key={item.key} delay={200}>
+          <Tooltip.Trigger>
+            {itemButton}
+          </Tooltip.Trigger>
+          <Tooltip.Content placement="right">{tooltipContent}</Tooltip.Content>
         </Tooltip>
       );
     }
 
-    return button;
+    return itemButton;
   };
 
   const renderSection = (section: SidebarSection, idx: number) => (
@@ -181,9 +178,25 @@ export default function Sidebar({
           )}
         >
           {isCollapsed ? (
-            <Tooltip
-              placement="right"
-              content={
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div className="flex flex-col items-center gap-2">
+                  <div
+                    className={cn(
+                      "text-[9px] px-1.5 py-0.5 rounded font-medium",
+                      getPlanColor(plan)
+                    )}
+                  >
+                    {getPlanName(plan)}
+                  </div>
+                  <ProgressBar
+                    value={usagePercentage}
+                  >
+                    <ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+                  </ProgressBar>
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">
                 <div className="space-y-1 py-1">
                   <p className="font-medium">{selectedTeam.name}</p>
                   <p className="text-text-tertiary">
@@ -197,37 +210,7 @@ export default function Sidebar({
                     </p>
                   )}
                 </div>
-              }
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-3 py-2",
-              }}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className={cn(
-                    "text-[9px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor(plan)
-                  )}
-                >
-                  {getPlanName(plan)}
-                </div>
-                <Progress
-                  value={usagePercentage}
-                  color={
-                    usagePercentage >= 100
-                      ? "danger"
-                      : usagePercentage >= 75
-                        ? "warning"
-                        : "primary"
-                  }
-                  size="sm"
-                  classNames={{
-                    base: "w-full",
-                    indicator: "transition-all",
-                  }}
-                />
-              </div>
+              </Tooltip.Content>
             </Tooltip>
           ) : (
             <div className="space-y-2">
@@ -250,21 +233,11 @@ export default function Sidebar({
                   {usageStats.clipsCreated} / {usageStats.baseLimit}
                 </span>
               </div>
-              <Progress
-                value={usagePercentage}
-                color={
-                  usagePercentage >= 100
-                    ? "danger"
-                    : usagePercentage >= 75
-                      ? "warning"
-                      : "primary"
-                }
-                size="sm"
-                classNames={{
-                  base: "w-full",
-                  indicator: "transition-all",
-                }}
-              />
+              <ProgressBar
+ value={usagePercentage}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-text-tertiary">
                   {usageStats.totalRemaining > 0
@@ -280,10 +253,13 @@ export default function Sidebar({
 
               {canViewPricing &&
                 (isPaidPlan(plan) ? (
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.push("/dashboard/pricing")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
                     className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors cursor-pointer",
                       plan === "enterprise"
                         ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                         : plan === "scale"
@@ -320,11 +296,14 @@ export default function Sidebar({
                     >
                       Manage subscription
                     </span>
-                  </button>
+                  </div>
                 ) : (
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => router.push("/dashboard/pricing")}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
                   >
                     <Icon
                       icon="solar:arrow-up-bold"
@@ -334,69 +313,67 @@ export default function Sidebar({
                     <span className="text-xs font-medium text-accent-400">
                       Upgrade workspace
                     </span>
-                  </button>
+                  </div>
                 ))}
             </div>
           )}
 
           {isCollapsed && canViewPricing && !isPaidPlan(plan) && (
-            <Tooltip
-              content="Upgrade workspace"
-              placement="right"
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-              }}
-            >
-              <button
-                onClick={() => router.push("/dashboard/pricing")}
-                className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
-              >
-                <Icon
-                  icon="solar:arrow-up-bold"
-                  className="text-accent-400"
-                  width={16}
-                />
-              </button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push("/dashboard/pricing")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                  className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors cursor-pointer"
+                >
+                  <Icon
+                    icon="solar:arrow-up-bold"
+                    className="text-accent-400"
+                    width={16}
+                  />
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">Upgrade workspace</Tooltip.Content>
             </Tooltip>
           )}
 
           {isCollapsed && canViewPricing && isPaidPlan(plan) && (
-            <Tooltip
-              content="Manage subscription"
-              placement="right"
-              classNames={{
-                content:
-                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-              }}
-            >
-              <button
-                onClick={() => router.push("/dashboard/pricing")}
-                className={cn(
-                  "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors",
-                  plan === "enterprise"
-                    ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
-                    : plan === "scale"
-                      ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                      : plan === "creator"
-                        ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
-                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
-                )}
-              >
-                <Icon
-                  icon="solar:verified-check-bold"
-                  className={
+            <Tooltip>
+              <Tooltip.Trigger>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push("/dashboard/pricing")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                  className={cn(
+                    "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer",
                     plan === "enterprise"
-                      ? "text-emerald-500"
+                      ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                       : plan === "scale"
-                        ? "text-purple-500"
+                        ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
                         : plan === "creator"
-                          ? "text-orange-500"
-                          : "text-accent-400"
-                  }
-                  width={16}
-                />
-              </button>
+                          ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                  )}
+                >
+                  <Icon
+                    icon="solar:verified-check-bold"
+                    className={
+                      plan === "enterprise"
+                        ? "text-emerald-500"
+                        : plan === "scale"
+                          ? "text-purple-500"
+                          : plan === "creator"
+                            ? "text-orange-500"
+                            : "text-accent-400"
+                    }
+                    width={16}
+                  />
+                </div>
+              </Tooltip.Trigger>
+              <Tooltip.Content placement="right">Manage subscription</Tooltip.Content>
             </Tooltip>
           )}
         </div>

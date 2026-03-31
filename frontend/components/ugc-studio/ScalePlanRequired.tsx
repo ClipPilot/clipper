@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, CardBody } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface ScalePlanRequiredProps {
@@ -12,7 +12,7 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
       <div className="max-w-2xl mx-auto">
         <Card className="bg-surface-base border border-border-base">
-          <CardBody className="p-8 text-center space-y-6">
+          <Card.Content className="p-8 text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-accent-400/10 flex items-center justify-center mx-auto">
               <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={40} />
             </div>
@@ -22,19 +22,16 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
                 Create AI-powered character swaps and more with UGC Studio.
               </p>
             </div>
-            <Button
-              as="a"
-              href="/dashboard/pricing"
-              className="bg-accent-400 text-white font-semibold"
-              size="lg"
-              startContent={<Icon icon="solar:arrow-up-bold" width={20} />}
-            >
-              Upgrade to Studio
-            </Button>
+            <a href="/dashboard/pricing">
+              <Button className="bg-accent-400 text-white font-semibold" size="lg">
+                <Icon icon="solar:arrow-up-bold" width={20} />
+                Upgrade to Studio
+              </Button>
+            </a>
             <p className="text-xs text-text-muted">
               Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan
             </p>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     </div>

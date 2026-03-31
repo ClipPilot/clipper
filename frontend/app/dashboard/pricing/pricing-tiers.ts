@@ -19,8 +19,7 @@ export const tiers: Array<Tier> = [
       "Community support",
     ],
     buttonText: "Current Plan",
-    buttonColor: "default",
-    buttonVariant: "flat",
+    buttonVariant: "ghost",
   },
   {
     key: TiersEnum.Scale,
@@ -44,8 +43,7 @@ export const tiers: Array<Tier> = [
       "SLA & priority support",
     ],
     buttonText: "Start Scale Plan",
-    buttonColor: "secondary",
-    buttonVariant: "solid",
+    buttonVariant: "primary",
     priceId: STRIPE_PRICES.SCALE,
   },
   {
@@ -67,8 +65,7 @@ export const tiers: Array<Tier> = [
       "Priority support",
     ],
     buttonText: "Get Studio",
-    buttonColor: "default",
-    buttonVariant: "flat",
+    buttonVariant: "ghost",
     priceId: STRIPE_PRICES.STUDIO,
   },
   {
@@ -89,8 +86,7 @@ export const tiers: Array<Tier> = [
       "Standard support",
     ],
     buttonText: "Get Creator",
-    buttonColor: "default",
-    buttonVariant: "flat",
+    buttonVariant: "ghost",
     priceId: STRIPE_PRICES.CREATOR,
   },
   {
@@ -112,7 +108,6 @@ export const tiers: Array<Tier> = [
       "SLA & dedicated support",
     ],
     buttonText: "Contact Sales",
-    buttonColor: "default",
-    buttonVariant: "flat",
+    buttonVariant: "ghost",
   }
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Image } from "@heroui/react";
+import {  } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import NextImage from "next/image";
 import Markdown from "react-markdown";
@@ -91,12 +91,12 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry, theme = "d
         {message.attachments && message.attachments.length > 0 && (
           <div className={`flex gap-2 flex-wrap ${isUser ? "justify-end" : "justify-start"}`}>
             {message.attachments.map((att, i) => (
-              <Image
-                key={i}
-                src={att.url}
-                alt={`Attachment ${i + 1}`}
-                className="w-16 h-16 rounded-xl object-cover ring-1 ring-white/5"
-              />
+              <img
+ key={i}
+ src={att.url}
+ alt={`Attachment ${i + 1}`}
+ className="w-16 h-16 rounded-xl object-cover ring-1 ring-white/5"
+ />
             ))}
           </div>
         )}

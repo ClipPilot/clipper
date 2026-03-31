@@ -12,7 +12,7 @@ import { API_PRODUCTS } from "../config/api-products";
 import { isValidPromptType, PromptType } from "../constants/promptTypes";
 import { isValidConversionMode, ConversionMode } from "../constants/conversionModes";
 import { ensureOutputDir } from "../utils/fileUtils";
-import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { verifyTeamAccessOrFail, handleControllerError } from "../utils/controllerHelpers";
 
 const CLIP_PRODUCT_SLUG = "clip_save";
 const MAX_CLIPS = 10;
@@ -326,9 +326,7 @@ export const createClipJobController = async (
       Sentry.captureException(err);
       return;
     }
-    console.error("Error in createClipJobController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to create clip job" });
+    return handleControllerError(res, "Error in createClipJobController", err, "Failed to create clip job");
   }
 };
 
@@ -359,9 +357,7 @@ export const getClipJobStatusController = async (
 
     return res.json(response);
   } catch (err) {
-    console.error("Error in getClipJobStatusController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get job status" });
+    return handleControllerError(res, "Error in getClipJobStatusController", err, "Failed to get job status");
   }
 };
 
@@ -595,8 +591,6 @@ export const getClipJobStatusBearerController = async (
     const response = await buildJobResponse(jobId, jobClips);
     return res.json(response);
   } catch (err) {
-    console.error("Error in getClipJobStatusBearerController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get job status" });
+    return handleControllerError(res, "Error in getClipJobStatusBearerController", err, "Failed to get job status");
   }
 };

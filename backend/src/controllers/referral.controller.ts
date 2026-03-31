@@ -1,7 +1,7 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { referralService } from "../services/referral.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function generateCodeController(req: AuthRequest, res: Response) {
   try {
@@ -18,9 +18,7 @@ export async function generateCodeController(req: AuthRequest, res: Response) {
     const newCode = await referralService.generateCode(teamId);
     return res.status(201).json({ code: newCode });
   } catch (error) {
-    console.error("Generate referral code error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to generate referral code" });
+    return handleControllerError(res, "Generate referral code error", error, "Failed to generate referral code");
   }
 }
 
@@ -34,9 +32,7 @@ export async function getCodeController(req: AuthRequest, res: Response) {
     const code = await referralService.getCodeByTeamId(teamId);
     return res.json({ code });
   } catch (error) {
-    console.error("Get referral code error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get referral code" });
+    return handleControllerError(res, "Get referral code error", error, "Failed to get referral code");
   }
 }
 
@@ -60,9 +56,7 @@ export async function applyCodeController(req: AuthRequest, res: Response) {
 
     return res.json({ success: true, message: "Referral code applied successfully" });
   } catch (error) {
-    console.error("Apply referral code error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to apply referral code" });
+    return handleControllerError(res, "Apply referral code error", error, "Failed to apply referral code");
   }
 }
 
@@ -76,9 +70,7 @@ export async function getReferralsController(req: AuthRequest, res: Response) {
     const data = await referralService.getReferralsByTeam(teamId);
     return res.json(data);
   } catch (error) {
-    console.error("Get referrals error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get referrals" });
+    return handleControllerError(res, "Get referrals error", error, "Failed to get referrals");
   }
 }
 
@@ -92,9 +84,7 @@ export async function getStatsController(req: AuthRequest, res: Response) {
     const stats = await referralService.getReferralStats(teamId);
     return res.json(stats);
   } catch (error) {
-    console.error("Get referral stats error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get referral stats" });
+    return handleControllerError(res, "Get referral stats error", error, "Failed to get referral stats");
   }
 }
 
@@ -112,8 +102,6 @@ export async function validateCodeController(req: AuthRequest, res: Response) {
 
     return res.json({ valid: true, code: referralCode.code });
   } catch (error) {
-    console.error("Validate referral code error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to validate referral code" });
+    return handleControllerError(res, "Validate referral code error", error, "Failed to validate referral code");
   }
 }

@@ -572,14 +572,8 @@ export class ClipManagerService {
     // Build final where clause
     const whereClause = and(...conditions);
 
-    // Get total count
-    const [countResult] = await db
-      .select({ count: count() })
-      .from(clips)
-      .where(whereClause);
-    const total = countResult?.count || 0;
+    selectFields.total_count = sql<number>`COUNT(*) OVER()`.as('total_count');
 
-    // Determine ordering
     const orderByClause = searchTerm
       ? [
           sql`GREATEST(
@@ -590,7 +584,6 @@ export class ClipManagerService {
         ]
       : [desc(clips.updated_at)];
 
-    // Get paginated results
     const results = await db
       .select(selectFields)
       .from(clips)
@@ -598,6 +591,8 @@ export class ClipManagerService {
       .orderBy(...orderByClause)
       .limit(limit)
       .offset(offset);
+
+    const total = results.length > 0 ? Number((results[0] as any).total_count) : 0;
 
     return {
       clips: results.map((r: any) => ({

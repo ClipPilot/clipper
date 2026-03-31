@@ -3,11 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { Button, Card, CardBody, Spinner, Tabs, Tab } from "@heroui/react";
+import { Button, Spinner, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
-import { ScalePlanRequired } from "@/components/ugc-studio";
+import {} from "@/lib/plans";
 import { CreateCharacterFlow } from "@/components/ugc-studio/actors/CreateCharacterFlow";
 import { CharacterGrid } from "@/components/ugc-studio/actors/CharacterGrid";
 import { CharacterDetailModal } from "@/components/ugc-studio/actors/CharacterDetailModal";
@@ -20,13 +20,7 @@ const PAGE_SIZE = 12;
 
 export default function CharactersPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageLoader />}>
       <CharactersPageContent />
     </Suspense>
   );
@@ -62,8 +56,7 @@ function CharactersPageContent() {
         const response = await actorsAPI.list(teamId, {
           limit: PAGE_SIZE,
           offset,
-          sort: "recent",
-        });
+          sort: "recent" });
         if (reset) {
           setMyActors(response.characters);
         } else {
@@ -122,22 +115,21 @@ function CharactersPageContent() {
     );
   };
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
-
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <button
-                onClick={() => router.push("/dashboard/ugc-studio")}
-                className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
+              <Button
+                isIconOnly
+                variant="tertiary"
+                size="sm"
+                onPress={() => router.push("/dashboard/ugc-studio")}
+                className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
               >
                 <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
-              </button>
+              </Button>
               <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Characters</h1>
             </div>
             <p className="text-text-secondary ml-10">
@@ -147,51 +139,46 @@ function CharactersPageContent() {
         </div>
 
         <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => setActiveTab(key as "create" | "my-actors")}
-          classNames={{
-            tabList: "bg-surface-elevated/50 p-1.5 rounded-2xl gap-2 border border-border-base",
-            cursor: "bg-accent-400 shadow-lg",
-            tab: "px-6 py-2.5 text-text-secondary data-[selected=true]:text-white font-medium rounded-xl transition-all text-sm",
-            tabContent: "group-data-[selected=true]:text-white",
-          }}
-        >
-          <Tab
-            key="create"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:magic-stick-3-bold-duotone" width={18} />
-                <span>Create New</span>
-                <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">1 Credit</span>
-              </div>
-            }
-          >
+ selectedKey={activeTab}
+ onSelectionChange={(key) => setActiveTab(key as "create" | "my-actors")}
+ >
+          <Tabs.ListContainer>
+            <Tabs.List aria-label="Characters">
+              <Tabs.Tab id="create">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:magic-stick-3-bold-duotone" width={18} />
+                  <span>Create New</span>
+                  <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">1 Credit</span>
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+              <Tabs.Tab id="my-actors">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:user-circle-bold-duotone" width={18} />
+                  <span>My Actors</span>
+                  {myActorsTotal > 0 && (
+                    <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
+                      {myActorsTotal}
+                    </span>
+                  )}
+                </div>
+                <Tabs.Indicator />
+              </Tabs.Tab>
+            </Tabs.List>
+          </Tabs.ListContainer>
+          <Tabs.Panel id="create">
             <div className="pt-8">
               <CreateCharacterFlow
                 teamId={teamId!}
                 onCharacterCreated={handleCharacterCreated}
               />
             </div>
-          </Tab>
-
-          <Tab
-            key="my-actors"
-            title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:user-circle-bold-duotone" width={18} />
-                <span>My Actors</span>
-                {myActorsTotal > 0 && (
-                  <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
-                    {myActorsTotal}
-                  </span>
-                )}
-              </div>
-            }
-          >
+          </Tabs.Panel>
+          <Tabs.Panel id="my-actors">
             <div className="pt-8 space-y-6">
               {loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <Spinner size="lg" color="primary" />
+                  <Spinner size="lg" color="accent" />
                 </div>
               ) : mainActors.length > 0 ? (
                 <>
@@ -207,19 +194,19 @@ function CharactersPageContent() {
                   {myActors.length < myActorsTotal && (
                     <div className="flex justify-center pt-4">
                       <Button
-                        variant="bordered"
-                        className="border-border-base"
-                        onPress={() => loadMyActors(false)}
-                        isLoading={loadingMore}
-                      >
+ variant="outline"
+ className="border-border-base"
+ onPress={() => loadMyActors(false)}
+ isPending={loadingMore}
+ >
                         Load More
                       </Button>
                     </div>
                   )}
                 </>
               ) : (
-                <Card className="bg-gradient-to-br from-surface-elevated to-surface-base border border-border-base border-dashed">
-                  <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+                <div className="rounded-xl border border-border-base border-dashed overflow-hidden bg-gradient-to-br from-surface-elevated to-surface-base">
+                  <div className="py-16 flex flex-col items-center justify-center text-center px-6">
                     <div className="w-20 h-20 rounded-2xl bg-accent-400/10 flex items-center justify-center mb-6">
                       <Icon
                         icon="solar:user-plus-bold-duotone"
@@ -234,17 +221,17 @@ function CharactersPageContent() {
                       Create your first AI actor to start making amazing UGC ads
                     </p>
                     <Button
-                      className="bg-accent-400 text-white font-semibold"
-                      startContent={<Icon icon="solar:magic-stick-3-bold" width={18} />}
-                      onPress={() => setActiveTab("create")}
-                    >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={() => setActiveTab("create")}
+ >
+                      <Icon icon="solar:magic-stick-3-bold" width={18} />
                       Create Your First Actor
                     </Button>
-                  </CardBody>
-                </Card>
+                  </div>
+                </div>
               )}
             </div>
-          </Tab>
+          </Tabs.Panel>
         </Tabs>
 
         {teamId && (

@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
@@ -6,72 +5,39 @@ import { userService } from "../services/user.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
-
-/**
- * Verifies that the authenticated user has access to the given team.
- * Sends a 401/403 response and returns null on failure; returns the db user on success.
- */
-async function verifyTeamAccessOrFail(
-  req: AuthRequest,
-  teamId: number,
-  res: Response
-): Promise<{ id: number } | null> {
-  if (!req.user?.id) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  const user = await userService.getUserBySupabaseUid(req.user.id);
-  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
-  if (!hasAccess) {
-    res.status(403).json({ error: "Access denied to this team" });
-    return null;
-  }
-  return user;
-}
+import { handleControllerError, requireUser, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
 
-    // Ensure user has at least one team (migration helper)
     await userService.ensureUserHasTeam(user.id);
 
     const teams = await teamService.getUserTeams(user.id);
 
     res.json({ teams });
   } catch (err) {
-    console.error("Error in getUserTeamsController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get teams",
-    });
+    return handleControllerError(res, "Error in getUserTeamsController", err, "Failed to get teams");
   }
 };
 
 export const getDefaultTeamController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
 
-    // Ensure user has at least one team (migration helper)
     await userService.ensureUserHasTeam(user.id);
 
     const defaultTeam = await teamService.getUserDefaultTeam(user.id);
 
     res.json(defaultTeam);
   } catch (err) {
-    console.error("Error in getDefaultTeamController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get default team",
-    });
+    return handleControllerError(res, "Error in getDefaultTeamController", err, "Failed to get default team");
   }
 };
 
@@ -85,11 +51,12 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     const user = await verifyTeamAccessOrFail(req, teamId, res);
     if (!user) return;
 
-    const stats = await teamService.getTeamUsageStats(teamId);
-    const team = await teamService.getTeamById(teamId);
+    const [stats, team, clipsGenerated] = await Promise.all([
+      teamService.getTeamUsageStats(teamId),
+      teamService.getTeamById(teamId),
+      clipManagerService.getTeamClipsCount(teamId),
+    ]);
     const plan = team.plan || "free";
-
-    const clipsGenerated = await clipManagerService.getTeamClipsCount(teamId);
     const generationLimit = plan === "free" ? (stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations) : -1;
     const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 
@@ -110,16 +77,11 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
       generationsRemaining,
       resetsDate: stats.resets_date,
       rollover: stats.rollover,
-      // Legacy fields for backward compatibility
       limit: stats.limit,
       remaining: totalRemaining,
     });
   } catch (err) {
-    console.error("Error in getTeamUsageStatsController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get usage stats",
-    });
+    return handleControllerError(res, "Error in getTeamUsageStatsController", err, "Failed to get usage stats");
   }
 };
 
@@ -137,19 +99,14 @@ export const getTeamMembersController = async (req: AuthRequest, res: Response) 
 
     res.json({ members });
   } catch (err) {
-    console.error("Error in getTeamMembersController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get team members",
-    });
+    return handleControllerError(res, "Error in getTeamMembersController", err, "Failed to get team members");
   }
 };
 
 export const addTeamMemberController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -161,7 +118,6 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // Check if team is on Scale or Enterprise plan (only Scale/Enterprise allows team members)
     const team = await teamService.getTeamById(teamId);
     if (team.plan !== "scale" && team.plan !== "enterprise") {
       return res.status(403).json({
@@ -169,7 +125,7 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
       });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner" && userRole !== "manager") {
@@ -180,19 +136,14 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
 
     res.json({ member });
   } catch (err) {
-    console.error("Error in addTeamMemberController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to add team member",
-    });
+    return handleControllerError(res, "Error in addTeamMemberController", err, "Failed to add team member");
   }
 };
 
 export const removeTeamMemberController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     const memberId = parseInt(req.params.memberId);
@@ -201,14 +152,13 @@ export const removeTeamMemberController = async (req: AuthRequest, res: Response
       return res.status(400).json({ error: "Invalid team ID or member ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner" && userRole !== "manager") {
       return res.status(403).json({ error: "Only owners and managers can remove members" });
     }
 
-    // Check if manager is trying to remove an owner
     if (userRole === "manager") {
       const memberRole = await teamService.getMemberRoleById(teamId, memberId);
       if (memberRole === "owner") {
@@ -220,19 +170,14 @@ export const removeTeamMemberController = async (req: AuthRequest, res: Response
 
     res.json({ message: "Member removed successfully" });
   } catch (err) {
-    console.error("Error in removeTeamMemberController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to remove team member",
-    });
+    return handleControllerError(res, "Error in removeTeamMemberController", err, "Failed to remove team member");
   }
 };
 
 export const updateTeamMemberRoleController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     const memberId = parseInt(req.params.memberId);
@@ -246,7 +191,7 @@ export const updateTeamMemberRoleController = async (req: AuthRequest, res: Resp
       return res.status(400).json({ error: "Invalid role" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner") {
@@ -257,43 +202,33 @@ export const updateTeamMemberRoleController = async (req: AuthRequest, res: Resp
 
     res.json({ member: updated });
   } catch (err) {
-    console.error("Error in updateTeamMemberRoleController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to update member role",
-    });
+    return handleControllerError(res, "Error in updateTeamMemberRoleController", err, "Failed to update member role");
   }
 };
 
 export const leaveTeamController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     await teamService.leaveTeam(teamId, user.id);
 
     res.json({ message: "Left team successfully" });
   } catch (err) {
-    console.error("Error in leaveTeamController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to leave team",
-    });
+    return handleControllerError(res, "Error in leaveTeamController", err, "Failed to leave team");
   }
 };
 
 export const updateTeamNameController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     const { name } = req.body;
@@ -306,7 +241,7 @@ export const updateTeamNameController = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ error: "Team name is required" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner") {
@@ -317,26 +252,21 @@ export const updateTeamNameController = async (req: AuthRequest, res: Response) 
 
     res.json({ team: updated });
   } catch (err) {
-    console.error("Error in updateTeamNameController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to update team name",
-    });
+    return handleControllerError(res, "Error in updateTeamNameController", err, "Failed to update team name");
   }
 };
 
 export const deleteTeamController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
     if (userRole !== "owner") {
@@ -347,36 +277,27 @@ export const deleteTeamController = async (req: AuthRequest, res: Response) => {
 
     res.json({ message: "Team deleted successfully" });
   } catch (err) {
-    console.error("Error in deleteTeamController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to delete team",
-    });
+    return handleControllerError(res, "Error in deleteTeamController", err, "Failed to delete team");
   }
 };
 
 export const createTeamController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { name } = req.body;
     if (!name || name.trim().length === 0) {
       return res.status(400).json({ error: "Team name is required" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
 
     const team = await teamService.createTeam(name.trim(), user.id, "business");
 
     res.status(201).json({ team });
   } catch (err) {
-    console.error("Error in createTeamController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to create team",
-    });
+    return handleControllerError(res, "Error in createTeamController", err, "Failed to create team");
   }
 };
 
@@ -395,26 +316,21 @@ export const getTeamLogoController = async (req: Request, res: Response) => {
     const presignedUrl = await s3Service.getPresignedUrl(team.logo_url, 60);
     res.redirect(302, presignedUrl);
   } catch (err) {
-    console.error("Error in getTeamLogoController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get logo",
-    });
+    return handleControllerError(res, "Error in getTeamLogoController", err, "Failed to get logo");
   }
 };
 
 export const uploadTeamLogoController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const membership = await teamService.getTeamMember(teamId, user.id);
 
     if (!membership || membership.role !== "owner") {
@@ -431,31 +347,25 @@ export const uploadTeamLogoController = async (req: AuthRequest, res: Response) 
       req.file.mimetype
     );
 
-    // Store the S3 key — the frontend uses the /teams/:teamId/logo redirect endpoint
     const updatedTeam = await teamService.updateTeamLogo(teamId, logoKey);
 
     res.json({ team: { ...updatedTeam, logo_url: logoKey, role: membership.role } });
   } catch (err) {
-    console.error("Error in uploadTeamLogoController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to upload logo",
-    });
+    return handleControllerError(res, "Error in uploadTeamLogoController", err, "Failed to upload logo");
   }
 };
 
 export const removeTeamLogoController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const user = await userService.getUserBySupabaseUid(userId);
     const membership = await teamService.getTeamMember(teamId, user.id);
 
     if (!membership || membership.role !== "owner") {
@@ -466,10 +376,6 @@ export const removeTeamLogoController = async (req: AuthRequest, res: Response) 
 
     res.json({ team: { ...updatedTeam, role: membership.role } });
   } catch (err) {
-    console.error("Error in removeTeamLogoController:", err);
-    Sentry.captureException(err);
-    res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to remove logo",
-    });
+    return handleControllerError(res, "Error in removeTeamLogoController", err, "Failed to remove logo");
   }
 };

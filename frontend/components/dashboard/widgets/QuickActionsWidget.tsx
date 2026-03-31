@@ -55,12 +55,11 @@ export function QuickActionsWidget({ color, onColorChange }: QuickActionsWidgetP
       <div className="grid grid-cols-2 gap-2 h-full">
         {QUICK_ACTIONS.map((action) => (
           <Button
-            key={action.id}
-            variant="flat"
-            color={action.color as any}
-            className="flex flex-col items-center justify-center h-full min-h-[60px] gap-1"
-            onPress={() => router.push(action.href)}
-          >
+ key={action.id}
+ variant="tertiary"
+ className="flex flex-col items-center justify-center h-full min-h-[60px] gap-1"
+ onPress={() => router.push(action.href)}
+ >
             <Icon icon={action.icon} width={20} />
             <span className="text-xs">{action.label}</span>
           </Button>

@@ -150,32 +150,32 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
     return (
       <div className="w-12 bg-surface-base border border-border-base rounded-lg p-2 flex flex-col items-center gap-2">
         <Button
-          isIconOnly
-          size="sm"
-          variant="light"
-          onPress={onToggleCollapse}
-        >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={onToggleCollapse}
+ >
           <Icon icon="solar:alt-arrow-right-bold" className="text-lg text-text-secondary" />
         </Button>
         <Button
-          isIconOnly
-          size="sm"
-          variant="light"
-          onPress={() => onSelectFolder(null)}
-          className={selectedFolderId === null ? "bg-accent-400/20" : ""}
-        >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onSelectFolder(null)}
+ className={selectedFolderId === null ? "bg-accent-400/20" : ""}
+ >
           <Icon icon="solar:home-2-bold-duotone" className="text-lg text-text-secondary" />
         </Button>
         <div className="w-full h-px bg-border-base" />
         {folders.slice(0, 5).map((folder) => (
           <Button
-            key={folder.id}
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={() => onSelectFolder(folder.id)}
-            className={selectedFolderId === folder.id ? "bg-accent-400/20" : ""}
-          >
+ key={folder.id}
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onSelectFolder(folder.id)}
+ className={selectedFolderId === folder.id ? "bg-accent-400/20" : ""}
+ >
             <Icon
               icon="solar:folder-bold-duotone"
               className="text-lg"
@@ -194,20 +194,20 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
         <div className="flex items-center gap-1">
           {!isReadOnly && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              onPress={() => onCreateFolder()}
-            >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onCreateFolder()}
+ >
               <Icon icon="solar:add-circle-bold" className="text-lg text-accent-400" />
             </Button>
           )}
           <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={onToggleCollapse}
-          >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={onToggleCollapse}
+ >
             <Icon icon="solar:alt-arrow-left-bold" className="text-lg text-text-secondary" />
           </Button>
         </div>

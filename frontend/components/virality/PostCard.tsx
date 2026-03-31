@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody, Chip } from "@heroui/react";
+import { Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityPost } from "@/api/virality";
 import { formatNumber, formatDate } from "@/lib/formatters";
@@ -56,12 +56,11 @@ export function PostCard({ post, platform }: PostCardProps) {
   };
 
   return (
-    <Card
-      className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all cursor-pointer"
-      isPressable
-      onPress={openPost}
-    >
-      <CardBody className="p-0">
+    <div
+ className="rounded-xl border border-border-base bg-surface-base overflow-hidden hover:border-accent-400/40 transition-all cursor-pointer"
+ onClick={openPost}
+ >
+      <div className="p-0">
         <div className="relative aspect-square bg-surface-elevated">
           {!post.thumbnail_url || platform === "instagram" ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -80,14 +79,10 @@ export function PostCard({ post, platform }: PostCardProps) {
           )}
           <div className="absolute top-2 right-2">
             <Chip
-              size="sm"
-              variant="flat"
-              startContent={<Icon icon={getPostTypeIcon()} width={12} />}
-              classNames={{
-                base: "bg-black/60 backdrop-blur-sm",
-                content: "text-white text-xs",
-              }}
-            >
+ size="sm"
+ variant="tertiary"
+ >
+              <Icon icon={getPostTypeIcon()} width={12} />
               {getPostTypeLabel()}
             </Chip>
           </div>
@@ -99,11 +94,11 @@ export function PostCard({ post, platform }: PostCardProps) {
           </p>
           {post.mass_post_id != null && (
             <div className="flex flex-wrap items-center gap-1 mb-2">
-              <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+              <Chip size="sm" variant="tertiary">
                 Managed by Cuttr
               </Chip>
               {post.campaign_name && (
-                <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                <Chip size="sm" variant="tertiary">
                   {post.campaign_name}
                 </Chip>
               )}
@@ -140,7 +135,7 @@ export function PostCard({ post, platform }: PostCardProps) {
             </div>
           </div>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

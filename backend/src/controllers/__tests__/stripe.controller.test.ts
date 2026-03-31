@@ -60,7 +60,7 @@ describe("createCheckoutSession", () => {
   });
 
   it("returns 400 when teamId or priceId missing", async () => {
-    const req = createReq({ user: { email: "a@b.com" }, body: { teamId: "1" } });
+    const req = createReq({ user: { id: "uid-123", email: "a@b.com" }, body: { teamId: "1" } });
     const res = createMockResponse();
     await createCheckoutSession(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -68,7 +68,7 @@ describe("createCheckoutSession", () => {
 
   it("returns 400 for invalid priceId", async () => {
     const req = createReq({
-      user: { email: "a@b.com" },
+      user: { id: "uid-123", email: "a@b.com" },
       body: { teamId: "1", priceId: "price_bogus" },
     });
     const res = createMockResponse();
@@ -79,7 +79,7 @@ describe("createCheckoutSession", () => {
   it("returns checkout URL on success", async () => {
     mockStripeService.createCheckoutSession.mockResolvedValue("https://checkout.stripe.com/session");
     const req = createReq({
-      user: { email: "a@b.com" },
+      user: { id: "uid-123", email: "a@b.com" },
       headers: { origin: "https://app.cuttr.com" },
       body: { teamId: "1", priceId: "price_studio" },
     });

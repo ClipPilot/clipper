@@ -45,7 +45,6 @@ export function CropTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:crop-bold" className="text-accent-400" />
@@ -56,8 +55,7 @@ export function CropTool() {
         </p>
       </div>
 
-      {/* Current Selection */}
-      <div className="bg-surface-elevated rounded-lg p-4 flex items-center justify-between">
+      <div className="bg-white/[0.04] rounded-lg p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-accent-400/20 flex items-center justify-center">
             <Icon
@@ -75,8 +73,7 @@ export function CropTool() {
         {cropState.aspectRatio !== "9:16" && (
           <Button
             size="sm"
-            variant="flat"
-            color="warning"
+            variant="tertiary"
             onPress={() => handleAspectRatioChange("9:16")}
           >
             Reset
@@ -84,20 +81,19 @@ export function CropTool() {
         )}
       </div>
 
-      {/* Aspect Ratio Grid */}
       <div>
         <label className="text-sm text-text-secondary mb-3 block">Select Aspect Ratio</label>
         <div className="grid grid-cols-2 gap-3">
           {ASPECT_RATIO_PRESETS.map((preset) => {
             const isSelected = cropState.aspectRatio === preset.value;
             return (
-              <button
+              <Button
                 key={preset.value}
-                onClick={() => handleAspectRatioChange(preset.value)}
-                className={`relative p-4 rounded-xl border-2 transition-all ${
+                onPress={() => handleAspectRatioChange(preset.value)}
+                className={`relative p-4 rounded-xl border-2 transition-all h-auto ${
                   isSelected
                     ? "border-accent-400 bg-accent-400/10"
-                    : "border-border-base bg-surface-elevated hover:border-accent-400/50"
+                    : "border-border-base bg-white/[0.04] hover:border-accent-400/50"
                 }`}
               >
                 <div className="flex flex-col items-center gap-2">
@@ -121,14 +117,13 @@ export function CropTool() {
                     <Icon icon="solar:check-circle-bold" className="text-accent-400" />
                   </div>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
-      {/* Preview Info */}
-      <div className="bg-surface-elevated rounded-lg p-4 space-y-2">
+      <div className="bg-white/[0.04] rounded-lg p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm">
           <Icon icon="solar:info-circle-bold" className="text-text-tertiary" />
           <span className="text-text-secondary">Preview shows how content will be cropped</span>
@@ -140,7 +135,6 @@ export function CropTool() {
         )}
       </div>
 
-      {/* Tips */}
       <div className="bg-accent-400/10 rounded-lg p-3">
         <p className="text-xs text-accent-400 flex items-start gap-2">
           <Icon icon="solar:info-circle-bold" className="text-sm mt-0.5 flex-shrink-0" />

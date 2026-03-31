@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { addToast } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import { VideoSegment, FRAME_DURATION, formatTime } from "./types";
@@ -270,11 +270,7 @@ export function MultiSegmentTrimmer({
     if (!videoFile || isDetectingFaces) return;
 
     setIsDetectingFaces(true);
-    addToast({
-      title: "Detecting faces...",
-      description: "This may take 1-3 minutes. Please wait.",
-      color: "primary",
-    });
+    toast.info("Detecting faces...", { description: "This may take 1-3 minutes. Please wait." });
 
     try {
       const data = await faceSwapAPI.detectFaces(videoFile);
@@ -310,32 +306,16 @@ export function MultiSegmentTrimmer({
         if (selectedSegments.length > 0) {
           onSegmentsChange(selectedSegments);
           setActiveSegmentIndex(0);
-          addToast({
-            title: "Faces detected!",
-            description: `Found ${data.segmentCount} face segment${data.segmentCount !== 1 ? "s" : ""}, using ${selectedSegments.length}`,
-            color: "success",
-          });
+          toast.success("Faces detected!", { description: `Found ${data.segmentCount} face segment${data.segmentCount !== 1 ? "s" : ""}, using ${selectedSegments.length}` });
         } else {
-          addToast({
-            title: "No usable segments",
-            description: "Detected segments were too short. Try manual selection.",
-            color: "warning",
-          });
+          toast.warning("No usable segments", { description: "Detected segments were too short. Try manual selection." });
         }
       } else {
-        addToast({
-          title: "No faces detected",
-          description: "Could not find clear face segments. Try manual selection.",
-          color: "warning",
-        });
+        toast.warning("No faces detected", { description: "Could not find clear face segments. Try manual selection." });
       }
     } catch (error) {
       console.error("Face detection error:", error);
-      addToast({
-        title: "Detection failed",
-        description: error instanceof Error ? error.message : "Failed to detect faces",
-        color: "danger",
-      });
+      toast.danger("Detection failed", { description: error instanceof Error ? error.message : "Failed to detect faces" });
     } finally {
       setIsDetectingFaces(false);
     }

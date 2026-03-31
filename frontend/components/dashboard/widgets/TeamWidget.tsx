@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, Chip, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Avatar, Chip, Button, Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedTeamAtom, userTeamsAtom } from "@/store/auth";
@@ -15,12 +15,12 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const userTeams = useAtomValue(userTeamsAtom);
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: string): "warning" | "accent" | "default" => {
     switch (role) {
       case "owner":
         return "warning";
       case "manager":
-        return "primary";
+        return "accent";
       default:
         return "default";
     }
@@ -48,26 +48,20 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
       <div className="flex flex-col gap-4 h-full justify-between">
         <div className="flex items-center gap-3">
           <Avatar
-            src={selectedTeam?.logo_url}
-            name={selectedTeam?.name?.charAt(0) || "T"}
-            size="lg"
-            className="flex-shrink-0"
-            classNames={{
-              base: "bg-surface-hover",
-              name: "text-text-primary font-semibold",
-            }}
-          />
+ size="lg"
+ className="flex-shrink-0"
+ />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-text-primary truncate">
               {selectedTeam?.name || "No Team"}
             </p>
             <div className="flex items-center gap-2 mt-1">
               <Chip
-                size="sm"
-                color={getRoleColor(selectedTeam?.role || "member")}
-                variant="flat"
-                className="capitalize"
-              >
+ size="sm"
+ color={getRoleColor(selectedTeam?.role || "member")}
+ variant="tertiary"
+ className="capitalize"
+ >
                 {selectedTeam?.role || "member"}
               </Chip>
               <Icon
@@ -81,17 +75,17 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
 
         {userTeams.length > 1 && (
           <Dropdown>
-            <DropdownTrigger>
-              <Button
-                size="sm"
-                variant="flat"
-                className="w-full"
-                endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-              >
+<Button
+ size="sm"
+ variant="tertiary"
+ className="w-full"
+ >
                 Switch Team
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
+                <Icon icon="solar:alt-arrow-down-linear" width={14} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
               aria-label="Switch team"
               onAction={(key) => {
                 const team = userTeams.find((t) => t.id.toString() === key);
@@ -99,22 +93,16 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
               }}
             >
               {userTeams.map((team) => (
-                <DropdownItem
+                <Dropdown.Item
                   key={team.id.toString()}
-                  startContent={
-                    <Avatar
-                      src={team.logo_url}
-                      name={team.name.charAt(0)}
-                      size="sm"
-                      className="w-6 h-6"
-                    />
-                  }
                   className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
                 >
+                  <Avatar size="sm" className="w-6 h-6" />
                   {team.name}
-                </DropdownItem>
+                </Dropdown.Item>
               ))}
-            </DropdownMenu>
+            </Dropdown.Menu>
+</Dropdown.Popover>
           </Dropdown>
         )}
       </div>

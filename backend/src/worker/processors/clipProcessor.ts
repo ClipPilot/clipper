@@ -12,22 +12,18 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
-import { emailNotiService } from "../../services/emailNoti.service";
-import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
-
-import {
-  detectFacecamFromS3Key,
-  detectMultipleFacesFromS3Key,
-} from "../../services/facecamDetect.service";
 import { getVideoDuration } from "../../services/clips/videoEditor.service";
-import type { ClipServiceOptions } from "../../services/clips/clip.service";
 import {
-  buildSpeakerSegments,
-  mapSpeakersToFaces,
-  resolveSegmentFaces,
-} from "../../services/clips/speakerSegments.service";
-import { generateViralHeading } from "../../services/clips/headingAI.service";
+  buildFacecamDetectCallback,
+  buildClipServiceOptions,
+  buildEditorConfig,
+  generateAutoHeading,
+  uploadClipArtifacts,
+  cleanupClipFiles,
+} from "./shared/clipProcessorHelpers";
+import { userService } from "../../services/user.service";
+import { emailNotiService } from "../../services/emailNoti.service";
 
 export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   const {
@@ -51,7 +47,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     await s3Service.downloadFile(s3Key, localVideoPath);
     console.log("Video downloaded successfully");
 
-    // Skip Deepgram transcription for gaming — Gemini watches the video directly
     let transcriptionData: SyncPrerecordedResponse | null = null;
     if (options.promptType !== "gaming") {
       transcriptionData = await transcribeVideoService(localVideoPath);
@@ -63,7 +58,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       );
     }
 
-    // Get video duration for prompt context (prevents AI from suggesting out-of-bounds timestamps)
     const videoDuration = await getVideoDuration(localVideoPath);
     console.log(`Video duration: ${videoDuration.toFixed(1)}s`);
 
@@ -91,7 +85,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       throw new Error("Failed to generate clip suggestions");
     }
 
-    // Extract thumbnail once (used for all clips)
     console.log("Extracting thumbnail from source video...");
     const thumbnailPath = await extractThumbnail(localVideoPath);
     const thumbnailS3Key = await s3Service.uploadThumbnail(
@@ -115,129 +108,14 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
         )
       : [];
 
-    // Per-clip facecam detection callback — runs on each clip's merged horizontal
-    // video instead of the full raw upload (smaller file, more accurate per-clip)
-    const needsFacecamDetect =
-      options.conversionMode === "gaming" ||
-      options.conversionMode === "speaker-zoom";
-    const needsMultiFaceDetect = options.conversionMode === "active-speaker";
+    const onMergedRaw = buildFacecamDetectCallback(
+      options,
+      teamId,
+      transcriptionWords,
+      "CLIP-PROCESSOR",
+    );
 
-    const onMergedRaw =
-      needsFacecamDetect || needsMultiFaceDetect
-        ? async (
-            localMergedPath: string,
-          ): Promise<ClipServiceOptions | null> => {
-            const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
-            try {
-              console.log(
-                `[CLIP-PROCESSOR] Uploading merged clip to temp S3 for facecam detection: ${tempS3Key}`,
-              );
-              await s3Service.uploadFile(
-                localMergedPath,
-                tempS3Key,
-                "video/mp4",
-              );
-
-              if (needsFacecamDetect) {
-                console.log(
-                  `[CLIP-PROCESSOR] Detecting facecam on merged clip...`,
-                );
-                const result = await detectFacecamFromS3Key(tempS3Key);
-                if (result?.facecamDetected) {
-                  if (result.facecamRegion) {
-                    console.log(
-                      `[CLIP-PROCESSOR] Facecam region detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`,
-                    );
-                    return { facecamRegion: result.facecamRegion };
-                  } else if (result.faceRegion) {
-                    console.log(
-                      `[CLIP-PROCESSOR] Falling back to raw face region: ${JSON.stringify(result.faceRegion)}`,
-                    );
-                    return { facecamRegion: result.faceRegion };
-                  }
-                }
-                console.warn(
-                  `[CLIP-PROCESSOR] No facecam detected — will fall back to blurred-bg`,
-                );
-                return null;
-              }
-
-              if (needsMultiFaceDetect) {
-                console.log(
-                  `[CLIP-PROCESSOR] Detecting multiple faces on merged clip...`,
-                );
-                const multiFaceResult =
-                  await detectMultipleFacesFromS3Key(tempS3Key);
-                if (multiFaceResult && multiFaceResult.faceCount > 0) {
-                  console.log(
-                    `[CLIP-PROCESSOR] Found ${multiFaceResult.faceCount} faces, ${multiFaceResult.sceneCount ?? 1} scene(s)`,
-                  );
-                  let segments = buildSpeakerSegments(transcriptionWords);
-                  const uniqueSpeakers = [
-                    ...new Set(segments.map((s) => s.speaker)),
-                  ];
-
-                  if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
-                    if (
-                      multiFaceResult.scenes &&
-                      multiFaceResult.scenes.length > 1
-                    ) {
-                      segments = resolveSegmentFaces(
-                        segments,
-                        multiFaceResult.scenes,
-                      );
-                      console.log(
-                        `[CLIP-PROCESSOR] Scene-aware face resolution: ${multiFaceResult.scenes.length} scenes`,
-                      );
-                    }
-                    const faceMap = mapSpeakersToFaces(
-                      uniqueSpeakers,
-                      multiFaceResult.faces,
-                    );
-                    console.log(
-                      `[CLIP-PROCESSOR] Active speaker mapping: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`,
-                    );
-                    return {
-                      activeSpeakerSegments: segments,
-                      speakerFaceMap: faceMap,
-                    };
-                  } else if (multiFaceResult.faceCount >= 1) {
-                    console.log(
-                      `[CLIP-PROCESSOR] Single face — using static zoom`,
-                    );
-                    return { facecamRegion: multiFaceResult.faces[0] };
-                  }
-                }
-                console.warn(
-                  `[CLIP-PROCESSOR] No faces detected — will fall back to blurred-bg`,
-                );
-                return null;
-              }
-
-              return null;
-            } finally {
-              try {
-                await s3Service.deleteObject(tempS3Key);
-              } catch {
-                /* best effort */
-              }
-            }
-          }
-        : undefined;
-
-    const clipServiceOptions = {
-      customText: options.customText,
-      textPosition: options.textPosition,
-      textColor: options.textColor,
-      textFont: options.textFont,
-      textStyle: options.textStyle,
-      textBgColor: options.textBgColor,
-      captions: options.captions,
-      captionColor: options.captionColor,
-      captionFont: options.captionFont,
-      conversionMode: options.conversionMode,
-      backgroundMusicS3Key: options.backgroundMusicS3Key,
-    };
+    const clipServiceOptions = buildClipServiceOptions(options);
 
     console.log(
       `Processing ${clipSuggestionsArray.length} clips sequentially...`,
@@ -255,36 +133,11 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           `\n=== Creating clip ${i + 1}/${clipSuggestionsArray.length} ===`,
         );
 
-        let autoHeading: string | undefined;
-        const perClipOptions = { ...clipServiceOptions };
-        if (options.autoHeading !== false && !options.customText) {
-          if (suggestions.viralHeading) {
-            autoHeading = suggestions.viralHeading;
-            console.log(`Clip ${i + 1} using AI-generated heading: "${autoHeading}"`);
-            perClipOptions.customText = autoHeading;
-          } else {
-            try {
-              const clipTranscript =
-                suggestions.combined_script ||
-                [
-                  ...(suggestions.hook ? [suggestions.hook.text] : []),
-                  ...suggestions.main.map((m) => m.text),
-                ].join(" ");
-              autoHeading = await generateViralHeading({
-                transcription: clipTranscript,
-                title: suggestions.clipTitle || "",
-                headingInstructions: options.headingInstructions,
-              });
-              console.log(`Clip ${i + 1} fallback heading: "${autoHeading}"`);
-              perClipOptions.customText = autoHeading;
-            } catch (headingErr) {
-              console.warn(
-                `Clip ${i + 1} heading generation failed, skipping:`,
-                headingErr,
-              );
-            }
-          }
-        }
+        const { autoHeading, perClipOptions } = await generateAutoHeading(
+          suggestions,
+          options,
+          `Clip ${i + 1}`,
+        );
 
         const result = await createCombinedClipService(
           localVideoPath,
@@ -297,20 +150,15 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
         console.log(`Clip ${i + 1} created, uploading to S3...`);
 
-        const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
-          s3Service.uploadGeneratedClip(result.finalPath, teamId, clipId),
-          s3Service.uploadBlankClip(result.blankPath, teamId, clipId),
-          s3Service.uploadWatermarkedClip(
-            result.watermarkedPath,
+        const { clipS3Key, blankS3Key, watermarkedS3Key, srtS3Key } =
+          await uploadClipArtifacts({
+            finalPath: result.finalPath,
+            blankPath: result.blankPath,
+            watermarkedPath: result.watermarkedPath,
+            srtContent: result.srtContent,
             teamId,
             clipId,
-          ),
-        ]);
-
-        const srtPath = path.join(outDir, `captions_${clipId}.srt`);
-        fs.writeFileSync(srtPath, result.srtContent);
-        const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
-        fs.unlinkSync(srtPath);
+          });
 
         await clipManagerService.updateClipComplete(clipId, teamId, {
           clipPath: clipS3Key,
@@ -322,56 +170,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           title: suggestions.clipTitle,
           clipMetadata: {
             clipSuggestions: suggestions,
-            ...(autoHeading
-              ? {
-                  editorConfig: {
-                    heading: {
-                      text: autoHeading,
-                      color: options.textColor
-                        || ((options.textStyle || "stroke") === "instagram"
-                          ? ((options.textBgColor || "#000000") === "#FFFFFF" ? "#000000" : "#FFFFFF")
-                          : "#FFFFFF"),
-                      font: options.textFont || "Montserrat",
-                      x: 50,
-                      y: 10,
-                      fontSize: 48,
-                      style: options.textStyle || "stroke",
-                      headingBgColor: options.textBgColor || "#000000",
-                    },
-                    ...(options.backgroundMusicS3Key
-                      ? {
-                          audio: {
-                            originalVolume: 1,
-                            originalMuted: false,
-                            backgroundMusic: {
-                              s3Key: options.backgroundMusicS3Key,
-                              volume: 0.3,
-                              startTime: 0,
-                              trimStart: 0,
-                              trimEnd: 60,
-                            },
-                          },
-                        }
-                      : {}),
-                  },
-                }
-              : options.backgroundMusicS3Key
-                ? {
-                    editorConfig: {
-                      audio: {
-                        originalVolume: 1,
-                        originalMuted: false,
-                        backgroundMusic: {
-                          s3Key: options.backgroundMusicS3Key,
-                          volume: 0.3,
-                          startTime: 0,
-                          trimStart: 0,
-                          trimEnd: 60,
-                        },
-                      },
-                    },
-                  }
-                : {}),
+            ...buildEditorConfig(options, autoHeading),
             parameters: {
               length: options.length || 40,
               hookLength: options.hookLength || 6,
@@ -397,10 +196,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           clipScore: suggestions.evalScore,
         });
 
-        if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
-        if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
-        if (fs.existsSync(result.watermarkedPath))
-          fs.unlinkSync(result.watermarkedPath);
+        cleanupClipFiles([result.finalPath, result.blankPath, result.watermarkedPath]);
 
         await notifyClipsRefresh(teamId);
 
@@ -435,7 +231,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       throw new Error(`All ${failedCount} clips failed to process`);
     }
 
-    // Send email only after ALL clips are complete
     try {
       const user = await userService.getUserById(userId);
       const frontendUrl =

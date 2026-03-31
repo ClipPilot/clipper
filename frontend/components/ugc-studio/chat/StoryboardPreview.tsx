@@ -195,17 +195,17 @@ export function StoryboardPreview({
         <h2 className="text-lg font-bold text-text-primary">{script.title}</h2>
         <p className="text-xs text-text-muted">{script.targetAudience}</p>
         <div className="flex items-center gap-2">
-          <Chip size="sm" variant="flat" className={`text-[11px] ${accentBgLight} ${accentText}`}>
+          <Chip size="sm" variant="tertiary" className={`text-[11px] ${accentBgLight} ${accentText}`}>
             {Math.round(script.totalDuration)}s
           </Chip>
-          <Chip size="sm" variant="flat" color="default" className="text-[11px]">
+          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
             {script.scenes.length} scenes
           </Chip>
           <Chip
-            size="sm"
-            variant="flat"
-            className={`text-[11px] ${allComplete ? "bg-green-500/10 text-green-400" : `${accentBgLight} ${accentText}`}`}
-          >
+ size="sm"
+ variant="tertiary"
+ className={`text-[11px] ${allComplete ? "bg-green-500/10 text-green-400" : `${accentBgLight} ${accentText}`}`}
+ >
             {completedCount}/{script.scenes.length} images
           </Chip>
         </div>
@@ -266,7 +266,7 @@ export function StoryboardPreview({
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 {isGenerating ? (
-                                  <Spinner size="sm" color={isOrange ? "warning" : "primary"} />
+                                  <Spinner size="sm" color={isOrange ? "warning" : "accent"} />
                                 ) : (
                                   <Icon icon="solar:gallery-add-bold-duotone" width={18} className="text-text-muted/20" />
                                 )}
@@ -298,7 +298,7 @@ export function StoryboardPreview({
                       <div className="w-full min-h-[140px] flex items-center justify-center">
                         {isGenerating ? (
                           <div className="text-center">
-                            <Spinner size="sm" color={isOrange ? "warning" : "primary"} />
+                            <Spinner size="sm" color={isOrange ? "warning" : "accent"} />
                             <p className="text-[9px] text-text-muted mt-1">Generating</p>
                           </div>
                         ) : (
@@ -354,11 +354,11 @@ export function StoryboardPreview({
 
       {allComplete && onContinue && (
         <Button
-          size="md"
-          className={`${accentBg} text-white font-semibold w-full`}
-          onPress={onContinue}
-          startContent={<Icon icon="solar:play-bold" width={18} />}
-        >
+ size="md"
+ className={`${accentBg} text-white font-semibold w-full`}
+ onPress={onContinue}
+ >
+          <Icon icon="solar:play-bold" width={18} />
           Continue to Generate Video
         </Button>
       )}

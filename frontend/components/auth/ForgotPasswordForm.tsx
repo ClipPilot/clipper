@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, TextField, Label, FieldError } from "@heroui/react";
 
 interface ForgotPasswordFormProps {
   onBackToLogin: () => void;
@@ -36,35 +36,23 @@ export default function ForgotPasswordForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Email Address</label>
-          <Input
-            isRequired
-            name="email"
-            placeholder="Enter your email"
-            type="email"
-            variant="flat"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-              innerWrapper: "shadow-none",
-            }}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <TextField fullWidth type="email" isRequired variant="secondary">
+          <Label>Email Address</Label>
+          <Input name="email" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FieldError />
+        </TextField>
 
-        <Button className="bg-accent-400 text-white font-semibold mt-2 rounded-xl" type="submit" size="lg" isLoading={isLoading}>
+        <Button className="w-full bg-accent-400 text-white font-semibold rounded-xl" type="submit" size="lg" isPending={isLoading}>
           Send Reset Link
         </Button>
       </form>
 
       <p className="text-sm text-center text-text-secondary">
         Remember your password?{" "}
-        <button className="text-accent-400 font-medium hover:underline" onClick={onBackToLogin}>
+        <span className="text-accent-400 font-medium hover:underline cursor-pointer" onClick={onBackToLogin}>
           Log In
-        </button>
+        </span>
       </p>
     </>
   );

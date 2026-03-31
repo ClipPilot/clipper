@@ -1,8 +1,8 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { folderService } from "../services/folder.service";
 import { teamService } from "../services/team.service";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
+
 
 export class FolderController {
   async getFolders(req: Request, res: Response) {
@@ -17,11 +17,7 @@ export class FolderController {
 
       return res.status(200).json({ folders });
     } catch (error) {
-      console.error("Get folders error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get folders"),
-      });
+      return handleControllerError(res, "Get folders error", error, "Failed to get folders");
     }
   }
 
@@ -38,11 +34,7 @@ export class FolderController {
 
       return res.status(200).json({ folder });
     } catch (error) {
-      console.error("Get folder error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Folder not found"),
-      });
+      return handleControllerError(res, "Get folder error", error, "Folder not found", 404);
     }
   }
 
@@ -58,11 +50,7 @@ export class FolderController {
 
       return res.status(200).json({ tree });
     } catch (error) {
-      console.error("Get folder tree error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get folder tree"),
-      });
+      return handleControllerError(res, "Get folder tree error", error, "Failed to get folder tree");
     }
   }
 
@@ -79,11 +67,7 @@ export class FolderController {
 
       return res.status(200).json({ path });
     } catch (error) {
-      console.error("Get folder path error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Folder not found"),
-      });
+      return handleControllerError(res, "Get folder path error", error, "Folder not found", 404);
     }
   }
 
@@ -96,7 +80,6 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid team ID" });
       }
 
-      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
       if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
@@ -121,11 +104,7 @@ export class FolderController {
         folder,
       });
     } catch (error) {
-      console.error("Create folder error:", error);
-      Sentry.captureException(error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to create folder"),
-      });
+      return handleControllerError(res, "Create folder error", error, "Failed to create folder");
     }
   }
 
@@ -139,7 +118,6 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
       if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
@@ -163,11 +141,7 @@ export class FolderController {
         folder: updatedFolder,
       });
     } catch (error) {
-      console.error("Update folder error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update folder"),
-      });
+      return handleControllerError(res, "Update folder error", error, "Failed to update folder", 404);
     }
   }
 
@@ -181,7 +155,6 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
       if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
@@ -204,11 +177,8 @@ export class FolderController {
         folder: updatedFolder,
       });
     } catch (error) {
-      console.error("Move folder error:", error);
-      Sentry.captureException(error);
-      const errorMessage = sanitizeErrorForFrontend(error, "Failed to move folder");
-      const statusCode = errorMessage.includes("Cannot move") ? 400 : 404;
-      return res.status(statusCode).json({ error: errorMessage });
+      const statusCode = error instanceof Error && error.message.includes("Cannot move") ? 400 : 404;
+      return handleControllerError(res, "Move folder error", error, "Failed to move folder", statusCode);
     }
   }
 
@@ -221,7 +191,6 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
       if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
@@ -235,14 +204,9 @@ export class FolderController {
         message: "Folder deleted successfully",
       });
     } catch (error) {
-      console.error("Delete folder error:", error);
-      Sentry.captureException(error);
-      return res.status(404).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete folder"),
-      });
+      return handleControllerError(res, "Delete folder error", error, "Failed to delete folder", 404);
     }
   }
 }
 
 export const folderController = new FolderController();
-

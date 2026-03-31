@@ -24,9 +24,9 @@ export function VoiceCard({
   onDelete,
 }: VoiceCardProps) {
   return (
-    <button
+    <div
       onClick={onSelect}
-      className={`relative w-full text-left p-3 rounded-xl border-2 transition-all overflow-hidden ${
+      className={`relative w-full text-left p-3 rounded-xl border-2 transition-all overflow-hidden cursor-pointer ${
         isSelected
           ? voice.isCloned
             ? "border-purple-500 bg-purple-500/10"
@@ -46,15 +46,15 @@ export function VoiceCard({
               </Chip>
             )}
             <Chip
-              size="sm"
-              className={
-                voice.gender === "male"
-                  ? "bg-blue-500/20 text-blue-500"
-                  : voice.gender === "female"
-                    ? "bg-pink-500/20 text-pink-500"
-                    : "bg-gray-500/20 text-gray-400"
-              }
-            >
+ size="sm"
+ className={
+ voice.gender === "male"
+ ? "bg-blue-500/20 text-blue-500"
+ : voice.gender === "female"
+ ? "bg-pink-500/20 text-pink-500"
+ : "bg-gray-500/20 text-gray-400"
+ }
+ >
               {voice.gender === "male" ? "M" : voice.gender === "female" ? "F" : "O"}
             </Chip>
           </div>
@@ -62,22 +62,22 @@ export function VoiceCard({
         </div>
         <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center gap-1">
           <Button
-            isIconOnly
-            size="sm"
-            variant="flat"
-            className={isPlaying ? "bg-accent-400 text-white" : "bg-surface-elevated"}
-            onPress={onPlayToggle}
-          >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className={isPlaying ? "bg-accent-400 text-white" : "bg-surface-elevated"}
+ onPress={onPlayToggle}
+ >
             <Icon icon={isPlaying ? "solar:stop-bold" : "solar:play-bold"} width={16} />
           </Button>
           {voice.isCloned && onDelete && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated text-red-400 hover:bg-red-500/20"
-              onPress={onDelete}
-            >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated text-red-400 hover:bg-red-500/20"
+ onPress={onDelete}
+ >
               <Icon icon="solar:trash-bin-trash-bold" width={16} />
             </Button>
           )}
@@ -91,6 +91,6 @@ export function VoiceCard({
           />
         </div>
       )}
-    </button>
+    </div>
   );
 }

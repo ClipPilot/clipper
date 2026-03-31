@@ -26,7 +26,7 @@ export const isSidebarCollapsedAtom = atom(false);
 export const draggedClipIdAtom = atom<number | null>(null);
 export const clipsViewModeAtom = atom<"grid" | "list">("grid");
 export const clipsSortAtom = atom<"newest" | "oldest">("newest");
-export const campaignUploadFilterAtom = atom<"all" | "only" | "hide">("all");
+export const campaignUploadFilterAtom = atom<"all" | "only" | "hide">("hide");
 
 export const isCreateFolderOpenAtom = atom(false);
 export const createFolderParentIdAtom = atom<number | null>(null);

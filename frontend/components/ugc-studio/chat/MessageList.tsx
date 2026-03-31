@@ -140,13 +140,13 @@ export function MessageList({ messages, isThinking, acceptedResult, onAccept, on
               </div>
               <Button
                 size="lg"
-                color="primary"
+                variant="primary"
                 className="w-full mt-1 font-semibold"
-                isLoading={isGenerateLoading}
+                isPending={isGenerateLoading}
                 isDisabled={isGenerateLoading}
                 onPress={onGenerateVideo}
-                startContent={!isGenerateLoading ? <Icon icon="solar:play-bold" width={18} /> : undefined}
               >
+                {!isGenerateLoading && <Icon icon="solar:play-bold" width={18} />}
                 {isGenerateLoading ? "Starting..." : "Generate Video"}
               </Button>
             </div>

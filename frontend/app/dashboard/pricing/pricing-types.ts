@@ -20,7 +20,6 @@ export type Tier = {
   featured?: boolean;
   features?: string[];
   buttonText: string;
-  buttonColor?: ButtonProps["color"];
   buttonVariant: ButtonProps["variant"];
   credits?: string;
   priceId?: string;

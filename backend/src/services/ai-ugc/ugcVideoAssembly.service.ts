@@ -198,7 +198,12 @@ export interface AssemblyResult {
 }
 
 const OUTPUT_DIR = path.join(process.cwd(), "output", "ugc-videos");
-fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+
+function ensureOutputDir(): void {
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+}
 
 function getMediaDuration(filePath: string): number {
   try {
@@ -1459,7 +1464,9 @@ export async function assembleUGCVideo(
 ): Promise<AssemblyResult> {
   const { teamId, scriptId, voiceId, scenes, onProgress, ttsSpeed, isSilent } = options;
 
-  // Use provided ttsSpeed or fall back to default SPEECH_SPEED_BOOST
+  ensureOutputDir();
+
+
   const effectiveSpeedBoost = ttsSpeed ?? SPEECH_SPEED_BOOST;
   if (isSilent) {
     console.log(`[UGC Assembly] Silent mode — skipping all TTS/ElevenLabs calls`);

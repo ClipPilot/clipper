@@ -12,13 +12,10 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { eq, desc, and, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
-
-const CREDIT_PER_IMAGE = 1;
+import { handleControllerError } from "../utils/controllerHelpers";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { CREDIT_PER_IMAGE } from "../constants/credits";
+import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
 
 export class ActorController {
   async generatePreview(req: AuthRequest, res: Response) {
@@ -49,7 +46,7 @@ export class ActorController {
       if (baseRemaining + addonRemaining < 1) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: 1,
           available: 0,
         });
@@ -89,10 +86,7 @@ export class ActorController {
         message: "Character generation started. Poll for status.",
       });
     } catch (error) {
-      console.error("[ACTOR] Generate preview error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue generation"),
-      });
+      return handleControllerError(res, "[ACTOR] Generate preview error", error, "Failed to queue generation");
     }
   }
 
@@ -144,10 +138,7 @@ export class ActorController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[ACTOR] Get generation status error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get status"),
-      });
+      return handleControllerError(res, "[ACTOR] Get generation status error", error, "Failed to get status");
     }
   }
 
@@ -185,7 +176,7 @@ export class ActorController {
       if (!consumeResult.success) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: creditCost,
           available: consumeResult.remaining.total,
           usage: {
@@ -242,10 +233,7 @@ export class ActorController {
         },
       });
     } catch (error) {
-      console.error("[ACTOR] Create error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to create character"),
-      });
+      return handleControllerError(res, "[ACTOR] Create error", error, "Failed to create character");
     }
   }
 
@@ -294,10 +282,7 @@ export class ActorController {
         total: countResult?.count || 0,
       });
     } catch (error) {
-      console.error("[ACTOR] List error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to list characters"),
-      });
+      return handleControllerError(res, "[ACTOR] List error", error, "Failed to list characters");
     }
   }
 
@@ -342,10 +327,7 @@ export class ActorController {
         total: countResult?.count || 0,
       });
     } catch (error) {
-      console.error("[ACTOR] List community error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to list community characters"),
-      });
+      return handleControllerError(res, "[ACTOR] List community error", error, "Failed to list community characters");
     }
   }
 
@@ -379,10 +361,7 @@ export class ActorController {
         },
       });
     } catch (error) {
-      console.error("[ACTOR] Get by ID error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get character"),
-      });
+      return handleControllerError(res, "[ACTOR] Get by ID error", error, "Failed to get character");
     }
   }
 
@@ -416,10 +395,7 @@ export class ActorController {
         character: updated,
       });
     } catch (error) {
-      console.error("[ACTOR] Update error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update character"),
-      });
+      return handleControllerError(res, "[ACTOR] Update error", error, "Failed to update character");
     }
   }
 
@@ -445,10 +421,7 @@ export class ActorController {
         message: "Character deleted",
       });
     } catch (error) {
-      console.error("[ACTOR] Delete error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete character"),
-      });
+      return handleControllerError(res, "[ACTOR] Delete error", error, "Failed to delete character");
     }
   }
 
@@ -467,10 +440,7 @@ export class ActorController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[ACTOR] Increment use error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to increment use count"),
-      });
+      return handleControllerError(res, "[ACTOR] Increment use error", error, "Failed to increment use count");
     }
   }
 
@@ -504,7 +474,7 @@ export class ActorController {
       if (baseRemaining + addonRemaining < 1) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: 1,
           available: 0,
         });
@@ -568,10 +538,7 @@ export class ActorController {
         message: "Variation generation started. Poll for status.",
       });
     } catch (error) {
-      console.error("[ACTOR] Create variation error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to create variation"),
-      });
+      return handleControllerError(res, "[ACTOR] Create variation error", error, "Failed to create variation");
     }
   }
 
@@ -594,10 +561,7 @@ export class ActorController {
         s3Key,
       });
     } catch (error) {
-      console.error("[ACTOR] Presigned URL error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get presigned URL"),
-      });
+      return handleControllerError(res, "[ACTOR] Presigned URL error", error, "Failed to get presigned URL");
     }
   }
 }

@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardBody,
+import { Card,
   Button,
   Chip,
   Avatar,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+  Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -217,23 +211,19 @@ export function DashboardGrid() {
               <div
                 className={`absolute inset-0 bg-gradient-to-b ${getPlanGradient(plan)} pointer-events-none`}
               />
-              <CardBody className="p-5 relative">
+              <Card.Content className="p-5 relative">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
                     Credits
                   </span>
                   <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: "border-0",
-                      content: "text-xs font-semibold capitalize",
-                    }}
-                    style={{
-                      backgroundColor: `${getPlanAccent(plan)}18`,
-                      color: getPlanAccent(plan),
-                    }}
-                  >
+ size="sm"
+ variant="tertiary"
+ style={{
+ backgroundColor: `${getPlanAccent(plan)}18`,
+ color: getPlanAccent(plan),
+ }}
+ >
                     {plan}
                   </Chip>
                 </div>
@@ -282,38 +272,37 @@ export function DashboardGrid() {
 
                     {plan === "free" && (
                       <Button
-                        size="sm"
-                        variant="flat"
-                        className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
-                        onPress={() => router.push("/dashboard/pricing")}
-                        startContent={<Icon icon="solar:arrow-up-bold" width={14} />}
-                      >
+ size="sm"
+ variant="tertiary"
+ className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+                        <Icon icon="solar:arrow-up-bold" width={14} />
                         Upgrade Plan
                       </Button>
                     )}
                   </>
                 )}
-              </CardBody>
+              </Card.Content>
             </Card>
 
             {/* Workspace */}
             <Card className="bg-surface-base border border-border-base">
-              <CardBody className="p-5">
+              <Card.Content className="p-5">
                 <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary mb-4 block">
                   Workspace
                 </span>
 
                 <div className="flex items-center gap-3 mb-4">
                   <div className="relative">
-                    <Avatar
-                      src={selectedTeam?.logo_url}
-                      name={selectedTeam?.name?.charAt(0) || "T"}
-                      size="lg"
-                      classNames={{
-                        base: "bg-accent-400/10 ring-2 ring-accent-400/30",
-                        name: "text-accent-400 font-bold text-lg",
-                      }}
-                    />
+                    <Avatar size="lg" className="bg-accent-400/10 ring-2 ring-accent-400/30">
+                      {selectedTeam?.logo_url ? (
+                        <Avatar.Image src={selectedTeam.logo_url} alt={selectedTeam?.name || "Team"} />
+                      ) : null}
+                      <Avatar.Fallback className="text-accent-400 font-bold text-lg">
+                        {selectedTeam?.name?.charAt(0) || "T"}
+                      </Avatar.Fallback>
+                    </Avatar>
                     <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-surface-base" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -341,17 +330,17 @@ export function DashboardGrid() {
 
                 {userTeams.length > 1 && (
                   <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="w-full bg-surface-elevated"
-                        endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-                      >
+<Button
+ size="sm"
+ variant="tertiary"
+ className="w-full bg-surface-elevated"
+ >
                         Switch Workspace
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
+                        <Icon icon="solar:alt-arrow-down-linear" width={14} />
+</Button>
+<Dropdown.Popover>
+
+<Dropdown.Menu
                       aria-label="Switch team"
                       onAction={(key) => {
                         const team = userTeams.find((t) => t.id.toString() === key);
@@ -359,18 +348,19 @@ export function DashboardGrid() {
                       }}
                     >
                       {userTeams.map((team) => (
-                        <DropdownItem
+                        <Dropdown.Item
                           key={team.id.toString()}
-                          startContent={<Avatar src={team.logo_url} name={team.name.charAt(0)} size="sm" className="w-6 h-6" />}
                           className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
                         >
+                          <Avatar size="sm" className="w-6 h-6"><Avatar.Fallback>{team.name.charAt(0)}</Avatar.Fallback></Avatar>
                           {team.name}
-                        </DropdownItem>
+                        </Dropdown.Item>
                       ))}
-                    </DropdownMenu>
+                    </Dropdown.Menu>
+</Dropdown.Popover>
                   </Dropdown>
                 )}
-              </CardBody>
+              </Card.Content>
             </Card>
           </div>
 
@@ -414,7 +404,7 @@ export function DashboardGrid() {
         {/* ═══ Right column: Activity ═══ */}
         <div className="col-span-12 lg:col-span-5">
           <Card className="bg-surface-base border border-border-base overflow-hidden">
-            <CardBody className="p-5 relative">
+            <Card.Content className="p-5 relative">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
                   Activity
@@ -537,14 +527,14 @@ export function DashboardGrid() {
                   )}
                 </div>
               )}
-            </CardBody>
+            </Card.Content>
           </Card>
         </div>
       </div>
 
       {/* ── Recent Clips: full width ────────────────────────────── */}
       <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+        <Card.Content className="p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-semibold tracking-wider uppercase text-text-tertiary">
               Recent Clips
@@ -572,10 +562,10 @@ export function DashboardGrid() {
               <p className="text-sm font-medium text-text-primary mb-1">No clips yet</p>
               <p className="text-xs text-text-tertiary mb-4">Create your first clip to get started</p>
               <Button
-                size="sm"
-                className="bg-accent-400 text-white font-medium"
-                onPress={() => router.push("/dashboard/create-clip")}
-              >
+ size="sm"
+ className="bg-accent-400 text-white font-medium"
+ onPress={() => router.push("/dashboard/create-clip")}
+ >
                 Create Clip
               </Button>
             </div>
@@ -617,7 +607,7 @@ export function DashboardGrid() {
               ))}
             </div>
           )}
-        </CardBody>
+        </Card.Content>
       </Card>
     </div>
   );

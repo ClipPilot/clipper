@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Input, Switch, Button } from "@heroui/react";
+import { Input, Switch, Button, TextField } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   captionsEnabledAtom,
@@ -62,7 +62,6 @@ export function CaptionsTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:subtitles-bold" className="text-accent-400" />
@@ -73,9 +72,8 @@ export function CaptionsTool() {
         </p>
       </div>
 
-      {/* Enable/Disable Toggle */}
       {captions.length > 0 && (
-        <div className="bg-surface-elevated rounded-lg p-4">
+        <div className="bg-white/[0.04] rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Icon
@@ -92,31 +90,31 @@ export function CaptionsTool() {
             </div>
             <Switch
               isSelected={captionsEnabled}
-              onValueChange={setCaptionsEnabled}
-              color="success"
-              size="lg"
-            />
+              onChange={setCaptionsEnabled}
+            >
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+            </Switch>
           </div>
         </div>
       )}
 
-      {/* Caption Style */}
       {captions.length > 0 && captionsEnabled && (
-        <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
+        <div className="bg-white/[0.04] rounded-lg p-4 space-y-4">
           <p className="text-sm font-medium text-text-primary">Caption Style</p>
 
-          {/* Highlight Color */}
           <div>
             <label className="text-xs text-text-secondary mb-2 block">Highlight Color</label>
             <div className="flex flex-wrap gap-2">
               {OVERLAY_COLORS.map((c) => (
-                <button
+                <div
                   key={c.color}
                   onClick={() => setCaptionColor(c.color)}
-                  className={`h-8 w-8 rounded border-2 transition-all ${
+                  className={`h-8 w-8 rounded-lg cursor-pointer transition-all ${
                     captionColor === c.color
-                      ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
-                      : "border-border-base hover:scale-105"
+                      ? "ring-2 ring-accent-400 ring-offset-2 ring-offset-[#0f0f1a] scale-110"
+                      : "hover:scale-110"
                   }`}
                   style={{ backgroundColor: c.color }}
                   title={c.name}
@@ -125,32 +123,31 @@ export function CaptionsTool() {
             </div>
           </div>
 
-          {/* Font */}
           <div>
             <label className="text-xs text-text-secondary mb-2 block">Caption Font</label>
             <div className="flex gap-2 overflow-x-auto py-1">
               {CAPTION_FONTS.map((font) => (
-                <button
+                <Button
                   key={font.id}
-                  onClick={() => setCaptionFont(font.name)}
+                  isIconOnly
+                  onPress={() => setCaptionFont(font.name)}
                   className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
                     captionFont === font.name
                       ? "bg-accent-400 text-white border-accent-400 scale-105"
                       : "bg-surface-base text-text-primary border-border-base hover:scale-105"
                   }`}
-                  title={font.name}
+                  aria-label={font.name}
                 >
                   <span className="text-base font-bold" style={{ fontFamily: `var(--font-${font.id})` }}>
                     Ag
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Caption List */}
       <div>
         <p className="text-sm text-text-secondary mb-2">{captions.length} caption segments</p>
         <div className="max-h-[40vh] overflow-y-auto space-y-2 pr-2">
@@ -160,7 +157,7 @@ export function CaptionsTool() {
               className={`p-3 rounded-lg border transition-all ${
                 isActiveCaption(caption)
                   ? "bg-accent-400/10 border-accent-400"
-                  : "bg-surface-elevated border-border-base"
+                  : "bg-white/[0.04] border-transparent"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -170,13 +167,12 @@ export function CaptionsTool() {
                 </span>
                 <span className="text-xs text-text-tertiary">#{caption.index}</span>
               </div>
-              <Input
-                value={caption.text}
-                onChange={(e) => handleCaptionTextChange(index, e.target.value)}
-                variant="bordered"
-                size="sm"
-                classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
-              />
+              <TextField fullWidth variant="secondary">
+                <Input
+                  value={caption.text}
+                  onChange={(e) => handleCaptionTextChange(index, e.target.value)}
+                />
+              </TextField>
             </div>
           ))}
           {captions.length === 0 && (
@@ -184,13 +180,12 @@ export function CaptionsTool() {
               <Icon icon="solar:subtitles-outline" className="text-4xl text-text-tertiary mb-2 mx-auto" />
               <p className="text-text-secondary mb-4">No captions available</p>
               <Button
-                color="primary"
-                variant="flat"
+                variant="tertiary"
                 size="sm"
-                isLoading={isGenerating}
+                isPending={isGenerating}
                 onPress={handleGenerateCaptions}
-                startContent={!isGenerating ? <Icon icon="solar:magic-stick-3-bold" /> : undefined}
               >
+                {!isGenerating ? <Icon icon="solar:magic-stick-3-bold" /> : undefined}
                 {isGenerating ? "Generating..." : "Generate Captions"}
               </Button>
               {generateError && (
@@ -201,7 +196,6 @@ export function CaptionsTool() {
         </div>
       </div>
 
-      {/* Tips */}
       <div className="bg-accent-400/10 rounded-lg p-3">
         <p className="text-xs text-accent-400 flex items-start gap-2">
           <Icon icon="solar:info-circle-bold" className="text-sm mt-0.5 flex-shrink-0" />

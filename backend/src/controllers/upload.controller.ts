@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { z } from "zod";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -8,6 +7,7 @@ import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { PLAN_LIMITS, getMaxUploadSizeForPlan } from "../config/stripe.config";
 import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 
@@ -85,9 +85,8 @@ async function checkFreePlanGenerationLimit(
 
 export const initiateMultipartUpload = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId, fileName, contentType, fileSize } = req.body;
 
@@ -127,17 +126,14 @@ export const initiateMultipartUpload = async (req: AuthRequest, res: Response) =
       partUrls,
     });
   } catch (err) {
-    console.error("Error initiating multipart upload:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to initiate upload" });
+    return handleControllerError(res, "Error initiating multipart upload", err, "Failed to initiate upload");
   }
 };
 
 export const completeMultipartUpload = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { s3Key, uploadId, parts } = req.body;
 
@@ -149,17 +145,14 @@ export const completeMultipartUpload = async (req: AuthRequest, res: Response) =
 
     return res.json({ success: true, s3Key });
   } catch (err) {
-    console.error("Error completing multipart upload:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to complete upload" });
+    return handleControllerError(res, "Error completing multipart upload", err, "Failed to complete upload");
   }
 };
 
 export const abortMultipartUpload = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { s3Key, uploadId } = req.body;
 
@@ -171,17 +164,14 @@ export const abortMultipartUpload = async (req: AuthRequest, res: Response) => {
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Error aborting multipart upload:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to abort upload" });
+    return handleControllerError(res, "Error aborting multipart upload", err, "Failed to abort upload");
   }
 };
 
 export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { teamId, fileName, contentType, fileSize } = req.body;
 
@@ -214,17 +204,13 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
 
     return res.json({ uploadUrl, s3Key });
   } catch (err) {
-    console.error("Error generating presigned URL:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to generate upload URL" });
+    return handleControllerError(res, "Error generating presigned URL", err, "Failed to generate upload URL");
   }
 };
 
 export const submitClipJob = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    if (!requireUser(req, res)) return;
 
     const parseResult = clipJobSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -276,7 +262,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: `Prompt type must be one of: ${PROMPT_TYPES.join(", ")}` });
     }
 
-    const userId = req.user.dbUserId;
+    const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
     const rawVideo = await clipManagerService.createRawVideo({
@@ -333,9 +319,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       status: "queued",
     });
   } catch (err) {
-    console.error("Error submitting clip job:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to submit job" });
+    return handleControllerError(res, "Error submitting clip job", err, "Failed to submit job");
   }
 };
 
@@ -346,9 +330,7 @@ const MAX_VIDEO_DURATION_SECONDS = 30 * 60;
 
 export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    if (!requireUser(req, res)) return;
 
     const {
       teamId,
@@ -444,7 +426,7 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Text position must be "top", "middle", or "bottom"' });
     }
 
-    const userId = req.user.dbUserId;
+    const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
     // Create raw video records for each uploaded video
@@ -513,8 +495,6 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       status: "queued",
     });
   } catch (err) {
-    console.error("Error submitting batch clip job:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to submit batch job" });
+    return handleControllerError(res, "Error submitting batch clip job", err, "Failed to submit batch job");
   }
 };

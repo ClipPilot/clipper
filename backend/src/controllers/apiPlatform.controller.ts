@@ -1,7 +1,6 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest, ApiKeyRequest } from "../middleware/auth.middleware";
-import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { verifyTeamAccessOrFail, handleControllerError } from "../utils/controllerHelpers";
 import { apiKeyService } from "../services/apiKey.service";
 import { apiBillingService } from "../services/apiBilling.service";
 import { stripeService } from "../services/stripe.service";
@@ -40,11 +39,7 @@ export const createApiKeyController = async (req: AuthRequest, res: Response) =>
       created_at: created.created_at,
     });
   } catch (err) {
-    console.error("Error in createApiKeyController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to create API key",
-    });
+    return handleControllerError(res, "Error in createApiKeyController", err, "Failed to create API key");
   }
 };
 
@@ -62,11 +57,7 @@ export const listApiKeysController = async (req: AuthRequest, res: Response) => 
     const keys = await apiKeyService.listByTeam(teamId);
     return res.json({ keys });
   } catch (err) {
-    console.error("Error in listApiKeysController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to list API keys",
-    });
+    return handleControllerError(res, "Error in listApiKeysController", err, "Failed to list API keys");
   }
 };
 
@@ -90,11 +81,7 @@ export const revokeApiKeyController = async (req: AuthRequest, res: Response) =>
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("Error in revokeApiKeyController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to revoke API key",
-    });
+    return handleControllerError(res, "Error in revokeApiKeyController", err, "Failed to revoke API key");
   }
 };
 
@@ -118,11 +105,7 @@ export const getWalletController = async (req: AuthRequest, res: Response) => {
       active: account.active,
     });
   } catch (err) {
-    console.error("Error in getWalletController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get wallet",
-    });
+    return handleControllerError(res, "Error in getWalletController", err, "Failed to get wallet");
   }
 };
 
@@ -165,11 +148,7 @@ export const createWalletTopUpController = async (req: AuthRequest, res: Respons
       paymentIntentId: paymentIntent.id,
     });
   } catch (err) {
-    console.error("Error in createWalletTopUpController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to create top-up",
-    });
+    return handleControllerError(res, "Error in createWalletTopUpController", err, "Failed to create top-up");
   }
 };
 
@@ -193,11 +172,7 @@ export const getTopUpStatusController = async (req: AuthRequest, res: Response) 
 
     return res.json({ credited });
   } catch (err) {
-    console.error("Error in getTopUpStatusController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to check top-up status",
-    });
+    return handleControllerError(res, "Error in getTopUpStatusController", err, "Failed to check top-up status");
   }
 };
 
@@ -221,11 +196,7 @@ export const getAutoRefillController = async (req: AuthRequest, res: Response) =
       has_payment_method: !!account.stripe_payment_method_id,
     });
   } catch (err) {
-    console.error("Error in getAutoRefillController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get auto-refill settings",
-    });
+    return handleControllerError(res, "Error in getAutoRefillController", err, "Failed to get auto-refill settings");
   }
 };
 
@@ -271,11 +242,7 @@ export const updateAutoRefillController = async (req: AuthRequest, res: Response
       has_payment_method: !!updated.stripe_payment_method_id,
     });
   } catch (err) {
-    console.error("Error in updateAutoRefillController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to update auto-refill settings",
-    });
+    return handleControllerError(res, "Error in updateAutoRefillController", err, "Failed to update auto-refill settings");
   }
 };
 
@@ -296,11 +263,7 @@ export const getUsageLogsController = async (req: AuthRequest, res: Response) =>
 
     return res.json({ logs, total, limit, offset });
   } catch (err) {
-    console.error("Error in getUsageLogsController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to get usage logs",
-    });
+    return handleControllerError(res, "Error in getUsageLogsController", err, "Failed to get usage logs");
   }
 };
 
@@ -327,9 +290,7 @@ export const getWalletV1Controller = async (req: ApiKeyRequest, res: Response) =
       active: account.active,
     });
   } catch (err) {
-    console.error("Error in getWalletV1Controller:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get wallet" });
+    return handleControllerError(res, "Error in getWalletV1Controller", err, "Failed to get wallet");
   }
 };
 
@@ -363,9 +324,7 @@ export const createWalletTopUpV1Controller = async (req: ApiKeyRequest, res: Res
       paymentIntentId: paymentIntent.id,
     });
   } catch (err) {
-    console.error("Error in createWalletTopUpV1Controller:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to create top-up" });
+    return handleControllerError(res, "Error in createWalletTopUpV1Controller", err, "Failed to create top-up");
   }
 };
 
@@ -381,8 +340,6 @@ export const getTopUpStatusV1Controller = async (req: ApiKeyRequest, res: Respon
     const credited = await apiBillingService.isTopUpCredited(teamId, paymentIntentId);
     return res.json({ credited });
   } catch (err) {
-    console.error("Error in getTopUpStatusV1Controller:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to check top-up status" });
+    return handleControllerError(res, "Error in getTopUpStatusV1Controller", err, "Failed to check top-up status");
   }
 };

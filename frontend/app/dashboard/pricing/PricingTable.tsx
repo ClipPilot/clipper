@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import { Button, Chip, Divider, Tooltip, cn } from "@heroui/react";
+import { Button, Chip, Separator, Tooltip, cn } from "@heroui/react";
 import { Tier, TiersEnum } from "./pricing-types";
 import { PricingFeatures } from "./pricing-comparison-types";
 
@@ -62,12 +62,8 @@ export function PricingTable({
                 >
                   {tier.mostPopular && (
                     <Chip
-                      classNames={{
-                        base: "absolute top-2 right-2 bg-accent-400",
-                        content: "text-white text-xs font-semibold",
-                      }}
-                      size="sm"
-                    >
+ size="sm"
+ >
                       Most Popular
                     </Chip>
                   )}
@@ -114,27 +110,22 @@ export function PricingTable({
                   </div>
 
                   <Button
-                    fullWidth
-                    className={cn("mt-6", {
-                      "bg-accent-400 text-white font-semibold shadow-lg shadow-accent-400/25":
-                        tier.mostPopular && !isButtonDisabled(tier),
-                    })}
-                    color={
-                      tier.mostPopular && !isButtonDisabled(tier)
-                        ? "primary"
-                        : "default"
-                    }
-                    variant={isButtonDisabled(tier) ? "flat" : tier.buttonVariant}
-                    isDisabled={isButtonDisabled(tier)}
-                    isLoading={loadingTier === tier.key}
-                    onPress={() => {
-                      if (tier.key === TiersEnum.Enterprise) {
-                        window.open("https://cuttr.com/contact", "_blank");
-                      } else {
-                        onUpgrade(tier);
-                      }
-                    }}
-                  >
+ fullWidth
+ className={cn("mt-6", {
+ "bg-accent-400 text-white font-semibold shadow-lg shadow-accent-400/25":
+ tier.mostPopular && !isButtonDisabled(tier),
+ })}
+ variant={isButtonDisabled(tier) ? "tertiary" : tier.buttonVariant}
+ isDisabled={isButtonDisabled(tier)}
+ isPending={loadingTier === tier.key}
+ onPress={() => {
+ if (tier.key === TiersEnum.Enterprise) {
+ window.open("https://cuttr.com/contact", "_blank");
+ } else {
+ onUpgrade(tier);
+ }
+ }}
+ >
                     {getButtonText(tier)}
                   </Button>
                 </td>
@@ -156,7 +147,7 @@ export function PricingTable({
                     scope="colgroup"
                   >
                     {feat.title}
-                    <Divider className="absolute -inset-x-4 mt-2 bg-border-base/50" />
+                    <Separator className="absolute -inset-x-4 mt-2 bg-border-base/50" />
                   </th>
                   {tiers.map((tier) => (
                     <td key={tier.key} className="relative py-4" />
@@ -171,18 +162,17 @@ export function PricingTable({
                       {tierFeature.helpText ? (
                         <div className="flex items-center gap-1">
                           <span>{tierFeature.title}</span>
-                          <Tooltip
-                            className="max-w-[240px] bg-surface-elevated text-text-primary"
-                            content={tierFeature.helpText}
-                            placement="right"
-                          >
-                            <span className="cursor-help">
-                              <Icon
-                                className="text-text-tertiary"
-                                icon="solar:info-circle-line-duotone"
-                                width={18}
-                              />
-                            </span>
+                          <Tooltip>
+                            <Tooltip.Trigger>
+                              <span className="cursor-help">
+                                <Icon
+                                  className="text-text-tertiary"
+                                  icon="solar:info-circle-line-duotone"
+                                  width={18}
+                                />
+                              </span>
+                            </Tooltip.Trigger>
+                            <Tooltip.Content placement="right" className="max-w-[240px] bg-surface-elevated text-text-primary">{tierFeature.helpText}</Tooltip.Content>
                           </Tooltip>
                         </div>
                       ) : (

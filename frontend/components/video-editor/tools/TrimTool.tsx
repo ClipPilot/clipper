@@ -54,7 +54,6 @@ export function TrimTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:scissors-bold" className="text-accent-400" />
@@ -65,40 +64,32 @@ export function TrimTool() {
         </p>
       </div>
 
-      {/* Time Inputs */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">Start Time</label>
-          <Input
-            value={formatTime(trimState.startTime)}
-            onChange={(e) => handleStartTimeChange(e.target.value)}
-            variant="bordered"
-            size="sm"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-border-base",
-              input: "font-mono",
-            }}
-            startContent={<Icon icon="solar:play-bold" className="text-text-tertiary text-sm" />}
-          />
+          <div className="relative">
+            <Icon icon="solar:play-bold" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm pointer-events-none" />
+            <Input
+              className="w-full rounded-lg border border-border-base bg-white/[0.04] pl-8 pr-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-400/40"
+              value={formatTime(trimState.startTime)}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
+            />
+          </div>
         </div>
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">End Time</label>
-          <Input
-            value={formatTime(trimState.endTime)}
-            onChange={(e) => handleEndTimeChange(e.target.value)}
-            variant="bordered"
-            size="sm"
-            classNames={{
-              inputWrapper: "bg-surface-elevated border-border-base",
-              input: "font-mono",
-            }}
-            startContent={<Icon icon="solar:stop-bold" className="text-text-tertiary text-sm" />}
-          />
+          <div className="relative">
+            <Icon icon="solar:stop-bold" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm pointer-events-none" />
+            <Input
+              className="w-full rounded-lg border border-border-base bg-white/[0.04] pl-8 pr-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-400/40"
+              value={formatTime(trimState.endTime)}
+              onChange={(e) => handleEndTimeChange(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Duration Info */}
-      <div className="bg-surface-elevated rounded-lg p-4 space-y-3">
+      <div className="bg-white/[0.04] rounded-lg p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-sm text-text-secondary">Original Duration</span>
           <span className="text-sm text-text-primary font-mono">{formatTime(duration)}</span>
@@ -119,28 +110,26 @@ export function TrimTool() {
         )}
       </div>
 
-      {/* Quick Actions */}
       <div className="space-y-2">
         <p className="text-xs text-text-tertiary">Quick Actions</p>
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            variant="flat"
+            variant="tertiary"
             onPress={() => setTrimState((prev) => ({ ...prev, startTime: 0 }))}
           >
             Reset Start
           </Button>
           <Button
             size="sm"
-            variant="flat"
+            variant="tertiary"
             onPress={() => setTrimState((prev) => ({ ...prev, endTime: duration }))}
           >
             Reset End
           </Button>
           <Button
             size="sm"
-            variant="flat"
-            color="warning"
+            variant="tertiary"
             onPress={handleReset}
           >
             Reset All
@@ -148,7 +137,6 @@ export function TrimTool() {
         </div>
       </div>
 
-      {/* Tips */}
       <div className="bg-accent-400/10 rounded-lg p-3">
         <p className="text-xs text-accent-400 flex items-start gap-2">
           <Icon icon="solar:info-circle-bold" className="text-sm mt-0.5 flex-shrink-0" />

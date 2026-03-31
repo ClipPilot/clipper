@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input, Divider, Checkbox } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Separator,
+  Checkbox,
+  TextField,
+  Label,
+  FieldError,
+  InputGroup,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import ContinueWithGoogle from "./ContinueWithGoogle";
 
@@ -34,9 +43,7 @@ export default function LoginForm({
     <>
       <div>
         <h2 className="text-2xl font-bold text-text-primary">Welcome Back</h2>
-        <p className="text-sm text-text-secondary mt-1">
-          Log in to your account
-        </p>
+        <p className="text-sm text-text-secondary mt-1">Log in to your account</p>
       </div>
 
       {error && (
@@ -45,103 +52,79 @@ export default function LoginForm({
         </div>
       )}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">
-            Email Address
-          </label>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <TextField fullWidth type="email" isRequired variant="secondary">
+          <Label>Email Address</Label>
           <Input
-            isRequired
             name="email"
             placeholder="you@example.com"
-            type="email"
-            variant="flat"
-            classNames={{
-              inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-            }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-        </div>
+          <FieldError />
+        </TextField>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">
-            Password
-          </label>
-          <Input
-            isRequired
-            endContent={
-              <button type="button" onClick={() => setIsVisible(!isVisible)}>
-                <Icon
-                  className="text-text-tertiary text-xl"
-                  icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
-                />
-              </button>
-            }
-            name="password"
-            placeholder="Enter your password"
-            type={isVisible ? "text" : "password"}
-            variant="flat"
-            classNames={{
-              inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
-              input: "text-text-primary placeholder:text-text-tertiary",
-            }}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
+        <TextField fullWidth isRequired variant="secondary">
+          <Label>Password</Label>
+          <InputGroup>
+            <InputGroup.Input
+              name="password"
+              placeholder="Enter your password"
+              type={isVisible ? "text" : "password"}
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            />
+            <InputGroup.Suffix>
+              <Button
+                isIconOnly
+                variant="tertiary"
+                size="sm"
+                onPress={() => setIsVisible(!isVisible)}
+              >
+                <Icon icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"} className="text-lg text-muted" />
+              </Button>
+            </InputGroup.Suffix>
+          </InputGroup>
+          <FieldError />
+        </TextField>
 
-        <div className="flex items-center justify-between -mt-2">
-          <Checkbox
-            isSelected={rememberMe}
-            onValueChange={setRememberMe}
-            size="sm"
-            classNames={{
-              label: "text-sm text-text-secondary",
-            }}
-          >
-            Remember me
+        <div className="flex items-center justify-between">
+          <Checkbox isSelected={rememberMe} onChange={setRememberMe} id="remember-me">
+            <Checkbox.Control>
+              <Checkbox.Indicator />
+            </Checkbox.Control>
+            <Checkbox.Content>
+              <Label htmlFor="remember-me" className="text-sm text-text-secondary">Remember me</Label>
+            </Checkbox.Content>
           </Checkbox>
-          <button
-            type="button"
-            className="text-sm text-accent-400 font-medium hover:underline"
-            onClick={onForgotPassword}
-          >
+          <span className="text-sm text-accent-400 font-medium hover:underline cursor-pointer" onClick={onForgotPassword}>
             Forgot Password?
-          </button>
+          </span>
         </div>
 
         <Button
-          className="bg-accent-400 text-white font-semibold mt-2 rounded-xl"
+          className="w-full bg-accent-400 text-white font-semibold rounded-xl"
           type="submit"
           size="lg"
-          isLoading={isLoading}
+          isPending={isLoading}
         >
           Log In
         </Button>
       </form>
 
-      {/* Divider */}
       <div className="flex items-center gap-4 my-2">
-        <Divider className="flex-1" />
+        <Separator className="flex-1" />
         <span className="text-xs text-text-tertiary">OR</span>
-        <Divider className="flex-1" />
+        <Separator className="flex-1" />
       </div>
 
-      {/* Google Button */}
       <ContinueWithGoogle />
 
       <p className="text-sm text-center text-text-secondary mt-2">
         Don&apos;t have an account?{" "}
-        <button
-          className="text-accent-400 font-medium hover:underline"
-          onClick={onSignUp}
-        >
+        <span className="text-accent-400 font-medium hover:underline cursor-pointer" onClick={onSignUp}>
           Sign Up
-        </button>
+        </span>
       </p>
     </>
   );

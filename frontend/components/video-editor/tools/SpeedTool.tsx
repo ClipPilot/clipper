@@ -30,25 +30,19 @@ export function SpeedTool() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Current speed: selected segment's speed or global speed
   const currentSpeed = selectedSegment?.speed ?? globalSpeed;
 
-  // Handle speed change
   const handleSpeedChange = (newSpeed: number) => {
     if (selectedSegment) {
-      // Apply to selected segment only
       updateSegmentSpeed({ segmentId: selectedSegment.id, speed: newSpeed });
     } else if (activeSegments.length > 0) {
-      // Apply to all segments
       updateAllSegmentsSpeed(newSpeed);
       setGlobalSpeed(newSpeed);
     } else {
-      // Fallback to global speed
       setGlobalSpeed(newSpeed);
     }
   };
 
-  // Calculate segment duration
   const getSegmentDuration = (startTime: number, endTime: number, speed: number) => {
     return (endTime - startTime) / speed;
   };
@@ -69,7 +63,6 @@ export function SpeedTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:speedometer-bold" className="text-accent-400" />
@@ -92,8 +85,7 @@ export function SpeedTool() {
         )}
       </div>
 
-      {/* Speed Display */}
-      <div className="bg-surface-elevated rounded-lg p-6 text-center">
+      <div className="bg-white/[0.04] rounded-lg p-6 text-center">
         <div className="flex items-center justify-center gap-3 mb-4">
           <Icon icon={getSpeedIcon()} className="text-3xl text-accent-400" />
           <span className="text-4xl font-bold text-text-primary">{currentSpeed}x</span>
@@ -101,7 +93,6 @@ export function SpeedTool() {
         <p className="text-sm text-text-secondary">{getSpeedLabel()}</p>
       </div>
 
-      {/* Speed Slider */}
       <div>
         <label className="text-sm text-text-secondary mb-2 block">Fine Adjustment</label>
         <Slider
@@ -110,14 +101,13 @@ export function SpeedTool() {
           minValue={0.25}
           maxValue={4}
           step={0.05}
-          color="secondary"
-          size="md"
-          showTooltip
           formatOptions={{ style: "decimal", minimumFractionDigits: 2 }}
-          classNames={{
-            track: "bg-surface-elevated",
-          }}
-        />
+        >
+          <Slider.Track>
+            <Slider.Fill />
+            <Slider.Thumb />
+          </Slider.Track>
+        </Slider>
         <div className="flex justify-between text-xs text-text-tertiary mt-1">
           <span>0.25x</span>
           <span>1x</span>
@@ -126,7 +116,6 @@ export function SpeedTool() {
         </div>
       </div>
 
-      {/* Preset Buttons */}
       <div>
         <label className="text-sm text-text-secondary mb-2 block">Presets</label>
         <div className="grid grid-cols-3 gap-2">
@@ -134,8 +123,7 @@ export function SpeedTool() {
             <Button
               key={preset.value}
               size="sm"
-              variant={currentSpeed === preset.value ? "solid" : "flat"}
-              color={currentSpeed === preset.value ? "primary" : "default"}
+              variant={currentSpeed === preset.value ? "primary" : "tertiary"}
               onPress={() => handleSpeedChange(preset.value)}
               className="font-mono"
             >
@@ -145,7 +133,6 @@ export function SpeedTool() {
         </div>
       </div>
 
-      {/* Duration Info - Segment specific */}
       {selectedSegment && (
         <div className="bg-accent-400/10 border border-accent-400/30 rounded-lg p-4 space-y-3">
           <div className="flex items-center gap-2 mb-2">
@@ -173,9 +160,8 @@ export function SpeedTool() {
         </div>
       )}
 
-      {/* Duration Info - Global */}
       {!selectedSegment && (
-        <div className="bg-surface-elevated rounded-lg p-4 space-y-3">
+        <div className="bg-white/[0.04] rounded-lg p-4 space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-text-secondary">Total Duration</span>
             <span className="text-sm text-text-primary font-mono">{formatTime(trimmedDuration)}</span>
@@ -198,9 +184,8 @@ export function SpeedTool() {
         </div>
       )}
 
-      {/* Segment Speed Summary */}
       {activeSegments.length > 1 && (
-        <div className="bg-surface-elevated rounded-lg p-4">
+        <div className="bg-white/[0.04] rounded-lg p-4">
           <p className="text-xs text-text-tertiary mb-3 flex items-center gap-1">
             <Icon icon="solar:list-bold" className="text-sm" />
             Segment Speeds
@@ -234,7 +219,6 @@ export function SpeedTool() {
         </div>
       )}
 
-      {/* Tips */}
       <div className="bg-accent-400/10 rounded-lg p-3">
         <p className="text-xs text-accent-400 flex items-start gap-2">
           <Icon icon="solar:info-circle-bold" className="text-sm mt-0.5 flex-shrink-0" />

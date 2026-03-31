@@ -13,11 +13,8 @@ import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and } from "drizzle-orm";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { handleControllerError } from "../utils/controllerHelpers";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 interface ArollChainInfo {
   isPartOfChain: boolean;
@@ -379,11 +376,7 @@ export class SceneBuilderController {
           : "Scene image generation started. Poll for status.",
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Generate scene images error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to queue generation"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Generate scene images error", error, "Failed to queue generation");
     }
   }
 
@@ -732,13 +725,7 @@ export class SceneBuilderController {
         message: `${jobIds.length} scene image generation jobs queued.`,
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Generate all scene images error:", error);
-      return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to queue batch generation",
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Generate all scene images error", error, "Failed to queue batch generation");
     }
   }
 
@@ -798,10 +785,7 @@ export class SceneBuilderController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[SCENE_BUILDER] Get generation status error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get status"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Get generation status error", error, "Failed to get status");
     }
   }
 
@@ -873,11 +857,7 @@ export class SceneBuilderController {
         sceneImages: sceneImagesMap,
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Get scene images error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to get scene images"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Get scene images error", error, "Failed to get scene images");
     }
   }
 
@@ -938,13 +918,7 @@ export class SceneBuilderController {
         });
       }
     } catch (error) {
-      console.error("[SCENE_BUILDER] Select scene image error:", error);
-      return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to select scene image",
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Select scene image error", error, "Failed to select scene image");
     }
   }
 
@@ -986,10 +960,7 @@ export class SceneBuilderController {
         message: "Job cancelled successfully",
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Cancel job error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to cancel job"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Cancel job error", error, "Failed to cancel job");
     }
   }
 
@@ -1015,11 +986,7 @@ export class SceneBuilderController {
         s3Key,
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Get upload URL error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Get upload URL error", error, "Failed to get upload URL");
     }
   }
 
@@ -1046,11 +1013,7 @@ export class SceneBuilderController {
         s3Key,
       });
     } catch (error) {
-      console.error("[SCENE_BUILDER] Get upload URL for key error:", error);
-      return res.status(500).json({
-        error:
-          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "[SCENE_BUILDER] Get upload URL for key error", error, "Failed to get upload URL");
     }
   }
 

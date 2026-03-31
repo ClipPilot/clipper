@@ -1,16 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+import { Modal,
   Button,
-  Textarea,
-  Progress,
-} from "@heroui/react";
+  TextArea,
+  ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import type { Character, GeneratedImage } from "./types";
@@ -152,24 +146,14 @@ export function VariationModal({
   const primaryImageUrl = character.primaryImageUrl || character.imageUrls?.[character.primary_image_index || 0];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="2xl"
-      classNames={{
-        base: "bg-surface-base border border-border-base mx-2 sm:mx-auto",
-        header: "border-b border-border-base px-4 sm:px-6",
-        body: "py-4 sm:py-6 px-4 sm:px-6",
-        footer: "border-t border-border-base px-4 sm:px-6",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-3">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container><Modal.Dialog className="sm:max-w-2xl">
+        <Modal.Header className="flex items-center gap-3">
           <Icon icon="solar:magic-stick-3-bold-duotone" className="text-accent-400" width={24} />
           <span>Create Variation of {character.name}</span>
-        </ModalHeader>
+        </Modal.Header>
 
-        <ModalBody>
+        <Modal.Body>
           {step === "prompt" ? (
             <div className="space-y-4 sm:space-y-6">
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
@@ -196,15 +180,11 @@ export function VariationModal({
                         <p className="text-text-secondary text-sm">{progressMessage}</p>
                       </div>
                       <div className="w-full max-w-xs">
-                        <Progress
-                          value={progress}
-                          size="sm"
-                          classNames={{
-                            base: "w-full",
-                            track: "bg-surface-elevated",
-                            indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
-                          }}
-                        />
+                        <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                       </div>
                       <p className="text-text-muted text-xs">{progress > 0 ? `${progress}%` : "Starting..."}</p>
                     </div>
@@ -214,15 +194,12 @@ export function VariationModal({
                         <label className="text-sm font-medium text-text-primary mb-2 block">
                           What changes do you want?
                         </label>
-                        <Textarea
+                        <TextArea
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
                           placeholder="e.g., wearing a red dress at a coffee shop, casual gym outfit in a modern apartment, professional blazer in an office setting..."
-                          minRows={4}
-                          classNames={{
-                            input: "bg-surface-elevated",
-                            inputWrapper: "bg-surface-elevated border-border-base",
-                          }}
+                          rows={4}
+                          className="bg-surface-elevated border-border-base"
                         />
                       </div>
                       <p className="text-xs text-text-muted">
@@ -246,10 +223,10 @@ export function VariationModal({
                 {generatedImages.map((image) => {
                   const isSelected = selectedImageKeys.includes(image.key);
                   return (
-                    <button
+                    <div
                       key={image.key}
                       onClick={() => handleImageToggle(image.key)}
-                      className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all ${
+                      className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
                         isSelected
                           ? "border-accent-400 ring-2 ring-accent-400/30"
                           : "border-border-base hover:border-accent-400/50"
@@ -276,7 +253,7 @@ export function VariationModal({
                           <span className="text-text-muted text-sm">{image.index + 1}</span>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -295,42 +272,42 @@ export function VariationModal({
               </div>
             </div>
           )}
-        </ModalBody>
+        </Modal.Body>
 
-        <ModalFooter>
+        <Modal.Footer>
           {step === "prompt" ? (
             <>
-              <Button variant="light" onPress={handleClose} className="text-text-secondary">
+              <Button variant="tertiary" onPress={handleClose} className="text-text-secondary">
                 Cancel
               </Button>
               <Button
-                className="bg-accent-400 text-white font-semibold"
-                onPress={handleGenerate}
-                isLoading={isGenerating}
-                isDisabled={!prompt.trim()}
-                startContent={<Icon icon="solar:magic-stick-3-bold" width={18} />}
-              >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={handleGenerate}
+ isPending={isGenerating}
+ isDisabled={!prompt.trim()}
+ >
+                <Icon icon="solar:magic-stick-3-bold" width={18} />
                 Generate Variations
               </Button>
             </>
           ) : (
             <>
-              <Button variant="light" onPress={() => setStep("prompt")} className="text-text-secondary">
+              <Button variant="tertiary" onPress={() => setStep("prompt")} className="text-text-secondary">
                 Back
               </Button>
               <Button
-                className="bg-accent-400 text-white font-semibold"
-                onPress={handleSave}
-                isLoading={isSaving}
-                isDisabled={selectedImageKeys.length === 0}
-                startContent={<Icon icon="solar:check-circle-bold" width={18} />}
-              >
+ className="bg-accent-400 text-white font-semibold"
+ onPress={handleSave}
+ isPending={isSaving}
+ isDisabled={selectedImageKeys.length === 0}
+ >
+                <Icon icon="solar:check-circle-bold" width={18} />
                 Save ({selectedImageKeys.length} credits)
               </Button>
             </>
           )}
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

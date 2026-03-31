@@ -3,21 +3,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Card,
-  CardBody,
-  CardHeader,
   Button,
   Chip,
-  addToast,
+  toast,
   Table,
   TableHeader,
   TableColumn,
   TableBody,
   TableRow,
   TableCell,
-  Spinner,
-} from "@heroui/react";
+  Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { apiJson } from "@/lib/apiClient";
@@ -58,11 +55,7 @@ export default function ReferralsPage() {
       setStats(statsData);
     } catch (error) {
       console.error("Failed to fetch referral data:", error);
-      addToast({
-        title: "Error",
-        description: "Failed to load referral data",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to load referral data" });
     } finally {
       setIsLoading(false);
     }
@@ -81,18 +74,10 @@ export default function ReferralsPage() {
         method: "POST",
       });
       setReferralCode(response.code);
-      addToast({
-        title: "Code generated!",
-        description: "Your referral code is ready to share.",
-        color: "success",
-      });
+      toast.success("Code generated!", { description: "Your referral code is ready to share." });
     } catch (error) {
       console.error("Failed to generate code:", error);
-      addToast({
-        title: "Error",
-        description: "Failed to generate referral code",
-        color: "danger",
-      });
+      toast.danger("Error", { description: "Failed to generate referral code" });
     } finally {
       setIsGenerating(false);
     }
@@ -101,24 +86,20 @@ export default function ReferralsPage() {
   const handleCopyCode = () => {
     if (referralCode) {
       navigator.clipboard.writeText(referralCode.code);
-      addToast({
-        title: "Copied!",
-        description: "Referral code copied to clipboard.",
-        color: "success",
-      });
+      toast.success("Copied!", { description: "Referral code copied to clipboard." });
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusChipClassName = (status: string) => {
     switch (status) {
       case "active":
-        return "success";
+        return "bg-green-500/10 text-green-500";
       case "pending":
-        return "warning";
+        return "bg-amber-500/10 text-amber-500";
       case "churned":
-        return "danger";
+        return "bg-red-500/10 text-red-500";
       default:
-        return "default";
+        return "bg-zinc-500/10 text-zinc-400";
     }
   };
 
@@ -134,11 +115,7 @@ export default function ReferralsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-        <Spinner size="lg" color="primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -168,8 +145,8 @@ export default function ReferralsPage() {
           transition={{ duration: 0.4, delay: 0.2 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
-          <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-green-500/10">
                   <Icon
@@ -185,11 +162,11 @@ export default function ReferralsPage() {
               <p className="text-2xl font-bold text-text-primary">
                 {stats?.activeReferrals ?? 0}
               </p>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-accent-400/10">
                   <Icon
@@ -205,11 +182,11 @@ export default function ReferralsPage() {
               <p className="text-2xl font-bold text-text-primary">
                 +{stats?.totalBonusClips ?? 0}
               </p>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="bg-surface-base border border-border-base">
-            <CardBody className="p-5">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-amber-500/10">
                   <Icon
@@ -225,8 +202,8 @@ export default function ReferralsPage() {
               <p className="text-2xl font-bold text-text-primary">
                 {stats?.totalPercentOff ?? 0}%
               </p>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -234,8 +211,8 @@ export default function ReferralsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
-        <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:gift-bold-duotone"
               className="text-amber-500"
@@ -249,8 +226,8 @@ export default function ReferralsPage() {
                 What you earn for each referral
               </p>
             </div>
-          </CardHeader>
-          <CardBody className="gap-4">
+          </div>
+          <div className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
                 <div className="flex items-center gap-2 mb-2">
@@ -294,8 +271,8 @@ export default function ReferralsPage() {
                 </p>
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
         </motion.div>
 
         <motion.div
@@ -303,8 +280,8 @@ export default function ReferralsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-        <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:link-bold-duotone"
               className="text-accent-400"
@@ -318,21 +295,21 @@ export default function ReferralsPage() {
                 Share this code with others
               </p>
             </div>
-          </CardHeader>
-          <CardBody className="gap-4">
+          </div>
+          <div className="p-6 space-y-4">
             {referralCode ? (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="flex-1 flex items-center justify-between p-4 rounded-lg bg-surface-elevated border border-border-base">
+                <div className="flex-1 flex items-center justify-between p-4 rounded-lg bg-white/[0.04]">
                   <span className="text-lg font-mono font-bold text-text-primary tracking-wider">
                     {referralCode.code}
                   </span>
                   <Button
-                    isIconOnly
-                    variant="flat"
-                    size="sm"
-                    className="bg-accent-400/10 text-accent-400"
-                    onPress={handleCopyCode}
-                  >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ className="bg-accent-400/10 text-accent-400"
+ onPress={handleCopyCode}
+ >
                     <Icon icon="solar:copy-bold-duotone" width={18} />
                   </Button>
                 </div>
@@ -355,19 +332,17 @@ export default function ReferralsPage() {
                   </p>
                 </div>
                 <Button
-                  className="bg-accent-400 text-white font-medium"
-                  startContent={
-                    <Icon icon="solar:add-circle-bold-duotone" width={18} />
-                  }
-                  onPress={handleGenerateCode}
-                  isLoading={isGenerating}
-                >
+ className="bg-accent-400 text-white font-medium"
+ onPress={handleGenerateCode}
+ isPending={isGenerating}
+ >
+                  <Icon icon="solar:add-circle-bold-duotone" width={18} />
                   Generate Code
                 </Button>
               </div>
             )}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
         </motion.div>
 
         <motion.div
@@ -375,8 +350,8 @@ export default function ReferralsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.5 }}
         >
-        <Card className="bg-surface-base border border-border-base">
-          <CardHeader className="flex flex-row items-center gap-3 pb-0">
+        <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+          <div className="flex flex-row items-center gap-3 p-6 pb-0">
             <Icon
               icon="solar:users-group-rounded-bold-duotone"
               className="text-accent-400"
@@ -390,16 +365,12 @@ export default function ReferralsPage() {
                 People you&apos;ve referred to Cuttr
               </p>
             </div>
-          </CardHeader>
-          <CardBody>
+          </div>
+          <div className="p-6">
             {referrals.length > 0 ? (
               <Table
                 aria-label="Referrals table"
-                classNames={{
-                  wrapper: "bg-transparent shadow-none p-0",
-                  th: "bg-surface-elevated text-text-secondary font-medium",
-                  td: "text-text-primary",
-                }}
+                className="bg-transparent shadow-none p-0"
               >
                 <TableHeader>
                   <TableColumn>TEAM</TableColumn>
@@ -428,11 +399,10 @@ export default function ReferralsPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          size="sm"
-                          color={getStatusColor(referral.status)}
-                          variant="flat"
-                          className="capitalize"
-                        >
+ size="sm"
+ variant="tertiary"
+ className={`capitalize ${getStatusChipClassName(referral.status)}`}
+ >
                           {referral.status}
                         </Chip>
                       </TableCell>
@@ -465,8 +435,8 @@ export default function ReferralsPage() {
                 </div>
               </div>
             )}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
         </motion.div>
       </div>
     </motion.div>

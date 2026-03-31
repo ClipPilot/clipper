@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { intakeService } from "../services/massPosting/intake.service";
 import { canAccessMassPosting } from "../utils/plans";
 import { teamService } from "../services/team.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function getIntakeForm(req: AuthRequest, res: Response) {
   try {
@@ -15,9 +16,7 @@ export async function getIntakeForm(req: AuthRequest, res: Response) {
     const form = await intakeService.getIntakeForm(teamId);
     return res.json({ form });
   } catch (error) {
-    console.error("Get intake form error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch intake form" });
+    return handleControllerError(res, "Get intake form error", error, "Failed to fetch intake form");
   }
 }
 
@@ -41,9 +40,7 @@ export async function upsertIntakeForm(req: AuthRequest, res: Response) {
 
     return res.json({ form });
   } catch (error) {
-    console.error("Upsert intake form error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to save intake form" });
+    return handleControllerError(res, "Upsert intake form error", error, "Failed to save intake form");
   }
 }
 
@@ -74,8 +71,6 @@ export async function submitApplication(req: AuthRequest, res: Response) {
 
     return res.status(201).json({ application });
   } catch (error: any) {
-    console.error("Submit application error:", error);
-
     if (error.message?.includes("already have a pending") || error.message?.includes("already been accepted")) {
       return res.status(409).json({ error: error.message });
     }
@@ -107,8 +102,6 @@ export async function submitAppeal(req: AuthRequest, res: Response) {
 
     return res.status(201).json({ application });
   } catch (error: any) {
-    console.error("Submit appeal error:", error);
-
     if (error.message?.includes("Can only appeal")) {
       return res.status(409).json({ error: error.message });
     }
@@ -128,9 +121,7 @@ export async function getApplicationStatus(req: AuthRequest, res: Response) {
     const status = await intakeService.getApplicationStatus(teamId);
     return res.json(status);
   } catch (error) {
-    console.error("Get application status error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch application status" });
+    return handleControllerError(res, "Get application status error", error, "Failed to fetch application status");
   }
 }
 
@@ -144,8 +135,6 @@ export async function getLatestApplication(req: AuthRequest, res: Response) {
     const application = await intakeService.getLatestCampaign(teamId);
     return res.json({ application });
   } catch (error) {
-    console.error("Get latest application error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch application" });
+    return handleControllerError(res, "Get latest application error", error, "Failed to fetch application");
   }
 }

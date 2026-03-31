@@ -1,17 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardBody,
-  Avatar,
-  Button,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Spinner,
-} from "@heroui/react";
+import { Card, Avatar, Button, Dropdown, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { teamAPI, TeamMember } from "@/api/team";
 import { useAtom } from "jotai";
@@ -102,73 +92,64 @@ export default function TeamMembersList({
 
     if (isOwner && member.role !== "owner") {
       items.push(
-        <DropdownItem
+        <Dropdown.Item
           key="promote-owner"
-          startContent={
-            <Icon
-              icon="solar:crown-bold-duotone"
-              width={18}
-              className="text-yellow-500"
-            />
-          }
           onPress={() => handleChangeRole(member.id, "owner")}
         >
-          Make Manager
-        </DropdownItem>,
+          <Icon
+            icon="solar:crown-bold-duotone"
+            width={18}
+            className="text-yellow-500"
+          />
+          Make Owner
+        </Dropdown.Item>,
       );
 
       if (member.role !== "manager") {
         items.push(
-          <DropdownItem
+          <Dropdown.Item
             key="promote-manager"
-            startContent={
-              <Icon
-                icon="solar:user-check-bold-duotone"
-                width={18}
-                className="text-blue-500"
-              />
-            }
             onPress={() => handleChangeRole(member.id, "manager")}
           >
+            <Icon
+              icon="solar:user-check-bold-duotone"
+              width={18}
+              className="text-blue-500"
+            />
             Make Manager
-          </DropdownItem>,
+          </Dropdown.Item>,
         );
       }
 
       if (member.role !== "member") {
         items.push(
-          <DropdownItem
+          <Dropdown.Item
             key="demote"
-            startContent={
-              <Icon
-                icon="solar:user-bold-duotone"
-                width={18}
-                className="text-text-tertiary"
-              />
-            }
             onPress={() => handleChangeRole(member.id, "member")}
           >
+            <Icon
+              icon="solar:user-bold-duotone"
+              width={18}
+              className="text-text-tertiary"
+            />
             Make Member
-          </DropdownItem>,
+          </Dropdown.Item>,
         );
       }
     }
 
-    // Only allow removing if: user is owner, OR (user is manager AND member is not owner)
     const canRemove =
       isOwner || (userRole === "manager" && member.role !== "owner");
     if (canRemove) {
       items.push(
-        <DropdownItem
+        <Dropdown.Item
           key="remove"
-          color="danger"
-          startContent={
-            <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
-          }
+          className="text-red-500"
           onPress={() => handleRemoveMember(member.id)}
         >
+          <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
           Remove from Team
-        </DropdownItem>,
+        </Dropdown.Item>,
       );
     }
 
@@ -178,7 +159,7 @@ export default function TeamMembersList({
   if (isLoading) {
     return (
       <div className="flex justify-center p-8">
-        <Spinner color="primary" />
+        <Spinner color="accent" />
       </div>
     );
   }
@@ -186,22 +167,15 @@ export default function TeamMembersList({
   return (
     <div className="space-y-2">
       {members.map((member) => (
-        <Card
-          key={member.id}
-          classNames={{
-            base: "bg-surface-elevated border border-border-base",
-          }}
-        >
-          <CardBody className="p-4">
+        <Card key={member.id}>
+          <Card.Content className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Avatar
-                  size="md"
-                  name={`${member.firstName} ${member.lastName}`}
-                  classNames={{
-                    base: "bg-accent-400 text-white",
-                  }}
-                />
+                <Avatar size="md" className="bg-accent-400 text-white">
+                  <Avatar.Fallback className="font-semibold">
+                    {member.firstName?.charAt(0)}{member.lastName?.charAt(0)}
+                  </Avatar.Fallback>
+                </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-text-primary">
@@ -233,32 +207,30 @@ export default function TeamMembersList({
                   user?.id &&
                   member.userId !== parseInt(user.id) && (
                     <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="text-text-secondary"
-                        >
-                          <Icon
-                            icon="solar:menu-dots-bold-duotone"
-                            width={20}
-                          />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu
-                        aria-label="Member actions"
-                        classNames={{
-                          base: "bg-surface-base border border-border-base",
-                        }}
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="tertiary"
+                        className="text-text-secondary"
                       >
-                        {getMenuItems(member)}
-                      </DropdownMenu>
+                        <Icon
+                          icon="solar:menu-dots-bold-duotone"
+                          width={20}
+                        />
+                      </Button>
+                      <Dropdown.Popover>
+                        <Dropdown.Menu
+                          aria-label="Member actions"
+                          className="bg-surface-base border border-border-base"
+                        >
+                          {getMenuItems(member)}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
                     </Dropdown>
                   )}
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
       ))}
     </div>

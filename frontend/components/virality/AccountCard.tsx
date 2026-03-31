@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
+import { Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformIconColor, syncStatusColor, timeAgo } from "@/lib/platformUtils";
+import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
+
+const SYNC_STATUS_CLASSES: Record<string, string> = {
+  completed: "bg-green-500/10 text-green-500",
+  failed: "bg-red-500/10 text-red-500",
+  syncing: "bg-amber-500/10 text-amber-500",
+  default: "bg-white/10 text-text-secondary",
+};
 
 interface AccountCardProps {
   account: ViralityAccount;
@@ -43,22 +50,15 @@ export function AccountCard({
 
 
   return (
-    <Card
-      className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all"
-    >
-      <CardBody className="p-4">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden hover:border-accent-400/40 transition-all">
+      <div className="p-4">
         <div
           className="flex items-start gap-3 mb-4 cursor-pointer"
           onClick={onViewPosts}
         >
           <Avatar
-            src={account.avatar_url || undefined}
-            name={account.username.charAt(0).toUpperCase()}
-            size="lg"
-            classNames={{
-              base: "bg-surface-hover flex-shrink-0",
-            }}
-          />
+ size="lg"
+ />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p className="font-semibold text-text-primary truncate">
@@ -79,13 +79,10 @@ export function AccountCard({
             </div>
           </div>
           <Chip
-            size="sm"
-            variant="flat"
-            color={syncStatusColor(account.sync_status)}
-            classNames={{
-              base: "capitalize",
-            }}
-          >
+ size="sm"
+ variant="tertiary"
+ className={SYNC_STATUS_CLASSES[account.sync_status] || SYNC_STATUS_CLASSES.default}
+ >
             {account.sync_status}
           </Chip>
         </div>
@@ -129,43 +126,40 @@ export function AccountCard({
 
         {account.sync_status === "completed" && (
           <Button
-            size="sm"
-            variant="flat"
-            className="w-full mb-2 bg-accent-400/10 text-accent-400"
-            startContent={<Icon icon="solar:gallery-bold" width={14} />}
-            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
-            onPress={onViewPosts}
-          >
+ size="sm"
+ variant="tertiary"
+ className="w-full mb-2 bg-accent-400/10 text-accent-400"
+ onPress={onViewPosts}
+ >
+            <Icon icon="solar:gallery-bold" width={14} />
             View Posts
-          </Button>
+            <Icon icon="solar:arrow-right-linear" width={14} />
+</Button>
         )}
 
         <div className="flex gap-2">
           <Button
-            size="sm"
-            variant="flat"
-            className="flex-1"
-            startContent={
-              !isSyncing && <Icon icon="solar:refresh-bold" width={14} />
-            }
-            onPress={handleSync}
-            isLoading={isSyncing}
-            isDisabled={account.sync_status === "syncing"}
-          >
+ size="sm"
+ variant="tertiary"
+ className="flex-1"
+ onPress={handleSync}
+ isPending={isSyncing}
+ isDisabled={account.sync_status === "syncing"}
+ >
+            {!isSyncing && <Icon icon="solar:refresh-bold" width={14} />}
             {isSyncing ? "Syncing..." : "Refresh"}
           </Button>
           <Button
-            size="sm"
-            variant="flat"
-            color="danger"
-            isIconOnly
-            onPress={handleDelete}
-            isLoading={isDeleting}
-          >
+ size="sm"
+ variant="danger-soft"
+ isIconOnly
+ onPress={handleDelete}
+ isPending={isDeleting}
+ >
             {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
           </Button>
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

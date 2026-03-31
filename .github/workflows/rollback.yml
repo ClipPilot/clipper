@@ -1,0 +1,219 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      service-type:
+        description: "Service type"
+        required: true
+        type: choice
+        options:
+          - ecs
+          - lambda
+      service-name:
+        description: "Service name"
+        required: true
+        type: choice
+        options:
+          - backend
+          - worker
+          - face-detect
+          - scene-detect
+          - youtube
+          - expire-clips
+          - virality-sync
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+      target-version:
+        description: "Version tag (e.g. v1.2.0) or git SHA (leave empty for previous deployment)"
+        required: false
+        type: string
+        default: ""
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  rollback-ecs:
+    name: Rollback ECS ${{ inputs.service-name }}
+    if: inputs.service-type == 'ecs'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout (for tag resolution)
+        if: inputs.target-version != '' && startsWith(inputs.target-version, 'v')
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Determine environment suffix
+        id: env
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "suffix=prod" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get target image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPO: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}
+        run: |
+          TARGET="${{ inputs.target-version }}"
+          if [[ -n "$TARGET" ]]; then
+            if [[ "$TARGET" == v* ]]; then
+              TAG=$(git rev-list -n 1 "$TARGET" 2>/dev/null || echo "")
+              if [[ -z "$TAG" ]]; then
+                echo "::error::Could not resolve version tag $TARGET to a commit SHA"
+                exit 1
+              fi
+              echo "Resolved $TARGET -> $TAG"
+            else
+              TAG="$TARGET"
+            fi
+          else
+            TAG=$(aws ecr describe-images --repository-name $REPO \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-2].imageTags[0]' \
+              --output text)
+            echo "Rolling back to previous image tag: $TAG"
+          fi
+          echo "image=$ECR_REGISTRY/$REPO:$TAG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download current task definition
+        env:
+          TASK_DEF: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $TASK_DEF \
+            --query taskDefinition > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ inputs.service-name }}
+          image: ${{ steps.image.outputs.image }}
+
+      - name: Deploy rollback task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}
+          cluster: clipster-cluster-${{ steps.env.outputs.suffix }}
+          wait-for-service-stability: true
+
+      - name: Verify rollback
+        run: |
+          echo "ECS rollback completed!"
+          echo "Service: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}"
+          echo "Rolled back to: ${{ steps.image.outputs.tag }}"
+
+  rollback-lambda:
+    name: Rollback Lambda ${{ inputs.service-name }}
+    if: inputs.service-type == 'lambda'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout (for tag resolution)
+        if: inputs.target-version != '' && startsWith(inputs.target-version, 'v')
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Determine environment suffix
+        id: env
+        run: |
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "suffix=prod" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine ECR repo name
+        id: repo
+        run: |
+          SUFFIX="${{ steps.env.outputs.suffix }}"
+          if [[ "$SUFFIX" == "prod" ]]; then
+            echo "name=clipster-${{ inputs.service-name }}-lambda" >> $GITHUB_OUTPUT
+          else
+            echo "name=clipster-${{ inputs.service-name }}-lambda-staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get target image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPO: ${{ steps.repo.outputs.name }}
+        run: |
+          TARGET="${{ inputs.target-version }}"
+          if [[ -n "$TARGET" ]]; then
+            if [[ "$TARGET" == v* ]]; then
+              TAG=$(git rev-list -n 1 "$TARGET" 2>/dev/null || echo "")
+              if [[ -z "$TAG" ]]; then
+                echo "::error::Could not resolve version tag $TARGET to a commit SHA"
+                exit 1
+              fi
+              echo "Resolved $TARGET -> $TAG"
+            else
+              TAG="$TARGET"
+            fi
+          else
+            TAG=$(aws ecr describe-images --repository-name $REPO \
+              --query 'sort_by(imageDetails,& imagePushedAt)[-2].imageTags[0]' \
+              --output text)
+            echo "Rolling back to previous image tag: $TAG"
+          fi
+          echo "image=$ECR_REGISTRY/$REPO:$TAG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Update Lambda function
+        run: |
+          SUFFIX="${{ steps.env.outputs.suffix }}"
+          FUNC="clipster-${{ inputs.service-name }}-${SUFFIX}"
+          echo "Updating $FUNC..."
+          aws lambda update-function-code \
+            --function-name "$FUNC" \
+            --image-uri "${{ steps.image.outputs.image }}"
+
+      - name: Wait for Lambda update
+        run: |
+          SUFFIX="${{ steps.env.outputs.suffix }}"
+          FUNC="clipster-${{ inputs.service-name }}-${SUFFIX}"
+          aws lambda wait function-updated --function-name "$FUNC"
+
+      - name: Verify rollback
+        run: |
+          echo "Lambda rollback completed!"
+          echo "Function: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}"
+          echo "Rolled back to: ${{ steps.image.outputs.tag }}"

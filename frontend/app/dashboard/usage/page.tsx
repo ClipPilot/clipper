@@ -3,14 +3,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  Card,
-  CardBody,
   Button,
   Spinner,
   Tabs,
-  Tab,
-  Progress,
-} from "@heroui/react";
+  ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
@@ -37,7 +33,6 @@ function generateMockHistory(
         ? 7 * 24 * 60 * 60 * 1000
         : 30 * 24 * 60 * 60 * 1000;
 
-  // Distribute usage across periods with weighted randomness
   const weights = Array.from({ length: count }, () => Math.random() + 0.2);
   const totalWeight = weights.reduce((a, b) => a + b, 0);
 
@@ -97,12 +92,6 @@ export default function UsagePage() {
       ? (usageStats.clipsGenerated / usageStats.generationLimit) * 100
       : 0;
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return "danger";
-    if (percentage >= 70) return "warning";
-    return "success";
-  };
-
   const maxHistoryValue = Math.max(...history.map((h) => h.creditsUsed), 1);
 
   const formatDate = (dateStr: string) => {
@@ -127,7 +116,7 @@ export default function UsagePage() {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
           <p className="text-text-secondary">Loading usage data...</p>
         </motion.div>
       </div>
@@ -141,7 +130,6 @@ export default function UsagePage() {
       transition={{ duration: 0.4 }}
       className="max-w-6xl mx-auto px-4 py-8"
     >
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -149,15 +137,17 @@ export default function UsagePage() {
         className="flex items-center justify-between mb-8"
       >
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.back()}
-            className="p-2 rounded-xl bg-surface-elevated hover:bg-surface-elevated/80 transition-colors"
+          <Button
+            isIconOnly
+            variant="tertiary"
+            onPress={() => router.back()}
+            className="!bg-transparent text-text-secondary hover:text-text-primary"
           >
             <Icon
               icon="solar:arrow-left-linear"
               className="text-xl text-text-secondary"
             />
-          </button>
+          </Button>
           <div>
             <h1 className="text-2xl font-bold text-text-primary">
               Usage & Analytics
@@ -174,7 +164,6 @@ export default function UsagePage() {
         </div>
       </motion.div>
 
-      {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           {
@@ -218,8 +207,8 @@ export default function UsagePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 + index * 0.08 }}
           >
-            <Card className="bg-surface-elevated border border-border-base hover:border-border-accent transition-colors">
-              <CardBody className="p-5">
+            <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden hover:border-border-accent transition-colors">
+              <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div
                     className={`p-2.5 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10`}
@@ -239,21 +228,20 @@ export default function UsagePage() {
                   {stat.value}
                 </p>
                 <p className="text-sm text-text-secondary">{stat.title}</p>
-              </CardBody>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Usage Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
-          <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-6">
+          <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-text-primary">
                   Credits Usage
@@ -262,12 +250,12 @@ export default function UsagePage() {
                   {usageStats?.clipsCreated || 0} / {usageStats?.baseLimit || 0}
                 </span>
               </div>
-              <Progress
-                value={Math.min(usagePercentage, 100)}
-                color={getProgressColor(usagePercentage)}
-                className="mb-4"
-                size="lg"
-              />
+              <ProgressBar
+ value={Math.min(usagePercentage, 100)}
+ className="mb-4"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-surface-base" />
@@ -282,8 +270,8 @@ export default function UsagePage() {
                   </span>
                 </div>
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -291,8 +279,8 @@ export default function UsagePage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, delay: 0.45 }}
         >
-          <Card className="bg-surface-elevated border border-border-base">
-            <CardBody className="p-6">
+          <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+            <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-text-primary">
                   AI Generations
@@ -304,20 +292,16 @@ export default function UsagePage() {
                     : " / Unlimited"}
                 </span>
               </div>
-              <Progress
-                value={
-                  usageStats?.generationLimit === -1
-                    ? 10
-                    : Math.min(generationPercentage, 100)
-                }
-                color={
-                  usageStats?.generationLimit === -1
-                    ? "primary"
-                    : getProgressColor(generationPercentage)
-                }
-                className="mb-4"
-                size="lg"
-              />
+              <ProgressBar
+ value={
+ usageStats?.generationLimit === -1
+ ? 10
+ : Math.min(generationPercentage, 100)
+ }
+ className="mb-4"
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <div className="flex items-center gap-2 text-sm text-text-secondary">
                 <Icon
                   icon="solar:info-circle-linear"
@@ -327,37 +311,42 @@ export default function UsagePage() {
                   ? "Unlimited AI generations with your plan"
                   : `${usageStats?.generationsRemaining || 0} generations remaining`}
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </motion.div>
       </div>
 
-      {/* Usage History */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.5 }}
       >
-        <Card className="bg-surface-elevated border border-border-base">
-          <CardBody className="p-6">
+        <div className="rounded-xl border border-border-base bg-white/[0.04] overflow-hidden">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-text-primary">
                 Usage History
               </h3>
               <Tabs
-                selectedKey={period}
-                onSelectionChange={(key) => setPeriod(key as Period)}
-                size="sm"
-                variant="solid"
-                classNames={{
-                  tabList: "bg-surface-base",
-                  cursor: "bg-accent-400",
-                  tab: "text-text-secondary data-[selected=true]:text-white",
-                }}
-              >
-                <Tab key="day" title="Daily" />
-                <Tab key="week" title="Weekly" />
-                <Tab key="month" title="Monthly" />
+ selectedKey={period}
+ onSelectionChange={(key) => setPeriod(key as Period)}
+ >
+                <Tabs.ListContainer>
+                  <Tabs.List aria-label="Usage period">
+                    <Tabs.Tab id="day">
+                      Daily
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="week">
+                      Weekly
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="month">
+                      Monthly
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
               </Tabs>
             </div>
 
@@ -424,11 +413,10 @@ export default function UsagePage() {
                 ))}
               </div>
             )}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Footer Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -436,19 +424,19 @@ export default function UsagePage() {
         className="flex items-center justify-center gap-4 mt-8"
       >
         <Button
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80"
-          startContent={<Icon icon="solar:wallet-bold-duotone" />}
-          onPress={() => router.push("/dashboard/pricing")}
-        >
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+          <Icon icon="solar:wallet-bold-duotone" />
           Upgrade Plan
         </Button>
         <Button
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80"
-          startContent={<Icon icon="solar:chat-round-dots-bold-duotone" />}
-          onPress={() => window.open("https://cuttr.com/contact", "_blank")}
-        >
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80"
+ onPress={() => window.open("https://cuttr.com/contact", "_blank")}
+ >
+          <Icon icon="solar:chat-round-dots-bold-duotone" />
           Contact Support
         </Button>
       </motion.div>

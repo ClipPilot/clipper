@@ -1,21 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Card, CardBody } from "@heroui/react";
+import { Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
-import { canAccessUGCStudio } from "@/lib/plans";
-import { ScalePlanRequired } from "@/components/ugc-studio";
+import {} from "@/lib/plans";
 
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const router = useRouter();
-
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
-  }
 
   return (
     <motion.div
@@ -96,12 +91,10 @@ export default function UGCStudioPage() {
           transition={{ duration: 0.4, delay: 0.3 }}
           className="mt-10"
         >
-          <Card
-            className="bg-surface-base border border-border-base overflow-hidden hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
-            isPressable
-            onPress={() => router.push("/dashboard/ugc-studio/characters")}
+          <div
+            className="bg-surface-base border border-border-base overflow-hidden rounded-xl hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
+            onClick={() => router.push("/dashboard/ugc-studio/characters")}
           >
-            <CardBody className="p-0">
               <div className="flex flex-col md:flex-row">
                 <div className="md:w-48 h-32 md:h-auto bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-transparent flex items-center justify-center">
                   <div className="w-16 h-16 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -143,8 +136,7 @@ export default function UGCStudioPage() {
                   </div>
                 </div>
               </div>
-            </CardBody>
-          </Card>
+          </div>
         </motion.div>
 
         <motion.div
@@ -170,8 +162,7 @@ function FeatureCard({
   iconColor,
   features,
   comingSoon,
-  onPress,
-}: {
+  onPress }: {
   icon: string;
   title: string;
   description: string;
@@ -182,16 +173,14 @@ function FeatureCard({
   onPress: () => void;
 }) {
   return (
-    <Card
-      className={`bg-surface-base border border-border-base overflow-hidden transition-all duration-300 ${
+    <div
+      className={`bg-surface-base border border-border-base rounded-xl overflow-hidden transition-all duration-300 ${
         comingSoon
           ? "opacity-70 cursor-not-allowed"
           : "hover:border-accent-400/40 hover:shadow-lg hover:shadow-accent-400/5 cursor-pointer group"
       }`}
-      isPressable={!comingSoon}
-      onPress={onPress}
+      onClick={comingSoon ? undefined : onPress}
     >
-      <CardBody className="p-0">
         <div
           className={`h-32 bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
         >
@@ -255,7 +244,6 @@ function FeatureCard({
             </div>
           )}
         </div>
-      </CardBody>
-    </Card>
+    </div>
   );
 }

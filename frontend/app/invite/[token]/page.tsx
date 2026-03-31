@@ -104,11 +104,10 @@ export default function InvitePage({
             </h1>
             <p className="text-text-secondary">{error}</p>
           </div>
-          <Button
-            color="primary"
-            className="bg-accent-400"
-            onPress={() => router.push("/auth")}
-          >
+          <Button variant="primary"
+ className="bg-accent-400"
+ onPress={() => router.push("/auth")}
+ >
             Go to Sign In
           </Button>
         </div>
@@ -209,13 +208,12 @@ export default function InvitePage({
                     {user.email}
                   </span>
                 </p>
-                <Button
-                  color="primary"
-                  className="w-full bg-accent-400"
-                  size="lg"
-                  isLoading={isAccepting}
-                  onPress={handleAcceptInvite}
-                >
+                <Button variant="primary"
+ className="w-full bg-accent-400"
+ size="lg"
+ isPending={isAccepting}
+ onPress={handleAcceptInvite}
+ >
                   Accept Invitation
                 </Button>
               </div>
@@ -224,12 +222,11 @@ export default function InvitePage({
                 <p className="text-text-secondary text-sm">
                   Sign in or create an account to accept this invitation
                 </p>
-                <Button
-                  color="primary"
-                  className="w-full bg-accent-400"
-                  size="lg"
-                  onPress={handleSignIn}
-                >
+                <Button variant="primary"
+ className="w-full bg-accent-400"
+ size="lg"
+ onPress={handleSignIn}
+ >
                   Sign In to Accept
                 </Button>
               </div>

@@ -1,9 +1,9 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { adPostingService, AdPostingError, PlatformQuantities } from "../services/adPosting.service";
 import { canAccessMassPosting } from "../utils/plans";
 import { teamService } from "../services/team.service";
+import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function postClipToPlatforms(req: AuthRequest, res: Response) {
   try {
@@ -54,9 +54,7 @@ export async function postClipToPlatforms(req: AuthRequest, res: Response) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error("Ad posting error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to start ad posting" });
+    return handleControllerError(res, "Ad posting error", error, "Failed to start ad posting");
   }
 }
 
@@ -92,9 +90,7 @@ export async function uploadCustomVideo(req: AuthRequest, res: Response) {
     if (error instanceof AdPostingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error("Upload custom video error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to create custom video" });
+    return handleControllerError(res, "Upload custom video error", error, "Failed to create custom video");
   }
 }
 
@@ -112,9 +108,7 @@ export async function completeCustomVideo(req: AuthRequest, res: Response) {
     if (error instanceof AdPostingError) {
       return res.status(error.statusCode).json({ error: error.message });
     }
-    console.error("Complete custom video error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to complete custom video" });
+    return handleControllerError(res, "Complete custom video error", error, "Failed to complete custom video");
   }
 }
 
@@ -130,9 +124,7 @@ export async function getClipPosts(req: AuthRequest, res: Response) {
     const posts = await adPostingService.getPostsForClip(teamId, clipId);
     return res.status(200).json({ posts });
   } catch (error) {
-    console.error("Get clip posts error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get clip posts" });
+    return handleControllerError(res, "Get clip posts error", error, "Failed to get clip posts");
   }
 }
 
@@ -169,9 +161,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Get posts for team error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get posts" });
+    return handleControllerError(res, "Get posts for team error", error, "Failed to get posts");
   }
 }
 
@@ -190,9 +180,7 @@ export async function getAccountStats(req: AuthRequest, res: Response) {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Get account stats error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get account stats" });
+    return handleControllerError(res, "Get account stats error", error, "Failed to get account stats");
   }
 }
 
@@ -214,8 +202,6 @@ export async function webhookMarkAsPosted(req: AuthRequest, res: Response) {
     await adPostingService.markAsPosted(postId, postUrl);
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Webhook mark as posted error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to update post status" });
+    return handleControllerError(res, "Webhook mark as posted error", error, "Failed to update post status");
   }
 }

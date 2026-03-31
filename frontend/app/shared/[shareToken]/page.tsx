@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardBody, Button, Spinner } from "@heroui/react";
+import { Card, Button, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI } from "@/api/clips";
 import { BrandLogo } from "@/components/brand-logo";
@@ -74,7 +74,7 @@ export default function SharedClipPage() {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Spinner size="lg" color="primary" />
+          <Spinner size="lg" color="accent" />
           <p className="text-text-secondary">Loading clip...</p>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function SharedClipPage() {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
         <Card className="bg-surface-base border border-border-base max-w-md w-full">
-          <CardBody className="flex flex-col items-center justify-center py-12">
+          <Card.Content className="flex flex-col items-center justify-center py-12">
             <Icon
               icon="solar:video-frame-play-vertical-bold-duotone"
               className="text-6xl text-text-tertiary mb-4"
@@ -96,7 +96,7 @@ export default function SharedClipPage() {
             <p className="text-text-tertiary text-center text-sm">
               {error || "This clip is no longer available."}
             </p>
-          </CardBody>
+          </Card.Content>
         </Card>
       </div>
     );
@@ -106,7 +106,7 @@ export default function SharedClipPage() {
     <div className="min-h-screen bg-surface-dark p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         <Card className="bg-surface-base border border-border-base">
-          <CardBody className="p-6">
+          <Card.Content className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="flex items-center justify-center">
                 <div className="rounded-lg overflow-hidden bg-black w-full flex items-center justify-center">
@@ -164,20 +164,19 @@ export default function SharedClipPage() {
                 </div>
 
                 <div className="pt-4">
-                  <Button
-                    fullWidth
-                    color="primary"
-                    size="lg"
-                    isLoading={isDownloading}
-                    startContent={!isDownloading && <Icon icon="solar:download-bold" />}
-                    onPress={handleDownload}
-                  >
+                  <Button variant="primary"
+ fullWidth
+ size="lg"
+ isPending={isDownloading}
+ onPress={handleDownload}
+ >
+                    {!isDownloading && <Icon icon="solar:download-bold" />}
                     {isDownloading ? "Preparing, just a moment..." : "Download Clip"}
                   </Button>
                 </div>
               </div>
             </div>
-          </CardBody>
+          </Card.Content>
         </Card>
 
         <div className="mt-8 flex flex-col items-center gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, Button, Chip, Spinner } from "@heroui/react";
+import { Modal, Button, Chip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import type { Character } from "./types";
@@ -82,25 +82,14 @@ export function CharacterDetailModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      size="4xl"
-      scrollBehavior="inside"
-      classNames={{
-        base: "bg-surface-base border border-border-base",
-        header: "border-b border-border-base",
-        body: "p-0",
-        closeButton: "hover:bg-surface-elevated",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-3">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container scroll="inside"><Modal.Dialog className="sm:max-w-4xl">
+        <Modal.Header className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold text-text-primary truncate">{displayCharacter.name}</h2>
               {displayCharacter.public && (
-                <Chip size="sm" variant="flat" classNames={{ base: "bg-green-500/20", content: "text-green-400 text-xs font-medium" }}>
+                <Chip size="sm" variant="tertiary">
                   Public
                 </Chip>
               )}
@@ -111,12 +100,12 @@ export function CharacterDetailModal({
               </p>
             )}
           </div>
-        </ModalHeader>
+        </Modal.Header>
 
-        <ModalBody>
+        <Modal.Body>
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Spinner size="lg" color="primary" />
+              <Spinner size="lg" color="accent" />
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
@@ -138,10 +127,10 @@ export function CharacterDetailModal({
                 {images.length > 1 && (
                   <div className="flex gap-2 justify-center">
                     {images.map((url, index) => (
-                      <button
+                      <div
                         key={index}
                         onClick={() => setSelectedImageIndex(index)}
-                        className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
                           selectedImageIndex === index
                             ? "border-accent-400 ring-2 ring-accent-400/30"
                             : "border-border-base hover:border-accent-400/50"
@@ -153,7 +142,7 @@ export function CharacterDetailModal({
                             <Icon icon="solar:star-bold" className="text-white" width={10} />
                           </div>
                         )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -170,10 +159,10 @@ export function CharacterDetailModal({
                         const thumbUrl = char.primaryImageUrl || char.imageUrls?.[0];
 
                         return (
-                          <button
+                          <div
                             key={char.id}
                             onClick={() => handleCharacterSelect(char)}
-                            className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all group ${
+                            className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all group cursor-pointer ${
                               isSelected
                                 ? "border-accent-400 ring-2 ring-accent-400/30"
                                 : isOriginal
@@ -202,7 +191,7 @@ export function CharacterDetailModal({
                                 {isOriginal ? "Original" : char.name}
                               </p>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -212,7 +201,7 @@ export function CharacterDetailModal({
 
               <div className="space-y-6">
                 {displayCharacter.appearance_config && (
-                  <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
+                  <div className="bg-white/[0.04] rounded-xl p-4 space-y-3">
                     <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                       <Icon icon="solar:face-scan-circle-bold-duotone" width={18} className="text-accent-400" />
                       Appearance
@@ -241,7 +230,7 @@ export function CharacterDetailModal({
                 )}
 
                 {displayCharacter.style_config && (
-                  <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
+                  <div className="bg-white/[0.04] rounded-xl p-4 space-y-3">
                     <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
                       <Icon icon="solar:hanger-2-bold-duotone" width={18} className="text-accent-400" />
                       Style
@@ -279,22 +268,22 @@ export function CharacterDetailModal({
 
                 <div className="flex gap-3 pt-2">
                   <Button
-                    className="flex-1 bg-accent-400 text-white font-semibold"
-                    startContent={<Icon icon="solar:check-circle-bold" width={18} />}
-                    onPress={handleSelectAndClose}
-                  >
+ className="flex-1 bg-accent-400 text-white font-semibold"
+ onPress={handleSelectAndClose}
+ >
+                    <Icon icon="solar:check-circle-bold" width={18} />
                     Select Actor
                   </Button>
                   {onVariation && (
                     <Button
-                      variant="bordered"
-                      className="border-border-base text-text-secondary hover:border-accent-400 hover:text-accent-400"
-                      startContent={<Icon icon="solar:magic-stick-3-linear" width={18} />}
-                      onPress={() => {
-                        onClose();
-                        onVariation(displayCharacter);
-                      }}
-                    >
+ variant="outline"
+ className="border-border-base text-text-secondary hover:border-accent-400 hover:text-accent-400"
+ onPress={() => {
+ onClose();
+ onVariation(displayCharacter);
+ }}
+ >
+                      <Icon icon="solar:magic-stick-3-linear" width={18} />
                       Variation
                     </Button>
                   )}
@@ -302,8 +291,8 @@ export function CharacterDetailModal({
               </div>
             </div>
           )}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

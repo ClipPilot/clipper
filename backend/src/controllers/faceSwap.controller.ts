@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/face-swap/faceSwap.service";
@@ -10,7 +9,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import ffmpeg from "fluent-ffmpeg";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
 // Mobile-compatible H.264 encoding settings for downloads
 const MOBILE_DOWNLOAD_SETTINGS = [
@@ -27,9 +26,8 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
   const uploadedFile = req.file;
 
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     if (!uploadedFile) {
       return res.status(400).json({ error: "No video file uploaded" });
@@ -86,11 +84,7 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
       duration: result.duration,
     });
   } catch (error) {
-    console.error("[FACE-SWAP] Trim video error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to trim video"),
-    });
+    return handleControllerError(res, "[FACE-SWAP] Trim video error", error, "Failed to trim video");
   } finally {
     // Cleanup uploaded file
     if (uploadedFile?.path && fs.existsSync(uploadedFile.path)) {
@@ -109,9 +103,8 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
   const tempOutputPath = path.join(os.tmpdir(), `dl_output_${Date.now()}.mp4`);
 
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { url, filename, mode } = req.query;
 
@@ -239,13 +232,9 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
       if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     });
   } catch (error) {
-    console.error("[DOWNLOAD-FIXED] Error:", error);
-    Sentry.captureException(error);
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to process video"),
-    });
+    return handleControllerError(res, "[DOWNLOAD-FIXED] Error", error, "Failed to process video");
   }
 };
 
@@ -367,13 +356,9 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
       if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     });
   } catch (error) {
-    console.error("[DOWNLOAD-FIXED-PUBLIC] Error:", error);
-    Sentry.captureException(error);
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to process video"),
-    });
+    return handleControllerError(res, "[DOWNLOAD-FIXED-PUBLIC] Error", error, "Failed to process video");
   }
 };
 
@@ -385,9 +370,8 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
   const uploadedFile = req.file;
 
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     if (!uploadedFile) {
       return res.status(400).json({ error: "No video file uploaded" });
@@ -422,11 +406,7 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
       segmentCount: segments.length,
     });
   } catch (error) {
-    console.error("[FACE-DETECT] Error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to detect faces"),
-    });
+    return handleControllerError(res, "[FACE-DETECT] Error", error, "Failed to detect faces");
   } finally {
     // Cleanup uploaded file
     if (uploadedFile?.path && fs.existsSync(uploadedFile.path)) {
@@ -445,9 +425,8 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
  */
 export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { fileName, teamId } = req.body;
 
@@ -468,11 +447,7 @@ export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) =
       s3Key,
     });
   } catch (error) {
-    console.error("[FACE-DETECT] Get upload URL error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-    });
+    return handleControllerError(res, "[FACE-DETECT] Get upload URL error", error, "Failed to get upload URL");
   }
 };
 
@@ -481,9 +456,8 @@ export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) =
  */
 export const detectFacesFromS3 = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { s3Key, videoDuration } = req.body;
 
@@ -518,11 +492,7 @@ export const detectFacesFromS3 = async (req: AuthRequest, res: Response) => {
       segmentCount: segments.length,
     });
   } catch (error) {
-    console.error("[FACE-DETECT] Error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({
-      error: sanitizeErrorForFrontend(error, "Failed to detect faces"),
-    });
+    return handleControllerError(res, "[FACE-DETECT] Error", error, "Failed to detect faces");
   }
 };
 

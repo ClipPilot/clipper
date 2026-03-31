@@ -3,7 +3,7 @@ import path from "path";
 import { UpdateOverlaysJob } from "../../services/sqs.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
-import { notifyClipsRefresh } from "../notify";
+import { notifyClipsRefresh, notifyClipUpdate } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
@@ -39,8 +39,9 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
       const rawBg = heading.headingBgColor || "#000000";
       const headingBg = rawBg.toLowerCase() === "white" ? "#FFFFFF" : rawBg.toLowerCase() === "black" ? "#000000" : rawBg;
       const isLightBg = headingBg === "#FFFFFF" || headingBg.toLowerCase() === "white";
-      const headingColor = heading.color
-        || (headingStyle === "instagram" ? (isLightBg ? "#000000" : "#FFFFFF") : "#FFFFFF");
+      const headingColor = headingStyle === "instagram"
+        ? (isLightBg ? "#000000" : "#FFFFFF")
+        : (heading.color || "#FFFFFF");
       const headingPath = await regenerateClipWithTextOverlay(currentVideoPath, {
         text: heading.text,
         color: headingColor,
@@ -100,6 +101,7 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
     console.log(`Successfully updated overlays for clip ${clipId}`);
 
     // Notify frontend
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
   } catch (error) {
     console.error(`Error processing overlays for clip ${clipId}:`, error);
@@ -111,6 +113,7 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
       sanitizeErrorForFrontend(error, "Operation failed. Please try again.")
     );
 
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
 
     throw error;

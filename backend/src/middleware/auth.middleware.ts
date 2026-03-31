@@ -80,7 +80,7 @@ export async function requireAuth(
 
     // Get database user ID
     const [dbUser] = await db
-      .select()
+      .select({ id: users.id, email: users.email })
       .from(users)
       .where(eq(users.supabase_uid, user.id))
       .limit(1);

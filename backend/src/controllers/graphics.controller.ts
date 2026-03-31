@@ -4,13 +4,11 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { handleControllerError } from "../utils/controllerHelpers";
 import type { AspectRatio } from "../services/ai-ugc/falImage.service";
 import type { StylePreset } from "../services/ai-ugc/graphicsPrompts";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
+import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
 
 const VALID_GRAPHIC_TYPES: GraphicType[] = [
   "instagram-ad",
@@ -84,7 +82,7 @@ export class GraphicsController {
       if (usage.totalRemaining < CREDIT_COST) {
         return res.status(403).json({
           error: `Insufficient credits. Graphics generation requires ${CREDIT_COST} credits, but you have ${usage.totalRemaining} remaining.`,
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: CREDIT_COST,
           available: usage.totalRemaining,
         });
@@ -113,10 +111,7 @@ export class GraphicsController {
         throw genError;
       }
     } catch (error) {
-      console.error("[GRAPHICS] Generate error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate graphics"),
-      });
+      return handleControllerError(res, "[GRAPHICS] Generate error", error, "Failed to generate graphics");
     }
   }
 
@@ -145,10 +140,7 @@ export class GraphicsController {
         s3Key,
       });
     } catch (error) {
-      console.error("[GRAPHICS] Upload URL error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "[GRAPHICS] Upload URL error", error, "Failed to get upload URL");
     }
   }
 }

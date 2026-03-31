@@ -5,7 +5,7 @@ import path from "path";
 import { Response } from "express";
 import { eq } from "drizzle-orm";
 import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
-import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { verifyTeamAccessOrFail, handleControllerError } from "../utils/controllerHelpers";
 import { apiBillingService } from "../services/apiBilling.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -266,9 +266,7 @@ export const createFaceSwapJobController = async (
       Sentry.captureException(err);
       return;
     }
-    console.error("[api-face-swap] Error in createFaceSwapJobController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to create face swap job" });
+    return handleControllerError(res, "[api-face-swap] Error in createFaceSwapJobController", err, "Failed to create face swap job");
   }
 };
 
@@ -301,9 +299,7 @@ export const getFaceSwapStatusController = async (
 
     return res.json(response);
   } catch (err) {
-    console.error("[api-face-swap] Error in getFaceSwapStatusController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get job status" });
+    return handleControllerError(res, "[api-face-swap] Error in getFaceSwapStatusController", err, "Failed to get job status");
   }
 };
 
@@ -615,8 +611,6 @@ export const getFaceSwapStatusBearerController = async (
     const response = await buildFaceSwapStatusResponse(job);
     return res.json(response);
   } catch (err) {
-    console.error("[api-face-swap] Error in getFaceSwapStatusBearerController:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to get job status" });
+    return handleControllerError(res, "[api-face-swap] Error in getFaceSwapStatusBearerController", err, "Failed to get job status");
   }
 };

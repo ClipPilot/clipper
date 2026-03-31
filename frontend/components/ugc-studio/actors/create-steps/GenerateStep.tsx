@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, Spinner, Progress, Input, Textarea } from "@heroui/react";
+import { Button, Card, Spinner, ProgressBar, Input, TextArea } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { GeneratedImage } from "../types";
 
@@ -42,20 +42,20 @@ function RegenerationPanel({
     return (
       <div className="flex items-center justify-center gap-3">
         <Button
-          variant="bordered"
-          className="border-border-base text-text-secondary"
-          onPress={() => onGenerate()}
-          isLoading={isGenerating}
-          startContent={<Icon icon="solar:refresh-bold" width={16} />}
-        >
+ variant="outline"
+ className="border-border-base text-text-secondary"
+ onPress={() => onGenerate()}
+ isPending={isGenerating}
+ >
+          <Icon icon="solar:refresh-bold" width={16} />
           Regenerate
         </Button>
         <Button
-          variant="light"
-          className="text-text-muted"
-          onPress={() => setIsExpanded(true)}
-          startContent={<Icon icon="solar:tuning-2-bold" width={16} />}
-        >
+ variant="tertiary"
+ className="text-text-muted"
+ onPress={() => setIsExpanded(true)}
+ >
+          <Icon icon="solar:tuning-2-bold" width={16} />
           Tweak & Regenerate
         </Button>
       </div>
@@ -70,11 +70,11 @@ function RegenerationPanel({
           <span className="text-sm font-medium text-text-primary">Tweak Before Regenerating</span>
         </div>
         <Button
-          isIconOnly
-          variant="light"
-          size="sm"
-          onPress={() => setIsExpanded(false)}
-        >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ onPress={() => setIsExpanded(false)}
+ >
           <Icon icon="solar:close-circle-bold" className="text-text-muted" width={18} />
         </Button>
       </div>
@@ -83,46 +83,36 @@ function RegenerationPanel({
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">Setting / Environment</label>
           <Input
-            value={setting}
-            onChange={(e) => setSetting(e.target.value)}
-            placeholder="e.g., Coffee shop, Beach at sunset, Modern office..."
-            size="sm"
-            classNames={{
-              input: "bg-surface-base",
-              inputWrapper: "bg-surface-base border-border-base",
-            }}
-          />
+ value={setting}
+ onChange={(e) => setSetting(e.target.value)}
+ placeholder="e.g., Coffee shop, Beach at sunset, Modern office..."
+ />
         </div>
 
         <div>
           <label className="text-xs text-text-secondary mb-1.5 block">Additional Details</label>
-          <Textarea
-            value={anythingElse}
-            onChange={(e) => setAnythingElse(e.target.value)}
-            placeholder="e.g., Holding a coffee cup, warm lighting, more confident pose..."
-            minRows={2}
-            size="sm"
-            classNames={{
-              input: "bg-surface-base",
-              inputWrapper: "bg-surface-base border-border-base",
-            }}
-          />
+          <TextArea
+ value={anythingElse}
+ onChange={(e) => setAnythingElse(e.target.value)}
+ placeholder="e.g., Holding a coffee cup, warm lighting, more confident pose..."
+ rows={2}
+ />
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button
-            variant="light"
-            className="text-text-muted"
-            onPress={() => setIsExpanded(false)}
-          >
+ variant="tertiary"
+ className="text-text-muted"
+ onPress={() => setIsExpanded(false)}
+ >
             Cancel
           </Button>
           <Button
-            className="bg-accent-400 text-white font-medium"
-            onPress={handleRegenerate}
-            isLoading={isGenerating}
-            startContent={<Icon icon="solar:magic-stick-3-bold" width={16} />}
-          >
+ className="bg-accent-400 text-white font-medium"
+ onPress={handleRegenerate}
+ isPending={isGenerating}
+ >
+            <Icon icon="solar:magic-stick-3-bold" width={16} />
             Regenerate with Tweaks
           </Button>
         </div>
@@ -165,15 +155,11 @@ export function GenerateStep({
                 </h4>
                 <p className="text-text-secondary text-sm mb-6">{progressMessage}</p>
                 <div className="max-w-xs mx-auto mb-4">
-                  <Progress
-                    value={progress}
-                    size="md"
-                    classNames={{
-                      base: "w-full",
-                      track: "bg-surface-base",
-                      indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
-                    }}
-                  />
+                  <ProgressBar
+ value={progress}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
                 </div>
                 <p className="text-text-muted text-xs">
                   {progress > 0 ? `${progress}% complete` : "Starting..."}
@@ -191,11 +177,11 @@ export function GenerateStep({
                   Click the button below to generate 4 unique AI actor variations
                 </p>
                 <Button
-                  size="lg"
-                  className="bg-accent-400 text-white font-semibold px-8"
-                  onPress={() => onGenerate()}
-                  startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
-                >
+ size="lg"
+ className="bg-accent-400 text-white font-semibold px-8"
+ onPress={() => onGenerate()}
+ >
+                  <Icon icon="solar:magic-stick-3-bold" width={20} />
                   Generate Actors
                 </Button>
                 <p className="text-text-muted text-xs mt-4">

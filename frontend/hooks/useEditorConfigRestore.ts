@@ -40,7 +40,7 @@ import { generateThumbnails } from "@/lib/videoUtils";
  */
 export function useEditorConfigRestore(
   clipId: number,
-  videoRef: React.RefObject<HTMLVideoElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
 ) {
   const clip = useAtomValue(editorClipAtom);
   const selectedTeam = useAtomValue(selectedTeamAtom);

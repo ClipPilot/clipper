@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { Card, CardBody, Tooltip, Chip, cn } from "@heroui/react";
+import { Button, Tooltip, Chip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
@@ -93,50 +93,50 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
 
   if (allPosts.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <CardBody className="flex flex-col items-center justify-center py-12 gap-2">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="flex flex-col items-center justify-center py-12 gap-2">
           <Icon icon="solar:fire-bold" width={40} className="text-text-tertiary" />
           <p className="text-text-secondary text-sm">No posts yet — sync accounts to see top content</p>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-0">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
           <div className="flex items-center gap-1.5">
             <h3 className="text-sm font-medium text-text-primary">Top Performing Content</h3>
             {filter === "viral" && (
-              <Tooltip
-                content={
-                  hasDateRange
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <span className="cursor-help">
+                    <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
+                  </span>
+                </Tooltip.Trigger>
+                <Tooltip.Content>
+                  {hasDateRange
                     ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
-                    : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."
-                }
-                classNames={{ content: "max-w-[240px] text-xs m-2" }}
-              >
-                <span className="cursor-help">
-                  <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
-                </span>
+                    : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."}
+                </Tooltip.Content>
               </Tooltip>
             )}
           </div>
           <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
             {filters.map((f) => (
-              <button
+              <div
                 key={f.key}
                 onClick={() => handleFilterChange(f.key)}
                 className={cn(
-                  "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all",
+                  "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer",
                   filter === f.key
                     ? "bg-accent-400 text-white shadow-sm"
                     : "text-text-tertiary hover:text-text-secondary"
                 )}
               >
                 {f.label}
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -199,11 +199,11 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                     </p>
                     {post.mass_post_id != null && (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                        <Chip size="sm" variant="tertiary">
                           Managed by Cuttr
                         </Chip>
                         {post.campaign_name && (
-                          <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                          <Chip size="sm" variant="tertiary">
                             {post.campaign_name}
                           </Chip>
                         )}
@@ -236,7 +236,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
             })}
           </div>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

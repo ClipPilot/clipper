@@ -6,11 +6,8 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
 import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
 import { eq, desc, and, isNotNull } from "drizzle-orm";
-import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { handleControllerError } from "../utils/controllerHelpers";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export class UGCScriptController {
   async getScriptStatus(req: AuthRequest, res: Response) {
@@ -56,10 +53,7 @@ export class UGCScriptController {
 
       return res.status(200).json(response);
     } catch (error) {
-      console.error("[UGC_SCRIPT] Get script status error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get script status"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Get script status error", error, "Failed to get script status");
     }
   }
 
@@ -88,10 +82,7 @@ export class UGCScriptController {
         scene: clientScene,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Regenerate scene error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to regenerate scene"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Regenerate scene error", error, "Failed to regenerate scene");
     }
   }
 
@@ -114,10 +105,7 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Regenerate B-roll prompt error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll prompt"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Regenerate B-roll prompt error", error, "Failed to regenerate B-roll prompt");
     }
   }
 
@@ -141,10 +129,7 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true, bRollShots: newShots });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Regenerate all B-roll shots error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll shots"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Regenerate all B-roll shots error", error, "Failed to regenerate B-roll shots");
     }
   }
 
@@ -169,10 +154,7 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Auto structure error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate auto structure"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Auto structure error", error, "Failed to generate auto structure");
     }
   }
 
@@ -225,10 +207,7 @@ export class UGCScriptController {
         script: result.script,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Generate script agent error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate script via agent"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Generate script agent error", error, "Failed to generate script via agent");
     }
   }
 
@@ -273,10 +252,7 @@ export class UGCScriptController {
         scriptId: inserted.id,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Save script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to save script"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Save script error", error, "Failed to save script");
     }
   }
 
@@ -304,10 +280,7 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Init structure error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to generate init structure"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Init structure error", error, "Failed to generate init structure");
     }
   }
 
@@ -336,10 +309,7 @@ export class UGCScriptController {
         s3Key,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Upload URL error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Upload URL error", error, "Failed to get upload URL");
     }
   }
 
@@ -367,10 +337,7 @@ export class UGCScriptController {
         selectedVariantIndex: updated.selectedVariantIndex,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Update script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to update script"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Update script error", error, "Failed to update script");
     }
   }
 
@@ -396,10 +363,7 @@ export class UGCScriptController {
         characterCount: fullScript.characterCount,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Get full script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to get script"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Get full script error", error, "Failed to get script");
     }
   }
 
@@ -478,10 +442,7 @@ export class UGCScriptController {
         hasMore: formattedScripts.length === limit,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] List scripts error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to list scripts"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] List scripts error", error, "Failed to list scripts");
     }
   }
   async deleteScript(req: AuthRequest, res: Response) {
@@ -505,10 +466,7 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Delete script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to delete script"),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Delete script error", error, "Failed to delete script");
     }
   }
 
@@ -535,13 +493,7 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      console.error("[UGC_SCRIPT] Storyboard chat error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(
-          error,
-          "Failed to process storyboard edit",
-        ),
-      });
+      return handleControllerError(res, "[UGC_SCRIPT] Storyboard chat error", error, "Failed to process storyboard edit");
     }
   }
 }

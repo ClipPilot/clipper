@@ -1,14 +1,13 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { videoDownloadService } from "../services/videoDownload.service";
 import { s3Service } from "../services/s3.service";
+import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
 export const getVideoInfo = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { url } = req.body;
 
@@ -19,17 +18,14 @@ export const getVideoInfo = async (req: AuthRequest, res: Response) => {
     const info = await videoDownloadService.getVideoInfo(url);
     return res.json(info);
   } catch (err: any) {
-    console.error("Get video info error:", err);
-    Sentry.captureException(err);
-    return res.status(400).json({ error: err.message || "Failed to get video info" });
+    return handleControllerError(res, "Get video info error", err, "Failed to get video info", 400);
   }
 };
 
 export const downloadVideo = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { url, teamId } = req.body;
 
@@ -89,19 +85,16 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
 
     res.end();
   } catch (err: any) {
-    console.error("Download video error:", err);
-    Sentry.captureException(err);
     if (!res.headersSent) {
-      return res.status(500).json({ error: err.message || "Failed to download video" });
+      return handleControllerError(res, "Download video error", err, "Failed to download video");
     }
   }
 };
 
 export const downloadVideoSync = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { url, teamId } = req.body;
 
@@ -124,8 +117,6 @@ export const downloadVideoSync = async (req: AuthRequest, res: Response) => {
       downloadUrl,
     });
   } catch (err: any) {
-    console.error("Download video error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: err.message || "Failed to download video" });
+    return handleControllerError(res, "Download video error", err, "Failed to download video");
   }
 };
