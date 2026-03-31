@@ -222,7 +222,10 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     key={s.key}
                     onClick={() => {
                       setTextStyle(s.key);
-                      if (s.key === "instagram") setTextFont("Proxima Nova");
+                      if (s.key === "instagram") {
+                        setTextFont("Proxima Nova");
+                        setTextColor(textBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF");
+                      }
                     }}
                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all border ${
                       textStyle === s.key

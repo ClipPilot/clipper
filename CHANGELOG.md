@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.5](https://github.com/ClipPilot/clipper/compare/v1.2.4...v1.2.5) (2026-03-29)
+
+
+### Bug Fixes
+
+* add missing setSavedClips destructuring for clip-updated handler ([373a7cb](https://github.com/ClipPilot/clipper/commit/373a7cb7557d9273f59593c857649e3cfd2f1e79))
+* Library refresh and layout ([9bead00](https://github.com/ClipPilot/clipper/commit/9bead005de677ed7e73b49b125afacdfe9f445a6))
+
+## [1.2.4](https://github.com/ClipPilot/clipper/compare/v1.2.3...v1.2.4) (2026-03-29)
+
+
+### Bug Fixes
+
+* Caption Color Fixes ([#151](https://github.com/ClipPilot/clipper/issues/151)) ([233a17b](https://github.com/ClipPilot/clipper/commit/233a17b6a1277c1e84072fbf462de49c2e314ed3))
+* instagram heading text color contrast ([11b753d](https://github.com/ClipPilot/clipper/commit/11b753d82c2e44c7aaff046133093d94fd19d39e))
+
 ## [1.2.3](https://github.com/ClipPilot/clipper/compare/v1.2.2...v1.2.3) (2026-03-28)
 
 

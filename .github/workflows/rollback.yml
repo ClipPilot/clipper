@@ -11,9 +11,17 @@ on:
           - ecs
           - lambda
       service-name:
-        description: "Service name (e.g., backend, worker, face-detect)"
+        description: "Service name"
         required: true
-        type: string
+        type: choice
+        options:
+          - backend
+          - worker
+          - face-detect
+          - scene-detect
+          - youtube
+          - expire-clips
+          - virality-sync
       environment:
         description: "Target environment"
         required: true
@@ -21,8 +29,8 @@ on:
         options:
           - production
           - staging
-      target-image-tag:
-        description: "Git SHA of target image (leave empty for previous deployment)"
+      target-version:
+        description: "Version tag (e.g. v1.2.0) or git SHA (leave empty for previous deployment)"
         required: false
         type: string
         default: ""
@@ -37,6 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout (for tag resolution)
+        if: inputs.target-version != '' && startsWith(inputs.target-version, 'v')
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -63,8 +77,18 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPO: clipster-${{ inputs.service-name }}-${{ steps.env.outputs.suffix }}
         run: |
-          if [[ -n "${{ inputs.target-image-tag }}" ]]; then
-            TAG="${{ inputs.target-image-tag }}"
+          TARGET="${{ inputs.target-version }}"
+          if [[ -n "$TARGET" ]]; then
+            if [[ "$TARGET" == v* ]]; then
+              TAG=$(git rev-list -n 1 "$TARGET" 2>/dev/null || echo "")
+              if [[ -z "$TAG" ]]; then
+                echo "::error::Could not resolve version tag $TARGET to a commit SHA"
+                exit 1
+              fi
+              echo "Resolved $TARGET -> $TAG"
+            else
+              TAG="$TARGET"
+            fi
           else
             TAG=$(aws ecr describe-images --repository-name $REPO \
               --query 'sort_by(imageDetails,& imagePushedAt)[-2].imageTags[0]' \
@@ -110,6 +134,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout (for tag resolution)
+        if: inputs.target-version != '' && startsWith(inputs.target-version, 'v')
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -146,8 +176,18 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPO: ${{ steps.repo.outputs.name }}
         run: |
-          if [[ -n "${{ inputs.target-image-tag }}" ]]; then
-            TAG="${{ inputs.target-image-tag }}"
+          TARGET="${{ inputs.target-version }}"
+          if [[ -n "$TARGET" ]]; then
+            if [[ "$TARGET" == v* ]]; then
+              TAG=$(git rev-list -n 1 "$TARGET" 2>/dev/null || echo "")
+              if [[ -z "$TAG" ]]; then
+                echo "::error::Could not resolve version tag $TARGET to a commit SHA"
+                exit 1
+              fi
+              echo "Resolved $TARGET -> $TAG"
+            else
+              TAG="$TARGET"
+            fi
           else
             TAG=$(aws ecr describe-images --repository-name $REPO \
               --query 'sort_by(imageDetails,& imagePushedAt)[-2].imageTags[0]' \

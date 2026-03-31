@@ -4,7 +4,7 @@ import { TextOverlayJob } from "../../services/sqs.service";
 import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
-import { notifyClipsRefresh } from "../notify";
+import { notifyClipsRefresh, notifyClipUpdate } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
@@ -97,6 +97,7 @@ export async function processTextOverlayJob(
     console.log(`Successfully applied heading to clip ${clipId}`);
 
     // Notify frontend to refresh clips
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
   } catch (error) {
     console.error("Error applying heading:", error);
@@ -110,6 +111,7 @@ export async function processTextOverlayJob(
     );
 
     // Notify frontend
+    await notifyClipUpdate(teamId, clipId);
     await notifyClipsRefresh(teamId);
 
     throw error;

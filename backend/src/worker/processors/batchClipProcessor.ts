@@ -11,8 +11,6 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
-import { emailNotiService } from "../../services/emailNoti.service";
-import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import {
   buildFacecamDetectCallback,
@@ -22,6 +20,8 @@ import {
   uploadClipArtifacts,
   cleanupClipFiles,
 } from "./shared/clipProcessorHelpers";
+import { userService } from "../../services/user.service";
+import { emailNotiService } from "../../services/emailNoti.service";
 
 export async function processBatchClipVideoJob(
   job: BatchClipVideoJob

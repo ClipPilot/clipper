@@ -127,6 +127,7 @@ function MyClipsPageContent() {
     rejectClip,
     moveClipToFolder,
     refreshSavedClips,
+    setSavedClips,
     setUnsavedClips,
   } = useClipsData();
 
@@ -230,8 +231,6 @@ function MyClipsPageContent() {
       lastSocketUpdateRef.current = Date.now();
       loadPendingClips();
       loadUnsavedClips();
-      // Refresh clips based on current view - folder-specific or all clips
-      // Use merge-based refresh to preserve scroll position and loaded clips
       if (selectedFolderId !== null) {
         refreshFolderClips(selectedFolderId);
       } else {
@@ -240,7 +239,23 @@ function MyClipsPageContent() {
     }, 500);
   }, [loadPendingClips, loadUnsavedClips, refreshSavedClips, isDraggingRef, selectedFolderId, refreshFolderClips]);
 
-  useSocket(selectedTeam?.id, handleSocketUpdate);
+  const handleClipUpdated = useCallback(async (clipId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      const updatedClip = await clipsAPI.getClip(selectedTeam.id, clipId);
+      setSavedClips((prev) => {
+        const exists = prev.some((c) => c.id === clipId);
+        if (exists) {
+          return prev.map((c) => (c.id === clipId ? updatedClip : c));
+        }
+        return [updatedClip, ...prev];
+      });
+    } catch {
+      refreshSavedClips();
+    }
+  }, [selectedTeam?.id, setSavedClips, refreshSavedClips]);
+
+  useSocket(selectedTeam?.id, handleSocketUpdate, handleClipUpdated);
 
   // Listen for ad-posting progress events and show toasts
   useEffect(() => {

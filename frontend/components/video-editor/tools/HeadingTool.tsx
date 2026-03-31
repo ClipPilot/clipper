@@ -119,6 +119,9 @@ export function HeadingTool() {
                     updateHeading({
                       style: s.key as HeadingStyle,
                       font: s.key === "instagram" ? "Proxima Nova" : heading.font,
+                      ...(s.key === "instagram"
+                        ? { color: (heading.headingBgColor || "#000000") === "#FFFFFF" ? "#000000" : "#FFFFFF" }
+                        : {}),
                     })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
