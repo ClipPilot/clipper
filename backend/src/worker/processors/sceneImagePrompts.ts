@@ -306,7 +306,7 @@ The first reference image shows the PREVIOUS FRAME - match its environment EXACT
 - Character sits at a podcast desk speaking into a microphone. They face the microphone or the other host — NEVER the camera. No eye contact with the camera.
 - Character wears the EXACT same outfit shown in the character reference image. Do not change, add, or remove any clothing or accessories.
 - The setting is a podcast studio: desk, microphone, headphones, soft studio lighting. This setting MUST be IDENTICAL across all shots in this scene.
-- Each shot uses a DIFFERENT camera angle or posture: vary between side-angle, three-quarter, close-up profile, medium shot. The character's body position changes naturally (leaning in, gesturing, nodding, sitting back) but the outfit and setting stay locked.`);
+- Each character has their OWN fixed camera angle and pose. Character A and Character B are viewed from DIFFERENT angles. But the SAME character always appears in the SAME angle and pose across all their shots — only facial expression changes.`);
   }
 
   if (hasVideoFrameReference) {

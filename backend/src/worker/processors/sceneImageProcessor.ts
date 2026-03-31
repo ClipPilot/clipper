@@ -388,10 +388,17 @@ export async function processSceneImageJob(
       }
 
       // Helper: generate a single aroll shot image
+      const CHARACTER_ANGLES: [string, string] = [
+        "three-quarter view from the left, torso and face visible, leaning slightly forward toward microphone",
+        "three-quarter view from the right, sitting comfortably, one hand near the microphone",
+      ];
+      const assignedAngle: Map<number, string> = new Map();
+
       const generateArollShot = async (
         shot: typeof arollShots[number],
         i: number,
         settingRefs: string[],
+        sameCharGeneratedRef?: string,
       ): Promise<{ index: number; imageKey: string }> => {
         await updateJobProgress(
           jobId,
@@ -400,13 +407,21 @@ export async function processSceneImageJob(
         );
 
         const charRefs = await getCharRefs(shot.characterIndex);
+        const isFirstShotForChar = !sameCharGeneratedRef;
 
-        // For podcast shots, only pass the CHARACTER reference as the main image.
-        // Setting/environment refs are passed separately and the prompt explicitly
-        // instructs the model to copy ONLY the environment, not the person.
         const shotRefs: string[] = [];
         if (charRefs.url) shotRefs.push(charRefs.url);
+        if (sameCharGeneratedRef) {
+          const urls = await getReferenceImageUrls([sameCharGeneratedRef]);
+          if (urls.length > 0) shotRefs.push(urls[0]);
+        }
         if (settingRefs.length > 0) shotRefs.push(settingRefs[0]);
+
+        if (!assignedAngle.has(shot.characterIndex)) {
+          const idx = assignedAngle.size % CHARACTER_ANGLES.length;
+          assignedAngle.set(shot.characterIndex, CHARACTER_ANGLES[idx]);
+        }
+        const characterAngle = assignedAngle.get(shot.characterIndex)!;
 
         const shotCinematicPrompt = shot.cinematicPrompt || sceneData.cinematicPrompt;
         const shotSceneData = {
@@ -417,14 +432,31 @@ export async function processSceneImageJob(
           cinematicPrompt: shotCinematicPrompt,
         };
 
-        let podcastPromptPrefix = "";
-        if (settingRefs.length > 0) {
-          podcastPromptPrefix = `**PODCAST SHOT — MULTI-CHARACTER SCENE**
-The reference images are:
-1. FIRST image = the CHARACTER to depict. Use this person's EXACT face, identity, and features. This is the ONLY person who should appear in the generated image.
-2. SECOND image = ENVIRONMENT/SETTING reference. Copy the room, desk, microphone setup, lighting, and background EXACTLY. IGNORE the person in this image — they are a DIFFERENT character. Do NOT blend faces or features from the setting reference into the character.
+        let podcastPromptPrefix: string;
 
-Generate an image of the character from image 1 sitting in the environment from image 2.\n\n`;
+        if (isFirstShotForChar) {
+          podcastPromptPrefix = `**PODCAST SHOT ${i + 1} — ESTABLISHING SHOT FOR CHARACTER ${shot.characterIndex}**
+Camera angle and body position: ${characterAngle}
+This is the first shot for this character. Establish their pose, angle, and position at the podcast desk. This exact pose and angle will be reused for all subsequent shots of this character.\n\n`;
+        } else {
+          podcastPromptPrefix = `**PODCAST SHOT ${i + 1} — CONTINUITY SHOT FOR CHARACTER ${shot.characterIndex}**
+This character's pose, angle, and body position have ALREADY been established in a previous shot.
+REPLICATE the EXACT same camera angle, pose, seating position, and framing from the previous shot reference image. The only things that change are facial expression and subtle hand gestures matching the dialogue. Everything else — angle, posture, outfit, setting — stays IDENTICAL.\n\n`;
+        }
+
+        if (settingRefs.length > 0 || sameCharGeneratedRef) {
+          const refParts: string[] = [];
+          let refIdx = 1;
+          refParts.push(`${refIdx}. FIRST image = the CHARACTER's face and identity. Depict THIS exact person. Match their face, skin tone, and features precisely.`);
+          refIdx++;
+          if (sameCharGeneratedRef) {
+            refParts.push(`${refIdx}. NEXT image = this SAME character's previous shot. Copy the OUTFIT, ACCESSORIES, POSE, CAMERA ANGLE, and SEATING POSITION exactly. Only the facial expression changes.`);
+            refIdx++;
+          }
+          if (settingRefs.length > 0) {
+            refParts.push(`${refIdx}. LAST image = ENVIRONMENT/SETTING reference. Copy the room, desk, microphone, lighting, and background EXACTLY. IGNORE the person in this image — they are a DIFFERENT character. Do NOT blend their face or features.`);
+          }
+          podcastPromptPrefix += `**REFERENCE IMAGE GUIDE**\n${refParts.join("\n")}\n\n`;
         }
 
         const shotPrompt = podcastPromptPrefix + buildSceneImagePrompt(
@@ -462,15 +494,29 @@ Generate an image of the character from image 1 sitting in the environment from 
 
       if (anchorUrls.length > 0) {
         // NON-ANCHOR SCENE: setting already established — use first anchor as setting ref
-        console.log(`[SCENE_IMAGE] Scene ${sceneNumber}: Generating all ${arollShots.length} shots in parallel (setting anchored)`);
+        // Still need to chain first 2 shots for this scene's character references
+        console.log(`[SCENE_IMAGE] Scene ${sceneNumber}: Anchored scene — sequential shots 0-1 then parallel`);
 
         const settingRef = [anchorUrls[0]];
-        const parallelResults = await Promise.all(
-          arollShots.map((shot, i) => generateArollShot(shot, i, settingRef)),
-        );
 
-        for (const { imageKey } of parallelResults.sort((a, b) => a.index - b.index)) {
+        for (let i = 0; i < Math.min(2, arollShots.length); i++) {
+          const sameCharRef = referenceByCharacter.get(arollShots[i].characterIndex);
+          const { imageKey } = await generateArollShot(arollShots[i], i, settingRef, sameCharRef);
           generatedImages.push(imageKey);
+          referenceByCharacter.set(arollShots[i].characterIndex, imageKey);
+        }
+
+        if (arollShots.length > 2) {
+          const remainingResults = await Promise.all(
+            arollShots.slice(2).map(async (shot, offsetIdx) => {
+              const i = offsetIdx + 2;
+              const sameCharRef = referenceByCharacter.get(shot.characterIndex);
+              return generateArollShot(shot, i, settingRef, sameCharRef);
+            }),
+          );
+          for (const { imageKey } of remainingResults.sort((a, b) => a.index - b.index)) {
+            generatedImages.push(imageKey);
+          }
         }
       } else {
         // ANCHOR SCENE (first a-roll-multi): shot 0 has no setting ref, shot 1 uses shot 0 as setting ref
@@ -482,19 +528,20 @@ Generate an image of the character from image 1 sitting in the environment from 
             const prevUrl = await getReferenceImageUrls([generatedImages[i - 1]]);
             if (prevUrl.length > 0) settingRef.push(prevUrl[0]);
           }
-          const { imageKey } = await generateArollShot(arollShots[i], i, settingRef);
+          const sameCharRef = referenceByCharacter.get(arollShots[i].characterIndex);
+          const { imageKey } = await generateArollShot(arollShots[i], i, settingRef, sameCharRef);
           generatedImages.push(imageKey);
           referenceByCharacter.set(arollShots[i].characterIndex, imageKey);
         }
 
         if (arollShots.length > 2) {
-          // Use first generated shot as the setting reference for all remaining shots
           const settingRefUrl = await getReferenceImageUrls([generatedImages[0]]);
 
           const remainingResults = await Promise.all(
             arollShots.slice(2).map(async (shot, offsetIdx) => {
               const i = offsetIdx + 2;
-              return generateArollShot(shot, i, settingRefUrl);
+              const sameCharRef = referenceByCharacter.get(shot.characterIndex);
+              return generateArollShot(shot, i, settingRefUrl, sameCharRef);
             }),
           );
 

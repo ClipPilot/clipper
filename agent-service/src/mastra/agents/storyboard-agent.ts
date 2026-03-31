@@ -77,7 +77,7 @@ Do NOT regenerate for non-visual changes like dialogue or emotion changes.
   - Non-null ambientSound (shared podcast studio environment)
   - arollShots array with 2-6 alternating character turns
   - Each arollShot has: dialogue (with emotion tags), action, characterIndex (0 or 1), ambientSound (null inherits scene-level)
-  - Characters face a MICROPHONE, not the camera
+  - Characters face a MICROPHONE, not the camera, they do not make eye contact with the camera
   - No bRollShots (empty/null)
   - To edit podcast dialogue, use changeDialogue on the scene — it will update the arollShots
 
