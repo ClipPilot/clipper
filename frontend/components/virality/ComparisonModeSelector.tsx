@@ -99,7 +99,7 @@ export function ComparisonModeSelector({
             aria-label="Select comparison date"
             minValue={minDate as any}
             maxValue={maxDate as any}
-            onChange={handleCalendarChange}
+            onChange={handleCalendarChange as any}
             className="bg-surface-base"
           />
         </Popover.Content>
