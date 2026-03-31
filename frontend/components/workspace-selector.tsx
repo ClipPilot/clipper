@@ -90,19 +90,17 @@ export default function WorkspaceSelector({
                 const teamPlan = team.plan || "free";
                 const isDefault = defaultTeamId === team.id;
                 return (
-                  <div
+                  <button
                     key={team.id}
+                    onClick={() => { setSelectedTeam(team); onClose?.(); }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated",
+                      "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated text-left",
                       {
                         "bg-accent-400/10": selectedTeam?.id === team.id,
                       }
                     )}
                   >
-                    <button
-                      onClick={() => setSelectedTeam(team)}
-                      className="flex items-center gap-3 flex-1"
-                    >
+                    <div className="flex items-center gap-3 flex-1">
                       {team.logo_url ? (
                         <div
                           className={cn(
@@ -168,11 +166,11 @@ export default function WorkspaceSelector({
                           {team.role}
                         </span>
                       </div>
-                    </button>
+                    </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {isDefault ? (
                         <button
-                          onClick={() => setAsDefaultTeam(null)}
+                          onClick={(e) => { e.stopPropagation(); setAsDefaultTeam(null); }}
                           className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
                           title="Remove as default"
                         >
@@ -184,7 +182,7 @@ export default function WorkspaceSelector({
                         </button>
                       ) : (
                         <button
-                          onClick={() => setAsDefaultTeam(team.id)}
+                          onClick={(e) => { e.stopPropagation(); setAsDefaultTeam(team.id); }}
                           className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
                           title="Set as default"
                         >
@@ -203,7 +201,7 @@ export default function WorkspaceSelector({
                         />
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </ScrollShadow>

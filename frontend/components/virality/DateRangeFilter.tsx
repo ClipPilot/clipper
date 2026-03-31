@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, DateRangePicker } from "@heroui/react";
+import { Button, DateField, DateRangePicker, RangeCalendar } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import type { CalendarDate } from "@internationalized/date";
 import { today, getLocalTimeZone, parseDate, startOfMonth } from "@internationalized/date";
 
 export interface DateRangeValue {
@@ -63,12 +64,12 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
   const pickerValue =
     value.startDate && value.endDate
       ? {
-          start: parseDate(value.startDate.slice(0, 10)),
-          end: parseDate(value.endDate.slice(0, 10)),
+          start: parseDate(value.startDate.slice(0, 10)) as CalendarDate,
+          end: parseDate(value.endDate.slice(0, 10)) as CalendarDate,
         }
       : null;
 
-  const handlePickerChange = (range: { start: { toString(): string }; end: { toString(): string } } | null) => {
+  const handlePickerChange = (range: { start: CalendarDate; end: CalendarDate } | null) => {
     if (!range) return;
     onChange({
       startDate: range.start.toString() + "T00:00:00.000Z",
@@ -78,17 +79,16 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Custom preset dropdown */}
       <div className="relative" ref={dropdownRef}>
         <Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated text-text-secondary hover:text-text-primary"
- onPress={() => setDropdownOpen((v) => !v)}
- >
+          size="sm"
+          variant="tertiary"
+          className="bg-surface-elevated text-text-secondary hover:text-text-primary"
+          onPress={() => setDropdownOpen((v) => !v)}
+        >
           Custom
           <Icon icon="solar:alt-arrow-down-linear" width={14} />
-</Button>
+        </Button>
         {dropdownOpen && (
           <div className="absolute top-full left-0 mt-1 z-50 bg-white/[0.04] rounded-lg shadow-lg py-1 min-w-[140px]">
             {CUSTOM_PRESETS.map((preset) => (
@@ -142,8 +142,39 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
         value={pickerValue as any}
         onChange={handlePickerChange as any}
         maxValue={today(getLocalTimeZone()) as any}
-        className="max-w-xs text-sm"
-      />
+        className="max-w-xs"
+      >
+        <DateField.Group fullWidth>
+          <DateField.Input slot="start">
+            {(segment: any) => <DateField.Segment segment={segment} />}
+          </DateField.Input>
+          <DateRangePicker.RangeSeparator />
+          <DateField.Input slot="end">
+            {(segment: any) => <DateField.Segment segment={segment} />}
+          </DateField.Input>
+          <DateField.Suffix>
+            <DateRangePicker.Trigger>
+              <DateRangePicker.TriggerIndicator />
+            </DateRangePicker.Trigger>
+          </DateField.Suffix>
+        </DateField.Group>
+        <DateRangePicker.Popover>
+          <RangeCalendar aria-label="Select date range">
+            <RangeCalendar.Header>
+              <RangeCalendar.NavButton slot="previous" />
+              <RangeCalendar.NavButton slot="next" />
+            </RangeCalendar.Header>
+            <RangeCalendar.Grid>
+              <RangeCalendar.GridHeader>
+                {(day: string) => <RangeCalendar.HeaderCell>{day}</RangeCalendar.HeaderCell>}
+              </RangeCalendar.GridHeader>
+              <RangeCalendar.GridBody>
+                {(date: any) => <RangeCalendar.Cell date={date} />}
+              </RangeCalendar.GridBody>
+            </RangeCalendar.Grid>
+          </RangeCalendar>
+        </DateRangePicker.Popover>
+      </DateRangePicker>
     </div>
   );
 }

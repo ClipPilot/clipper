@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Tooltip } from "@heroui/react";
+import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FolderSelector } from "@/components/clips";
 import { FACE_SWAP_TIPS, FULL_BODY_SWAP_TIPS } from "./constants";
@@ -52,36 +52,26 @@ export function GeneratePanel({
           {/* Swap Mode Toggle */}
           {onSwapTypeChange && (
             <div className="flex gap-1 p-1 bg-surface-elevated rounded-lg">
-              <Tooltip delay={400}>
-                <Tooltip.Trigger>
-                  <button
-                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
-                      swapType === "face"
-                        ? "bg-accent-400 text-white"
-                        : "text-text-tertiary hover:text-text-secondary"
-                    }`}
-                    onClick={() => onSwapTypeChange("face")}
-                  >
-                    Face Swap
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Content>Only swaps face, works for most videos</Tooltip.Content>
-              </Tooltip>
-              <Tooltip delay={400}>
-                <Tooltip.Trigger>
-                  <button
-                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
-                      swapType === "fullbody"
-                        ? "bg-purple-500 text-white"
-                        : "text-text-tertiary hover:text-text-secondary"
-                    }`}
-                    onClick={() => onSwapTypeChange("fullbody")}
-                  >
-                    Full Body
-                  </button>
-                </Tooltip.Trigger>
-                <Tooltip.Content>Experimental, best on talking head or dance videos</Tooltip.Content>
-              </Tooltip>
+              <button
+                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+                  swapType === "face"
+                    ? "bg-accent-400 text-white"
+                    : "text-text-tertiary hover:text-text-secondary"
+                }`}
+                onClick={() => onSwapTypeChange("face")}
+              >
+                Face Swap
+              </button>
+              <button
+                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
+                  swapType === "fullbody"
+                    ? "bg-purple-500 text-white"
+                    : "text-text-tertiary hover:text-text-secondary"
+                }`}
+                onClick={() => onSwapTypeChange("fullbody")}
+              >
+                Full Body
+              </button>
             </div>
           )}
 

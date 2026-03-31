@@ -419,13 +419,19 @@ export function CharacterSelector({
                 Just use once
               </Button>
               <Button
- size="sm"
- className="flex-1 bg-purple-500 text-white"
- onPress={handleSaveAndAdd}
- isPending={isSaving}
- isDisabled={!saveName.trim()}
- >
-                Save & Use
+                size="sm"
+                className="flex-1 bg-purple-500 text-white"
+                onPress={handleSaveAndAdd}
+                isDisabled={isSaving || !saveName.trim()}
+              >
+                {isSaving ? (
+                  <>
+                    <Icon icon="solar:refresh-circle-bold-duotone" className="animate-spin" width={16} />
+                    Saving...
+                  </>
+                ) : (
+                  "Save & Use"
+                )}
               </Button>
               <Button size="sm" variant="tertiary" isIconOnly onPress={handleCancelSave}>
                 <Icon icon="solar:close-circle-bold" />
