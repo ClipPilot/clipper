@@ -67,15 +67,14 @@ export function AccountFilterPopover({
 
   return (
     <Popover isOpen={isOpen} onOpenChange={handleOpen}>
-      <Popover.Trigger>
-        <Button
- variant="tertiary"
- className={
- isActive
- ? "bg-accent-400/10 text-accent-400 border-2 border-accent-400/50"
- : "bg-surface-base text-text-primary border-2 border-border-base hover:border-accent-400/40 transition-colors"
- }
- >
+      <Button
+        variant="tertiary"
+        className={
+          isActive
+            ? "bg-accent-400/10 text-accent-400 border-2 border-accent-400/50"
+            : "bg-surface-base text-text-primary border-2 border-border-base hover:border-accent-400/40 transition-colors"
+        }
+      >
           <Icon icon="solar:filter-bold" width={16} />
           Filter Accounts
           {isActive ? (
@@ -83,8 +82,7 @@ export function AccountFilterPopover({
                 {selectedAccountIds.length}
               </span>
             ) : null}
-</Button>
-      </Popover.Trigger>
+      </Button>
       <Popover.Content placement="bottom start" className="w-72 p-0 bg-white/[0.04]">
         <div className="p-3 space-y-3">
           <div className="relative">

@@ -390,16 +390,10 @@ export function DashboardGrid() {
 
                 {userTeams.length > 1 && (
                   <Dropdown>
-                    <Dropdown.Trigger>
-                      <Button
-                        size="sm"
-                        variant="tertiary"
-                        className="w-full bg-surface-elevated"
-                      >
+                    <Button size="sm" variant="tertiary" className="w-full bg-surface-elevated">
                         Switch Workspace
                         <Icon icon="solar:alt-arrow-down-linear" width={14} />
-                      </Button>
-                    </Dropdown.Trigger>
+                    </Button>
                     <Dropdown.Popover>
                       <Dropdown.Menu
                         aria-label="Switch team"

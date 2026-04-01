@@ -238,15 +238,10 @@ export function AccountsTable({
                   </td>
                   <td className="py-2 px-3 border-t border-border-base text-xs" onClick={(e) => e.stopPropagation()}>
                     <Dropdown>
-<Button
- isIconOnly
- size="sm"
- variant="ghost"
- className="!bg-transparent text-text-tertiary hover:text-text-primary"
- >
+                      <Button isIconOnly size="sm" variant="ghost" className="!bg-transparent text-text-tertiary hover:text-text-primary">
                           <Icon icon="solar:menu-dots-bold" width={18} className="rotate-90" />
-                        </Button>
-<Dropdown.Popover>
+                      </Button>
+                      <Dropdown.Popover>
 
 <Dropdown.Menu
                         aria-label="Account actions"

@@ -325,15 +325,11 @@ export function CharacterStep({
                   {mainActors.length} actors
                 </div>
                 <Dropdown>
-<Button
- variant="outline"
- size="sm"
- className="border-border-base w-full sm:w-auto"
- >
+                  <Button variant="outline" size="sm" className="border-border-base w-full sm:w-auto">
                       <Icon icon="solar:sort-bold" width={16} />
                       {myActorsSort === "recent" ? "Recent" : "Popular"}
-                    </Button>
-<Dropdown.Popover>
+                  </Button>
+                  <Dropdown.Popover>
 
 <Dropdown.Menu
                     selectedKeys={[myActorsSort]}
@@ -421,15 +417,11 @@ export function CharacterStep({
                   actors
                 </div>
                 <Dropdown>
-<Button
- variant="outline"
- size="sm"
- className="border-border-base w-full sm:w-auto"
- >
+                  <Button variant="outline" size="sm" className="border-border-base w-full sm:w-auto">
                       <Icon icon="solar:sort-bold" width={16} />
                       {communitySort === "recent" ? "Recent" : "Popular"}
-                    </Button>
-<Dropdown.Popover>
+                  </Button>
+                  <Dropdown.Popover>
 
 <Dropdown.Menu
                     selectedKeys={[communitySort]}

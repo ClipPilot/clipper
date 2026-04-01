@@ -424,15 +424,11 @@ export default function ClipViewModal({
                       )}
                     </span>
                     <Dropdown>
-<Button
- size="sm"
- variant="tertiary"
- isPending={isMoving}
- >
+                      <Button size="sm" variant="tertiary" isPending={isMoving}>
                           {!isMoving && <Icon icon="solar:folder-send-bold" />}
                           Move to...
-                        </Button>
-<Dropdown.Popover>
+                      </Button>
+                      <Dropdown.Popover>
 
 <Dropdown.Menu
                         aria-label="Move to folder"
@@ -495,61 +491,46 @@ export default function ClipViewModal({
                         const isSelected = selectedTagIds.includes(tag.id);
                         const isDeleting = deletingTagId === tag.id;
                         return (
-                          <div
+                          <button
                             key={tag.id}
-                            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                            onClick={() => handleTagToggle(tag.id)}
+                            disabled={isUpdatingTags || isDeleting}
+                            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                               isSelected
-                                ? "ring-2 ring-offset-1 ring-offset-surface-elevated"
-                                : "opacity-60 hover:opacity-100"
+                                ? "ring-1"
+                                : "opacity-50 hover:opacity-100"
                             }`}
                             style={{
-                              backgroundColor: `${tag.color}20`,
+                              backgroundColor: `${tag.color}15`,
                               color: tag.color,
+                              // @ts-expect-error CSS custom property for ring color
+                              "--tw-ring-color": tag.color,
                             }}
                           >
-                            <Button
-                              variant="tertiary"
-                              size="sm"
-                              onPress={() => handleTagToggle(tag.id)}
-                              isDisabled={isUpdatingTags || isDeleting}
-                              className="inline-flex items-center gap-1.5"
-                            >
-                              <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ backgroundColor: tag.color }}
+                            <span
+                              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            {tag.name}
+                            {isSelected && (
+                              <Icon
+                                icon="solar:check-circle-bold"
+                                className="text-sm"
                               />
-                              {tag.name}
-                              {isSelected && (
-                                <Icon
-                                  icon="solar:check-circle-bold"
-                                  className="text-sm"
-                                />
-                              )}
-                            </Button>
+                            )}
                             {onDeleteTag && (
-                              <Button
-                                isIconOnly
-                                variant="tertiary"
-                                size="sm"
-                                onPress={(e) => handleDeleteTag(tag.id, e as any)}
-                                isDisabled={isDeleting}
+                              <span
+                                onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id, e as any); }}
                                 className="opacity-0 group-hover:opacity-100 hover:scale-110 transition-all ml-0.5"
-                                aria-label="Delete tag"
                               >
                                 {isDeleting ? (
-                                  <Icon
-                                    icon="solar:spinner-bold"
-                                    className="text-sm animate-spin"
-                                  />
+                                  <Icon icon="solar:spinner-bold" className="text-sm animate-spin" />
                                 ) : (
-                                  <Icon
-                                    icon="solar:close-circle-bold"
-                                    className="text-sm"
-                                  />
+                                  <Icon icon="solar:close-circle-bold" className="text-sm" />
                                 )}
-                              </Button>
+                              </span>
                             )}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

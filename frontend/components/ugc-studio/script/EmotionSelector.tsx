@@ -14,15 +14,11 @@ export function EmotionSelector({ value, onChange, compact }: EmotionSelectorPro
 
   return (
     <Dropdown>
-<Button
- variant="tertiary"
- size={compact ? "sm" : "md"}
- className={`${config.color} min-w-[100px]`}
- >
+      <Button variant="tertiary" size={compact ? "sm" : "md"} className={`${config.color} min-w-[100px]`}>
           <span className="mr-1">{config.emoji}</span>
           {config.label}
-        </Button>
-<Dropdown.Popover>
+      </Button>
+      <Dropdown.Popover>
 
 <Dropdown.Menu
         aria-label="Select emotion"

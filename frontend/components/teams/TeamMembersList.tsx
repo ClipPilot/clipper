@@ -207,12 +207,7 @@ export default function TeamMembersList({
                   user?.id &&
                   member.userId !== parseInt(user.id) && (
                     <Dropdown>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="tertiary"
-                        className="text-text-secondary"
-                      >
+                      <Button isIconOnly size="sm" variant="tertiary" className="text-text-secondary">
                         <Icon
                           icon="solar:menu-dots-bold-duotone"
                           width={20}

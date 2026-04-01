@@ -51,15 +51,15 @@ export function ComparisonModeSelector({
   return (
     <div className="flex items-center gap-1">
       <Dropdown>
-<Button
- size="sm"
- variant="tertiary"
- className="bg-surface-elevated text-text-secondary hover:text-text-primary"
- >
+        <Dropdown.Trigger
+          size="sm"
+          variant="tertiary"
+          className="bg-surface-elevated text-text-secondary hover:text-text-primary"
+        >
             <Icon icon="solar:chart-square-linear" width={16} />
             {getModeLabel(selected)}
             <Icon icon="solar:alt-arrow-down-linear" width={14} />
-</Button>
+        </Dropdown.Trigger>
 <Dropdown.Popover>
 
 <Dropdown.Menu

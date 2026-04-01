@@ -270,7 +270,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       if (!videoTrack) return;
 
       // Convert actions back to segments
-      const newSegments: Segment[] = videoTrack.actions.map((action) => {
+      const newSegments: Segment[] = videoTrack.actions.map((action: TimelineAction) => {
         const segmentAction = action as SegmentAction;
         return {
           id: action.id,

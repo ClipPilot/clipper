@@ -401,10 +401,10 @@ export default function CompetitorDetailPage() {
                     </a>
                   ) : competitor.accounts.length > 1 ? (
                     <Dropdown>
-<Button size="sm" isIconOnly variant="tertiary">
+                      <Button size="sm" isIconOnly variant="tertiary">
                           <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
-                        </Button>
-<Dropdown.Popover>
+                      </Button>
+                      <Dropdown.Popover>
 
 <Dropdown.Menu aria-label="Open profile">
                         {competitor.accounts.map((a) => (
