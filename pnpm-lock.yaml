@@ -327,6 +327,9 @@ importers:
       '@xzdarcy/react-timeline-editor':
         specifier: ^1.0.0
         version: 1.0.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@xzdarcy/timeline-engine':
+        specifier: ^1.0.0
+        version: 1.0.0
       client-zip:
         specifier: ^2.5.0
         version: 2.5.0
