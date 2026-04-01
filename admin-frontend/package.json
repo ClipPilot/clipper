@@ -11,7 +11,15 @@
   "dependencies": {
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "@clipper/shared-types": "file:../packages/shared-types",
+    "@clipper/shared-ui": "file:../packages/shared-ui"
+  },
+  "overrides": {
+    "@clipper/shared-ui": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

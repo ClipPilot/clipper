@@ -42,7 +42,15 @@
     "redux": "^5.0.1",
     "redux-thunk": "^3.1.0",
     "socket.io-client": "^4.8.1",
-    "wavesurfer.js": "^7.12.1"
+    "wavesurfer.js": "^7.12.1",
+    "@clipper/shared-types": "file:../packages/shared-types",
+    "@clipper/shared-ui": "file:../packages/shared-ui"
+  },
+  "overrides": {
+    "@clipper/shared-ui": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^16.2.1",
