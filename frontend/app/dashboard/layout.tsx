@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
-import { Avatar,
+import {
+  Avatar,
   Dropdown,
   Popover,
   Button,
   Tooltip,
   Toast,
-  cn } from "@heroui/react";
+  cn,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -91,7 +93,7 @@ export default function DashboardLayout({
   const getInitials = (
     firstName?: string,
     lastName?: string,
-    email?: string
+    email?: string,
   ) => {
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -128,19 +130,19 @@ export default function DashboardLayout({
         <aside
           className={cn(
             "relative bg-surface-base border-r border-border-base flex-shrink-0 flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden",
-            isCollapsed ? "w-[72px]" : "w-[256px]"
+            isCollapsed ? "w-[72px]" : "w-[256px]",
           )}
         >
           <div
             className={cn(
               "border-b border-border-base transition-[padding] duration-300",
-              contentCollapsed ? "p-3" : "p-4"
+              contentCollapsed ? "p-3" : "p-4",
             )}
           >
             <div
               className={cn(
                 "flex items-center mb-3",
-                contentCollapsed ? "justify-center" : "justify-between"
+                contentCollapsed ? "justify-center" : "justify-between",
               )}
             >
               {contentCollapsed ? (
@@ -172,14 +174,14 @@ export default function DashboardLayout({
                   <div className="flex items-center gap-1">
                     <NotificationBellButton />
                     <Button
- isIconOnly
- size="sm"
- variant="tertiary"
- className="text-text-secondary hover:text-text-primary"
- onPress={() =>
- setTheme(theme === "dark" ? "light" : "dark")
- }
- >
+                      isIconOnly
+                      size="sm"
+                      variant="tertiary"
+                      className="text-text-secondary hover:text-text-primary"
+                      onPress={() =>
+                        setTheme(theme === "dark" ? "light" : "dark")
+                      }
+                    >
                       <Icon
                         icon={
                           theme === "dark"
@@ -198,10 +200,12 @@ export default function DashboardLayout({
               <Popover
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
-
               >
                 <Popover.Trigger>
-                  <Button variant="tertiary" className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors">
+                  <Button
+                    variant="tertiary"
+                    className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors"
+                  >
                     {teamIconEl}
                   </Button>
                 </Popover.Trigger>
@@ -223,14 +227,13 @@ export default function DashboardLayout({
               <Popover
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
-
               >
                 <Popover.Trigger>
                   <Button
- variant="tertiary"
- size="sm"
- className="w-full justify-start bg-surface-elevated hover:bg-surface-hover h-auto py-1.5"
- >
+                    variant="tertiary"
+                    size="sm"
+                    className="w-full justify-start bg-surface-elevated hover:bg-surface-hover h-auto py-1.5"
+                  >
                     <div className="flex items-center gap-2.5 w-full">
                       {teamIconEl}
                       <span className="text-[13px] font-medium text-text-primary flex-1 text-left truncate">
@@ -264,7 +267,7 @@ export default function DashboardLayout({
           <div
             className={cn(
               "flex-1 overflow-y-auto transition-[padding] duration-300",
-              contentCollapsed ? "p-2" : "p-3"
+              contentCollapsed ? "p-2" : "p-3",
             )}
           >
             <Sidebar
@@ -276,44 +279,86 @@ export default function DashboardLayout({
           <div
             className={cn(
               "border-t border-border-base transition-[padding] duration-300",
-              contentCollapsed ? "p-2" : "p-3"
+              contentCollapsed ? "p-2" : "p-3",
             )}
           >
             {contentCollapsed ? (
               <div className="flex flex-col items-center gap-2">
                 <Dropdown>
-<Button variant="tertiary" className="rounded-lg hover:bg-surface-elevated transition-colors p-1">
+                  <Dropdown.Trigger>
+                    <Button
+                      variant="tertiary"
+                      className="rounded-lg hover:bg-surface-elevated transition-colors p-1"
+                    >
                       <Avatar size="sm" className="bg-accent-400 text-white">
-                        <Avatar.Fallback className="text-xs font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
+                        <Avatar.Fallback className="text-xs font-semibold">
+                          {getInitials(
+                            user?.firstName,
+                            user?.lastName,
+                            user?.email,
+                          )}
+                        </Avatar.Fallback>
                       </Avatar>
                     </Button>
-<Dropdown.Popover placement="right top">
-
-<Dropdown.Menu aria-label="Account actions">
-                    <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
-                      <Icon icon="solar:settings-bold-duotone" width={18} className="text-text-secondary" />
-                      Settings
-                    </Dropdown.Item>
-                    <Dropdown.Item key="api-platform" onPress={() => router.push("/dashboard/api-platform")}>
-                      <Icon icon="solar:code-bold-duotone" width={18} className="text-text-secondary" />
-                      API Platform
-                    </Dropdown.Item>
-                    <Dropdown.Item key="referrals" onPress={() => router.push("/dashboard/referrals")}>
-                      <Icon icon="solar:money-bag-bold-duotone" width={18} className="text-amber-500" />
-                      Referral Program
-                    </Dropdown.Item>
-                    {canViewPricing ? (
-                      <Dropdown.Item key="pricing" onPress={() => router.push("/dashboard/pricing")}>
-                        <Icon icon="solar:wallet-bold-duotone" width={18} className="text-text-secondary" />
-                        Pricing
+                  </Dropdown.Trigger>
+                  <Dropdown.Popover placement="right top">
+                    <Dropdown.Menu aria-label="Account actions">
+                      <Dropdown.Item
+                        key="settings"
+                        onPress={() => router.push("/dashboard/settings")}
+                      >
+                        <Icon
+                          icon="solar:settings-bold-duotone"
+                          width={18}
+                          className="text-text-secondary"
+                        />
+                        Settings
                       </Dropdown.Item>
-                    ) : null}
-                    <Dropdown.Item key="logout" variant="danger" onPress={handleSignOut}>
-                      <Icon icon="solar:logout-2-bold-duotone" width={18} />
-                      Sign Out
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-</Dropdown.Popover>
+                      <Dropdown.Item
+                        key="api-platform"
+                        onPress={() => router.push("/dashboard/api-platform")}
+                      >
+                        <Icon
+                          icon="solar:code-bold-duotone"
+                          width={18}
+                          className="text-text-secondary"
+                        />
+                        API Platform
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        key="referrals"
+                        onPress={() => router.push("/dashboard/referrals")}
+                      >
+                        <Icon
+                          icon="solar:money-bag-bold-duotone"
+                          width={18}
+                          className="text-amber-500"
+                        />
+                        Referral Program
+                      </Dropdown.Item>
+                      {canViewPricing ? (
+                        <Dropdown.Item
+                          key="pricing"
+                          onPress={() => router.push("/dashboard/pricing")}
+                        >
+                          <Icon
+                            icon="solar:wallet-bold-duotone"
+                            width={18}
+                            className="text-text-secondary"
+                          />
+                          Pricing
+                        </Dropdown.Item>
+                      ) : null}
+                      <Dropdown.Item
+                        key="logout"
+                        variant="danger"
+                        onPress={handleSignOut}
+                      >
+                        <Icon icon="solar:logout-2-bold-duotone" width={18} />
+                        Sign Out
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
                 </Dropdown>
 
                 <Tooltip>
@@ -331,64 +376,105 @@ export default function DashboardLayout({
                       />
                     </Button>
                   </Tooltip.Trigger>
-                  <Tooltip.Content placement="right">Expand sidebar</Tooltip.Content>
+                  <Tooltip.Content placement="right">
+                    Expand sidebar
+                  </Tooltip.Content>
                 </Tooltip>
               </div>
             ) : (
-                <Dropdown>
-<Button
- variant="tertiary"
- className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
- >
-                      <div className="flex items-center gap-2.5 w-full">
-                        <Avatar size="sm" className="bg-accent-400 text-white">
-                          <Avatar.Fallback className="text-sm font-semibold">{getInitials(user?.firstName, user?.lastName, user?.email)}</Avatar.Fallback>
-                        </Avatar>
-                        <div className="flex flex-col items-start flex-1 min-w-0">
-                          <span className="text-sm font-semibold text-text-primary truncate w-full">
-                            {user?.firstName && user?.lastName
-                              ? `${user.firstName} ${user.lastName}`
-                              : user?.email?.split("@")[0] || "User"}
-                          </span>
-                          <span className="text-xs text-text-tertiary truncate w-full">
-                            {user?.email}
-                          </span>
-                        </div>
-                        <Icon
-                          icon="solar:alt-arrow-up-bold-duotone"
-                          className="text-text-tertiary flex-shrink-0"
-                          width={18}
-                        />
+              <Dropdown>
+                <Dropdown.Trigger>
+                  <Button
+                    variant="tertiary"
+                    className="w-full h-auto p-2 justify-start bg-surface-elevated hover:bg-surface-hover transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 w-full">
+                      <Avatar size="sm" className="bg-accent-400 text-white">
+                        <Avatar.Fallback className="text-sm font-semibold">
+                          {getInitials(
+                            user?.firstName,
+                            user?.lastName,
+                            user?.email,
+                          )}
+                        </Avatar.Fallback>
+                      </Avatar>
+                      <div className="flex flex-col items-start flex-1 min-w-0">
+                        <span className="text-sm font-semibold text-text-primary truncate w-full">
+                          {user?.firstName && user?.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : user?.email?.split("@")[0] || "User"}
+                        </span>
+                        <span className="text-xs text-text-tertiary truncate w-full">
+                          {user?.email}
+                        </span>
                       </div>
-                    </Button>
-<Dropdown.Popover placement="top start">
-
-<Dropdown.Menu aria-label="Account actions">
-                    <Dropdown.Item key="settings" onPress={() => router.push("/dashboard/settings")}>
-                      <Icon icon="solar:settings-bold-duotone" width={18} className="text-text-secondary" />
+                      <Icon
+                        icon="solar:alt-arrow-up-bold-duotone"
+                        className="text-text-tertiary flex-shrink-0"
+                        width={18}
+                      />
+                    </div>
+                  </Button>
+                </Dropdown.Trigger>
+                <Dropdown.Popover placement="top start">
+                  <Dropdown.Menu aria-label="Account actions">
+                    <Dropdown.Item
+                      key="settings"
+                      onPress={() => router.push("/dashboard/settings")}
+                    >
+                      <Icon
+                        icon="solar:settings-bold-duotone"
+                        width={18}
+                        className="text-text-secondary"
+                      />
                       Settings
                     </Dropdown.Item>
-                    <Dropdown.Item key="api-platform" onPress={() => router.push("/dashboard/api-platform")}>
-                      <Icon icon="solar:code-bold-duotone" width={18} className="text-text-secondary" />
+                    <Dropdown.Item
+                      key="api-platform"
+                      onPress={() => router.push("/dashboard/api-platform")}
+                    >
+                      <Icon
+                        icon="solar:code-bold-duotone"
+                        width={18}
+                        className="text-text-secondary"
+                      />
                       API Platform
                     </Dropdown.Item>
-                    <Dropdown.Item key="referrals" onPress={() => router.push("/dashboard/referrals")}>
-                      <Icon icon="solar:money-bag-bold-duotone" width={18} className="text-amber-500" />
+                    <Dropdown.Item
+                      key="referrals"
+                      onPress={() => router.push("/dashboard/referrals")}
+                    >
+                      <Icon
+                        icon="solar:money-bag-bold-duotone"
+                        width={18}
+                        className="text-amber-500"
+                      />
                       Referral Program
                     </Dropdown.Item>
                     {canViewPricing ? (
-                      <Dropdown.Item key="pricing" onPress={() => router.push("/dashboard/pricing")}>
-                        <Icon icon="solar:wallet-bold-duotone" width={18} className="text-text-secondary" />
+                      <Dropdown.Item
+                        key="pricing"
+                        onPress={() => router.push("/dashboard/pricing")}
+                      >
+                        <Icon
+                          icon="solar:wallet-bold-duotone"
+                          width={18}
+                          className="text-text-secondary"
+                        />
                         Pricing
                       </Dropdown.Item>
                     ) : null}
-                    <Dropdown.Item key="logout" variant="danger" onPress={handleSignOut}>
+                    <Dropdown.Item
+                      key="logout"
+                      variant="danger"
+                      onPress={handleSignOut}
+                    >
                       <Icon icon="solar:logout-2-bold-duotone" width={18} />
                       Sign Out
                     </Dropdown.Item>
                   </Dropdown.Menu>
-</Dropdown.Popover>
-                </Dropdown>
+                </Dropdown.Popover>
+              </Dropdown>
             )}
           </div>
         </aside>
@@ -408,10 +494,10 @@ export default function DashboardLayout({
                   </p>
                 </div>
                 <Button
- size="sm"
- className="bg-accent-400 text-white font-semibold flex-shrink-0"
- onPress={() => router.push("/dashboard/pricing")}
- >
+                  size="sm"
+                  className="bg-accent-400 text-white font-semibold flex-shrink-0"
+                  onPress={() => router.push("/dashboard/pricing")}
+                >
                   Upgrade
                 </Button>
               </div>
