@@ -2,8 +2,8 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Spinner } from "@heroui/react";
 import { ChatInterface } from "@/components/ugc-studio/chat";
+import { PageLoader } from "@/components/ui/PageLoader";
 
 function CreateAdContent() {
   const searchParams = useSearchParams();
@@ -14,13 +14,7 @@ function CreateAdContent() {
 
 export default function CreateAdPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-          <Spinner size="lg" color="primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageLoader />}>
       <CreateAdContent />
     </Suspense>
   );

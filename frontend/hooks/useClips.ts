@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { addToast } from "@heroui/react";
+import { toast } from "@heroui/react";
 import { selectedTeamAtom } from "@/store/auth";
 import {
   pendingClipsAtom,
@@ -176,11 +176,7 @@ export function useClipsData() {
       console.error("Failed to delete clip:", error);
       // Remove from tombstone so refresh can restore it
       recentlyDeletedRef.current.delete(deletingId);
-      addToast({
-        title: "Failed to delete clip",
-        description: "The clip could not be deleted. It will reappear shortly.",
-        color: "danger",
-      });
+      toast.danger("Failed to delete clip", { description: "The clip could not be deleted. It will reappear shortly." });
     }
   }, [selectedTeam?.id, clipToDelete, setPendingClips, setUnsavedClips, setSavedClips, setIsDeleteModalOpen, setClipToDelete]);
 
@@ -260,19 +256,11 @@ export function useClipsData() {
         if (selectedFolderId !== folderId) {
           setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
         }
-        addToast({
-          title: "Clip moved",
-          description: folderId ? "Clip moved to folder" : "Clip moved to root",
-          color: "success",
-        });
+        toast.success("Clip moved", { description: folderId ? "Clip moved to folder" : "Clip moved to root" });
       } catch (error: any) {
         console.error("Failed to move clip:", error);
         const errorMessage = error?.message || "Failed to move clip to folder";
-        addToast({
-          title: "Failed to move clip",
-          description: errorMessage,
-          color: "danger",
-        });
+        toast.danger("Failed to move clip", { description: errorMessage });
       }
     },
     [selectedTeam?.id, selectedFolderId, setSavedClips]
@@ -384,18 +372,10 @@ export function useFolders() {
       try {
         await clipsAPI.createFolder(selectedTeam.id, data);
         await loadFolders();
-        addToast({
-          title: "Folder created",
-          description: `Folder "${data.name}" created successfully`,
-          color: "success",
-        });
+        toast.success("Folder created", { description: `Folder "${data.name}" created successfully` });
       } catch (error: any) {
         console.error("Failed to create folder:", error);
-        addToast({
-          title: "Failed to create folder",
-          description: error?.message || "Failed to create folder",
-          color: "danger",
-        });
+        toast.danger("Failed to create folder", { description: error?.message || "Failed to create folder" });
         throw error;
       }
     },
@@ -423,16 +403,9 @@ export function useFolders() {
       try {
         await clipsAPI.updateFolder(selectedTeam.id, folderId, updates);
         await loadFolders();
-        addToast({
-          title: "Folder updated",
-          color: "success",
-        });
+        toast.success("Folder updated");
       } catch (error: any) {
-        addToast({
-          title: "Failed to update folder",
-          description: error?.message || "Something went wrong",
-          color: "danger",
-        });
+        toast.danger("Failed to update folder", { description: error?.message || "Something went wrong" });
         throw error;
       }
     },

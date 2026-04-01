@@ -13,12 +13,9 @@ import { teamService } from "../services/team.service";
 import { eq, desc, and, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { handleControllerError } from "../utils/controllerHelpers";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
-
-const CREDIT_PER_IMAGE = 1;
+import { AuthRequest } from "../middleware/auth.middleware";
+import { CREDIT_PER_IMAGE } from "../constants/credits";
+import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
 
 export class ActorController {
   async generatePreview(req: AuthRequest, res: Response) {
@@ -49,7 +46,7 @@ export class ActorController {
       if (baseRemaining + addonRemaining < 1) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: 1,
           available: 0,
         });
@@ -179,7 +176,7 @@ export class ActorController {
       if (!consumeResult.success) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: creditCost,
           available: consumeResult.remaining.total,
           usage: {
@@ -477,7 +474,7 @@ export class ActorController {
       if (baseRemaining + addonRemaining < 1) {
         return res.status(403).json({
           error: "Insufficient credits",
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: 1,
           available: 0,
         });

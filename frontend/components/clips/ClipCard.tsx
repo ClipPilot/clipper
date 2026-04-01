@@ -30,7 +30,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   isUgcVideo = false,
 }) => {
   const { isDownloading, download } = useDownloadVideo();
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -68,9 +68,10 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
-    if (score >= 80) return "text-success-600 bg-success-600/10";
-    if (score >= 60) return "text-warning-600 bg-warning-600/10";
-    return "text-text-tertiary bg-surface-elevated";
+    if (score >= 80) return "text-green-500 bg-green-500/10";
+    if (score >= 60) return "text-yellow-500 bg-yellow-500/10";
+    if (score >= 40) return "text-orange-500 bg-orange-500/10";
+    return "text-red-500 bg-red-500/10";
   };
 
   const isEditing = clip.status === "pending" && clip.saved && !!clip.clipUrl;
@@ -133,7 +134,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return (
       <div
         ref={cardRef}
-        style={{ contentVisibility: "auto", containIntrinsicSize: "auto 58px" }}
         className={`flex items-center gap-4 p-3 bg-surface-base border border-border-accent rounded-lg hover:bg-surface-elevated transition-all cursor-pointer ${
           isDragging ? "opacity-50" : ""
         }`}
@@ -142,11 +142,11 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         onDragEnd={handleDragEnd}
         onClick={handleListClick}
       >
-        <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden relative z-0">
-          {clip.clipUrl && isVisible && !isSelected ? (
+        <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded-lg overflow-hidden relative z-0">
+          {clip.clipUrl && !isSelected ? (
             <video
               src={clip.clipUrl}
-              className="w-full h-full object-cover relative z-0"
+              className="w-full h-full object-cover"
               muted
               playsInline
               preload="metadata"
@@ -166,7 +166,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             {clip.title || `Clip #${clip.id}`}
           </h3>
           {isEditing && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 flex-shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-500 flex-shrink-0">
               <Icon icon="svg-spinners:ring-resize" className="text-xs" />
               Editing
             </span>
@@ -204,88 +204,102 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
-          <Tooltip content="View">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="w-8 h-8 min-w-8"
-              onPress={handleView}
-            >
-              <Icon
-                icon="solar:eye-bold"
-                className="text-lg text-text-secondary"
-              />
-            </Button>
-          </Tooltip>
-
-          {onEdit && clip.captions_data && (
-            <Tooltip content="Edit">
+          <Tooltip>
+            <Tooltip.Trigger>
               <Button
                 isIconOnly
                 size="sm"
-                variant="light"
+                variant="tertiary"
                 className="w-8 h-8 min-w-8"
-                onPress={handleEdit}
+                onPress={handleView}
               >
                 <Icon
-                  icon="solar:pen-bold"
+                  icon="solar:eye-bold"
                   className="text-lg text-text-secondary"
                 />
               </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content>View</Tooltip.Content>
+          </Tooltip>
+
+          {onEdit && clip.captions_data && (
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="tertiary"
+                  className="w-8 h-8 min-w-8"
+                  onPress={handleEdit}
+                >
+                  <Icon
+                    icon="solar:pen-bold"
+                    className="text-lg text-text-secondary"
+                  />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Edit</Tooltip.Content>
             </Tooltip>
           )}
 
-          <Tooltip content="Download">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="w-8 h-8 min-w-8"
-              onPress={handleDownload}
-              isDisabled={!clip.clipUrl || isDownloading}
-            >
-              <Icon
-                icon={
-                  isDownloading
-                    ? "svg-spinners:ring-resize"
-                    : "solar:download-bold"
-                }
-                className="text-lg text-text-secondary"
-              />
-            </Button>
-          </Tooltip>
-
-          {onAdPosting && (
-            <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
+          <Tooltip>
+            <Tooltip.Trigger>
               <Button
                 isIconOnly
                 size="sm"
-                variant="light"
+                variant="tertiary"
                 className="w-8 h-8 min-w-8"
-                onPress={isInCampaign ? undefined : onAdPosting}
-                isDisabled={isInCampaign}
+                onPress={handleDownload}
+                isDisabled={!clip.clipUrl || isDownloading}
               >
                 <Icon
-                  icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
-                  className={`text-lg ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
+                  icon={
+                    isDownloading
+                      ? "svg-spinners:ring-resize"
+                      : "solar:download-bold"
+                  }
+                  className="text-lg text-text-secondary"
                 />
               </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content>Download</Tooltip.Content>
+          </Tooltip>
+
+          {onAdPosting && (
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="tertiary"
+                  className="w-8 h-8 min-w-8"
+                  onPress={isInCampaign ? undefined : onAdPosting}
+                  isDisabled={isInCampaign}
+                >
+                  <Icon
+                    icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
+                    className={`text-lg ${isInCampaign ? "text-green-500" : "text-text-secondary"}`}
+                  />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{isInCampaign ? "In Campaign" : "Add to Campaign"}</Tooltip.Content>
             </Tooltip>
           )}
 
           {onDelete && (
-            <Tooltip content="Delete">
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                color="danger"
-                className="w-8 h-8 min-w-8"
-                onPress={handleDelete}
-              >
-                <Icon icon="mdi:delete-outline" className="text-lg" />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="danger-soft"
+                  className="w-8 h-8 min-w-8"
+                  onPress={handleDelete}
+                >
+                  <Icon icon="mdi:delete-outline" className="text-lg" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>Delete</Tooltip.Content>
             </Tooltip>
           )}
         </div>
@@ -303,172 +317,110 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
-      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
-      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer min-h-[180px] relative z-0 overflow-visible ${
+      className={`!p-0 bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] relative overflow-hidden rounded-xl ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onClick={handleCardClick}
     >
-      <div className="flex flex-col sm:flex-row h-full" onClick={handleCardClick}>
-        <div className="w-full sm:w-24 h-32 sm:h-full sm:min-h-[180px] flex-shrink-0 bg-surface-dark relative z-0">
-          {clip.clipUrl && isVisible && !isSelected ? (
+      <div className="flex flex-col sm:flex-row h-full">
+        <div className="w-full sm:w-28 h-36 sm:h-full flex-shrink-0 bg-surface-dark">
+          {clip.clipUrl && !isSelected ? (
             <video
               src={clip.clipUrl}
-              className="w-full h-full object-cover relative z-0"
+              className="w-full h-full object-cover"
               muted
               playsInline
               preload="metadata"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Icon
-                icon="solar:video-frame-play-vertical-bold-duotone"
-                className="text-3xl text-accent-400"
-              />
+              <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-3xl text-accent-400" />
             </div>
           )}
         </div>
-
         <div className="flex-1 flex flex-col min-w-0 p-3">
           <div className="flex items-start justify-between gap-2 mb-1">
             <h3 className="text-sm font-semibold text-text-primary truncate flex-1">
               {clip.title || `Clip #${clip.id}`}
             </h3>
             {clip.clip_score !== undefined && clip.clip_score !== null && (
-              <div
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0 ${getScoreClasses(clip.clip_score)}`}
-              >
+              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0 ${getScoreClasses(clip.clip_score)}`}>
                 <Icon icon="solar:star-bold" className="text-xs" />
                 <span className="text-xs font-medium">{clip.clip_score}</span>
               </div>
             )}
           </div>
-
           {isEditing && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 w-fit mb-1">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-500 w-fit mb-1">
               <Icon icon="svg-spinners:ring-resize" className="text-xs" />
               Editing
             </span>
           )}
-
           {clip.message && (
-            <p className="text-xs text-text-secondary line-clamp-2 mb-2">
-              {clip.message}
-            </p>
+            <p className="text-xs text-text-secondary line-clamp-2 mb-2">{clip.message}</p>
           )}
-
           {clip.tags && clip.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {clip.tags.slice(0, 2).map((tag) => (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color,
-                  }}
-                >
+                <span key={tag.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: `${tag.color}20`, color: tag.color }}>
                   {tag.name}
                 </span>
               ))}
-              {clip.tags.length > 2 && (
-                <span className="text-xs text-text-tertiary">
-                  +{clip.tags.length - 2}
-                </span>
-              )}
+              {clip.tags.length > 2 && <span className="text-xs text-text-tertiary">+{clip.tags.length - 2}</span>}
             </div>
           )}
-
           <div className="flex items-center gap-1 text-xs text-text-tertiary mb-2">
             <Icon icon="solar:clock-circle-outline" className="text-sm" />
             <span>{formatDate(clip.updated_at)}</span>
           </div>
-
           <div className="mt-auto flex items-center gap-0.5 flex-wrap">
-            <Tooltip content="View">
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-7 h-7 min-w-7"
-                onPress={handleView}
-              >
-                <Icon
-                  icon="solar:eye-bold"
-                  className="text-base text-text-secondary"
-                />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-7 h-7 min-w-7" onPress={handleView}>
+                  <Icon icon="solar:eye-bold" className="text-base text-text-secondary" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>View</Tooltip.Content>
             </Tooltip>
-
             {onEdit && clip.captions_data && (
-              <Tooltip content="Edit">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  className="w-7 h-7 min-w-7"
-                  onPress={handleEdit}
-                >
-                  <Icon
-                    icon="solar:pen-bold"
-                    className="text-base text-text-secondary"
-                  />
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button isIconOnly size="sm" variant="tertiary" className="w-7 h-7 min-w-7" onPress={handleEdit}>
+                    <Icon icon="solar:pen-bold" className="text-base text-text-secondary" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content>Edit</Tooltip.Content>
               </Tooltip>
             )}
-
-            <Tooltip content={isDownloading ? "Downloading..." : "Download"}>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-7 h-7 min-w-7"
-                onPress={handleDownload}
-                isDisabled={!clip.clipUrl || isDownloading}
-              >
-                <Icon
-                  icon={
-                    isDownloading
-                      ? "svg-spinners:ring-resize"
-                      : "solar:download-bold"
-                  }
-                  className="text-base text-text-secondary"
-                />
-              </Button>
+            <Tooltip>
+              <Tooltip.Trigger>
+                <Button isIconOnly size="sm" variant="tertiary" className="w-7 h-7 min-w-7" onPress={handleDownload} isDisabled={!clip.clipUrl || isDownloading}>
+                  <Icon icon={isDownloading ? "svg-spinners:ring-resize" : "solar:download-bold"} className="text-base text-text-secondary" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content>{isDownloading ? "Downloading..." : "Download"}</Tooltip.Content>
             </Tooltip>
-
             {onAdPosting && (
-              <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  className="w-7 h-7 min-w-7"
-                  onPress={isInCampaign ? undefined : onAdPosting}
-                  isDisabled={isInCampaign}
-                >
-                  <Icon
-                    icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
-                    className={`text-base ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
-                  />
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button isIconOnly size="sm" variant="tertiary" className="w-7 h-7 min-w-7" onPress={isInCampaign ? undefined : onAdPosting} isDisabled={isInCampaign}>
+                    <Icon icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"} className={`text-base ${isInCampaign ? "text-green-500" : "text-text-secondary"}`} />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content>{isInCampaign ? "In Campaign" : "Add to Campaign"}</Tooltip.Content>
               </Tooltip>
             )}
-
             {onDelete && (
-              <Tooltip content="Delete">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  color="danger"
-                  className="w-7 h-7 min-w-7"
-                  onPress={handleDelete}
-                >
-                  <Icon icon="mdi:delete-outline" className="text-base" />
-                </Button>
+              <Tooltip>
+                <Tooltip.Trigger>
+                  <Button isIconOnly size="sm" variant="danger-soft" className="w-7 h-7 min-w-7" onPress={handleDelete}>
+                    <Icon icon="mdi:delete-outline" className="text-base" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content>Delete</Tooltip.Content>
               </Tooltip>
             )}
           </div>

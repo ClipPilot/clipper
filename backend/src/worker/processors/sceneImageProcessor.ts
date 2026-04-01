@@ -11,6 +11,7 @@ import {
   buildBRollShotPrompt,
   buildSceneImagePrompt,
 } from "./sceneImagePrompts";
+import { getReferenceImageUrls } from "../../utils/s3Helpers";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -19,23 +20,6 @@ const PRODUCT_VISIBLE_SCENE_TYPES = ["solution", "demo", "cta", "testimonial"];
 
 function shouldIncludeProductImages(sceneType: string): boolean {
   return PRODUCT_VISIBLE_SCENE_TYPES.includes(sceneType.toLowerCase());
-}
-
-async function getReferenceImageUrls(imageKeys: string[]): Promise<string[]> {
-  const MAX_REFERENCE_IMAGES = 5;
-  const keysToFetch = imageKeys.slice(0, MAX_REFERENCE_IMAGES);
-  const urls: string[] = [];
-
-  for (const key of keysToFetch) {
-    try {
-      const url = await s3Service.getPresignedUrl(key, 3600);
-      urls.push(url);
-    } catch (error) {
-      console.error(`[SCENE_IMAGE] Failed to get URL for ${key}:`, error);
-    }
-  }
-
-  return urls;
 }
 
 async function updateJobProgress(

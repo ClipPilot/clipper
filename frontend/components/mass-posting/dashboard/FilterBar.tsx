@@ -1,13 +1,8 @@
 "use client";
 
-import {
-  Input,
+import { Input,
   Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Button,
-} from "@heroui/react";
+  Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface FilterBarProps {
@@ -66,77 +61,65 @@ export function FilterBar({
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border-base flex-wrap">
-      <Input
-        size="sm"
-        variant="flat"
-        placeholder={searchPlaceholder}
-        value={searchValue}
-        onValueChange={onSearchChange}
-        startContent={
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
           <Icon icon="solar:magnifer-linear" width={16} className="text-text-tertiary" />
-        }
-        classNames={{
-          base: "max-w-[220px]",
-          input: "bg-transparent text-sm",
-          inputWrapper: "bg-surface-elevated border border-border-base h-9",
-        }}
-      />
+        </div>
+        <Input
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={searchPlaceholder}
+          value={searchValue}
+          className="pl-9"
+        />
+      </div>
 
       {showDateRange && (
         <Dropdown>
-          <DropdownTrigger>
-            <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:calendar-linear" width={14} />}
-              endContent={<Icon icon="solar:alt-arrow-down-linear" width={10} />}
+          <Button size="sm" variant="tertiary" className="bg-white/[0.04] text-text-secondary h-9">
+            <Icon icon="solar:calendar-linear" width={14} />
+            {selectedDateLabel}
+            <Icon icon="solar:alt-arrow-down-linear" width={10} />
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              aria-label="Date range"
+              selectionMode="single"
+              selectedKeys={new Set([dateRangeValue])}
+              onSelectionChange={(keys) => {
+                const key = Array.from(keys)[0] as string;
+                if (key) onDateRangeChange?.(key);
+              }}
             >
-              {selectedDateLabel}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu
-            aria-label="Date range"
-            selectionMode="single"
-            selectedKeys={new Set([dateRangeValue])}
-            onSelectionChange={(keys) => {
-              const key = Array.from(keys)[0] as string;
-              if (key) onDateRangeChange?.(key);
-            }}
-          >
-            {dateOptions.map((opt) => (
-              <DropdownItem key={opt.key}>{opt.label}</DropdownItem>
-            ))}
-          </DropdownMenu>
+              {dateOptions.map((opt) => (
+                <Dropdown.Item key={opt.key}>{opt.label}</Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
         </Dropdown>
       )}
 
       {showPlatformFilter && (
         <Dropdown>
-          <DropdownTrigger>
-            <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-              startContent={<Icon icon="solar:filter-linear" width={14} />}
-              endContent={<Icon icon="solar:alt-arrow-down-linear" width={10} />}
+          <Button size="sm" variant="tertiary" className="bg-white/[0.04] text-text-secondary h-9">
+            <Icon icon="solar:filter-linear" width={14} />
+            {selectedPlatformLabel}
+            <Icon icon="solar:alt-arrow-down-linear" width={10} />
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              aria-label="Platform filter"
+              selectionMode="single"
+              selectedKeys={new Set([platformValue])}
+              onSelectionChange={(keys) => {
+                const key = Array.from(keys)[0] as string;
+                if (key) onPlatformChange?.(key);
+              }}
             >
-              {selectedPlatformLabel}
-            </Button>
-          </DropdownTrigger>
-          <DropdownMenu
-            aria-label="Platform filter"
-            selectionMode="single"
-            selectedKeys={new Set([platformValue])}
-            onSelectionChange={(keys) => {
-              const key = Array.from(keys)[0] as string;
-              if (key) onPlatformChange?.(key);
-            }}
-          >
-            {PLATFORM_OPTIONS.map((opt) => (
-              <DropdownItem key={opt.key}>{opt.label}</DropdownItem>
-            ))}
-          </DropdownMenu>
+              {PLATFORM_OPTIONS.map((opt) => (
+                <Dropdown.Item key={opt.key}>{opt.label}</Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
         </Dropdown>
       )}
 

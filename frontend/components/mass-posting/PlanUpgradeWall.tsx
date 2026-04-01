@@ -11,17 +11,6 @@ interface PlanUpgradeWallProps {
   buttonLabel?: string;
 }
 
-/**
- * Full-screen locked-feature gate shown when the current plan
- * does not include the requested feature.
- *
- * Usage:
- *   <PlanUpgradeWall
- *     title="Publish Posts"
- *     description="Send clips to social platforms. Available on Studio plan and above."
- *     icon="solar:posts-carousel-vertical-bold-duotone"
- *   />
- */
 export function PlanUpgradeWall({
   title,
   description,
@@ -52,11 +41,11 @@ export function PlanUpgradeWall({
           </p>
         </div>
         <Button
-          size="lg"
-          className="w-full bg-accent-400 text-white font-semibold"
-          onPress={() => router.push("/dashboard/pricing")}
-          startContent={<Icon icon="solar:rocket-bold" width={18} />}
-        >
+ size="lg"
+ className="w-full bg-accent-400 text-white font-semibold"
+ onPress={() => router.push("/dashboard/pricing")}
+ >
+          <Icon icon="solar:rocket-bold" width={18} />
           {buttonLabel}
         </Button>
       </div>

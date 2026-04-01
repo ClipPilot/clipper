@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { Button, Card, CardBody, CardHeader, Input, Progress, Tabs, Tab } from "@heroui/react";
+import { Button, Card, InputGroup, ProgressBar, Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { MultiSegmentTrimmer, VideoSegment } from "./multi-segment";
 import { UploadedFile } from "./types";
@@ -183,12 +183,11 @@ export function VideoUploadCard({
           }}
         />
         <Button
-          size="md"
-          variant="flat"
-          color="primary"
-          onPress={() => videoInputRef.current?.click()}
-          startContent={<Icon icon="solar:folder-open-bold" />}
-        >
+ size="md"
+ variant="tertiary"
+ onPress={() => videoInputRef.current?.click()}
+ >
+          <Icon icon="solar:folder-open-bold" />
           Browse Files
         </Button>
         <p className="text-xs text-text-muted">MP4, MOV, WebM supported</p>
@@ -212,13 +211,13 @@ export function VideoUploadCard({
             )}
           </div>
           <div className="w-full max-w-sm">
-            <Progress
-              value={downloadProgress?.type === "uploading" ? 100 : downloadProgress?.percent || 0}
-              color="primary"
-              className="mb-2"
-              isIndeterminate={downloadProgress?.type === "start" || downloadProgress?.type === "uploading"}
-              showValueLabel={downloadProgress?.type === "progress"}
-            />
+            <ProgressBar
+ value={downloadProgress?.type === "uploading" ? 100 : downloadProgress?.percent || 0}
+ className="mb-2"
+ isIndeterminate={downloadProgress?.type === "start" || downloadProgress?.type === "uploading"}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
             <div className="flex justify-between text-xs text-text-tertiary">
               <span>
                 {downloadProgress?.type === "uploading"
@@ -234,26 +233,26 @@ export function VideoUploadCard({
       ) : (
         <>
           <div className="flex gap-2">
-            <Input
-              placeholder="Paste video URL (YouTube, TikTok, etc.)"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
-              }}
-              startContent={<Icon icon="solar:link-bold" className="text-text-tertiary" />}
-              isDisabled={isFetchingInfo}
-              classNames={{
-                inputWrapper: "bg-surface-elevated border border-border-base",
-              }}
-            />
+            <InputGroup className="flex-1">
+              <InputGroup.Prefix>
+                <Icon icon="solar:link-bold" className="text-text-tertiary" />
+              </InputGroup.Prefix>
+              <InputGroup.Input
+                placeholder="Paste video URL (YouTube, TikTok, etc.)"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
+                }}
+                disabled={isFetchingInfo}
+              />
+            </InputGroup>
             <Button
-              color="primary"
-              variant="flat"
-              onPress={handleFetchVideoInfo}
-              isLoading={isFetchingInfo}
-              isDisabled={!urlInput.trim()}
-            >
+ variant="tertiary"
+ onPress={handleFetchVideoInfo}
+ isPending={isFetchingInfo}
+ isDisabled={!urlInput.trim()}
+ >
               Fetch
             </Button>
           </div>
@@ -284,13 +283,12 @@ export function VideoUploadCard({
                   </div>
                 </div>
               </div>
-              <Button
-                color="primary"
-                className="w-full mt-4"
-                onPress={handleUrlDownload}
-                isDisabled={!teamId}
-                startContent={<Icon icon="solar:download-bold" />}
-              >
+              <Button variant="primary"
+ className="w-full mt-4"
+ onPress={handleUrlDownload}
+ isDisabled={!teamId}
+ >
+                <Icon icon="solar:download-bold" />
                 Download & Import
               </Button>
             </div>
@@ -314,7 +312,7 @@ export function VideoUploadCard({
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardHeader className="pb-0">
+      <Card.Header className="pb-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
             <Icon icon="solar:videocamera-record-bold-duotone" className="text-accent-400" width={22} />
@@ -324,8 +322,8 @@ export function VideoUploadCard({
             <p className="text-xs text-text-tertiary">Upload video and select clips (max 60s total)</p>
           </div>
         </div>
-      </CardHeader>
-      <CardBody className="pt-4">
+      </Card.Header>
+      <Card.Content className="pt-4">
         {video ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 p-2 bg-surface-elevated rounded-lg">
@@ -338,22 +336,22 @@ export function VideoUploadCard({
               <div className="flex items-center gap-2 flex-shrink-0">
                 {onToggleEditor && (
                   <Button
-                    size="sm"
-                    variant="flat"
-                    className={showEditor ? "bg-purple-500/20 text-purple-400" : "bg-surface-base text-text-secondary"}
-                    onPress={onToggleEditor}
-                    startContent={<Icon icon={showEditor ? "solar:minimize-square-bold" : "solar:tuning-2-bold"} width={16} />}
-                  >
+ size="sm"
+ variant="tertiary"
+ className={showEditor ? "bg-purple-500/20 text-purple-400" : "bg-surface-base text-text-secondary"}
+ onPress={onToggleEditor}
+ >
+                    <Icon icon={showEditor ? "solar:minimize-square-bold" : "solar:tuning-2-bold"} width={16} />
                     {showEditor ? "Hide Editor" : "Manual Edit"}
                   </Button>
                 )}
                 <Button
-                  size="sm"
-                  variant="flat"
-                  className="bg-surface-base text-text-secondary"
-                  onPress={handleClear}
-                  startContent={<Icon icon="solar:refresh-bold" width={16} />}
-                >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-base text-text-secondary"
+ onPress={handleClear}
+ >
+                  <Icon icon="solar:refresh-bold" width={16} />
                   Change
                 </Button>
               </div>
@@ -380,41 +378,34 @@ export function VideoUploadCard({
         ) : isDownloading ? (
           renderUrlDownload()
         ) : (
-          <Tabs
-            aria-label="Upload method"
-            variant="underlined"
-            classNames={{
-              tabList: "gap-4 w-full relative rounded-none p-0 border-b border-border-base mb-4",
-              cursor: "w-full bg-accent-400",
-              tab: "max-w-fit px-2 h-10",
-              tabContent: "group-data-[selected=true]:text-accent-400",
-            }}
-          >
-            <Tab
-              key="file"
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="solar:upload-bold" />
-                  <span>Upload File</span>
-                </div>
-              }
-            >
+          <Tabs>
+            <Tabs.ListContainer>
+              <Tabs.List aria-label="Upload method">
+                <Tabs.Tab id="file">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="solar:upload-bold" />
+                    <span>Upload File</span>
+                  </div>
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+                <Tabs.Tab id="url">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="solar:link-bold" />
+                    <span>Paste URL</span>
+                  </div>
+                  <Tabs.Indicator />
+                </Tabs.Tab>
+              </Tabs.List>
+            </Tabs.ListContainer>
+            <Tabs.Panel id="file">
               {renderFileUpload()}
-            </Tab>
-            <Tab
-              key="url"
-              title={
-                <div className="flex items-center gap-2">
-                  <Icon icon="solar:link-bold" />
-                  <span>Paste URL</span>
-                </div>
-              }
-            >
+            </Tabs.Panel>
+            <Tabs.Panel id="url">
               {renderUrlDownload()}
-            </Tab>
+            </Tabs.Panel>
           </Tabs>
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

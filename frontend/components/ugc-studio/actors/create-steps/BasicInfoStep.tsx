@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@heroui/react";
+import { TextField, Label, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ChipSelector } from "../ChipSelector";
 import { GENDERS, AGE_RANGES } from "../types";
@@ -35,22 +35,14 @@ export function BasicInfoStep({
       </div>
 
       <div className="space-y-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Actor Name</label>
+        <TextField fullWidth variant="secondary">
+          <Label>Actor Name</Label>
           <Input
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="e.g., Sarah, Alex, Jordan"
-            size="lg"
-            classNames={{
-              input: "bg-transparent",
-              inputWrapper: "bg-surface-elevated border border-border-base hover:border-accent-400/50",
-            }}
-            startContent={
-              <Icon icon="solar:user-rounded-bold" className="text-text-muted" width={18} />
-            }
           />
-        </div>
+        </TextField>
 
         <ChipSelector
           label="Gender"

@@ -288,6 +288,13 @@
       "when": 1774289841626,
       "tag": "0040_moaning_dragon_lord",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1774547766798,
+      "tag": "0041_pink_boomer",
+      "breakpoints": true
     }
   ]
 }

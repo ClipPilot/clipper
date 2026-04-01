@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Input, Textarea, Button } from "@heroui/react";
+import { Input, TextArea, Button, TextField, Label, FieldError} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import {
@@ -34,13 +34,11 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   const [uploadingPfp, setUploadingPfp] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  // Form state (TikTok only)
   const [username, setUsername] = useState("");
   const [commentText, setCommentText] = useState("");
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | undefined>();
   const [profilePictureS3Key, setProfilePictureS3Key] = useState<string | undefined>();
 
-  // Check if we're editing an existing comment overlay
   const isEditing = editingOverlayId && selectedOverlay?.type === "comment" && selectedOverlay.commentData;
 
   const loadFromOverlay = (overlay: MediaOverlay) => {
@@ -52,7 +50,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
     }
   };
 
-  // When editing, sync form state from selected overlay
   React.useEffect(() => {
     if (isEditing && selectedOverlay) {
       loadFromOverlay(selectedOverlay);
@@ -119,7 +116,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
     const dims = COMMENT_DIMENSIONS.tiktok;
 
     if (isEditing && editingOverlayId) {
-      // Update existing overlay
       setOverlays((prev) =>
         prev.map((o) =>
           o.id === editingOverlayId
@@ -128,7 +124,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         )
       );
     } else {
-      // Create new overlay
       const newOverlay: MediaOverlay = {
         id: generateOverlayId(),
         type: "comment",
@@ -150,7 +145,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
       setSelectedOverlayId(newOverlay.id);
     }
 
-    // Reset form (skip revoking the blob URL since the overlay now owns it)
     if (!isEditing) {
       resetForm(true);
       setShowForm(false);
@@ -168,18 +162,18 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   if (!showForm) {
     return (
       <Button
-        variant="bordered"
+        variant="outline"
         className="w-full"
         onPress={() => setShowForm(true)}
-        startContent={<Icon icon="solar:chat-round-dots-bold" />}
       >
+        <Icon icon="solar:chat-round-dots-bold" />
         Add Comment Overlay
       </Button>
     );
   }
 
   return (
-    <div className="space-y-4 bg-surface-elevated rounded-lg p-4">
+    <div className="space-y-4 bg-white/[0.04] rounded-lg p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
           <Icon icon="simple-icons:tiktok" className="text-accent-400" />
@@ -188,7 +182,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         {!isEditing && (
           <Button
             size="sm"
-            variant="light"
+            variant="tertiary"
             isIconOnly
             onPress={() => { resetForm(); setShowForm(false); }}
           >
@@ -197,7 +191,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         )}
       </div>
 
-      {/* Profile Picture */}
       <div>
         <p className="text-xs text-text-tertiary mb-2">Profile Picture</p>
         <div className="flex items-center gap-3">
@@ -208,12 +201,15 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
                 alt="Profile"
                 className="w-10 h-10 rounded-full object-cover"
               />
-              <button
-                onClick={handleRemoveProfilePic}
-                className="absolute -top-1 -right-1 w-4 h-4 bg-danger-500 rounded-full flex items-center justify-center"
+              <Button
+                isIconOnly
+                variant="tertiary"
+                size="sm"
+                onPress={handleRemoveProfilePic}
+                className="absolute -top-1 -right-1 w-4 h-4 min-w-0 bg-red-500 rounded-full flex items-center justify-center"
               >
                 <Icon icon="solar:close-circle-bold" className="text-white text-xs" />
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center text-text-tertiary">
@@ -229,46 +225,49 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
           />
           <Button
             size="sm"
-            variant="flat"
+            variant="tertiary"
             onPress={() => fileInputRef.current?.click()}
-            isLoading={uploadingPfp}
+            isPending={uploadingPfp}
           >
             {profilePictureUrl ? "Change" : "Upload"}
           </Button>
         </div>
       </div>
 
-      {/* Username */}
-      <Input
-        label="Username"
-        placeholder="username"
-        value={username}
-        onValueChange={setUsername}
-        size="sm"
-        maxLength={30}
-        startContent={<span className="text-text-tertiary text-sm">@</span>}
-      />
+      <TextField fullWidth variant="secondary">
+        <Label>Username</Label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary text-sm pointer-events-none">@</span>
+          <Input
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="username"
+            value={username}
+            maxLength={30}
+            className="pl-9"
+          />
+        </div>
+        <FieldError />
+      </TextField>
 
-      {/* Comment Text */}
-      <Textarea
-        label="Comment"
-        placeholder="Type your comment..."
-        value={commentText}
-        onValueChange={setCommentText}
-        size="sm"
-        maxLength={200}
-        minRows={2}
-        maxRows={4}
-      />
+      <TextField fullWidth variant="secondary">
+        <Label>Comment</Label>
+        <TextArea
+          placeholder="Type your comment..."
+          value={commentText}
+          onChange={(e) => setCommentText(e.target.value)}
+          maxLength={200}
+          rows={2}
+        />
+        <FieldError />
+      </TextField>
 
-      {/* Add/Update Button */}
       <Button
-        color="primary"
+        variant="primary"
         className="w-full"
         onPress={handleAddComment}
         isDisabled={!username.trim() || !commentText.trim()}
-        startContent={<Icon icon={isEditing ? "solar:pen-bold" : "solar:add-circle-bold"} />}
       >
+        <Icon icon={isEditing ? "solar:pen-bold" : "solar:add-circle-bold"} />
         {isEditing ? "Update Comment" : "Add to Video"}
       </Button>
     </div>

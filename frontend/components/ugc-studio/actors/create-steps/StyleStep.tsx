@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Textarea } from "@heroui/react";
+import { Input, TextArea, TextField, Label } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ChipSelector } from "../ChipSelector";
 import { OUTFITS, StyleConfig } from "../types";
@@ -22,9 +22,7 @@ export function StyleStep({ style, onStyleChange }: StyleStepProps) {
           <Icon icon="solar:hanger-2-bold-duotone" className="text-accent-400" width={28} />
         </div>
         <h3 className="text-xl font-semibold text-text-primary mb-2">Style & Setting</h3>
-        <p className="text-text-secondary text-sm">
-          Choose the outfit and location for your actor
-        </p>
+        <p className="text-text-secondary text-sm">Choose the outfit and location for your actor</p>
       </div>
 
       <div className="space-y-6">
@@ -37,55 +35,37 @@ export function StyleStep({ style, onStyleChange }: StyleStepProps) {
         />
 
         {style.outfit === "other" && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-text-primary">Describe the outfit</label>
+          <TextField fullWidth variant="secondary">
+            <Label>Describe the outfit</Label>
             <Input
               value={style.outfitCustom || ""}
               onChange={(e) => handleChange("outfitCustom", e.target.value)}
               placeholder="e.g., Summer dress, Business casual, Athleisure..."
-              classNames={{
-                input: "bg-transparent",
-                inputWrapper: "bg-surface-elevated border border-border-base hover:border-accent-400/50",
-              }}
-              startContent={
-                <Icon icon="solar:t-shirt-bold" className="text-text-muted" width={18} />
-              }
             />
-          </div>
+          </TextField>
         )}
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Setting / Location</label>
+        <TextField fullWidth variant="secondary">
+          <Label>Setting / Location</Label>
           <Input
             value={style.setting}
             onChange={(e) => handleChange("setting", e.target.value)}
             placeholder="e.g., Modern living room, Coffee shop, Beach, Office desk..."
-            classNames={{
-              input: "bg-transparent",
-              inputWrapper: "bg-surface-elevated border border-border-base hover:border-accent-400/50",
-            }}
-            startContent={
-              <Icon icon="solar:home-2-bold" className="text-text-muted" width={18} />
-            }
           />
-        </div>
+        </TextField>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-text-primary">Anything else?</label>
-          <Textarea
+        <TextField fullWidth variant="secondary">
+          <Label>Anything else?</Label>
+          <TextArea
             value={style.anythingElse || ""}
-            onChange={(e) => handleChange("anythingElse", e.target.value)}
-            placeholder="Add any other details you want... e.g., holding a coffee cup, warm lighting, smiling, looking at camera..."
-            minRows={3}
-            classNames={{
-              input: "bg-transparent",
-              inputWrapper: "bg-surface-elevated border border-border-base hover:border-accent-400/50",
-            }}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange("anythingElse", e.target.value)}
+            placeholder="Add any other details... e.g., holding a coffee cup, warm lighting, smiling..."
+            rows={3}
           />
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-muted mt-1">
             Optional: Add specific poses, props, expressions, or any other details
           </p>
-        </div>
+        </TextField>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Button, Card, CardBody, CardHeader, Input, Tabs, Tab, addToast } from "@heroui/react";
+import { Button, Card, Input, Tabs, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EXAMPLE_CHARACTERS, SelectedCharacter } from "./types";
 import { savedFacesAPI, SavedFace } from "@/api/ugc/savedFaces";
@@ -226,9 +226,9 @@ export function CharacterSelector({
 
       URL.revokeObjectURL(savingFace.preview);
       setSavingFace(null);
-      addToast({ title: "Face saved!", color: "success" });
+      toast.success("Face saved!");
     } catch (err) {
-      addToast({ title: "Failed to save face", color: "danger" });
+      toast.danger("Failed to save face");
     } finally {
       setIsSaving(false);
     }
@@ -264,9 +264,9 @@ export function CharacterSelector({
     try {
       await savedFacesAPI.delete(face.id);
       setSavedFaces((prev) => prev.filter((f) => f.id !== face.id));
-      addToast({ title: "Face deleted", color: "success" });
+      toast.success("Face deleted");
     } catch {
-      addToast({ title: "Failed to delete", color: "danger" });
+      toast.danger("Failed to delete");
     }
   };
 
@@ -332,7 +332,7 @@ export function CharacterSelector({
 
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardHeader className="pb-0">
+      <Card.Header className="pb-0">
         <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
             <Icon icon="solar:user-circle-bold-duotone" className="text-purple-500" width={22} />
@@ -346,13 +346,13 @@ export function CharacterSelector({
             </p>
           </div>
           {selectedCharacters.length > 0 && (
-            <Button size="sm" variant="flat" className="text-text-muted" onPress={handleClearAll}>
+            <Button size="sm" variant="tertiary" className="text-text-muted" onPress={handleClearAll}>
               Clear all
             </Button>
           )}
         </div>
-      </CardHeader>
-      <CardBody className="pt-4 space-y-4">
+      </Card.Header>
+      <Card.Content className="pt-4 space-y-4">
         {selectedCharacters.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-text-tertiary">Selected faces</p>
@@ -364,20 +364,25 @@ export function CharacterSelector({
                 >
                   <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-elevated group">
                     <img src={character.src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => handleRemoveCharacter(index)}
+                    <Button
+                      isIconOnly
+                      variant="tertiary"
+                      size="sm"
+                      onPress={() => handleRemoveCharacter(index)}
                       className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Icon icon="solar:close-circle-bold" width={14} />
-                    </button>
+                    </Button>
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
                       <span className="text-[10px] text-white font-medium">
                         {character.type === "uploaded" ? "Custom" : character.type === "saved" ? "Saved" : "Example"}
                       </span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => openVoiceSidebar(index)}
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    onPress={() => openVoiceSidebar(index)}
                     className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all border ${
                       character.voiceId
                         ? "border-accent-400/50 bg-accent-400/10 text-accent-400"
@@ -389,7 +394,7 @@ export function CharacterSelector({
                       {character.voiceName || "Voice"}
                     </span>
                     <Icon icon="solar:alt-arrow-right-linear" width={12} className="text-text-tertiary shrink-0" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -403,28 +408,32 @@ export function CharacterSelector({
               <div className="flex-1 space-y-2">
                 <p className="text-sm font-medium text-text-primary">Save this face?</p>
                 <Input
-                  size="sm"
-                  placeholder="Enter a name..."
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  classNames={{ inputWrapper: "bg-surface-elevated" }}
-                />
+ placeholder="Enter a name..."
+ value={saveName}
+ onChange={(e) => setSaveName(e.target.value)}
+ />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="flat" className="flex-1" onPress={handleAddWithoutSaving}>
+              <Button size="sm" variant="tertiary" className="flex-1" onPress={handleAddWithoutSaving}>
                 Just use once
               </Button>
               <Button
                 size="sm"
                 className="flex-1 bg-purple-500 text-white"
                 onPress={handleSaveAndAdd}
-                isLoading={isSaving}
-                isDisabled={!saveName.trim()}
+                isDisabled={isSaving || !saveName.trim()}
               >
-                Save & Use
+                {isSaving ? (
+                  <>
+                    <Icon icon="solar:refresh-circle-bold-duotone" className="animate-spin" width={16} />
+                    Saving...
+                  </>
+                ) : (
+                  "Save & Use"
+                )}
               </Button>
-              <Button size="sm" variant="flat" isIconOnly onPress={handleCancelSave}>
+              <Button size="sm" variant="tertiary" isIconOnly onPress={handleCancelSave}>
                 <Icon icon="solar:close-circle-bold" />
               </Button>
             </div>
@@ -443,9 +452,9 @@ export function CharacterSelector({
 
             <div className="flex p-1 bg-surface-elevated rounded-lg border border-border-base">
               {teamId && (
-                <button
+                <div
                   onClick={() => setActiveTab("saved")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                     activeTab === "saved"
                       ? "bg-purple-500 text-white"
                       : "text-text-secondary hover:text-text-primary"
@@ -460,11 +469,11 @@ export function CharacterSelector({
                       {savedFaces.length}
                     </span>
                   )}
-                </button>
+                </div>
               )}
-              <button
+              <div
                 onClick={() => setActiveTab("examples")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "examples"
                     ? "bg-purple-500 text-white"
                     : "text-text-secondary hover:text-text-primary"
@@ -472,10 +481,10 @@ export function CharacterSelector({
               >
                 <Icon icon="solar:gallery-bold" width={14} />
                 <span className="hidden sm:inline">Examples</span>
-              </button>
-              <button
+              </div>
+              <div
                 onClick={() => setActiveTab("upload")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeTab === "upload"
                     ? "bg-purple-500 text-white"
                     : "text-text-secondary hover:text-text-primary"
@@ -483,7 +492,7 @@ export function CharacterSelector({
               >
                 <Icon icon="solar:upload-bold" width={14} />
                 <span className="hidden sm:inline">Upload</span>
-              </button>
+              </div>
             </div>
 
             {activeTab === "saved" && teamId && (
@@ -503,11 +512,10 @@ export function CharacterSelector({
                     {savedFaces.map((face) => {
                       const selected = isSavedFaceSelected(face.id);
                       return (
-                        <button
+                        <div
                           key={face.id}
-                          onClick={() => handleSavedFaceSelect(face)}
-                          disabled={loadingCharacterId !== null || selected}
-                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none group ${
+                          onClick={() => !(loadingCharacterId !== null || selected) && handleSavedFaceSelect(face)}
+                          className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all cursor-pointer group ${
                             selected
                               ? "border-green-500 opacity-50 cursor-not-allowed"
                               : loadingCharacterId === String(face.id)
@@ -520,14 +528,14 @@ export function CharacterSelector({
                             <span className="text-[10px] text-white font-medium truncate block">{face.name}</span>
                           </div>
                           {!selected && (
-                            <button
+                            <div
                               onClick={(e) => handleDeleteSavedFace(face, e)}
-                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             >
                               <Icon icon="solar:trash-bin-trash-bold" width={12} />
-                            </button>
+                            </div>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -540,20 +548,19 @@ export function CharacterSelector({
                 {EXAMPLE_CHARACTERS.map((char) => {
                   const selected = isExampleSelected(char.src);
                   return (
-                    <button
+                    <div
                       key={char.id}
-                      onClick={() => handleExampleSelect(String(char.id), char.src)}
-                      disabled={loadingCharacterId !== null || selected}
-                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                      onClick={() => !(loadingCharacterId !== null || selected) && handleExampleSelect(String(char.id), char.src)}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
                         selected
                           ? "border-green-500 opacity-50 cursor-not-allowed"
                           : loadingCharacterId === String(char.id)
                             ? "border-purple-500 opacity-50"
-                            : "border-transparent hover:border-purple-500 hover:scale-105"
+                            : "border-transparent hover:border-purple-500 hover:scale-105 cursor-pointer"
                       }`}
                     >
                       <img src={char.src} alt={`Character ${char.id}`} className="w-full h-full object-cover" />
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -594,12 +601,12 @@ export function CharacterSelector({
                     }}
                   />
                   <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-purple-500/20 text-purple-500"
-                    onPress={() => imageInputRef.current?.click()}
-                    startContent={<Icon icon="solar:folder-open-bold" />}
-                  >
+ size="sm"
+ variant="tertiary"
+ className="bg-purple-500/20 text-purple-500"
+ onPress={() => imageInputRef.current?.click()}
+ >
+                    <Icon icon="solar:folder-open-bold" />
                     Browse
                   </Button>
                 </div>
@@ -645,7 +652,7 @@ export function CharacterSelector({
                     </p>
                   </div>
                 </div>
-                <Button isIconOnly variant="light" size="sm" onPress={closeVoiceSidebar}>
+                <Button isIconOnly variant="tertiary" size="sm" onPress={closeVoiceSidebar}>
                   <Icon icon="solar:close-circle-bold" className="text-text-muted" width={20} />
                 </Button>
               </div>
@@ -653,26 +660,24 @@ export function CharacterSelector({
               {teamId && (
                 <div className="px-4 pt-4">
                   <Button
-                    size="sm"
-                    className="bg-purple-500 text-white"
-                    startContent={<Icon icon="solar:microphone-3-bold" width={16} />}
-                    onPress={() => setIsCloneModalOpen(true)}
-                  >
+ size="sm"
+ className="bg-purple-500 text-white"
+ onPress={() => setIsCloneModalOpen(true)}
+ >
+                    <Icon icon="solar:microphone-3-bold" width={16} />
                     Clone Your Voice
                   </Button>
                 </div>
               )}
               <div className="flex-1 overflow-y-auto p-4">
-                <Tabs
-                  selectedKey={voiceFilter}
-                  onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}
-                  size="sm"
-                  variant="light"
-                  classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-accent-400/20" }}
-                >
-                  <Tab key="all" title="All" />
-                  <Tab key="male" title="Male" />
-                  <Tab key="female" title="Female" />
+                <Tabs selectedKey={voiceFilter} onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}>
+                  <Tabs.ListContainer>
+                    <Tabs.List aria-label="Voice filter">
+                      <Tabs.Tab id="all">All<Tabs.Indicator /></Tabs.Tab>
+                      <Tabs.Tab id="male">Male<Tabs.Indicator /></Tabs.Tab>
+                      <Tabs.Tab id="female">Female<Tabs.Indicator /></Tabs.Tab>
+                    </Tabs.List>
+                  </Tabs.ListContainer>
                 </Tabs>
                 <div className="flex flex-col gap-2 mt-4">
                   {filteredVoices.map((voice) => (
@@ -705,7 +710,7 @@ export function CharacterSelector({
             onSuccess={refreshClonedVoices}
           />
         )}
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

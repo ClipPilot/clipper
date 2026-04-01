@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardBody, Avatar } from "@heroui/react";
+import { Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -31,8 +31,8 @@ export function BestPerformingAccounts({
 
   if (ranked.length === 0) {
     return (
-      <Card className="bg-surface-base border border-border-base">
-        <CardBody className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+        <div className="p-5">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             BEST PERFORMING ACCOUNTS
           </p>
@@ -46,14 +46,14 @@ export function BestPerformingAccounts({
               No accounts to rank yet
             </p>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-5">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+      <div className="p-5">
         <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
           BEST PERFORMING ACCOUNTS
         </p>
@@ -67,11 +67,8 @@ export function BestPerformingAccounts({
                 {index + 1}
               </span>
               <Avatar
-                src={account.avatar_url || undefined}
-                name={account.username[0]?.toUpperCase()}
-                size="sm"
-                classNames={{ base: "bg-surface-hover flex-shrink-0" }}
-              />
+ size="sm"
+ />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <Icon
@@ -93,7 +90,7 @@ export function BestPerformingAccounts({
             </div>
           ))}
         </div>
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }

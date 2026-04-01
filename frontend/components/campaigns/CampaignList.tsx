@@ -2,40 +2,28 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Card,
-  CardBody,
-  Chip,
-  Spinner,
-  Accordion,
-  AccordionItem,
-} from "@heroui/react";
+import { Button, Chip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import { type Campaign } from "@/api/campaign";
 
-// ── Status helpers ───────────────────────────────────────────────────────────
-
-function statusColor(
-  status: Campaign["status"]
-): "default" | "warning" | "success" | "danger" | "primary" | "secondary" {
+function statusClasses(status: Campaign["status"]): string {
   switch (status) {
     case "pending":
     case "appeal":
-      return "warning";
+      return "bg-yellow-500/15 text-yellow-500";
     case "accepted":
-      return "primary";
+      return "bg-accent-400/15 text-accent-400";
     case "started":
-      return "success";
+      return "bg-green-500/15 text-green-500";
     case "paused":
-      return "warning";
+      return "bg-orange-500/15 text-orange-500";
     case "completed":
-      return "secondary";
+      return "bg-blue-500/15 text-blue-500";
     case "rejected":
-      return "danger";
+      return "bg-red-500/15 text-red-500";
     default:
-      return "default";
+      return "bg-white/[0.08] text-text-secondary";
   }
 }
 
@@ -60,8 +48,6 @@ function statusLabel(status: Campaign["status"]): string {
   }
 }
 
-// ── Filter tab definitions ───────────────────────────────────────────────────
-
 type FilterTab = "all" | "live" | "review" | "done";
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
@@ -83,8 +69,6 @@ function filterCampaigns(campaigns: Campaign[], tab: FilterTab): Campaign[] {
   if (!statuses) return campaigns;
   return campaigns.filter((c) => statuses.includes(c.status));
 }
-
-// ── Main component ───────────────────────────────────────────────────────────
 
 export function CampaignList() {
   const router = useRouter();
@@ -119,11 +103,10 @@ export function CampaignList() {
               Manage your ad campaigns and track their progress.
             </p>
           </div>
-          <Button
-            color="primary"
-            onPress={() => router.push("/dashboard/publish-posts/create")}
-            startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-          >
+          <Button variant="primary"
+ onPress={() => router.push("/dashboard/publish-posts/create")}
+ >
+            <Icon icon="solar:add-circle-bold" width={18} />
             New Campaign
           </Button>
         </div>
@@ -135,9 +118,10 @@ export function CampaignList() {
         {campaigns.length > 0 && (
           <div className="flex gap-2 mb-6">
             {FILTER_TABS.map((tab) => (
-              <button
+              <Button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onPress={() => setActiveTab(tab.key)}
+                variant="tertiary"
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.key
                     ? "bg-accent-400/15 text-accent-400"
@@ -152,7 +136,7 @@ export function CampaignList() {
                     {tabCounts[tab.key]}
                   </span>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
         )}
@@ -160,11 +144,11 @@ export function CampaignList() {
         {/* Campaign grid */}
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
-            <Spinner size="lg" color="primary" />
+            <Spinner size="lg" color="accent" />
           </div>
         ) : campaigns.length === 0 ? (
-          <Card className="bg-surface-base border border-border-base">
-            <CardBody className="flex flex-col items-center text-center py-20 gap-4">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-col items-center text-center py-20 gap-4">
               <div className="w-16 h-16 rounded-2xl bg-accent-400/10 flex items-center justify-center">
                 <Icon
                   icon="solar:megaphone-bold-duotone"
@@ -181,15 +165,14 @@ export function CampaignList() {
                   with targeted video ads.
                 </p>
               </div>
-              <Button
-                color="primary"
-                onPress={() => router.push("/dashboard/publish-posts/create")}
-                startContent={<Icon icon="solar:add-circle-bold" width={18} />}
-              >
+              <Button variant="primary"
+ onPress={() => router.push("/dashboard/publish-posts/create")}
+ >
+                <Icon icon="solar:add-circle-bold" width={18} />
                 Create Campaign
               </Button>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center text-center py-16 gap-2">
             <Icon
@@ -216,8 +199,6 @@ export function CampaignList() {
     </div>
   );
 }
-
-// ── How it works ─────────────────────────────────────────────────────────────
 
 const HOW_IT_WORKS_ITEMS = [
   {
@@ -251,46 +232,35 @@ const HOW_IT_WORKS_ITEMS = [
 ];
 
 function HowItWorks() {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="mb-6">
-      <Accordion
-        variant="shadow"
-        className="bg-surface-base border border-border-base rounded-xl px-0"
-        itemClasses={{
-          base: "py-0",
-          title: "text-sm font-medium text-text-primary",
-          trigger: "px-4 py-3",
-          content: "px-4 pb-4 pt-0",
-        }}
+    <div className="mb-6 rounded-xl border border-border-base bg-white/[0.02] overflow-hidden">
+      <div
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors"
       >
-        <AccordionItem
-          key="how-it-works"
-          aria-label="How campaigns work"
-          title={
-            <div className="flex items-center gap-2">
-              <Icon icon="solar:info-circle-bold-duotone" width={16} className="text-accent-400" />
-              <span>How campaigns work</span>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {HOW_IT_WORKS_ITEMS.map((item) => (
-              <div key={item.key} className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Icon icon={item.icon} width={14} className="text-accent-400 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-text-primary">{item.title}</span>
-                </div>
-                <p className="text-xs text-text-secondary leading-relaxed">{item.content}</p>
+        <div className="flex items-center gap-2">
+          <Icon icon="solar:info-circle-bold-duotone" width={18} className="text-accent-400" />
+          <span className="text-sm font-medium text-text-primary">How campaigns work</span>
+        </div>
+        <Icon icon={open ? "solar:alt-arrow-up-bold" : "solar:alt-arrow-down-bold"} width={16} className="text-text-tertiary" />
+      </div>
+      {open && (
+        <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-border-base pt-4">
+          {HOW_IT_WORKS_ITEMS.map((item) => (
+            <div key={item.key} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Icon icon={item.icon} width={15} className="text-accent-400 flex-shrink-0" />
+                <span className="text-xs font-semibold text-text-primary">{item.title}</span>
               </div>
-            ))}
-          </div>
-        </AccordionItem>
-      </Accordion>
+              <p className="text-xs text-text-secondary leading-relaxed">{item.content}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
-// ── Campaign card ────────────────────────────────────────────────────────────
 
 function CampaignCard({
   campaign,
@@ -310,49 +280,42 @@ function CampaignCard({
   const cpm = cpmNum != null ? `$${cpmNum.toFixed(2)} CPM` : null;
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className="text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 rounded-xl"
+      className="text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 rounded-xl border border-border-base bg-surface-base overflow-hidden hover:border-accent-400/50 transition-colors cursor-pointer h-full"
     >
-      <Card className="bg-surface-base border border-border-base hover:border-accent-400/50 transition-colors cursor-pointer h-full">
-        <CardBody className="p-4 flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-text-primary truncate">
-              {campaign.name}
-            </p>
-            <Chip
-              color={statusColor(campaign.status)}
-              variant="flat"
-              size="sm"
-              className="flex-shrink-0"
-            >
-              {statusLabel(campaign.status)}
-            </Chip>
-          </div>
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-text-primary truncate">
+            {campaign.name}
+          </p>
+          <Chip size="sm" className={`flex-shrink-0 ${statusClasses(campaign.status)}`}>
+            {statusLabel(campaign.status)}
+          </Chip>
+        </div>
 
-          <div className="space-y-1">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-text-secondary">Budget</span>
+            <span className="text-text-primary font-medium">{budget}</span>
+          </div>
+          {cpm && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary">Budget</span>
-              <span className="text-text-primary font-medium">{budget}</span>
+              <span className="text-text-secondary">CPM</span>
+              <span className="text-text-primary font-medium">{cpm}</span>
             </div>
-            {cpm && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary">CPM</span>
-                <span className="text-text-primary font-medium">{cpm}</span>
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          <div className="flex items-center gap-1.5 mt-auto pt-1">
-            <Icon
-              icon="solar:arrow-right-line-duotone"
-              className="text-text-tertiary ml-auto"
-              width={14}
-            />
-            <span className="text-xs text-text-tertiary">View details</span>
-          </div>
-        </CardBody>
-      </Card>
-    </button>
+        <div className="flex items-center gap-1.5 mt-auto pt-1">
+          <Icon
+            icon="solar:arrow-right-line-duotone"
+            className="text-text-tertiary ml-auto"
+            width={14}
+          />
+          <span className="text-xs text-text-tertiary">View details</span>
+        </div>
+      </div>
+    </div>
   );
 }

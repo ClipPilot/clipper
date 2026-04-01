@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Progress, Chip, Button } from "@heroui/react";
+import { ProgressBar, Chip, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
@@ -61,12 +61,12 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
     }
   };
 
-  const getStatusColor = (status: string): "warning" | "primary" | "success" | "default" => {
+  const getStatusColor = (status: string): "warning" | "accent" | "success" | "default" => {
     switch (status) {
       case "pending":
         return "warning";
       case "processing":
-        return "primary";
+        return "accent";
       case "completed":
         return "success";
       default:
@@ -100,12 +100,14 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
         <div className="flex flex-col gap-3 h-full">
           <div className="flex items-center gap-3">
             {processingCount > 0 && (
-              <Chip size="sm" color="warning" variant="flat" startContent={<Icon icon="solar:refresh-bold" width={12} className="animate-spin" />}>
+              <Chip size="sm" color="warning" variant="tertiary">
+                <Icon icon="solar:refresh-bold" width={12} className="animate-spin" />
                 {processingCount} processing
               </Chip>
             )}
             {readyCount > 0 && (
-              <Chip size="sm" color="success" variant="flat" startContent={<Icon icon="solar:check-circle-bold" width={12} />}>
+              <Chip size="sm" color="success" variant="tertiary">
+                <Icon icon="solar:check-circle-bold" width={12} />
                 {readyCount} ready
               </Chip>
             )}
@@ -134,11 +136,11 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <Chip
-                      size="sm"
-                      color={getStatusColor(job.status)}
-                      variant="dot"
-                      className="capitalize text-[10px]"
-                    >
+ size="sm"
+ color={getStatusColor(job.status)}
+ variant="soft"
+ className="capitalize text-[10px]"
+ >
                       {job.status}
                     </Chip>
                   </div>
@@ -149,11 +151,11 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
 
           {allJobs.length > 4 && (
             <Button
-              size="sm"
-              variant="light"
-              className="w-full"
-              onPress={() => router.push("/dashboard/clips")}
-            >
+ size="sm"
+ variant="tertiary"
+ className="w-full"
+ onPress={() => router.push("/dashboard/clips")}
+ >
               +{allJobs.length - 4} more
             </Button>
           )}

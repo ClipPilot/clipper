@@ -7,10 +7,7 @@ import { db } from "../db";
 import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
 import { eq, desc, and, isNotNull } from "drizzle-orm";
 import { handleControllerError } from "../utils/controllerHelpers";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export class UGCScriptController {
   async getScriptStatus(req: AuthRequest, res: Response) {

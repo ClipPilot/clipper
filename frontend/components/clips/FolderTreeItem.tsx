@@ -149,24 +149,23 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onCreateSubfolder && (
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="w-6 h-6 min-w-6"
-                onPress={handleCreateSubfolder}
-              >
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ className="w-6 h-6 min-w-6"
+ onPress={handleCreateSubfolder}
+ >
                 <Icon icon="solar:add-circle-outline" className="text-sm text-text-secondary" />
               </Button>
             )}
             {onDelete && (
               <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                color="danger"
-                className="w-6 h-6 min-w-6"
-                onPress={handleDelete}
-              >
+ isIconOnly
+ size="sm"
+ variant="danger-soft"
+ className="w-6 h-6 min-w-6"
+ onPress={handleDelete}
+ >
                 <Icon icon="mdi:delete-outline" className="text-base" />
               </Button>
             )}

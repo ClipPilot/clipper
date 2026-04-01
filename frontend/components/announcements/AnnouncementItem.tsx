@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardBody, Button } from "@heroui/react";
+import { Card, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Announcement } from "@/store/announcements";
 
@@ -51,14 +51,14 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
 
   return (
     <Card
-      className={`
-        border border-border-base border-l-4 ${getPriorityBorderColor(announcement.priority)}
-        shadow-md hover:shadow-xl transition-all duration-300
-        ${isRead ? "opacity-50 hover:opacity-70" : "hover:scale-[1.02]"}
-        bg-gradient-to-br from-surface-base to-surface-elevated
-      `}
-    >
-      <CardBody className="p-5">
+ className={`
+ border border-border-base border-l-4 ${getPriorityBorderColor(announcement.priority)}
+ shadow-md hover:shadow-xl transition-all duration-300
+ ${isRead ? "opacity-50 hover:opacity-70" : "hover:scale-[1.02]"}
+ bg-gradient-to-br from-surface-base to-surface-elevated
+ `}
+ >
+      <Card.Content className="p-5">
         <div className="flex items-start justify-between gap-4">
           {/* Icon and Content */}
           <div className="flex gap-4 flex-1">
@@ -93,15 +93,14 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
                 dangerouslySetInnerHTML={{ __html: announcement.content }}
               />
               {announcement.action_url && (
-                <Button
-                  size="md"
-                  color="primary"
-                  className="mt-4 font-semibold shadow-lg"
-                  onPress={() => window.open(announcement.action_url, "_blank")}
-                  endContent={<Icon icon="solar:arrow-right-up-linear" width={18} />}
-                >
+                <Button variant="primary"
+ size="md"
+ className="mt-4 font-semibold shadow-lg"
+ onPress={() => window.open(announcement.action_url, "_blank")}
+ >
                   {announcement.action_label || "Learn More"}
-                </Button>
+                  <Icon icon="solar:arrow-right-up-linear" width={18} />
+</Button>
               )}
               <div className="flex items-center gap-2 mt-4 text-xs text-text-tertiary">
                 <Icon icon="solar:clock-circle-bold-duotone" width={14} />
@@ -121,18 +120,18 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
           {/* Dismiss Button */}
           {!isRead && (
             <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              onPress={() => onDismiss(announcement.id)}
-              aria-label="Dismiss announcement"
-              className="flex-shrink-0 hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-colors"
-            >
-              <Icon icon="solar:close-circle-bold-duotone" width={22} className="text-text-tertiary hover:text-danger-500" />
+ isIconOnly
+ size="sm"
+ variant="tertiary"
+ onPress={() => onDismiss(announcement.id)}
+ aria-label="Dismiss announcement"
+ className="flex-shrink-0 hover:bg-danger-100 dark:hover:bg-danger-900/20 transition-colors"
+ >
+              <Icon icon="solar:close-circle-bold-duotone" width={22} className="text-text-tertiary hover:text-red-500" />
             </Button>
           )}
         </div>
-      </CardBody>
+      </Card.Content>
     </Card>
   );
 }

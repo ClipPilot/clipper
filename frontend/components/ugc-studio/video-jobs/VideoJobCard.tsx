@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useRef } from "react";
-import { Card, Chip, Progress } from "@heroui/react";
+import { Button, Card, Chip, ProgressBar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { UGCVideoJob } from "@/api/ugc/video";
 import { timeAgo } from "@/lib/platformUtils";
@@ -18,7 +18,7 @@ function getStatusColor(status: UGCVideoJob["status"], isFinalized: boolean) {
     case "completed":
       return isFinalized ? "success" : "warning";
     case "generating":
-      return "primary";
+      return "accent";
     case "queued":
       return "warning";
     case "failed":
@@ -51,10 +51,9 @@ export const VideoJobCard = memo(
     const isFinalized = job.status === "completed" && !!job.clipId;
 
     return (
-      <Card
-        className="bg-surface-base border border-border-base hover:border-accent-400/50 hover:shadow-lg hover:shadow-accent-400/10 transition-all cursor-pointer overflow-hidden group"
-        isPressable
-        onPress={onClick}
+      <div
+        className="bg-surface-base border border-border-base rounded-xl hover:border-accent-400/50 hover:shadow-lg hover:shadow-accent-400/10 transition-all cursor-pointer overflow-hidden group"
+        onClick={onClick}
       >
         {/* Vertical video thumbnail - 9:16 aspect ratio */}
         <div className="aspect-[9/16] bg-surface-elevated overflow-hidden relative">
@@ -109,11 +108,11 @@ export const VideoJobCard = memo(
           {/* Status chip - top left */}
           <div className="absolute top-2 left-2">
             <Chip
-              size="sm"
-              color={getStatusColor(job.status, isFinalized)}
-              variant="flat"
-              className="text-[10px] h-5 backdrop-blur-sm"
-            >
+ size="sm"
+ color={getStatusColor(job.status, isFinalized)}
+ variant="tertiary"
+ className="text-[10px] h-5 backdrop-blur-sm"
+ >
               {getStatusLabel(job.status, isFinalized)}
             </Chip>
           </div>
@@ -127,30 +126,25 @@ export const VideoJobCard = memo(
 
           {/* Delete button */}
           {onDelete && (
-            <button
+            <Button
+              isIconOnly
+              variant="tertiary"
+              size="sm"
               className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onDelete();
-              }}
+              onPress={() => onDelete()}
             >
               <Icon icon="solar:trash-bin-trash-bold" className="text-white" width={14} />
-            </button>
+            </Button>
           )}
 
           {/* Progress bar overlay for generating */}
           {job.status === "generating" && (
             <div className="absolute bottom-0 left-0 right-0 p-3">
-              <Progress
-                value={job.progress || 0}
-                size="sm"
-                color="primary"
-                classNames={{
-                  track: "bg-white/20",
-                  indicator: "bg-accent-400",
-                }}
-              />
+              <ProgressBar
+ value={job.progress || 0}
+ >
+<ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track>
+</ProgressBar>
               <p className="text-[10px] text-white/80 mt-1 truncate text-center">
                 {job.progressMessage || "Processing..."}
               </p>
@@ -185,7 +179,7 @@ export const VideoJobCard = memo(
             )}
           </div>
         </div>
-      </Card>
+      </div>
     );
   },
   (prev, next) =>

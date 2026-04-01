@@ -14,10 +14,7 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and } from "drizzle-orm";
 import { handleControllerError } from "../utils/controllerHelpers";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
 
 interface ArollChainInfo {
   isPartOfChain: boolean;

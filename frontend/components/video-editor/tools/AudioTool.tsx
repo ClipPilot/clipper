@@ -141,7 +141,7 @@ export function AudioTool() {
         </p>
       </div>
 
-      <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
+      <div className="bg-white/[0.04] rounded-lg p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon
@@ -154,10 +154,12 @@ export function AudioTool() {
           </div>
           <Switch
             isSelected={!audioState.originalMuted}
-            onValueChange={(val) => handleMuteToggle(!val)}
-            color="success"
-            size="sm"
-          />
+            onChange={(val) => handleMuteToggle(!val)}
+          >
+            <Switch.Control>
+              <Switch.Thumb />
+            </Switch.Control>
+          </Switch>
         </div>
 
         {!audioState.originalMuted && (
@@ -172,21 +174,12 @@ export function AudioTool() {
               minValue={0}
               maxValue={1}
               step={0.01}
-              color="secondary"
-              size="sm"
-              startContent={
-                <Icon
-                  icon="solar:volume-cross-bold"
-                  className="text-text-tertiary"
-                />
-              }
-              endContent={
-                <Icon
-                  icon="solar:volume-loud-bold"
-                  className="text-text-tertiary"
-                />
-              }
-            />
+            >
+              <Slider.Track>
+                <Slider.Fill />
+                <Slider.Thumb />
+              </Slider.Track>
+            </Slider>
           </div>
         )}
 
@@ -198,7 +191,7 @@ export function AudioTool() {
         )}
       </div>
 
-      <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
+      <div className="bg-white/[0.04] rounded-lg p-4 space-y-4">
         <div className="flex items-center gap-2">
           <Icon icon="solar:music-notes-bold" className="text-text-secondary" />
           <span className="text-sm font-medium text-text-primary">
@@ -227,8 +220,7 @@ export function AudioTool() {
               </div>
               <Button
                 size="sm"
-                variant="flat"
-                color="danger"
+                variant="danger-soft"
                 isIconOnly
                 onPress={handleRemoveMusic}
               >
@@ -249,9 +241,12 @@ export function AudioTool() {
                 minValue={0}
                 maxValue={1}
                 step={0.01}
-                color="secondary"
-                size="sm"
-              />
+              >
+                <Slider.Track>
+                  <Slider.Fill />
+                  <Slider.Thumb />
+                </Slider.Track>
+              </Slider>
             </div>
 
             <div>
@@ -267,9 +262,12 @@ export function AudioTool() {
                 minValue={0}
                 maxValue={Math.max(audioState.backgroundMusic.duration - 1, 0)}
                 step={1}
-                color="secondary"
-                size="sm"
-              />
+              >
+                <Slider.Track>
+                  <Slider.Fill />
+                  <Slider.Thumb />
+                </Slider.Track>
+              </Slider>
             </div>
           </div>
         ) : (
@@ -282,12 +280,12 @@ export function AudioTool() {
               onChange={handleMusicUpload}
             />
             <Button
-              variant="bordered"
+              variant="outline"
               className="w-full"
               onPress={() => fileInputRef.current?.click()}
-              isLoading={uploading}
-              startContent={!uploading && <Icon icon="solar:upload-bold" />}
+              isPending={uploading}
             >
+              {!uploading && <Icon icon="solar:upload-bold" />}
               {uploading ? `Uploading ${uploadProgress}%` : "Upload Music"}
             </Button>
             <p className="text-xs text-text-tertiary mt-2 text-center">

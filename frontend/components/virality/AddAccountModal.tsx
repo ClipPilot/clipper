@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { Key } from "@heroui/react";
 import {
   Modal,
-  ModalContent,
-  ModalBody,
   Button,
   Input,
   Switch,
   Select,
-  SelectItem,
+  ListBox,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
@@ -33,14 +32,8 @@ interface AddAccountModalProps {
   }) => Promise<void>;
 }
 
-const accountTypes: { value: AccountType; label: string; icon: string }[] = [
-  { value: "profile", label: "Profile", icon: "solar:user-bold" },
-  // { value: "hashtag", label: "Hashtag", icon: "solar:hashtag-bold" },
-  // { value: "keyword", label: "Keyword", icon: "solar:magnifer-bold" },
-];
-
 const platforms: { value: Platform; label: string; icon: string; enabled: boolean }[] = [
-  { value: "instagram", label: "Instagram", icon: "solar:camera-bold", enabled: true },
+  { value: "instagram", label: "Instagram", icon: "ri:instagram-fill", enabled: true },
   { value: "tiktok", label: "TikTok", icon: "ri:tiktok-fill", enabled: true },
   { value: "x", label: "X", icon: "ri:twitter-x-fill", enabled: true },
 ];
@@ -54,11 +47,11 @@ export function AddAccountModal({
 }: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>("instagram");
-  const [accountType, setAccountType] = useState<AccountType>("profile");
+  const [accountType] = useState<AccountType>("profile");
   const [enableAlerts, setEnableAlerts] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [competitorSelection, setCompetitorSelection] = useState<string>("new");
+  const [competitorSelection, setCompetitorSelection] = useState<Key | null>("new");
   const [newCompetitorName, setNewCompetitorName] = useState("");
 
   const handleUrlChange = useCallback((value: string) => {
@@ -74,21 +67,21 @@ export function AddAccountModal({
     setError(null);
 
     try {
-      const isMyPerf = competitorSelection === "my-performance";
-      const competitorId = competitorSelection !== "new" && !isMyPerf
-        ? parseInt(competitorSelection)
+      const sel = String(competitorSelection);
+      const isMyPerf = sel === "my-performance";
+      const competitorId = sel !== "new" && !isMyPerf
+        ? parseInt(sel)
         : undefined;
 
       await onSubmit(selectedPlatform, profileUrl, {
         enableAlerts,
         competitorId,
-        newCompetitorName: competitorSelection === "new" ? newCompetitorName.trim() : undefined,
+        newCompetitorName: sel === "new" ? newCompetitorName.trim() : undefined,
         accountType,
         isMyPerformance: isMyPerf || undefined,
       });
       setProfileUrl("");
       setSelectedPlatform("instagram");
-      setAccountType("profile");
       setEnableAlerts(true);
       setCompetitorSelection("new");
       setNewCompetitorName("");
@@ -102,7 +95,6 @@ export function AddAccountModal({
 
   const handleClose = () => {
     setProfileUrl("");
-    setAccountType("profile");
     setError(null);
     setCompetitorSelection("new");
     setNewCompetitorName("");
@@ -110,240 +102,190 @@ export function AddAccountModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="md"
-      hideCloseButton
-      classNames={{
-        base: "bg-[#1a1d2e] border border-[#2a2d3e] rounded-2xl",
-        body: "p-6",
-      }}
-    >
-      <ModalContent>
-        <ModalBody className="gap-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Add New Account</h2>
-            <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={handleClose}
-              className="text-gray-400 hover:text-white"
-            >
-              <Icon icon="solar:close-circle-linear" width={24} />
-            </Button>
-          </div>
-
-          {/* Account Type Toggle */}
-          {/* <div className="space-y-3">
-            <label className="text-sm text-gray-400">Search Type</label>
-            <div className="grid grid-cols-3 gap-3">
-              {accountTypes.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setAccountType(type.value)}
-                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${
-                    accountType === type.value
-                      ? "bg-[#1e2140] border-accent-400"
-                      : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
-                  }`}
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}>
+        <Modal.Container>
+          <Modal.Dialog className="sm:max-w-md">
+            <Modal.Body className="p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">Add New Account</h2>
+                <Button
+                  isIconOnly
+                  variant="tertiary"
+                  size="sm"
+                  onPress={handleClose}
+                  className="text-red-400 hover:text-red-300"
                 >
-                  <Icon
-                    icon={type.icon}
-                    width={20}
-                    className={accountType === type.value ? "text-white" : "text-gray-400"}
-                  />
-                  <span className={`text-xs ${accountType === type.value ? "text-white" : "text-gray-400"}`}>
-                    {type.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div> */}
+                  <Icon icon="solar:close-circle-linear" width={24} />
+                </Button>
+              </div>
 
-          {/* Profile URL / Username / Hashtag / Keyword Input */}
-          <div className="space-y-2">
-            <label className="text-sm text-gray-400">
-              {accountType === "hashtag"
-                ? "Hashtag"
-                : accountType === "keyword"
-                  ? "Keyword"
-                  : selectedPlatform === "instagram"
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">
+                  {selectedPlatform === "instagram"
                     ? "Profile URL"
                     : "Username or Profile URL"}
-            </label>
-            <Input
-              placeholder={
-                accountType === "hashtag"
-                  ? "e.g. #fashion or fashion"
-                  : accountType === "keyword"
-                    ? "e.g. trending coffee"
-                    : selectedPlatform === "tiktok"
-                      ? "e.g. @selenagomez or tiktok.com/@selenagomez"
-                      : selectedPlatform === "x"
-                        ? "e.g. @elonmusk or x.com/elonmusk"
-                        : "e.g. instagram.com/creatorscale"
-              }
-              value={profileUrl}
-              onValueChange={handleUrlChange}
-              startContent={
-                <Icon
-                  icon={
-                    accountType === "hashtag"
-                      ? "solar:hashtag-bold"
-                      : accountType === "keyword"
-                        ? "solar:magnifer-bold"
-                        : selectedPlatform === "instagram"
-                          ? "solar:link-linear"
-                          : "solar:at-linear"
-                  }
-                  width={18}
-                  className="text-gray-500"
-                />
-              }
-              classNames={{
-                inputWrapper:
-                  "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                input: "text-white placeholder:text-gray-500",
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && profileUrl.trim()) {
-                  handleSubmit();
-                }
-              }}
-            />
-          </div>
-
-          {/* Platform Selection */}
-          <div className="space-y-3">
-            <label className="text-sm text-gray-400">Platform Selection</label>
-            <div className="grid grid-cols-3 gap-3">
-              {platforms.map((platform) => (
-                <button
-                  key={platform.value}
-                  onClick={() => platform.enabled && setSelectedPlatform(platform.value)}
-                  className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
-                    !platform.enabled
-                      ? "bg-[#0d0f1a] border-[#2a2d3e] opacity-50 cursor-not-allowed"
-                      : selectedPlatform === platform.value
-                        ? "bg-[#1e2140] border-accent-400"
-                        : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
-                  }`}
-                >
+                </label>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] focus-within:border-accent-400 transition-colors">
                   <Icon
-                    icon={platform.icon}
-                    width={24}
-                    className={
-                      selectedPlatform === platform.value && platform.enabled
-                        ? "text-white"
-                        : "text-gray-400"
+                    icon={
+                      selectedPlatform === "instagram"
+                        ? "solar:link-linear"
+                        : "solar:at-linear"
                     }
+                    width={18}
+                    className="text-gray-500 flex-shrink-0"
                   />
-                  <span
-                    className={`text-sm ${
-                      selectedPlatform === platform.value && platform.enabled
-                        ? "text-white"
-                        : "text-gray-400"
-                    }`}
+                  <input
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    placeholder={
+                      selectedPlatform === "tiktok"
+                        ? "e.g. @selenagomez or tiktok.com/@selenagomez"
+                        : selectedPlatform === "x"
+                          ? "e.g. @elonmusk or x.com/elonmusk"
+                          : "e.g. instagram.com/creatorscale"
+                    }
+                    value={profileUrl}
+                    className="flex-1 bg-transparent text-white text-sm placeholder:text-gray-600 outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && profileUrl.trim()) {
+                        handleSubmit();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm text-gray-400">Platform</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {platforms.map((platform) => (
+                    <div
+                      key={platform.value}
+                      onClick={() => platform.enabled && setSelectedPlatform(platform.value)}
+                      className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
+                        !platform.enabled
+                          ? "bg-[#0d0f1a] border-[#2a2d3e] opacity-50 cursor-not-allowed"
+                          : selectedPlatform === platform.value
+                            ? "bg-[#1e2140] border-accent-400 cursor-pointer"
+                            : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e] cursor-pointer"
+                      }`}
+                    >
+                      <Icon
+                        icon={platform.icon}
+                        width={24}
+                        className={
+                          selectedPlatform === platform.value && platform.enabled
+                            ? "text-white"
+                            : "text-gray-400"
+                        }
+                      />
+                      <span
+                        className={`text-sm ${
+                          selectedPlatform === platform.value && platform.enabled
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        {platform.label}
+                      </span>
+                      {!platform.enabled && (
+                        <span className="absolute top-1 right-1 text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded-full">
+                          Soon
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {!hideCompetitorSelect && (
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-400">Competitor Group</label>
+                  <Select
+                    value={competitorSelection}
+                    onChange={(val: Key | null) => {
+                      if (val) setCompetitorSelection(val);
+                    }}
                   >
-                    {platform.label}
-                  </span>
-                  {!platform.enabled && (
-                    <span className="absolute top-1 right-1 text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded-full">
-                      Soon
-                    </span>
+                    <Select.Trigger className="w-full px-3 py-2.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] text-white text-sm hover:border-[#3a3d4e] transition-colors">
+                      <Select.Value />
+                      <Select.Indicator />
+                    </Select.Trigger>
+                    <Select.Popover>
+                      <ListBox>
+                        <ListBox.Item id="my-performance" textValue={MY_PERFORMANCE_NAME}>
+                          {MY_PERFORMANCE_NAME}
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                        <ListBox.Item id="new" textValue="Create New Competitor">
+                          Create New Competitor
+                          <ListBox.ItemIndicator />
+                        </ListBox.Item>
+                        {competitors.map((c) => (
+                          <ListBox.Item key={String(c.id)} id={String(c.id)} textValue={c.name}>
+                            {c.name}
+                            <ListBox.ItemIndicator />
+                          </ListBox.Item>
+                        ))}
+                      </ListBox>
+                    </Select.Popover>
+                  </Select>
+                  {String(competitorSelection) === "new" && (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] focus-within:border-accent-400 transition-colors">
+                      <Icon icon="solar:users-group-rounded-bold" width={18} className="text-gray-500 flex-shrink-0" />
+                      <input
+                        onChange={(e) => setNewCompetitorName(e.target.value)}
+                        placeholder="e.g. Nike, Adidas"
+                        value={newCompetitorName}
+                        className="flex-1 bg-transparent text-white text-sm placeholder:text-gray-600 outline-none"
+                      />
+                    </div>
                   )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Competitor Group */}
-          {!hideCompetitorSelect && (
-            <div className="space-y-2">
-              <label className="text-sm text-gray-400">Competitor Group</label>
-              <Select
-                items={[
-                  { key: "my-performance", label: MY_PERFORMANCE_NAME },
-                  { key: "new", label: "Create New Competitor" },
-                  ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
-                ]}
-                selectedKeys={[competitorSelection]}
-                onSelectionChange={(keys) => {
-                  const val = Array.from(keys)[0] as string;
-                  if (val) setCompetitorSelection(val);
-                }}
-                classNames={{
-                  trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                  value: "text-white",
-                }}
-              >
-                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-              </Select>
-              {competitorSelection === "new" && (
-                <Input
-                  placeholder="e.g. Nike, Adidas"
-                  value={newCompetitorName}
-                  onValueChange={setNewCompetitorName}
-                  classNames={{
-                    inputWrapper:
-                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                    input: "text-white placeholder:text-gray-500",
-                  }}
-                />
+                </div>
               )}
-            </div>
-          )}
 
-          {/* Enable Instant Alerts */}
-          <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <Icon icon="solar:bell-bold" width={20} className="text-green-500" />
+              <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <Icon icon="solar:bell-bold" width={20} className="text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">Enable Instant Alerts</p>
+                    <p className="text-xs text-gray-500">
+                      Get notified the moment they go viral
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  isSelected={enableAlerts}
+                  onChange={setEnableAlerts}
+                />
               </div>
-              <div>
-                <p className="text-sm font-medium text-white">Enable Instant Alerts</p>
-                <p className="text-xs text-gray-500">
-                  Get notified the moment they go viral
-                </p>
-              </div>
-            </div>
-            <Switch
-              isSelected={enableAlerts}
-              onValueChange={setEnableAlerts}
-              classNames={{
-                wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
-              }}
-            />
-          </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-              <Icon icon="solar:danger-triangle-bold" className="text-red-500" width={18} />
-              <p className="text-sm text-red-500">{error}</p>
-            </div>
-          )}
+              {error && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <Icon icon="solar:danger-triangle-bold" className="text-red-500" width={18} />
+                  <p className="text-sm text-red-500">{error}</p>
+                </div>
+              )}
 
-          {/* Start Tracking Button */}
-          <Button
-            className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
-            onPress={handleSubmit}
-            isLoading={isSubmitting}
-            isDisabled={!profileUrl.trim()}
-            startContent={
-              !isSubmitting && <Icon icon="solar:bolt-bold" width={20} />
-            }
-          >
-            Start Tracking
-          </Button>
-          <p className="text-xs text-text-tertiary text-center underline">
-            1 credit/account/week
-          </p>
-        </ModalBody>
-      </ModalContent>
+              <Button
+                className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
+                onPress={handleSubmit}
+                isPending={isSubmitting}
+                isDisabled={!profileUrl.trim()}
+              >
+                {!isSubmitting && <Icon icon="solar:bolt-bold" width={20} />}
+                Start Tracking
+              </Button>
+              <p className="text-xs text-text-tertiary text-center underline">
+                1 credit/account/week
+              </p>
+            </Modal.Body>
+          </Modal.Dialog>
+        </Modal.Container>
+      </Modal.Backdrop>
     </Modal>
   );
 }

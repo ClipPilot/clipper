@@ -23,19 +23,17 @@ export function PlatformFilter({ selected, onChange }: PlatformFilterProps) {
     <div className="flex items-center gap-2">
       {filters.map((filter) => (
         <Button
-          key={filter.value}
-          size="sm"
-          variant={selected === filter.value ? "solid" : "flat"}
-          className={
-            selected === filter.value
-              ? "bg-accent-400 text-white"
-              : "bg-surface-elevated text-text-secondary hover:text-text-primary"
-          }
-          startContent={
-            filter.icon ? <Icon icon={filter.icon} width={16} /> : undefined
-          }
-          onPress={() => onChange(filter.value)}
-        >
+ key={filter.value}
+ size="sm"
+ variant={selected === filter.value ? "primary" : "ghost"}
+ className={
+ selected === filter.value
+ ? "bg-accent-400 text-white"
+ : "bg-surface-elevated text-text-secondary hover:text-text-primary"
+ }
+ onPress={() => onChange(filter.value)}
+ >
+          {filter.icon ? <Icon icon={filter.icon} width={16} /> : undefined}
           {filter.label}
         </Button>
       ))}

@@ -12,10 +12,7 @@ import { s3Service } from "../services/s3.service";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { handleControllerError } from "../utils/controllerHelpers";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
 
 export class AdCloneController {
   async initStructure(req: AuthRequest, res: Response) {

@@ -25,7 +25,7 @@ import { CaptionEntry } from "@/api/clips";
 import { CommentPreview } from "./CommentPreview";
 
 interface EditorVideoPreviewProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   videoUrl?: string;
   onLoadedMetadata: () => void;
   onTimeUpdate: () => void;

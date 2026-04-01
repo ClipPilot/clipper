@@ -1,17 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
+import { Dropdown,
   Button,
   Popover,
-  PopoverTrigger,
-  PopoverContent,
-  Calendar,
-} from "@heroui/react";
+  Calendar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   today,
@@ -57,66 +50,58 @@ export function ComparisonModeSelector({
 
   return (
     <div className="flex items-center gap-1">
-      <Dropdown>
-        <DropdownTrigger>
-          <Button
-            size="sm"
-            variant="flat"
-            className="bg-surface-elevated text-text-secondary hover:text-text-primary"
-            startContent={
-              <Icon icon="solar:chart-square-linear" width={16} />
-            }
-            endContent={
-              <Icon icon="solar:alt-arrow-down-linear" width={14} />
-            }
-          >
-            {getModeLabel(selected)}
-          </Button>
-        </DropdownTrigger>
-        <DropdownMenu
-          aria-label="Comparison mode"
-          selectionMode="single"
-          selectedKeys={new Set([
-            selected.type === "last-sync"
-              ? "last-sync"
-              : selected.type === "days-ago"
-                ? `${selected.days}d`
-                : "custom",
-          ])}
-          onAction={(key) => {
-            if (key === "last-sync") onChange({ type: "last-sync" });
-            else if (key === "2d") onChange({ type: "days-ago", days: 2 });
-            else if (key === "7d") onChange({ type: "days-ago", days: 7 });
-            else if (key === "custom") setIsCalendarOpen(true);
-          }}
-        >
-          <DropdownItem key="last-sync">Since last sync</DropdownItem>
-          <DropdownItem key="2d">Since 2 days ago</DropdownItem>
-          <DropdownItem key="7d">Since 7 days ago</DropdownItem>
-          <DropdownItem key="custom">Custom date...</DropdownItem>
-        </DropdownMenu>
-      </Dropdown>
-
       <Popover
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
-        placement="bottom"
       >
-        <PopoverTrigger>
-          <span className="hidden" />
-        </PopoverTrigger>
-        <PopoverContent className="p-0">
+        <Popover.Trigger>
+          <div className="inline-block">
+            <Dropdown>
+              <Button
+                size="sm"
+                variant="tertiary"
+                className="bg-surface-elevated text-text-secondary hover:text-text-primary"
+              >
+                <Icon icon="solar:chart-square-linear" width={16} />
+                {getModeLabel(selected)}
+                <Icon icon="solar:alt-arrow-down-linear" width={14} />
+              </Button>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Comparison mode"
+                  selectionMode="single"
+                  selectedKeys={new Set([
+                    selected.type === "last-sync"
+                      ? "last-sync"
+                      : selected.type === "days-ago"
+                        ? `${selected.days}d`
+                        : "custom",
+                  ])}
+                  onAction={(key) => {
+                    if (key === "last-sync") onChange({ type: "last-sync" });
+                    else if (key === "2d") onChange({ type: "days-ago", days: 2 });
+                    else if (key === "7d") onChange({ type: "days-ago", days: 7 });
+                    else if (key === "custom") setIsCalendarOpen(true);
+                  }}
+                >
+                  <Dropdown.Item key="last-sync">Since last sync</Dropdown.Item>
+                  <Dropdown.Item key="2d">Since 2 days ago</Dropdown.Item>
+                  <Dropdown.Item key="7d">Since 7 days ago</Dropdown.Item>
+                  <Dropdown.Item key="custom">Custom date...</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          </div>
+        </Popover.Trigger>
+        <Popover.Content placement="bottom" className="p-0">
           <Calendar
             aria-label="Select comparison date"
             minValue={minDate as any}
             maxValue={maxDate as any}
-            onChange={handleCalendarChange}
-            classNames={{
-              base: "bg-surface-base",
-              headerWrapper: "bg-surface-elevated",
-            }}
+            onChange={handleCalendarChange as any}
+            className="bg-surface-base"
           />
-        </PopoverContent>
+        </Popover.Content>
       </Popover>
     </div>
   );

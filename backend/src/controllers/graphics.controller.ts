@@ -7,10 +7,8 @@ import { getTeamUsage } from "../middleware/subscription.middleware";
 import { handleControllerError } from "../utils/controllerHelpers";
 import type { AspectRatio } from "../services/ai-ugc/falImage.service";
 import type { StylePreset } from "../services/ai-ugc/graphicsPrompts";
-
-interface AuthRequest extends Request {
-  user?: { id: string; email: string; dbUserId: number };
-}
+import { AuthRequest } from "../middleware/auth.middleware";
+import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
 
 const VALID_GRAPHIC_TYPES: GraphicType[] = [
   "instagram-ad",
@@ -84,7 +82,7 @@ export class GraphicsController {
       if (usage.totalRemaining < CREDIT_COST) {
         return res.status(403).json({
           error: `Insufficient credits. Graphics generation requires ${CREDIT_COST} credits, but you have ${usage.totalRemaining} remaining.`,
-          code: "INSUFFICIENT_CREDITS",
+          code: INSUFFICIENT_CREDITS,
           required: CREDIT_COST,
           available: usage.totalRemaining,
         });

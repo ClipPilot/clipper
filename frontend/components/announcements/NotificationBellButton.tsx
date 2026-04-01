@@ -10,12 +10,12 @@ export default function NotificationBellButton() {
 
   return (
     <Button
-      isIconOnly
-      variant="light"
-      onPress={() => setIsOpen(true)}
-      aria-label="Announcements"
-      className="relative overflow-visible"
-    >
+ isIconOnly
+ variant="tertiary"
+ onPress={() => setIsOpen(true)}
+ aria-label="Announcements"
+ className="relative overflow-visible"
+ >
       <Icon icon="solar:bell-bold-duotone" width={24} />
       {unreadCount > 0 && (
         <span className="absolute top-1 right-1 flex h-2 w-2">

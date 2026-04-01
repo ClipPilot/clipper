@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Textarea, Slider, Button } from "@heroui/react";
+import { TextArea, Slider, Button, TextField, Label } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   headingStateAtom,
@@ -71,7 +71,6 @@ export function HeadingTool() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Icon icon="solar:text-bold" className="text-accent-400" />
@@ -82,50 +81,41 @@ export function HeadingTool() {
         </p>
       </div>
 
-      {/* Text Input + AI Generate */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm text-text-secondary">Heading Text</label>
           <Button
             size="sm"
-            variant="flat"
-            color="secondary"
-            isLoading={isGenerating}
+            variant="tertiary"
+            isPending={isGenerating}
             onPress={handleAIGenerate}
-            startContent={
-              !isGenerating && <Icon icon="solar:magic-stick-3-bold" />
-            }
           >
+            {!isGenerating && <Icon icon="solar:magic-stick-3-bold" />}
             AI Generate
           </Button>
         </div>
-        <Textarea
-          value={heading.text}
-          onChange={(e) => handleTextChange(e.target.value)}
-          placeholder="Enter heading or use AI Generate..."
-          variant="bordered"
-          minRows={2}
-          maxRows={3}
-          classNames={{
-            inputWrapper: "bg-surface-elevated border-border-base",
-            input: "text-base",
-          }}
-        />
+        <TextField fullWidth variant="secondary">
+          <Label>Heading Text</Label>
+          <TextArea
+            value={heading.text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Enter heading or use AI Generate..."
+            rows={2}
+          />
+        </TextField>
       </div>
 
-      {/* Only show options if text is entered */}
       {heading.text.trim() && (
         <>
-          {/* Style Selection */}
           <div>
             <label className="text-sm text-text-secondary mb-2 block">
               Style
             </label>
             <div className="flex gap-2">
               {HEADING_STYLES.map((s) => (
-                <button
+                <Button
                   key={s.key}
-                  onClick={() =>
+                  onPress={() =>
                     updateHeading({
                       style: s.key as HeadingStyle,
                       font: s.key === "instagram" ? "Proxima Nova" : heading.font,
@@ -142,12 +132,11 @@ export function HeadingTool() {
                 >
                   <Icon icon={s.icon} />
                   {s.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          {/* Color Selection — text color for stroke, bg color for instagram */}
           {heading.style !== "instagram" ? (
             <div>
               <label className="text-sm text-text-secondary mb-2 block">
@@ -155,13 +144,13 @@ export function HeadingTool() {
               </label>
               <div className="flex flex-wrap gap-2">
                 {HEADING_COLOR_PRESETS.map((preset) => (
-                  <button
+                  <div
                     key={preset.color}
                     onClick={() => updateHeading({ color: preset.color })}
-                    className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                    className={`w-8 h-8 rounded-lg cursor-pointer transition-all ${
                       heading.color === preset.color
-                        ? "border-accent-400 scale-110"
-                        : "border-border-base hover:border-accent-400/50"
+                        ? "ring-2 ring-accent-400 ring-offset-2 ring-offset-[#0f0f1a] scale-110"
+                        : "hover:scale-110"
                     }`}
                     style={{ backgroundColor: preset.color }}
                     title={preset.name}
@@ -175,7 +164,7 @@ export function HeadingTool() {
                     className="absolute inset-0 w-8 h-8 opacity-0 cursor-pointer"
                   />
                   <div
-                    className="w-8 h-8 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated"
+                    className="w-8 h-8 rounded-lg border-2 border-border-base flex items-center justify-center bg-white/[0.04]"
                     title="Custom color"
                   >
                     <Icon
@@ -192,8 +181,8 @@ export function HeadingTool() {
                 Background Color
               </label>
               <div className="flex gap-2">
-                <button
-                  onClick={() =>
+                <Button
+                  onPress={() =>
                     updateHeading({ headingBgColor: "#000000", color: "#FFFFFF" })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
@@ -203,9 +192,9 @@ export function HeadingTool() {
                   }`}
                 >
                   Black
-                </button>
-                <button
-                  onClick={() =>
+                </Button>
+                <Button
+                  onPress={() =>
                     updateHeading({ headingBgColor: "#FFFFFF", color: "#000000" })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
@@ -215,27 +204,27 @@ export function HeadingTool() {
                   }`}
                 >
                   White
-                </button>
+                </Button>
               </div>
             </div>
           )}
 
-          {/* Font Selection */}
           <div>
             <label className="text-sm text-text-secondary mb-2 block">
               Font
             </label>
             <div className="flex gap-2 overflow-x-auto py-1">
               {HEADING_FONTS.map((font) => (
-                <button
+                <Button
                   key={font.id}
-                  onClick={() => updateHeading({ font: font.name })}
+                  isIconOnly
+                  onPress={() => updateHeading({ font: font.name })}
                   className={`h-10 w-10 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
                     heading.font === font.name
                       ? "bg-white text-black border-white scale-105"
                       : "bg-surface-base text-white border-border-base hover:scale-105"
                   }`}
-                  title={font.name}
+                  aria-label={font.name}
                 >
                   <span
                     className="text-sm font-bold"
@@ -243,12 +232,11 @@ export function HeadingTool() {
                   >
                     Ag
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          {/* Font Size */}
           <div>
             <label className="text-xs text-text-secondary mb-1 block">
               Font Size: {heading.fontSize}px
@@ -259,25 +247,25 @@ export function HeadingTool() {
               minValue={16}
               maxValue={120}
               step={2}
-              color="secondary"
-              size="sm"
-            />
+            >
+              <Slider.Track>
+                <Slider.Fill />
+                <Slider.Thumb />
+              </Slider.Track>
+            </Slider>
           </div>
 
-          {/* Clear Button */}
           <Button
-            variant="flat"
-            color="danger"
+            variant="danger-soft"
             className="w-full"
             onPress={handleClear}
-            startContent={<Icon icon="solar:trash-bin-trash-bold" />}
           >
+            <Icon icon="solar:trash-bin-trash-bold" />
             Remove Heading
           </Button>
         </>
       )}
 
-      {/* Tips */}
       <div className="bg-accent-400/10 rounded-lg p-3">
         <p className="text-xs text-accent-400 flex items-start gap-2">
           <Icon

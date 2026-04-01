@@ -1,18 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalBody,
-  ModalHeader,
-  ModalFooter,
+import { Modal,
   Button,
   Input,
   Switch,
-  Tabs,
-  Tab,
-} from "@heroui/react";
+  Tabs } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts } from "@/api/virality";
 
@@ -159,22 +152,10 @@ export function ViralSettingsModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      size="full"
-      hideCloseButton
-      scrollBehavior="inside"
-      classNames={{
-        base: "bg-[#1a1d2e] m-0 sm:m-0 rounded-none h-full max-h-full",
-        body: "p-0",
-        header: "p-0",
-        footer: "p-0",
-      }}
-    >
-      <ModalContent className="h-full flex flex-col">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={handleClose}><Modal.Container scroll="inside"><Modal.Dialog className="max-w-full h-full h-full flex flex-col">
         {/* Sticky header */}
-        <ModalHeader className="flex-shrink-0 border-b border-[#2a2d3e] px-6 py-4">
+        <Modal.Header>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-accent-400/10 rounded-lg">
@@ -188,19 +169,19 @@ export function ViralSettingsModal({
               </div>
             </div>
             <Button
-              isIconOnly
-              variant="light"
-              size="sm"
-              onPress={handleClose}
-              className="text-gray-400 hover:text-white"
-            >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ onPress={handleClose}
+ className="text-gray-400 hover:text-white"
+ >
               <Icon icon="solar:close-circle-linear" width={24} />
             </Button>
           </div>
-        </ModalHeader>
+        </Modal.Header>
 
         {/* Scrollable body */}
-        <ModalBody className="flex-1 overflow-y-auto px-6 py-6">
+        <Modal.Body className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-2xl mx-auto w-full space-y-8">
             {/* ── Account Selection ── */}
             <section className="space-y-3">
@@ -209,12 +190,12 @@ export function ViralSettingsModal({
                   <Icon icon="solar:users-group-rounded-bold" width={18} className="text-accent-400" />
                   <h3 className="text-sm font-semibold text-white">Accounts to Monitor</h3>
                 </div>
-                <button
+                <div
                   onClick={toggleAll}
-                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors"
+                  className="text-xs text-accent-400 hover:text-accent-300 transition-colors cursor-pointer"
                 >
                   {enabledIds.length === accounts.length ? "Deselect All" : "Select All"}
-                </button>
+                </div>
               </div>
               <p className="text-xs text-gray-500">
                 Choose which accounts should trigger viral alerts
@@ -222,28 +203,26 @@ export function ViralSettingsModal({
 
               {/* View toggle */}
               <div className="flex items-center bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg p-0.5 w-fit">
-                <button
-                  type="button"
+                <div
                   onClick={() => setAccountView("account")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     accountView === "account"
                       ? "bg-accent-400 text-white"
                       : "text-gray-400 hover:text-gray-300"
                   }`}
                 >
                   By Account
-                </button>
-                <button
-                  type="button"
+                </div>
+                <div
                   onClick={() => setAccountView("competitor")}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                     accountView === "competitor"
                       ? "bg-accent-400 text-white"
                       : "text-gray-400 hover:text-gray-300"
                   }`}
                 >
                   By Competitor
-                </button>
+                </div>
               </div>
 
               <div className="max-h-64 overflow-y-auto space-y-1.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] p-2">
@@ -257,11 +236,10 @@ export function ViralSettingsModal({
                     const selected = enabledIds.includes(account.id);
                     const platform = PLATFORM_ICONS[account.platform] ?? PLATFORM_ICONS.instagram;
                     return (
-                      <button
+                      <div
                         key={account.id}
-                        type="button"
                         onClick={() => toggleAccount(account.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer ${
                           selected
                             ? "bg-accent-400/10"
                             : "hover:bg-[#1a1d2e]"
@@ -281,7 +259,7 @@ export function ViralSettingsModal({
                             <Icon icon="solar:check-read-linear" width={12} className="text-white" />
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 ) : (
@@ -291,11 +269,10 @@ export function ViralSettingsModal({
                     const allSelected = compAccountIds.length > 0 && selectedCount === compAccountIds.length;
                     const someSelected = selectedCount > 0 && !allSelected;
                     return (
-                      <button
+                      <div
                         key={comp.id}
-                        type="button"
                         onClick={() => toggleCompetitor(comp)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all cursor-pointer ${
                           allSelected
                             ? "bg-accent-400/10"
                             : someSelected
@@ -328,7 +305,7 @@ export function ViralSettingsModal({
                             />
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })
                 )}
@@ -372,27 +349,20 @@ export function ViralSettingsModal({
                     </div>
                   </div>
                   <Switch
-                    size="sm"
-                    isSelected={usePercent}
-                    onValueChange={setUsePercent}
-                    classNames={{ wrapper: usePercent ? "bg-accent-400" : "bg-gray-600" }}
-                  />
+ isSelected={usePercent}
+ onChange={setUsePercent}
+ >
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
                 </div>
                 {usePercent && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input
-                      type="number"
-                      size="sm"
-                      value={percentValue}
-                      onValueChange={setPercentValue}
-                      endContent={<span className="text-gray-500 text-xs">%</span>}
-                      classNames={{
-                        base: "max-w-[120px]",
-                        inputWrapper:
-                          "bg-[#1a1d2e] border border-[#2a2d3e] rounded-lg h-9",
-                        input: "text-white text-sm",
-                      }}
-                    />
+                    <div className="relative">
+                      <Input onChange={(e) => setPercentValue(e.target.value)} type="number" value={percentValue} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs pointer-events-none">%</span>
+                    </div>
                     <span className="text-xs text-gray-400">increase triggers alert</span>
                   </div>
                 )}
@@ -403,28 +373,26 @@ export function ViralSettingsModal({
                 <div className="flex items-center justify-center gap-2">
                   <div className="flex-1 border-t border-[#2a2d3e]" />
                   <div className="flex items-center bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg p-0.5">
-                    <button
-                      type="button"
+                    <div
                       onClick={() => setThresholdMode("and")}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                         thresholdMode === "and"
                           ? "bg-accent-400 text-white"
                           : "text-gray-400 hover:text-gray-300"
                       }`}
                     >
                       AND
-                    </button>
-                    <button
-                      type="button"
+                    </div>
+                    <div
                       onClick={() => setThresholdMode("or")}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
+                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                         thresholdMode === "or"
                           ? "bg-accent-400 text-white"
                           : "text-gray-400 hover:text-gray-300"
                       }`}
                     >
                       OR
-                    </button>
+                    </div>
                   </div>
                   <div className="flex-1 border-t border-[#2a2d3e]" />
                 </div>
@@ -447,27 +415,20 @@ export function ViralSettingsModal({
                     </div>
                   </div>
                   <Switch
-                    size="sm"
-                    isSelected={useAbsolute}
-                    onValueChange={setUseAbsolute}
-                    classNames={{ wrapper: useAbsolute ? "bg-accent-400" : "bg-gray-600" }}
-                  />
+ isSelected={useAbsolute}
+ onChange={setUseAbsolute}
+ >
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch>
                 </div>
                 {useAbsolute && (
                   <div className="flex items-center gap-3 mt-4 ml-10">
-                    <Input
-                      type="number"
-                      size="sm"
-                      value={absoluteValue}
-                      onValueChange={setAbsoluteValue}
-                      startContent={<span className="text-gray-500 text-xs">+</span>}
-                      classNames={{
-                        base: "max-w-[140px]",
-                        inputWrapper:
-                          "bg-[#1a1d2e] border border-[#2a2d3e] rounded-lg h-9",
-                        input: "text-white text-sm",
-                      }}
-                    />
+                    <div className="relative">
+                      <Input onChange={(e) => setAbsoluteValue(e.target.value)} type="number" value={absoluteValue} className="pr-8" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary text-xs pointer-events-none">+</span>
+                    </div>
                     <span className="text-xs text-gray-400">views triggers alert</span>
                   </div>
                 )}
@@ -498,20 +459,25 @@ export function ViralSettingsModal({
                 </p>
               </div>
               <Tabs
-                selectedKey={timeFrame}
-                onSelectionChange={(key) => setTimeFrame(key as TimeFrame)}
-                variant="solid"
-                fullWidth
-                classNames={{
-                  tabList:
-                    "bg-[#0d0f1a] border border-[#2a2d3e] rounded-xl p-1 gap-1",
-                  tab: "rounded-lg h-10 text-sm",
-                  cursor: "bg-accent-400 rounded-lg",
-                }}
-              >
-                <Tab key="12" title="12 hours" />
-                <Tab key="24" title="24 hours" />
-                <Tab key="48" title="48 hours" />
+ selectedKey={timeFrame}
+ onSelectionChange={(key) => setTimeFrame(key as TimeFrame)}
+ >
+                <Tabs.ListContainer>
+                  <Tabs.List aria-label="Detection window">
+                    <Tabs.Tab id="12">
+                      12 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="24">
+                      24 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                    <Tabs.Tab id="48">
+                      48 hours
+                      <Tabs.Indicator />
+                    </Tabs.Tab>
+                  </Tabs.List>
+                </Tabs.ListContainer>
               </Tabs>
             </section>
 
@@ -531,27 +497,22 @@ export function ViralSettingsModal({
               </div>
 
               <div className="flex gap-2">
-                <Input
-                  type="email"
-                  size="sm"
-                  placeholder="email@example.com"
-                  value={newEmail}
-                  onValueChange={(v) => { setNewEmail(v); setEmailError(""); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
-                  isInvalid={!!emailError}
-                  errorMessage={emailError}
-                  classNames={{
-                    base: "flex-1",
-                    inputWrapper: "bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg h-9",
-                    input: "text-white text-sm",
-                  }}
-                />
+                <div className="flex-1">
+                  <Input onChange={(e) => ((v: string) => { setNewEmail(v); setEmailError(""); })(e.target.value)}
+ type="email"
+ placeholder="email@example.com"
+ value={newEmail}
+ onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
+ className={emailError ? "border-red-500" : ""}
+ />
+                  {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+                </div>
                 <Button
-                  size="sm"
-                  className="bg-accent-400 text-white font-semibold h-9 px-4"
-                  onPress={addEmail}
-                  isDisabled={!newEmail.trim() || additionalEmails.length >= 10}
-                >
+ size="sm"
+ className="bg-accent-400 text-white font-semibold h-9 px-4"
+ onPress={addEmail}
+ isDisabled={!newEmail.trim() || additionalEmails.length >= 10}
+ >
                   Add
                 </Button>
               </div>
@@ -568,12 +529,12 @@ export function ViralSettingsModal({
                         <span className="text-sm text-white">{email}</span>
                       </div>
                       <Button
-                        isIconOnly
-                        variant="light"
-                        size="sm"
-                        onPress={() => removeEmail(email)}
-                        className="text-gray-500 hover:text-red-400 min-w-6 w-6 h-6"
-                      >
+ isIconOnly
+ variant="tertiary"
+ size="sm"
+ onPress={() => removeEmail(email)}
+ className="text-gray-500 hover:text-red-400 min-w-6 w-6 h-6"
+ >
                         <Icon icon="solar:close-circle-linear" width={16} />
                       </Button>
                     </div>
@@ -588,28 +549,28 @@ export function ViralSettingsModal({
               )}
             </section>
           </div>
-        </ModalBody>
+        </Modal.Body>
 
         {/* Sticky footer */}
-        <ModalFooter className="flex-shrink-0 border-t border-[#2a2d3e] px-6 py-4">
+        <Modal.Footer>
           <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
             <Button
-              variant="flat"
-              className="bg-[#0d0f1a] text-gray-400 border border-[#2a2d3e]"
-              onPress={handleClose}
-            >
+ variant="tertiary"
+ className="bg-[#0d0f1a] text-gray-400 border border-[#2a2d3e]"
+ onPress={handleClose}
+ >
               Cancel
             </Button>
             <Button
-              className="bg-accent-400 text-white font-semibold px-8"
-              onPress={handleSave}
-              isDisabled={enabledIds.length === 0 || (!usePercent && !useAbsolute)}
-            >
+ className="bg-accent-400 text-white font-semibold px-8"
+ onPress={handleSave}
+ isDisabled={enabledIds.length === 0 || (!usePercent && !useAbsolute)}
+ >
               Save Settings
             </Button>
           </div>
-        </ModalFooter>
-      </ModalContent>
+        </Modal.Footer>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }

@@ -37,11 +37,11 @@ export default function NewClipsSection({
         {clips.map((clip) => (
           <div key={clip.id} className="relative">
             <Chip
-              color="success"
-              variant="flat"
-              size="sm"
-              className="absolute -top-2 -right-2 z-10"
-            >
+ color="success"
+ variant="tertiary"
+ size="sm"
+ className="absolute -top-2 -right-2 z-10"
+ >
               NEW
             </Chip>
             <ClipCard

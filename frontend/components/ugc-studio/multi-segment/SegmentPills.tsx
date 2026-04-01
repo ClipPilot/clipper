@@ -82,12 +82,12 @@ export function SegmentPills({
 
       {segments.length < maxSegments && totalDuration < maxTotalDuration - 0.5 && (
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-surface-elevated text-text-secondary min-w-0"
-          onPress={onAddSegment}
-          startContent={<Icon icon="solar:add-circle-bold" width={16} />}
-        >
+ size="sm"
+ variant="tertiary"
+ className="bg-surface-elevated text-text-secondary min-w-0"
+ onPress={onAddSegment}
+ >
+          <Icon icon="solar:add-circle-bold" width={16} />
           <span className="hidden sm:inline">Add at Playhead</span>
           <span className="sm:hidden">Add</span>
         </Button>
@@ -95,14 +95,14 @@ export function SegmentPills({
 
       {videoFile && (
         <Button
-          size="sm"
-          variant="flat"
-          className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 min-w-0"
-          onPress={onAutoDetectFaces}
-          isLoading={isDetectingFaces}
-          isDisabled={isDetectingFaces}
-          startContent={!isDetectingFaces && <Icon icon="solar:face-scan-circle-bold" width={16} />}
-        >
+ size="sm"
+ variant="tertiary"
+ className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 min-w-0"
+ onPress={onAutoDetectFaces}
+ isPending={isDetectingFaces}
+ isDisabled={isDetectingFaces}
+ >
+          {!isDetectingFaces && <Icon icon="solar:face-scan-circle-bold" width={16} />}
           <span className="hidden sm:inline">{isDetectingFaces ? "Detecting..." : "Auto-detect Faces"}</span>
           <span className="sm:hidden">{isDetectingFaces ? "..." : "Detect"}</span>
         </Button>

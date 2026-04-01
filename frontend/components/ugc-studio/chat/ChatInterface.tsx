@@ -8,7 +8,7 @@ import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { sceneImagesAtom, resetUGCAtom } from "@/store/ugc";
 import { resetAdCloneAtom } from "@/store/adClone";
-import { currentStepAtom, videoStateAtom } from "@/store/videoState";
+import { currentStepAtom, videoStateAtom, isReady } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { adCloneAPI } from "@/api/adClone";
@@ -122,6 +122,12 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     (img) => img.status === "generating" || img.status === "regenerating",
   );
   const isChatDisabled = isThinking || isAnalyzing;
+
+  const scenesReady =
+    isReady(videoState) &&
+    Object.keys(sceneImages).length > 0 &&
+    !isImagesGenerating &&
+    videoState.scenes.every((s) => sceneImages[s.id]?.status === "completed");
 
   const chatInputRef = useRef<ChatInputHandle>(null);
   const savedCharacterIdRef = useRef<number | null>(null);
@@ -262,21 +268,24 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     <div className="h-[calc(100vh-64px)] flex flex-col">
       <div className="flex items-center justify-between px-4 h-14 border-b border-border-base shrink-0">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
-            className="p-2 rounded-lg hover:bg-surface-elevated transition-colors"
+          <Button
+            isIconOnly
+            variant="tertiary"
+            size="sm"
+            onPress={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
+            className="p-2 text-text-secondary hover:text-text-primary transition-colors"
           >
             <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
-          </button>
+          </Button>
           <h1 className="text-lg font-semibold text-text-primary">Create Video</h1>
         </div>
         <Button
-          variant="bordered"
-          size="sm"
-          className="border-border-base text-text-secondary"
-          startContent={<Icon icon="solar:document-text-bold" width={16} />}
-          onPress={() => setShowExistingScripts(true)}
-        >
+ variant="outline"
+ size="sm"
+ className="border-border-base text-text-secondary"
+ onPress={() => setShowExistingScripts(true)}
+ >
+          <Icon icon="solar:document-text-bold" width={16} />
           Use Existing Script
         </Button>
       </div>
@@ -296,20 +305,23 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
               onAccept={handleAccept}
               onRetry={retryStructure}
               adCloneStep={adCloneStep}
+              scenesReady={!!scenesReady}
+              onGenerateVideo={handleContinueToGenerate}
+              isGenerateLoading={isStartingGeneration}
             />
           </ImageDropZone>
           {isImagesGenerating && (
-            <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 border border-warning-200">
-              <Icon icon="svg-spinners:pulse-3" className="text-warning-500 text-lg shrink-0" />
+            <div className="mx-3 mb-2 flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300 border border-yellow-500/30">
+              <Icon icon="svg-spinners:pulse-3" className="text-yellow-400 text-lg shrink-0" />
               <span>Scene images are generating… editing is available once complete.</span>
             </div>
           )}
           {showModePicker && (
             <div className="px-4 pt-2 pb-0 shrink-0">
               <div className="max-w-2xl mx-auto flex gap-2">
-                <button
+                <div
                   onClick={() => { setMode("scratch"); setVideoAttachment(null); }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
                     mode === "scratch"
                       ? "bg-accent-400/10 text-accent-400 border border-accent-400/30"
                       : "text-text-secondary border border-white/[0.06] hover:bg-white/[0.04]"
@@ -317,10 +329,10 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
                 >
                   <Icon icon="solar:magic-stick-3-bold-duotone" width={14} />
                   Create from Scratch
-                </button>
-                <button
+                </div>
+                <div
                   onClick={() => setMode("clone")}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
                     mode === "clone"
                       ? "bg-amber-400/10 text-amber-400 border border-amber-400/30"
                       : "text-text-secondary border border-white/[0.06] hover:bg-white/[0.04]"
@@ -328,7 +340,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
                 >
                   <Icon icon="solar:copy-bold-duotone" width={14} />
                   Clone an Ad
-                </button>
+                </div>
               </div>
             </div>
           )}

@@ -3,10 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardBody,
-} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   scriptsAtom,
@@ -96,8 +92,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   if (!currentScript || scenes.length === 0) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:danger-triangle-bold-duotone"
             className="text-amber-400 mb-4"
@@ -109,15 +105,15 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           <p className="text-text-secondary text-sm">
             Please go back and generate a script first
           </p>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (!isSilent && !selectedVoice) {
     return (
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="py-16 flex flex-col items-center justify-center text-center">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="py-16 flex flex-col items-center justify-center text-center">
           <Icon
             icon="solar:soundwave-bold-duotone"
             className="text-amber-400 mb-4"
@@ -129,8 +125,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           <p className="text-text-secondary text-sm">
             Please go back and select a voice first
           </p>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -146,18 +142,18 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
       </div>
 
       {error && (
-        <Card className="bg-red-500/10 border border-red-500/30">
-          <CardBody className="p-4">
+        <div className="rounded-xl border border-red-500/30 overflow-hidden bg-red-500/10">
+          <div className="p-4">
             <div className="flex items-center gap-3">
               <Icon icon="solar:danger-triangle-bold" className="text-red-400" width={24} />
               <p className="text-red-400 text-sm">{error}</p>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-6">
+      <div className="rounded-xl border border-border-base overflow-hidden bg-surface-elevated">
+        <div className="p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Video Summary</h3>
 
           <div className="space-y-4">
@@ -186,8 +182,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
             </div>
 
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
 
       <CreditCostCard
         creditCost={creditCost}

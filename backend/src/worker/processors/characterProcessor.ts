@@ -10,22 +10,7 @@ import {
   schemaToPrompt,
   schemaToVariationPrompt,
 } from "./characterPromptSchema";
-
-async function getReferenceImageUrls(imageKeys: string[]): Promise<string[]> {
-  const keysToFetch = imageKeys.slice(0, 5);
-  const urls: string[] = [];
-
-  for (const key of keysToFetch) {
-    try {
-      const url = await s3Service.getPresignedUrl(key, 3600);
-      urls.push(url);
-    } catch (error) {
-      console.error(`[CHARACTER] Failed to get URL for ${key}:`, error);
-    }
-  }
-
-  return urls;
-}
+import { getReferenceImageUrls } from "../../utils/s3Helpers";
 
 async function generateSingleImage(
   prompt: string,

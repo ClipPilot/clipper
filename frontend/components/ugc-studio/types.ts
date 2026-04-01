@@ -59,7 +59,7 @@ export function getStatusColor(status: FaceSwapJob["status"]) {
     case "running":
     case "uploading":
     case "pending_upload":
-      return "primary";
+      return "accent";
     default:
       return "default";
   }

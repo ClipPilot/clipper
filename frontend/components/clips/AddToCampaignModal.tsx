@@ -1,15 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
+import { Modal,
   Button,
   Spinner,
-  addToast,
-} from "@heroui/react";
+  toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -51,10 +46,7 @@ export default function AddToCampaignModal({
         );
       })
       .catch(() => {
-        addToast({
-          title: "Failed to load campaigns",
-          color: "danger",
-        });
+        toast.danger("Failed to load campaigns");
       })
       .finally(() => setIsLoading(false));
   }, [isOpen, selectedTeam?.id]);
@@ -64,44 +56,28 @@ export default function AddToCampaignModal({
     setAddingTo(campaignId);
     try {
       await campaignAPI.addVideos(selectedTeam.id, campaignId, [clipId]);
-      addToast({
-        title: "Clip added to campaign",
-        color: "success",
-      });
+      toast.success("Clip added to campaign");
       onAdded?.();
       onClose();
     } catch (err: any) {
-      addToast({
-        title: "Failed to add clip",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      toast.danger("Failed to add clip", { description: err.message || "Something went wrong" });
     } finally {
       setAddingTo(null);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      classNames={{
-        wrapper: "z-[9999] isolate",
-        backdrop: "z-[9998]",
-        base: "bg-surface-base border border-border-base z-[9999]",
-        header: "border-b border-border-base",
-      }}
-    >
-      <ModalContent>
-        <ModalHeader className="flex items-center gap-2">
+    <Modal>
+      <Modal.Backdrop isOpen={isOpen} onOpenChange={onClose}><Modal.Container><Modal.Dialog className="sm:max-w-md">
+        <Modal.Header className="flex items-center gap-2">
           <Icon
             icon="solar:video-library-bold-duotone"
             className="text-xl text-accent-400"
           />
           <span>Add to Campaign</span>
-        </ModalHeader>
+        </Modal.Header>
 
-        <ModalBody className="py-4">
+        <Modal.Body className="py-4">
           <p className="text-sm text-text-secondary mb-4">
             Add{" "}
             <span className="font-medium text-text-primary">
@@ -112,7 +88,7 @@ export default function AddToCampaignModal({
 
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Spinner size="lg" color="primary" />
+              <Spinner size="lg" color="accent" />
             </div>
           ) : campaigns.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
@@ -146,23 +122,21 @@ export default function AddToCampaignModal({
                       </p>
                     </div>
                     {alreadyAdded ? (
-                      <div className="flex items-center gap-1.5 ml-3 text-success-500">
+                      <div className="flex items-center gap-1.5 ml-3 text-green-500">
                         <Icon icon="solar:check-circle-bold" width={18} />
                         <span className="text-sm font-medium">Added</span>
                       </div>
                     ) : (
                       <Button
-                        size="sm"
-                        className="bg-accent-400 text-white font-medium ml-3"
-                        onPress={() => handleAdd(campaign.id)}
-                        isLoading={addingTo === campaign.id}
-                        isDisabled={addingTo !== null}
-                        startContent={
-                          addingTo !== campaign.id && (
+ size="sm"
+ className="bg-accent-400 text-white font-medium ml-3"
+ onPress={() => handleAdd(campaign.id)}
+ isPending={addingTo === campaign.id}
+ isDisabled={addingTo !== null}
+ >
+                        {addingTo !== campaign.id && (
                             <Icon icon="solar:add-circle-bold" width={16} />
-                          )
-                        }
-                      >
+                          )}
                         Add
                       </Button>
                     )}
@@ -171,8 +145,8 @@ export default function AddToCampaignModal({
               })}
             </div>
           )}
-        </ModalBody>
-      </ModalContent>
+        </Modal.Body>
+      </Modal.Dialog></Modal.Container></Modal.Backdrop>
     </Modal>
   );
 }
