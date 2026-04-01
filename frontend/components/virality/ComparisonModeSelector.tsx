@@ -50,49 +50,48 @@ export function ComparisonModeSelector({
 
   return (
     <div className="flex items-center gap-1">
-      <Dropdown>
-        <Button
-          size="sm"
-          variant="tertiary"
-          className="bg-surface-elevated text-text-secondary hover:text-text-primary"
-        >
-            <Icon icon="solar:chart-square-linear" width={16} />
-            {getModeLabel(selected)}
-            <Icon icon="solar:alt-arrow-down-linear" width={14} />
-        </Button>
-<Dropdown.Popover>
-
-<Dropdown.Menu
-          aria-label="Comparison mode"
-          selectionMode="single"
-          selectedKeys={new Set([
-            selected.type === "last-sync"
-              ? "last-sync"
-              : selected.type === "days-ago"
-                ? `${selected.days}d`
-                : "custom",
-          ])}
-          onAction={(key) => {
-            if (key === "last-sync") onChange({ type: "last-sync" });
-            else if (key === "2d") onChange({ type: "days-ago", days: 2 });
-            else if (key === "7d") onChange({ type: "days-ago", days: 7 });
-            else if (key === "custom") setIsCalendarOpen(true);
-          }}
-        >
-          <Dropdown.Item key="last-sync">Since last sync</Dropdown.Item>
-          <Dropdown.Item key="2d">Since 2 days ago</Dropdown.Item>
-          <Dropdown.Item key="7d">Since 7 days ago</Dropdown.Item>
-          <Dropdown.Item key="custom">Custom date...</Dropdown.Item>
-        </Dropdown.Menu>
-</Dropdown.Popover>
-      </Dropdown>
-
       <Popover
         isOpen={isCalendarOpen}
         onOpenChange={setIsCalendarOpen}
       >
         <Popover.Trigger>
-          <span className="hidden" />
+          <div className="inline-block">
+            <Dropdown>
+              <Button
+                size="sm"
+                variant="tertiary"
+                className="bg-surface-elevated text-text-secondary hover:text-text-primary"
+              >
+                <Icon icon="solar:chart-square-linear" width={16} />
+                {getModeLabel(selected)}
+                <Icon icon="solar:alt-arrow-down-linear" width={14} />
+              </Button>
+              <Dropdown.Popover>
+                <Dropdown.Menu
+                  aria-label="Comparison mode"
+                  selectionMode="single"
+                  selectedKeys={new Set([
+                    selected.type === "last-sync"
+                      ? "last-sync"
+                      : selected.type === "days-ago"
+                        ? `${selected.days}d`
+                        : "custom",
+                  ])}
+                  onAction={(key) => {
+                    if (key === "last-sync") onChange({ type: "last-sync" });
+                    else if (key === "2d") onChange({ type: "days-ago", days: 2 });
+                    else if (key === "7d") onChange({ type: "days-ago", days: 7 });
+                    else if (key === "custom") setIsCalendarOpen(true);
+                  }}
+                >
+                  <Dropdown.Item key="last-sync">Since last sync</Dropdown.Item>
+                  <Dropdown.Item key="2d">Since 2 days ago</Dropdown.Item>
+                  <Dropdown.Item key="7d">Since 7 days ago</Dropdown.Item>
+                  <Dropdown.Item key="custom">Custom date...</Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          </div>
         </Popover.Trigger>
         <Popover.Content placement="bottom" className="p-0">
           <Calendar

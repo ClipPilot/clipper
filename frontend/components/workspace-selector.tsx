@@ -91,14 +91,14 @@ export default function WorkspaceSelector({
               const teamPlan = team.plan || "free";
               const isDefault = defaultTeamId === team.id;
               return (
-                <button
+                <div
                   key={team.id}
                   onClick={() => {
                     setSelectedTeam(team);
                     onClose?.();
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated text-left",
+                    "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated text-left cursor-pointer",
                     {
                       "bg-accent-400/10": selectedTeam?.id === team.id,
                     },
@@ -211,7 +211,7 @@ export default function WorkspaceSelector({
                       />
                     )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </ScrollShadow>

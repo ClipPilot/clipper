@@ -389,14 +389,15 @@ export default function CompetitorDetailPage() {
  size="sm"
  isIconOnly
  variant="tertiary"
+ className="bg-surface-elevated hover:bg-surface-hover"
  onPress={() => { setEditName(competitor.name); setIsEditingName(true); }}
  >
-                    <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
+                    <Icon icon="solar:pen-2-linear" width={16} className="text-text-secondary" />
                   </Button>
                   {competitor.accounts.length === 1 ? (
                     <a href={competitor.accounts[0].profile_url} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm" isIconOnly variant="tertiary">
-                        <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                      <Button size="sm" isIconOnly variant="tertiary" className="bg-surface-elevated hover:bg-surface-hover">
+                        <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-secondary" />
                       </Button>
                     </a>
                   ) : competitor.accounts.length > 1 ? (

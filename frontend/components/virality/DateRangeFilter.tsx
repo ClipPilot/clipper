@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Button, DateField, DateRangePicker, RangeCalendar } from "@heroui/react";
+import { useState } from "react";
+import { Button, Dropdown, DateField, DateRangePicker, RangeCalendar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CalendarDate } from "@internationalized/date";
 import { today, getLocalTimeZone, parseDate, startOfMonth } from "@internationalized/date";
@@ -44,22 +44,8 @@ function subtractMonths(months: number): DateRangeValue {
 }
 
 export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [customAmount, setCustomAmount] = useState("3");
   const [customUnit, setCustomUnit] = useState<"months" | "years">("months");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [dropdownOpen]);
 
   const pickerValue =
     value.startDate && value.endDate
@@ -79,64 +65,73 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="relative" ref={dropdownRef}>
+      <Dropdown>
         <Button
           size="sm"
           variant="tertiary"
           className="bg-surface-elevated text-text-secondary hover:text-text-primary"
-          onPress={() => setDropdownOpen((v) => !v)}
         >
           Custom
           <Icon icon="solar:alt-arrow-down-linear" width={14} />
         </Button>
-        {dropdownOpen && (
-          <div className="absolute top-full left-0 mt-1 z-50 bg-white/[0.04] rounded-lg shadow-lg py-1 min-w-[140px]">
-            {CUSTOM_PRESETS.map((preset) => (
-              <div
-                key={preset.months}
-                className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-surface-base hover:text-text-primary transition-colors cursor-pointer"
-                onClick={() => {
-                  onChange(subtractMonths(preset.months));
-                  setDropdownOpen(false);
-                }}
-              >
-                {preset.label}
-              </div>
-            ))}
-            <div className="border-t border-border-base mx-2 my-1" />
-            <div className="flex items-center gap-1.5 px-3 py-2">
-              <input
-                type="number"
-                min={1}
-                max={99}
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                className="w-12 rounded-md bg-surface-base border border-border-base text-text-primary text-sm text-center px-1 py-1 outline-none focus:border-accent-400"
-              />
-              <select
-                value={customUnit}
-                onChange={(e) => setCustomUnit(e.target.value as "months" | "years")}
-                className="rounded-md bg-surface-base border border-border-base text-text-primary text-sm px-1.5 py-1 outline-none focus:border-accent-400"
-              >
-                <option value="months">Months</option>
-                <option value="years">Years</option>
-              </select>
-              <div
-                className="ml-auto p-1 rounded-md bg-accent-400 text-white hover:bg-accent-500 transition-colors cursor-pointer"
-                onClick={() => {
-                  const n = parseInt(customAmount, 10);
-                  if (!n || n < 1) return;
+        <Dropdown.Popover>
+          <Dropdown.Menu
+            aria-label="Date presets"
+            onAction={(key) => {
+              const k = key as string;
+              if (k === "custom-apply") {
+                const n = parseInt(customAmount, 10);
+                if (n && n >= 1) {
                   const totalMonths = customUnit === "years" ? n * 12 : n;
                   onChange(subtractMonths(totalMonths));
-                  setDropdownOpen(false);
-                }}
-              >
-                <Icon icon="solar:arrow-right-linear" width={14} />
+                }
+                return;
+              }
+              const months = parseInt(k, 10);
+              if (months) onChange(subtractMonths(months));
+            }}
+          >
+            {CUSTOM_PRESETS.map((preset) => (
+              <Dropdown.Item key={preset.months.toString()}>
+                {preset.label}
+              </Dropdown.Item>
+            ))}
+            <Dropdown.Item key="custom-apply" textValue="Custom range">
+              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  className="w-12 rounded-md bg-surface-base border border-border-base text-text-primary text-sm text-center px-1 py-1 outline-none focus:border-accent-400"
+                />
+                <select
+                  value={customUnit}
+                  onChange={(e) => setCustomUnit(e.target.value as "months" | "years")}
+                  className="rounded-md bg-surface-base border border-border-base text-text-primary text-sm px-1.5 py-1 outline-none focus:border-accent-400"
+                >
+                  <option value="months">Months</option>
+                  <option value="years">Years</option>
+                </select>
+                <Button
+                  size="sm"
+                  isIconOnly
+                  className="bg-accent-400 text-white ml-auto"
+                  onPress={() => {
+                    const n = parseInt(customAmount, 10);
+                    if (!n || n < 1) return;
+                    const totalMonths = customUnit === "years" ? n * 12 : n;
+                    onChange(subtractMonths(totalMonths));
+                  }}
+                >
+                  <Icon icon="solar:arrow-right-linear" width={14} />
+                </Button>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown>
 
       <DateRangePicker
         value={pickerValue as any}
