@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/sidebar/sidebar";
 import { useRouter } from "next/navigation";
 import {
@@ -31,14 +31,11 @@ import AnnouncementInboxModal from "@/components/announcements/AnnouncementInbox
 import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 
-const useIsMounted = () => useSyncExternalStore(() => () => {}, () => true, () => false);
-
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isMounted = useIsMounted();
   const router = useRouter();
   const [user] = useAtom(userAtom);
   const { signOut: handleSignOut } = useAuth();
@@ -126,15 +123,6 @@ export default function DashboardLayout({
       <Icon icon={getTeamIcon(selectedTeam?.role)} width={14} />
     </div>
   );
-
-  if (!isMounted) {
-    return (
-      <div className="flex h-screen bg-surface-dark">
-        <aside className="relative bg-surface-base border-r border-border-base flex-shrink-0 w-[256px]" />
-        <main className="flex-1" />
-      </div>
-    );
-  }
 
   return (
     <UsageStatsProvider>

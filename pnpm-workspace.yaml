@@ -1,7 +1,6 @@
 packages:
   - packages/*
   - backend
-  - frontend
   - lambda-expire-clips
   - lambda-virality-sync
   - lambda-cpm-billing
