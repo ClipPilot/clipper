@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAtom, useAtomValue } from "jotai";
 import { motion } from "framer-motion";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Dropdown, Label, Popover } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { DashboardGrid } from "@/components/dashboard";
@@ -82,6 +82,40 @@ export default function DashboardPage() {
             </p>
           </div>
         </motion.div>
+
+        <div className="flex items-center gap-4 p-4 rounded-xl border border-accent-400/30 bg-accent-400/5">
+          <span className="text-sm text-text-secondary font-medium">HeroUI Test:</span>
+          <Dropdown>
+            <Button aria-label="Menu" variant="secondary">
+              Dropdown Test
+            </Button>
+            <Dropdown.Popover>
+              <Dropdown.Menu onAction={(key) => console.log(`Selected: ${key}`)}>
+                <Dropdown.Item id="item-1" textValue="Item 1">
+                  <Label>Item 1</Label>
+                </Dropdown.Item>
+                <Dropdown.Item id="item-2" textValue="Item 2">
+                  <Label>Item 2</Label>
+                </Dropdown.Item>
+                <Dropdown.Item id="item-3" textValue="Item 3" variant="danger">
+                  <Label>Item 3 (danger)</Label>
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+
+          <Popover>
+            <Button variant="secondary">Popover Test</Button>
+            <Popover.Content className="max-w-64">
+              <Popover.Dialog>
+                <Popover.Heading>Popover Title</Popover.Heading>
+                <p className="mt-2 text-sm text-muted">
+                  This is the popover content. If you can see this, popovers work.
+                </p>
+              </Popover.Dialog>
+            </Popover.Content>
+          </Popover>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
