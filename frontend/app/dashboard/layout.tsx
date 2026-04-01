@@ -201,9 +201,13 @@ export default function DashboardLayout({
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
-                <Popover.Trigger className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer">
-                    {teamIconEl}
-                </Popover.Trigger>
+                <Button
+                  variant="tertiary"
+                  isIconOnly
+                  className="w-full flex items-center justify-center p-1 rounded-lg hover:bg-surface-elevated"
+                >
+                  {teamIconEl}
+                </Button>
                 <Popover.Content className="p-0" placement="right top">
                   <WorkspaceSelector
                     onClose={() => setIsWorkspaceOpen(false)}
@@ -223,19 +227,23 @@ export default function DashboardLayout({
                 isOpen={isWorkspaceOpen}
                 onOpenChange={setIsWorkspaceOpen}
               >
-                <Popover.Trigger className="w-full rounded-lg bg-surface-elevated hover:bg-surface-hover py-1.5 px-2 cursor-pointer transition-colors">
-                    <div className="flex items-center gap-2.5 w-full">
-                      {teamIconEl}
-                      <span className="text-[13px] font-medium text-text-primary flex-1 text-left truncate">
-                        {selectedTeam?.name || "Select Team"}
-                      </span>
-                      <Icon
-                        icon="solar:alt-arrow-down-bold-duotone"
-                        className="text-text-tertiary"
-                        width={16}
-                      />
-                    </div>
-                </Popover.Trigger>
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  className="w-full justify-start bg-surface-elevated hover:bg-surface-hover h-auto py-1.5"
+                >
+                  <div className="flex items-center gap-2.5 w-full">
+                    {teamIconEl}
+                    <span className="text-[13px] font-medium text-text-primary flex-1 text-left truncate">
+                      {selectedTeam?.name || "Select Team"}
+                    </span>
+                    <Icon
+                      icon="solar:alt-arrow-down-bold-duotone"
+                      className="text-text-tertiary"
+                      width={16}
+                    />
+                  </div>
+                </Button>
                 <Popover.Content placement="bottom start" className="p-0">
                   <WorkspaceSelector
                     onClose={() => setIsWorkspaceOpen(false)}
@@ -274,7 +282,7 @@ export default function DashboardLayout({
             {contentCollapsed ? (
               <div className="flex flex-col items-center gap-2">
                 <Dropdown>
-                  <Dropdown.Trigger className="rounded-lg hover:bg-surface-elevated transition-colors p-1 cursor-pointer outline-none">
+                  <Button variant="tertiary" isIconOnly className="rounded-lg hover:bg-surface-elevated p-1">
                       <Avatar size="sm" className="bg-accent-400 text-white">
                         <Avatar.Fallback className="text-xs font-semibold">
                           {getInitials(
@@ -284,7 +292,7 @@ export default function DashboardLayout({
                           )}
                         </Avatar.Fallback>
                       </Avatar>
-                  </Dropdown.Trigger>
+                  </Button>
                   <Dropdown.Popover placement="right top">
                     <Dropdown.Menu aria-label="Account actions">
                       <Dropdown.Item
@@ -367,7 +375,7 @@ export default function DashboardLayout({
               </div>
             ) : (
               <Dropdown>
-                <Dropdown.Trigger className="w-full flex items-center p-2 rounded-lg bg-surface-elevated hover:bg-surface-hover transition-all cursor-pointer outline-none">
+                <Button variant="tertiary" className="w-full h-auto p-2 justify-start rounded-lg bg-surface-elevated hover:bg-surface-hover transition-all">
                     <div className="flex items-center gap-2.5 w-full">
                       <Avatar size="sm" className="bg-accent-400 text-white">
                         <Avatar.Fallback className="text-sm font-semibold">
@@ -394,7 +402,7 @@ export default function DashboardLayout({
                         width={18}
                       />
                     </div>
-                </Dropdown.Trigger>
+                </Button>
                 <Dropdown.Popover placement="top start">
                   <Dropdown.Menu aria-label="Account actions">
                     <Dropdown.Item
