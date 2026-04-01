@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/ClipPilot/clipper/compare/v1.2.5...v1.3.0) (2026-04-01)
+
+
+### Features
+
+* Merge pull request [#156](https://github.com/ClipPilot/clipper/issues/156) from ClipPilot/staging ([f68f7fd](https://github.com/ClipPilot/clipper/commit/f68f7fd61c3ab73ff0c5da2eaa28787d7bebd640))
+* Staging Merge ([f68f7fd](https://github.com/ClipPilot/clipper/commit/f68f7fd61c3ab73ff0c5da2eaa28787d7bebd640))
+
+
+### Bug Fixes
+
+* pnpm deploy to staging ([2bae2c8](https://github.com/ClipPilot/clipper/commit/2bae2c854e3f8ca081d0d669677d4abdfb569887))
+
 ## [1.2.5](https://github.com/ClipPilot/clipper/compare/v1.2.4...v1.2.5) (2026-03-29)
 
 

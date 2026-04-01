@@ -23,7 +23,10 @@ clipper/
 │   │   │   └── example.ts  # Usage examples
 │   │   └── ...
 │   └── package.json
-├── frontend/               # Frontend application
+│   ├── shared-types/       # Shared TypeScript types (@clipper/shared-types)
+│   └── shared-ui/          # Shared React components (@clipper/shared-ui)
+├── frontend/               # Frontend application (npm)
+├── admin-frontend/         # Admin dashboard (npm)
 ├── package.json           # Root package.json
 └── pnpm-workspace.yaml    # PNPM workspace configuration
 ```
@@ -143,6 +146,82 @@ Migrations for each environment are stored in separate directories:
 - `drizzle/` - Development
 - `drizzle/staging/` - Staging
 - `drizzle/prod/` - Production
+
+## Shared Packages
+
+### @clipper/shared-types
+
+Shared TypeScript types used across backend and both frontends.
+
+```bash
+cd packages/shared-types && pnpm build
+```
+
+- Backend references via `workspace:*` (pnpm)
+- Frontends reference via `file:../packages/shared-types` (npm)
+
+### @clipper/shared-ui
+
+Shared React components used across frontends. React is a **peer dependency** to prevent duplicate React instances that break react-aria/HeroUI on Amplify.
+
+```bash
+cd packages/shared-ui && pnpm build
+```
+
+- Frontends reference via `file:../packages/shared-ui` (npm)
+- Each frontend has `overrides` in `package.json` to force singleton React resolution
+- `transpilePackages` is set in each frontend's `next.config` so Next.js compiles the shared source
+
+### Building shared packages
+
+Always rebuild shared packages before building frontends:
+
+```bash
+cd packages/shared-types && pnpm build
+cd packages/shared-ui && pnpm build
+```
+
+## Frontend Builds
+
+Both frontends use **npm** (not pnpm). They are not part of the pnpm workspace.
+
+### Local
+
+```bash
+# Main frontend
+cd frontend && npm install && npm run build
+
+# Admin frontend
+cd admin-frontend && npm install && npm run build
+```
+
+### Amplify
+
+Amplify build settings must build shared packages first. Set the **base directory to the repo root**, then:
+
+**Install command:**
+```bash
+cd packages/shared-types && npm install && npm run build && cd ../shared-ui && npm install && npm run build && cd ../../frontend && npm install
+```
+
+**Build command:**
+```bash
+cd frontend && npm run build
+```
+
+For admin-frontend, replace `frontend` with `admin-frontend` in the commands above.
+
+### Verifying on Amplify
+
+After pushing, check Amplify build logs for:
+- Shared packages building successfully in the install phase
+- No "Invalid hook call" or "multiple instances of React" errors
+- No react-aria context errors
+
+If react-aria breaks, verify:
+1. `overrides` block exists in the frontend's `package.json`
+2. `transpilePackages` is set in `next.config`
+3. `@clipper/shared-ui/package.json` has React as `peerDependencies` (not `dependencies`)
 
 ## Usage in Backend
 
