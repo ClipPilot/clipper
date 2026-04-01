@@ -276,11 +276,13 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 Analytics
                 <HTooltip>
                   <HTooltip.Trigger>
-                    <Icon
-                      icon="solar:clock-circle-linear"
-                      width={14}
-                      className="text-default-400 cursor-help"
-                    />
+                    <span className="inline-flex cursor-help" tabIndex={0}>
+                      <Icon
+                        icon="solar:clock-circle-linear"
+                        width={14}
+                        className="text-text-tertiary"
+                      />
+                    </span>
                   </HTooltip.Trigger>
                   <HTooltip.Content placement="top">{`Times shown in ${TIMEZONE}`}</HTooltip.Content>
                 </HTooltip>
@@ -333,11 +335,13 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       {tooltip && (
                         <HTooltip>
                           <HTooltip.Trigger>
-                            <Icon
-                              icon="solar:info-circle-linear"
-                              width={14}
-                              className="text-text-tertiary cursor-help"
-                            />
+                            <span className="inline-flex cursor-help" tabIndex={0}>
+                              <Icon
+                                icon="solar:info-circle-linear"
+                                width={14}
+                                className="text-text-tertiary"
+                              />
+                            </span>
                           </HTooltip.Trigger>
                           <HTooltip.Content placement="top">{tooltip}</HTooltip.Content>
                         </HTooltip>

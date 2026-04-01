@@ -75,11 +75,7 @@ export function FilterBar({
 
       {showDateRange && (
         <Dropdown>
-          <Button
-            size="sm"
-            variant="tertiary"
-            className="bg-white/[0.04] text-text-secondary h-9"
-          >
+          <Button size="sm" variant="tertiary" className="bg-white/[0.04] text-text-secondary h-9">
             <Icon icon="solar:calendar-linear" width={14} />
             {selectedDateLabel}
             <Icon icon="solar:alt-arrow-down-linear" width={10} />
@@ -104,11 +100,7 @@ export function FilterBar({
 
       {showPlatformFilter && (
         <Dropdown>
-          <Button
-            size="sm"
-            variant="tertiary"
-            className="bg-white/[0.04] text-text-secondary h-9"
-          >
+          <Button size="sm" variant="tertiary" className="bg-white/[0.04] text-text-secondary h-9">
             <Icon icon="solar:filter-linear" width={14} />
             {selectedPlatformLabel}
             <Icon icon="solar:alt-arrow-down-linear" width={10} />

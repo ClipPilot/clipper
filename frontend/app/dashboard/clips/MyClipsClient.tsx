@@ -558,15 +558,12 @@ function MyClipsPageContent() {
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Library</h1>
           <div className="flex items-center gap-2">
             <Dropdown>
-<Button
- variant="tertiary"
- className="bg-surface-base border border-border-base"
- >
+              <Button variant="tertiary" className="bg-surface-base border border-border-base">
                   <Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />
                   {clipTypeFilter === "all" ? "All" : clipTypeFilter === "clips" ? "Clips" : clipTypeFilter === "ai-video" ? "AI Video Creator" : clipTypeFilter === "face-swap" ? "Face Swap" : "Ad Clone"}
                   <Icon icon="solar:alt-arrow-down-linear" width={16} />
-</Button>
-<Dropdown.Popover>
+              </Button>
+              <Dropdown.Popover>
 
 <Dropdown.Menu
                 aria-label="Clip type filter"
@@ -584,15 +581,12 @@ function MyClipsPageContent() {
 </Dropdown.Popover>
             </Dropdown>
             <Dropdown>
-<Button
- variant="tertiary"
- className={`bg-surface-base border border-border-base ${campaignUploadFilter !== "all" ? "border-accent-400" : ""}`}
- >
+              <Button variant="tertiary" className={`bg-surface-base border border-border-base ${campaignUploadFilter !== "all" ? "border-accent-400" : ""}`}>
                   <Icon icon="solar:video-library-bold-duotone" className="text-accent-400" width={18} />
                   {campaignUploadFilter === "all" ? "Uploads" : campaignUploadFilter === "only" ? "Only Uploads" : "No Uploads"}
                   <Icon icon="solar:alt-arrow-down-linear" width={16} />
-</Button>
-<Dropdown.Popover>
+              </Button>
+              <Dropdown.Popover>
 
 <Dropdown.Menu
                 aria-label="Campaign uploads filter"
@@ -608,15 +602,12 @@ function MyClipsPageContent() {
 </Dropdown.Popover>
             </Dropdown>
             <Dropdown>
-<Button
- variant="tertiary"
- className="bg-surface-base border border-border-base"
- >
+              <Button variant="tertiary" className="bg-surface-base border border-border-base">
                   <Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />
                   {clipsSort === "newest" ? "Newest" : "Oldest"}
                   <Icon icon="solar:alt-arrow-down-linear" width={16} />
-</Button>
-<Dropdown.Popover>
+              </Button>
+              <Dropdown.Popover>
 
 <Dropdown.Menu
                 aria-label="Sort order"

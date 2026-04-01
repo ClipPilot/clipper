@@ -23,9 +23,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     <JotaiProvider>
       <AuthProvider>
         <NextThemesProvider {...themeProps}>
-          <CommandPaletteProvider>
-            {children}
-          </CommandPaletteProvider>
+          <CommandPaletteProvider>{children}</CommandPaletteProvider>
         </NextThemesProvider>
       </AuthProvider>
     </JotaiProvider>

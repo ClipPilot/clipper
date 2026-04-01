@@ -68,9 +68,10 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
-    if (score >= 80) return "text-success-600 bg-success-600/10";
-    if (score >= 60) return "text-yellow-600 bg-warning-600/10";
-    return "text-text-tertiary bg-surface-elevated";
+    if (score >= 80) return "text-green-500 bg-green-500/10";
+    if (score >= 60) return "text-yellow-500 bg-yellow-500/10";
+    if (score >= 40) return "text-orange-500 bg-orange-500/10";
+    return "text-red-500 bg-red-500/10";
   };
 
   const isEditing = clip.status === "pending" && clip.saved && !!clip.clipUrl;

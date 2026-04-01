@@ -145,10 +145,7 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
         </div>
         {tags.length > 0 && (
           <Dropdown>
-<Button
- variant="tertiary"
- className="bg-surface-base border border-border-base"
- >
+            <Button variant="tertiary" className="bg-surface-base border border-border-base">
                 <Icon icon="solar:tag-bold" className="text-lg" />
                 <span className="hidden sm:inline">Filter by Tags</span>
                 <span className="sm:hidden">Tags</span>
@@ -157,8 +154,8 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
                       {selectedTagIds.length}
                     </Chip>
                   )}
-</Button>
-<Dropdown.Popover>
+            </Button>
+            <Dropdown.Popover>
 
 <Dropdown.Menu
               aria-label="Filter by tags"

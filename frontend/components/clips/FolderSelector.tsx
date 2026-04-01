@@ -176,11 +176,10 @@ export function FolderSelector({
         isOpen={isOpen}
         onOpenChange={setIsOpen}
       >
-        <Popover.Trigger>
-          <Button
- variant="outline"
- className={`w-full justify-start border-border-base bg-surface-elevated ${sizeClasses[size]}`}
- >
+        <Button
+          variant="outline"
+          className={`w-full justify-start border-border-base bg-surface-elevated ${sizeClasses[size]}`}
+        >
             {selectedFolder ? (
                 <Icon
                   icon="solar:folder-bold-duotone"
@@ -212,8 +211,7 @@ export function FolderSelector({
                   width={16}
                 />
               </div>
-</Button>
-        </Popover.Trigger>
+        </Button>
         <Popover.Content placement="bottom start" className="bg-surface-base border border-border-accent p-0 w-72">
           <div className="max-h-64 overflow-y-auto py-2">
             {isLoading ? (

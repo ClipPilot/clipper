@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card,
-  Button,
-  Chip,
-  Avatar,
-  Dropdown } from "@heroui/react";
+import { Card, Button, Chip, Avatar, Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -18,7 +14,13 @@ import { ugcVideoAPI, UGCVideoJob } from "@/api/ugc/video";
 import type { FaceSwapJob } from "@/components/ugc-studio/types";
 
 /* ── SVG arc gauge for credits ────────────────────────────────── */
-function CreditArc({ percent, size = 100 }: { percent: number; size?: number }) {
+function CreditArc({
+  percent,
+  size = 100,
+}: {
+  percent: number;
+  size?: number;
+}) {
   const r = (size - 10) / 2;
   const circ = 2 * Math.PI * r;
   const startAngle = 135;
@@ -30,7 +32,12 @@ function CreditArc({ percent, size = 100 }: { percent: number; size?: number }) 
     percent >= 90 ? "#ef4444" : percent >= 70 ? "#f59e0b" : "#4F47E6";
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="block"
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -82,7 +89,9 @@ export function DashboardGrid() {
   const router = useRouter();
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const userTeams = useAtomValue(userTeamsAtom);
-  const { usageStats, isLoading: statsLoading } = useUsageStats(selectedTeam?.id);
+  const { usageStats, isLoading: statsLoading } = useUsageStats(
+    selectedTeam?.id,
+  );
   const [recentClips, setRecentClips] = useState<Clip[]>([]);
   const [pendingClips, setPendingClips] = useState<Clip[]>([]);
   const [pendingFaceSwaps, setPendingFaceSwaps] = useState<FaceSwapJob[]>([]);
@@ -100,16 +109,21 @@ export function DashboardGrid() {
           clipsAPI.getSavedClips(selectedTeam.id, 6, 0),
           clipsAPI.getPendingClips(selectedTeam.id),
           faceSwapAPI.getTeamJobs(selectedTeam.id).catch(() => ({ jobs: [] })),
-          ugcVideoAPI.listVideoJobs(selectedTeam.id, 20, 0).catch(() => ({ jobs: [] })),
+          ugcVideoAPI
+            .listVideoJobs(selectedTeam.id, 20, 0)
+            .catch(() => ({ jobs: [] })),
         ]);
         setRecentClips(saved.clips);
         setPendingClips(pending.filter((clip) => clip.status !== "failed"));
         const activeFaceSwaps = faceSwapJobs.jobs.filter(
-          (job) => job.status === "uploading" || job.status === "queued" || job.status === "running"
+          (job) =>
+            job.status === "uploading" ||
+            job.status === "queued" ||
+            job.status === "running",
         );
         setPendingFaceSwaps(activeFaceSwaps);
         const activeUGCJobs = ugcJobs.jobs.filter(
-          (job) => job.status === "queued" || job.status === "generating"
+          (job) => job.status === "queued" || job.status === "generating",
         );
         setPendingUGCJobs(activeUGCJobs);
       } catch (error) {
@@ -127,27 +141,63 @@ export function DashboardGrid() {
 
   const getPlanGradient = (plan: string) => {
     switch (plan?.toLowerCase()) {
-      case "enterprise": return "from-emerald-500/20 to-emerald-500/5";
-      case "scale": return "from-purple-500/20 to-purple-500/5";
-      case "studio": return "from-accent-400/20 to-accent-400/5";
-      default: return "from-blue-500/20 to-blue-500/5";
+      case "enterprise":
+        return "from-emerald-500/20 to-emerald-500/5";
+      case "scale":
+        return "from-purple-500/20 to-purple-500/5";
+      case "studio":
+        return "from-accent-400/20 to-accent-400/5";
+      default:
+        return "from-blue-500/20 to-blue-500/5";
     }
   };
 
   const getPlanAccent = (plan: string) => {
     switch (plan?.toLowerCase()) {
-      case "enterprise": return "#10b981";
-      case "scale": return "#a855f7";
-      case "studio": return "#4F47E6";
-      default: return "#3b82f6";
+      case "enterprise":
+        return "#10b981";
+      case "scale":
+        return "#a855f7";
+      case "studio":
+        return "#4F47E6";
+      default:
+        return "#3b82f6";
     }
   };
 
   const quickActions = [
-    { id: "create", label: "AI Clipping", description: "From long video", icon: "solar:scissors-bold-duotone", href: "/dashboard/create-clip", color: "#4F47E6" },
-    { id: "faceswap", label: "Face Swap", description: "Swap faces in video", icon: "solar:face-scan-circle-bold-duotone", href: "/dashboard/ugc-studio/face-swap", color: "#EC4899" },
-    { id: "aivideo", label: "UGC Studio", description: "Generate from script", icon: "solar:magic-stick-3-bold-duotone", href: "/dashboard/ugc-studio/ai-video-creator", color: "#22C55E" },
-    { id: "library", label: "My Library", description: "View saved clips", icon: "solar:folder-bold-duotone", href: "/dashboard/clips", color: "#F59E0B" },
+    {
+      id: "create",
+      label: "AI Clipping",
+      description: "From long video",
+      icon: "solar:scissors-bold-duotone",
+      href: "/dashboard/create-clip",
+      color: "#4F47E6",
+    },
+    {
+      id: "faceswap",
+      label: "Face Swap",
+      description: "Swap faces in video",
+      icon: "solar:face-scan-circle-bold-duotone",
+      href: "/dashboard/ugc-studio/face-swap",
+      color: "#EC4899",
+    },
+    {
+      id: "aivideo",
+      label: "UGC Studio",
+      description: "Generate from script",
+      icon: "solar:magic-stick-3-bold-duotone",
+      href: "/dashboard/ugc-studio/ai-video-creator",
+      color: "#22C55E",
+    },
+    {
+      id: "library",
+      label: "My Library",
+      description: "View saved clips",
+      icon: "solar:folder-bold-duotone",
+      href: "/dashboard/clips",
+      color: "#F59E0B",
+    },
   ];
 
   /* ── Pending items for Activity widget ──────────────────────── */
@@ -175,7 +225,7 @@ export function DashboardGrid() {
       type: "faceswap" as const,
       icon: "solar:face-scan-circle-bold-duotone",
       color: "#ec4899",
-      progress: job.status === "running" ? (job.progress || 0) : undefined,
+      progress: job.status === "running" ? job.progress || 0 : undefined,
     })),
     ...pendingUGCJobs.map((job) => ({
       id: `ugc-${job.id}`,
@@ -184,7 +234,7 @@ export function DashboardGrid() {
       type: "ugc" as const,
       icon: "solar:magic-stick-3-bold-duotone",
       color: "#22c55e",
-      progress: job.status === "generating" ? (job.progress || 0) : undefined,
+      progress: job.status === "generating" ? job.progress || 0 : undefined,
     })),
   ];
   const totalPending = allPendingItems.length;
@@ -200,10 +250,8 @@ export function DashboardGrid() {
     <div className="space-y-4">
       {/* ── Main 2-column grid: left content + right activity ── */}
       <div className="grid grid-cols-12 gap-4 items-start">
-
         {/* ═══ Left column ═══ */}
         <div className="col-span-12 lg:col-span-7 space-y-4">
-
           {/* Row 1: Credits + Workspace side by side */}
           <div className="grid grid-cols-2 gap-4">
             {/* Credits */}
@@ -217,20 +265,24 @@ export function DashboardGrid() {
                     Credits
                   </span>
                   <Chip
- size="sm"
- variant="tertiary"
- style={{
- backgroundColor: `${getPlanAccent(plan)}18`,
- color: getPlanAccent(plan),
- }}
- >
+                    size="sm"
+                    variant="tertiary"
+                    style={{
+                      backgroundColor: `${getPlanAccent(plan)}18`,
+                      color: getPlanAccent(plan),
+                    }}
+                  >
                     {plan}
                   </Chip>
                 </div>
 
                 {statsLoading ? (
                   <div className="flex justify-center py-6">
-                    <Icon icon="solar:spinner-bold" className="animate-spin text-text-tertiary" width={24} />
+                    <Icon
+                      icon="solar:spinner-bold"
+                      className="animate-spin text-text-tertiary"
+                      width={24}
+                    />
                   </div>
                 ) : (
                   <>
@@ -241,7 +293,9 @@ export function DashboardGrid() {
                           <span className="text-xl font-bold text-text-primary leading-none">
                             {usageStats?.remaining ?? 0}
                           </span>
-                          <span className="text-[10px] text-text-tertiary mt-0.5">left</span>
+                          <span className="text-[10px] text-text-tertiary mt-0.5">
+                            left
+                          </span>
                         </div>
                       </div>
                       <div className="flex-1 space-y-2">
@@ -272,11 +326,11 @@ export function DashboardGrid() {
 
                     {plan === "free" && (
                       <Button
- size="sm"
- variant="tertiary"
- className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
- onPress={() => router.push("/dashboard/pricing")}
- >
+                        size="sm"
+                        variant="tertiary"
+                        className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
+                        onPress={() => router.push("/dashboard/pricing")}
+                      >
                         <Icon icon="solar:arrow-up-bold" width={14} />
                         Upgrade Plan
                       </Button>
@@ -295,9 +349,15 @@ export function DashboardGrid() {
 
                 <div className="flex items-center gap-3 mb-4">
                   <div className="relative">
-                    <Avatar size="lg" className="bg-accent-400/10 ring-2 ring-accent-400/30">
+                    <Avatar
+                      size="lg"
+                      className="bg-accent-400/10 ring-2 ring-accent-400/30"
+                    >
                       {selectedTeam?.logo_url ? (
-                        <Avatar.Image src={selectedTeam.logo_url} alt={selectedTeam?.name || "Team"} />
+                        <Avatar.Image
+                          src={selectedTeam.logo_url}
+                          alt={selectedTeam?.name || "Team"}
+                        />
                       ) : null}
                       <Avatar.Fallback className="text-accent-400 font-bold text-lg">
                         {selectedTeam?.name?.charAt(0) || "T"}
@@ -330,34 +390,39 @@ export function DashboardGrid() {
 
                 {userTeams.length > 1 && (
                   <Dropdown>
-<Button
- size="sm"
- variant="tertiary"
- className="w-full bg-surface-elevated"
- >
+                    <Button size="sm" variant="tertiary" className="w-full bg-surface-elevated">
                         Switch Workspace
                         <Icon icon="solar:alt-arrow-down-linear" width={14} />
-</Button>
-<Dropdown.Popover>
-
-<Dropdown.Menu
-                      aria-label="Switch team"
-                      onAction={(key) => {
-                        const team = userTeams.find((t) => t.id.toString() === key);
-                        if (team) setSelectedTeam(team);
-                      }}
-                    >
-                      {userTeams.map((team) => (
-                        <Dropdown.Item
-                          key={team.id.toString()}
-                          className={team.id === selectedTeam?.id ? "bg-surface-hover" : ""}
-                        >
-                          <Avatar size="sm" className="w-6 h-6"><Avatar.Fallback>{team.name.charAt(0)}</Avatar.Fallback></Avatar>
-                          {team.name}
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-</Dropdown.Popover>
+                    </Button>
+                    <Dropdown.Popover>
+                      <Dropdown.Menu
+                        aria-label="Switch team"
+                        onAction={(key) => {
+                          const team = userTeams.find(
+                            (t) => t.id.toString() === key,
+                          );
+                          if (team) setSelectedTeam(team);
+                        }}
+                      >
+                        {userTeams.map((team) => (
+                          <Dropdown.Item
+                            key={team.id.toString()}
+                            className={
+                              team.id === selectedTeam?.id
+                                ? "bg-surface-hover"
+                                : ""
+                            }
+                          >
+                            <Avatar size="sm" className="w-6 h-6">
+                              <Avatar.Fallback>
+                                {team.name.charAt(0)}
+                              </Avatar.Fallback>
+                            </Avatar>
+                            {team.name}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
                   </Dropdown>
                 )}
               </Card.Content>
@@ -386,10 +451,18 @@ export function DashboardGrid() {
                     className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
                     style={{ backgroundColor: `${action.color}12` }}
                   >
-                    <Icon icon={action.icon} width={22} style={{ color: action.color }} />
+                    <Icon
+                      icon={action.icon}
+                      width={22}
+                      style={{ color: action.color }}
+                    />
                   </div>
-                  <p className="text-sm font-medium text-text-primary">{action.label}</p>
-                  <p className="text-xs text-text-tertiary mt-0.5">{action.description}</p>
+                  <p className="text-sm font-medium text-text-primary">
+                    {action.label}
+                  </p>
+                  <p className="text-xs text-text-tertiary mt-0.5">
+                    {action.description}
+                  </p>
                 </div>
                 <Icon
                   icon="solar:arrow-right-up-linear"
@@ -421,15 +494,27 @@ export function DashboardGrid() {
 
               {clipsLoading ? (
                 <div className="flex justify-center py-6">
-                  <Icon icon="solar:spinner-bold" className="animate-spin text-text-tertiary" width={24} />
+                  <Icon
+                    icon="solar:spinner-bold"
+                    className="animate-spin text-text-tertiary"
+                    width={24}
+                  />
                 </div>
               ) : totalPending === 0 ? (
                 <div className="flex flex-col items-center justify-center py-4">
                   <div className="w-14 h-14 rounded-2xl bg-green-500/10 flex items-center justify-center mb-3">
-                    <Icon icon="solar:check-circle-bold-duotone" width={28} className="text-green-500" />
+                    <Icon
+                      icon="solar:check-circle-bold-duotone"
+                      width={28}
+                      className="text-green-500"
+                    />
                   </div>
-                  <p className="text-sm font-medium text-text-primary">All clear</p>
-                  <p className="text-xs text-text-tertiary mt-0.5">No active jobs</p>
+                  <p className="text-sm font-medium text-text-primary">
+                    All clear
+                  </p>
+                  <p className="text-xs text-text-tertiary mt-0.5">
+                    No active jobs
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -443,13 +528,20 @@ export function DashboardGrid() {
                     )}
                     {typeCounts.faceswap > 0 && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-pink-500/10 text-pink-400">
-                        <Icon icon="solar:face-scan-circle-bold-duotone" width={10} />
-                        {typeCounts.faceswap} swap{typeCounts.faceswap > 1 ? "s" : ""}
+                        <Icon
+                          icon="solar:face-scan-circle-bold-duotone"
+                          width={10}
+                        />
+                        {typeCounts.faceswap} swap
+                        {typeCounts.faceswap > 1 ? "s" : ""}
                       </span>
                     )}
                     {typeCounts.ugc > 0 && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-green-500/10 text-green-400">
-                        <Icon icon="solar:magic-stick-3-bold-duotone" width={10} />
+                        <Icon
+                          icon="solar:magic-stick-3-bold-duotone"
+                          width={10}
+                        />
                         {typeCounts.ugc} video{typeCounts.ugc > 1 ? "s" : ""}
                       </span>
                     )}
@@ -474,7 +566,11 @@ export function DashboardGrid() {
                               className="w-[22px] h-[22px] rounded-md flex items-center justify-center"
                               style={{ backgroundColor: `${item.color}20` }}
                             >
-                              <Icon icon={item.icon} width={12} style={{ color: item.color }} />
+                              <Icon
+                                icon={item.icon}
+                                width={12}
+                                style={{ color: item.color }}
+                              />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
@@ -552,20 +648,32 @@ export function DashboardGrid() {
 
           {clipsLoading ? (
             <div className="flex justify-center py-8">
-              <Icon icon="solar:spinner-bold" className="animate-spin text-text-tertiary" width={28} />
+              <Icon
+                icon="solar:spinner-bold"
+                className="animate-spin text-text-tertiary"
+                width={28}
+              />
             </div>
           ) : recentClips.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8">
               <div className="w-14 h-14 rounded-2xl bg-surface-elevated flex items-center justify-center mb-3">
-                <Icon icon="solar:video-library-bold-duotone" width={28} className="text-text-tertiary" />
+                <Icon
+                  icon="solar:video-library-bold-duotone"
+                  width={28}
+                  className="text-text-tertiary"
+                />
               </div>
-              <p className="text-sm font-medium text-text-primary mb-1">No clips yet</p>
-              <p className="text-xs text-text-tertiary mb-4">Create your first clip to get started</p>
+              <p className="text-sm font-medium text-text-primary mb-1">
+                No clips yet
+              </p>
+              <p className="text-xs text-text-tertiary mb-4">
+                Create your first clip to get started
+              </p>
               <Button
- size="sm"
- className="bg-accent-400 text-white font-medium"
- onPress={() => router.push("/dashboard/create-clip")}
- >
+                size="sm"
+                className="bg-accent-400 text-white font-medium"
+                onPress={() => router.push("/dashboard/create-clip")}
+              >
                 Create Clip
               </Button>
             </div>
@@ -577,7 +685,9 @@ export function DashboardGrid() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.03 * i }}
-                  onClick={() => router.push(`/dashboard/clips?clipId=${clip.id}`)}
+                  onClick={() =>
+                    router.push(`/dashboard/clips?clipId=${clip.id}`)
+                  }
                   className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface-elevated group"
                 >
                   {clip.clipUrl ? (
@@ -590,7 +700,11 @@ export function DashboardGrid() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Icon icon="solar:video-frame-bold-duotone" width={20} className="text-text-tertiary" />
+                      <Icon
+                        icon="solar:video-frame-bold-duotone"
+                        width={20}
+                        className="text-text-tertiary"
+                      />
                     </div>
                   )}
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pt-5 pb-1.5">
@@ -600,7 +714,11 @@ export function DashboardGrid() {
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                     <div className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center">
-                      <Icon icon="solar:play-bold" width={14} className="text-white ml-0.5" />
+                      <Icon
+                        icon="solar:play-bold"
+                        width={14}
+                        className="text-white ml-0.5"
+                      />
                     </div>
                   </div>
                 </motion.button>

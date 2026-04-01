@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, Chip, Button, Dropdown } from "@heroui/react";
+import { Avatar, Button, Chip, Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom, useAtomValue } from "jotai";
 import { selectedTeamAtom, userTeamsAtom } from "@/store/auth";
@@ -75,15 +75,11 @@ export function TeamWidget({ color, onColorChange }: TeamWidgetProps) {
 
         {userTeams.length > 1 && (
           <Dropdown>
-<Button
- size="sm"
- variant="tertiary"
- className="w-full"
- >
-                Switch Team
-                <Icon icon="solar:alt-arrow-down-linear" width={14} />
-</Button>
-<Dropdown.Popover>
+            <Button size="sm" variant="tertiary" className="w-full">
+              Switch Team
+              <Icon icon="solar:alt-arrow-down-linear" width={14} />
+            </Button>
+            <Dropdown.Popover>
 
 <Dropdown.Menu
               aria-label="Switch team"

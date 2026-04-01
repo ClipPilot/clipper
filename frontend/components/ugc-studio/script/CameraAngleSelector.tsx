@@ -44,11 +44,11 @@ export function CameraAngleSelector({
       <Popover.Trigger>
         <div className="inline-block">
           <Dropdown>
-<Button variant="tertiary" size="sm" className="bg-surface-base min-w-[110px]">
+            <Button variant="tertiary" size="sm" className="bg-surface-base min-w-[110px]">
                 <Icon icon={config.icon} width={14} />
                 <span className="truncate max-w-[80px]">{displayLabel}</span>
-              </Button>
-<Dropdown.Popover>
+            </Button>
+            <Dropdown.Popover>
 
 <Dropdown.Menu
               aria-label="Select camera angle"

@@ -30,7 +30,9 @@ export interface AuthState {
 }
 
 // Using atomWithStorage to persist auth state
-export const userAtom = atomWithStorage<User | null>("user", null);
+const storageOptions = { getOnInit: false };
+
+export const userAtom = atomWithStorage<User | null>("user", null, undefined, storageOptions);
 
 export const isAuthenticatedAtom = atom<boolean>((get) => {
   const user = get(userAtom);
@@ -45,10 +47,9 @@ export const authStateAtom = atom<AuthState>((get) => ({
   isLoading: get(isLoadingAtom),
 }));
 
-// Team state
-export const userTeamsAtom = atomWithStorage<Team[]>("userTeams", []);
-export const selectedTeamAtom = atomWithStorage<Team | null>("selectedTeam", null);
-export const defaultTeamIdAtom = atomWithStorage<number | null>("defaultTeamId", null);
+export const userTeamsAtom = atomWithStorage<Team[]>("userTeams", [], undefined, storageOptions);
+export const selectedTeamAtom = atomWithStorage<Team | null>("selectedTeam", null, undefined, storageOptions);
+export const defaultTeamIdAtom = atomWithStorage<number | null>("defaultTeamId", null, undefined, storageOptions);
 
 
 
