@@ -235,7 +235,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       const user = await userService.getUserById(userId);
       const frontendUrl =
         process.env.FRONTEND_URL || "https://platform.cuttr.com";
-      await emailNotiService.sendClipsReady(user.email, {
+      await emailNotiService.sendClipsReady(user.email, user.id, {
         userName: user.first_name || "there",
         clipCount: clipIds.length,
         sourceFileName: originalFileName || "your video",
