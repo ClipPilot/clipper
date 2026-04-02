@@ -229,7 +229,7 @@ export async function processBatchClipVideoJob(
       const fileNames = videos
         .map((v) => v.originalFileName || `Video ${v.videoIndex + 1}`)
         .join(", ");
-      await emailNotiService.sendClipsReady(user.email, {
+      await emailNotiService.sendClipsReady(user.email, user.id, {
         userName: user.first_name || "there",
         clipCount: clipIds.length,
         sourceFileName: `${videos.length} videos: ${fileNames}`,

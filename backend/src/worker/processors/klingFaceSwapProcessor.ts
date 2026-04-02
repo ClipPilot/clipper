@@ -733,7 +733,7 @@ export async function processKlingFaceSwapJob(
         if (user) {
           const frontendUrl =
             process.env.FRONTEND_URL || "https://platform.cuttr.com";
-          await emailNotiService.sendUgcReady(user.email, {
+          await emailNotiService.sendUgcReady(user.email, user.id, {
             userName: user.first_name || "there",
             ugcUrl: `${frontendUrl}/dashboard/ugc-studio`,
           });
