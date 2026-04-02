@@ -60,6 +60,7 @@ pnpm db:migrate
 ```
 
 Migrations are environment-specific (`ENV=dev|staging|prod`):
+
 - `drizzle/` — Development
 - `drizzle/staging/` — Staging
 - `drizzle/prod/` — Production
@@ -67,6 +68,7 @@ Migrations are environment-specific (`ENV=dev|staging|prod`):
 ### Running Services
 
 ```bash
+on the root: pnpm dev:all
 pnpm dev:backend     # API server (port 3001)
 pnpm dev:worker      # SQS worker
 
@@ -98,7 +100,7 @@ Only request and response types come from `@clipper/shared-types`. Other types (
 
 ### Adding a New API Endpoint
 
-1. Define a **named schema** in `backend/src/config/swagger.ts` under `components.schemas`:
+1. Define a **named schema** in `backend/src/config/swagger.ts` under `components.schemas`: do this for both request and response fields
 
 ```typescript
 MyItemResponse: {
@@ -155,7 +157,7 @@ router.get("/teams/:teamId/items", requireAuth, myController.listItems);
 pnpm build:shared
 ```
 
-5. Import in backend and frontend:
+5. Import in backend (controller file) and frontend:
 
 ```typescript
 // Backend controller
@@ -212,6 +214,7 @@ cd admin-frontend && npm run build
 Amplify builds must build shared packages first. Set the **base directory to the repo root**.
 
 **Install command:**
+
 ```bash
 cd packages/shared-types && npm install && npm run build && cd ../shared-ui && npm install && npm run build && cd ../../frontend && npm install
 ```
@@ -219,6 +222,7 @@ cd packages/shared-types && npm install && npm run build && cd ../shared-ui && n
 `openapi.json` is committed to git, so Amplify doesn't need to regenerate it. Just make sure to run `pnpm build:shared` locally before pushing so the spec is up to date.
 
 **Build command:**
+
 ```bash
 cd frontend && npm run build
 ```
@@ -226,6 +230,7 @@ cd frontend && npm run build
 For admin-frontend, replace `frontend` with `admin-frontend`.
 
 If react-aria breaks on Amplify, verify:
+
 1. `overrides` block exists in the frontend's `package.json`
 2. `transpilePackages` is set in `next.config`
 3. `@clipper/shared-ui/package.json` has React as `peerDependencies` (not `dependencies`)
@@ -236,32 +241,32 @@ If react-aria breaks on Amplify, verify:
 
 ### Root
 
-| Script | What it does |
-|--------|-------------|
-| `pnpm build:shared` | Build all shared packages (db → email → export spec → types → ui) |
-| `pnpm build:backend` | Build shared + backend |
-| `pnpm dev:backend` | Start backend in dev mode |
-| `pnpm dev:worker` | Start SQS worker in dev mode |
+| Script               | What it does                                                      |
+| -------------------- | ----------------------------------------------------------------- |
+| `pnpm build:shared`  | Build all shared packages (db → email → export spec → types → ui) |
+| `pnpm build:backend` | Build shared + backend                                            |
+| `pnpm dev:backend`   | Start backend in dev mode                                         |
+| `pnpm dev:worker`    | Start SQS worker in dev mode                                      |
 
 ### Backend
 
-| Script | What it does |
-|--------|-------------|
-| `pnpm dev` | Start API server |
-| `pnpm dev:worker` | Start SQS worker |
-| `pnpm build` | Compile TypeScript + copy assets |
-| `pnpm test` | Run all tests (vitest) |
-| `pnpm type-check` | TypeScript type checking |
+| Script                 | What it does                        |
+| ---------------------- | ----------------------------------- |
+| `pnpm dev`             | Start API server                    |
+| `pnpm dev:worker`      | Start SQS worker                    |
+| `pnpm build`           | Compile TypeScript + copy assets    |
+| `pnpm test`            | Run all tests (vitest)              |
+| `pnpm type-check`      | TypeScript type checking            |
 | `pnpm api:export-spec` | Export OpenAPI spec to shared-types |
 
 ### Shared-DB
 
-| Script | What it does |
-|--------|-------------|
-| `pnpm build` | Compile TypeScript |
+| Script             | What it does                    |
+| ------------------ | ------------------------------- |
+| `pnpm build`       | Compile TypeScript              |
 | `pnpm db:generate` | Generate migrations from schema |
-| `pnpm db:migrate` | Apply migrations |
-| `pnpm db:studio` | Open Drizzle Studio |
+| `pnpm db:migrate`  | Apply migrations                |
+| `pnpm db:studio`   | Open Drizzle Studio             |
 
 ---
 
@@ -271,19 +276,19 @@ A single unified `ci.yml` orchestrator detects what changed and conditionally de
 
 ### Deployment Flow
 
-| Action | Result |
-|--------|--------|
-| Push to `staging` | Deploys changed services to staging |
-| Push to `main` | Tests + terraform only, release-please creates Release PR |
-| Merge Release PR | Creates git tag → deploys ALL services to production |
-| Manual deploy | Actions > CI/CD Pipeline > Run workflow |
-| Rollback | Actions > Rollback > Run workflow |
+| Action            | Result                                                    |
+| ----------------- | --------------------------------------------------------- |
+| Push to `staging` | Deploys changed services to staging                       |
+| Push to `main`    | Tests + terraform only, release-please creates Release PR |
+| Merge Release PR  | Creates git tag → deploys ALL services to production      |
+| Manual deploy     | Actions > CI/CD Pipeline > Run workflow                   |
+| Rollback          | Actions > Rollback > Run workflow                         |
 
 ### Commit Convention
 
-| Prefix | Example | Version bump |
-|--------|---------|-------------|
-| `feat:` | `feat: add webhook retry logic` | MINOR |
-| `fix:` | `fix: clip preview not loading` | PATCH |
-| `feat!:` | `feat!: redesign auth flow` | MAJOR |
-| `chore:` | `chore: update dependencies` | No bump |
+| Prefix   | Example                         | Version bump |
+| -------- | ------------------------------- | ------------ |
+| `feat:`  | `feat: add webhook retry logic` | MINOR        |
+| `fix:`   | `fix: clip preview not loading` | PATCH        |
+| `feat!:` | `feat!: redesign auth flow`     | MAJOR        |
+| `chore:` | `chore: update dependencies`    | No bump      |
