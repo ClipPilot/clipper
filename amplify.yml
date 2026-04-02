@@ -5,8 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - cd ../packages/shared-types && npx openapi-typescript openapi.json -o src/generated/api.ts && node scripts/generate-models.js && npx -p typescript@5 tsc && cd ../../frontend
-            - cd ../packages/shared-ui && npm install --prefix . && npx -p typescript@5 tsc && cd ../../frontend
+            - cd ../packages/shared-types && npx -p typescript@5 tsc && cd ../../frontend
+            - cd ../packages/shared-ui && npx -p typescript@5 tsc && cd ../../frontend
             - npm ci
         build:
           commands:
