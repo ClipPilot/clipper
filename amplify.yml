@@ -6,7 +6,6 @@ applications:
         preBuild:
           commands:
             - cd ../packages/shared-types && npx -p typescript@5 tsc && cd ../../frontend
-            - cd ../packages/shared-ui && npx -p typescript@5 tsc && cd ../../frontend
             - npm ci
         build:
           commands:
