@@ -31,6 +31,12 @@ export const regenerateThumbnailTool = createTool({
       .describe(
         "If specified, only regenerate this specific b-roll shot (0-based index). Omit to regenerate all shots in the scene.",
       ),
+    singleArollShotIndex: z
+      .number()
+      .optional()
+      .describe(
+        "If specified, only regenerate this specific a-roll-multi shot (0-based index). For podcast scenes only.",
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -45,6 +51,7 @@ export const regenerateThumbnailTool = createTool({
     teamId,
     userRefinement,
     singleBRollShotIndex,
+    singleArollShotIndex,
   }) => {
     const { script } = await loadScript(scriptId, variantIndex);
 
@@ -77,8 +84,6 @@ export const regenerateThumbnailTool = createTool({
       body.userRefinement = userRefinement;
     }
 
-    // For a-roll-multi scenes, fetch existing generated images as setting anchors
-    // so the image processor can maintain background and attire consistency
     if (scene.shotType === "a-roll-multi") {
       const pool = getPool();
       const existingResult = await pool.query(
@@ -88,7 +93,13 @@ export const regenerateThumbnailTool = createTool({
         [scriptId, scene.id],
       );
       const existingImages = existingResult.rows[0]?.generated_images as string[] | undefined;
-      if (existingImages && existingImages.length > 0) {
+
+      if (singleArollShotIndex !== undefined) {
+        body.singleArollShotIndex = singleArollShotIndex;
+        if (existingImages) {
+          body.existingArollImages = existingImages;
+        }
+      } else if (existingImages && existingImages.length > 0) {
         body.settingAnchorKeys = existingImages.slice(0, 2);
       }
     }

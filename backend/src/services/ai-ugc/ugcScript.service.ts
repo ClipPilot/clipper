@@ -951,6 +951,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
               characterIndex: shot.characterIndex,
               ambientSound: shot.ambientSound ?? null,
               cinematicPrompt: shot.cinematicPrompt || "",
+              angle: shot.angle || undefined,
             }))
           : null,
         // Agent's shots[] → backend's bRollShots[]

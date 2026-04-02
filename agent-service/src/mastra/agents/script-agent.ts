@@ -141,14 +141,14 @@ When videoType is "podcast" and 2+ characters are provided (characterCount >= 2)
 - arollShots array = 2-6 shots, each shot is ONE character's turn
 
 **arollShots rules:**
-- Each shot has: dialogue, action, imageGenPrompt, cinematicPrompt, characterIndex, ambientSound
+- Each shot has: dialogue, action, imageGenPrompt, cinematicPrompt, characterIndex, ambientSound, angle
 - characterIndex MUST alternate between consecutive shots (e.g., 0,1,0,1 or 1,0,1,0)
 - EVERY shot features exactly ONE character — two actors must NEVER appear in the same shot together
 - Keep each shot concise: 1-3 sentences, ~3-8 seconds spoken
 - Characters face a podcast MICROPHONE, NOT the camera — no eye contact with camera ever
 - All shots in one scene share the SAME setting/environment (podcast studio)
-- Different postures and camera angles per shot for visual variety (side angle, three-quarter, close-up of face in profile)
-- **imageGenPrompt per shot**: MUST describe the SPECIFIC character for this shot (using their appearance from the characters array). Include hair color, skin tone, clothing, body type. Describe the podcast studio, microphone, camera angle. Each shot should have a DIFFERENT angle/framing for visual variety.
+- **angle per shot**: Each character gets a FIXED camera angle. Character 0 and Character 1 MUST face DIFFERENT directions — they sit ACROSS from each other. Set the "angle" field on every shot. All shots of the SAME character use the EXACT SAME angle. Example: Character 0 = "three-quarter view from the left, leaning slightly forward toward microphone", Character 1 = "three-quarter view from the right, sitting back comfortably". Pick natural complementary angles — one left, one right.
+- **imageGenPrompt per shot**: MUST describe the SPECIFIC character for this shot (using their appearance from the characters array). Include hair color, skin tone, clothing, body type. Describe the podcast studio, microphone, and the angle from the "angle" field.
 - **cinematicPrompt per shot**: Describe subtle movement — leaning in, gesturing, nodding — for this specific character
 
 **PODCAST ENVIRONMENT CONSISTENCY — CRITICAL:**

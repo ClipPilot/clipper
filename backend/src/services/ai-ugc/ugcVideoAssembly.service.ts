@@ -1257,9 +1257,8 @@ async function processArollMultiScene(
     `[UGC Assembly] A-Roll-Multi Scene ${sceneNumber}: Concatenated ${arollShots.length} shots, total ${totalDuration.toFixed(2)}s`,
   );
 
-  const PODCAST_STUDIO_AMBIENT = "Quiet indoor room tone with soft air conditioning hum";
-  const rawAmbient = arollShots[0].ambientSound || ambientSound;
-  const effectiveAmbient = rawAmbient && rawAmbient.trim() ? rawAmbient : PODCAST_STUDIO_AMBIENT;
+  const effectiveAmbient: string | undefined =
+    (arollShots[0].ambientSound?.trim() || ambientSound?.trim()) || undefined;
   if (sharedAmbientAudioPath || effectiveAmbient) {
     onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
 
@@ -1274,7 +1273,7 @@ async function processArollMultiScene(
         ambientPath = sharedAmbientAudioPath;
       } else {
         const ambientBuffer = await elevenLabsService.generateSoundEffect({
-          text: effectiveAmbient,
+          text: effectiveAmbient!,
           durationSeconds: totalDuration + 2,
           promptInfluence: 0.15,
         });

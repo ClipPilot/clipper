@@ -54,6 +54,7 @@ export interface ScriptAgentScene {
     action: string;
     characterIndex: number;
     ambientSound: string | null;
+    angle?: string;
   }>;
   shots: ScriptAgentShot[];
 }

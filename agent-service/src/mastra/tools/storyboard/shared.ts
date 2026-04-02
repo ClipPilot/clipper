@@ -47,6 +47,7 @@ export interface ArollShot {
   characterIndex: number;
   ambientSound?: string | null;
   cinematicPrompt?: string;
+  angle?: string;
 }
 
 export interface BRollShot {

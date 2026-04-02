@@ -52,6 +52,9 @@ export const scriptAgentArollShotSchema = z.object({
     .string()
     .nullable()
     .describe("Per-shot ambient override. Null inherits from scene-level ambientSound."),
+  angle: z
+    .string()
+    .describe("Camera angle and body position for this character. Character A and Character B MUST have different angles (one faces left, other faces right). All shots of the SAME character reuse the SAME angle."),
 });
 
 export const scriptAgentSceneSchema = z.object({

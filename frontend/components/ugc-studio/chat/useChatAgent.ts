@@ -62,6 +62,7 @@ function mapScenesToUGC(scenes: ScriptAgentScene[]): UGCScene[] {
       emotion: (extractEmotion(shot.dialogue) || "confident") as UGCScene["emotion"],
       characterIndex: shot.characterIndex,
       ambientSound: shot.ambientSound || null,
+      angle: shot.angle,
     })) || null,
     bRollShots:
       s.shots && s.shots.length > 0

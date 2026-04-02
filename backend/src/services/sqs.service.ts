@@ -294,6 +294,7 @@ export interface GenerateSceneImageJob extends BaseJob {
     imageGenPrompt?: string;
     cinematicPrompt?: string;
     ambientSound?: string | null;
+    angle?: string;
   }>;
   singleBRollShotIndex?: number;
   existingBRollImages?: string[];
@@ -304,6 +305,8 @@ export interface GenerateSceneImageJob extends BaseJob {
   adCloneReferenceVideoKey?: string;
   adCloneSceneTimestamp?: number;
   existingSceneImageKey?: string;
+  singleArollShotIndex?: number;
+  existingArollImages?: string[];
 }
 
 export interface GenerateUGCVideoJob extends BaseJob {
@@ -617,6 +620,8 @@ class SQSService {
     adCloneReferenceVideoKey?: string;
     adCloneSceneTimestamp?: number;
     existingSceneImageKey?: string;
+    singleArollShotIndex?: number;
+    existingArollImages?: string[];
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -646,6 +651,8 @@ class SQSService {
       adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
       adCloneSceneTimestamp: params.adCloneSceneTimestamp,
       existingSceneImageKey: params.existingSceneImageKey,
+      singleArollShotIndex: params.singleArollShotIndex,
+      existingArollImages: params.existingArollImages,
       createdAt: new Date().toISOString(),
     };
 

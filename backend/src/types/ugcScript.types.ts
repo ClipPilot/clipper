@@ -61,6 +61,7 @@ export const ArollShotSchema = z.object({
   ambientSound: z.string().nullable().describe("Per-shot ambient override. Null inherits from scene."),
   cinematicPrompt: z.string().optional().describe("Optional per-shot cinematic prompt."),
   imageGenPrompt: z.string().optional().describe("Optional per-shot image generation prompt describing the character and studio setup."),
+  angle: z.string().optional().describe("Camera angle and body position for this shot. Set by the script agent. All shots of the same character should use the same angle."),
 });
 
 export const UGCSceneBaseSchema = z.object({

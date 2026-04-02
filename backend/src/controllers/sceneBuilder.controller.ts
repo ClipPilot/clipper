@@ -172,6 +172,8 @@ export class SceneBuilderController {
         existingBRollImages,
         existingSceneImageKey,
         settingAnchorKeys,
+        singleArollShotIndex,
+        existingArollImages,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -363,6 +365,8 @@ export class SceneBuilderController {
         adCloneSceneTimestamp,
         existingSceneImageKey: existingSceneImageKey || undefined,
         settingAnchorKeys: settingAnchorKeys || undefined,
+        singleArollShotIndex,
+        existingArollImages: existingArollImages || undefined,
       });
 
       return res.status(202).json({
@@ -646,12 +650,12 @@ export class SceneBuilderController {
           );
           const anchorImages = await waitForJobImages(firstJobId);
           if (anchorImages && anchorImages.length >= 2) {
-            settingAnchorKeys = [anchorImages[0], anchorImages[1]];
+            settingAnchorKeys = anchorImages;
             console.log(
               `[SCENE_BUILDER] Setting anchors established: ${settingAnchorKeys.length} images from scene ${scenes[firstIdx].sceneNumber}`,
             );
           } else if (anchorImages && anchorImages.length === 1) {
-            settingAnchorKeys = [anchorImages[0]];
+            settingAnchorKeys = anchorImages;
             console.warn(`[SCENE_BUILDER] Only 1 anchor image from scene ${scenes[firstIdx].sceneNumber}`);
           } else {
             console.warn(`[SCENE_BUILDER] Anchor scene failed or timed out, remaining a-roll-multi scenes will generate without setting anchors`);
