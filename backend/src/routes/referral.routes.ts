@@ -125,6 +125,15 @@ router.get("/:teamId/code", requireAuth, getCodeController);
  *     responses:
  *       200:
  *         description: Referral code applied successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Invalid or already used referral code
  *       401:

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import {
   emitClipsRefresh,
   emitClipUpdate,
@@ -15,7 +16,7 @@ import {
 } from "../services/socket.service";
 
 
-export function notifyClipsRefresh(req: Request, res: Response) {
+export function notifyClipsRefresh(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId } = req.body;
 
   if (!teamId) {
@@ -28,7 +29,7 @@ export function notifyClipsRefresh(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyClipUpdate(req: Request, res: Response) {
+export function notifyClipUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, clipId, clip } = req.body;
 
   if (!teamId) {
@@ -41,7 +42,7 @@ export function notifyClipUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyComfyJobUpdate(req: Request, res: Response) {
+export function notifyComfyJobUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, job } = req.body as { teamId: number; job: ComfyJobUpdate };
 
   if (!teamId || !job) {
@@ -54,7 +55,7 @@ export function notifyComfyJobUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyScriptJobUpdate(req: Request, res: Response) {
+export function notifyScriptJobUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, update } = req.body as { teamId: number; update: ScriptJobUpdate };
 
   if (!teamId || !update) {
@@ -67,7 +68,7 @@ export function notifyScriptJobUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyUGCVideoJobUpdate(req: Request, res: Response) {
+export function notifyUGCVideoJobUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, update } = req.body as { teamId: number; update: UGCVideoJobUpdate };
 
   if (!teamId || !update) {
@@ -80,7 +81,7 @@ export function notifyUGCVideoJobUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyAdCloneJobUpdate(req: Request, res: Response) {
+export function notifyAdCloneJobUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, update } = req.body as { teamId: number; update: AdCloneJobUpdate };
 
   if (!teamId || !update) {
@@ -93,7 +94,7 @@ export function notifyAdCloneJobUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export function notifyAdPostingUpdate(req: Request, res: Response) {
+export function notifyAdPostingUpdate(req: Request, res: Response<{ success: boolean } | ErrorResponse>) {
   const { teamId, update } = req.body as { teamId: number; update: AdPostingUpdate };
 
   if (!teamId || !update) {

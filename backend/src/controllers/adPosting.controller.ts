@@ -1,11 +1,12 @@
 import { Response } from "express";
+import type { ClipPostsResponse, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { adPostingService, AdPostingError, PlatformQuantities } from "../services/adPosting.service";
 import { canAccessMassPosting } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function postClipToPlatforms(req: AuthRequest, res: Response) {
+export async function postClipToPlatforms(req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -112,7 +113,7 @@ export async function completeCustomVideo(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getClipPosts(req: AuthRequest, res: Response) {
+export async function getClipPosts(req: AuthRequest, res: Response<ClipPostsResponse | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const clipId = parseInt(req.params.clipId);

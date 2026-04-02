@@ -1,12 +1,13 @@
 import * as Sentry from "@sentry/node";
 import { Response } from "express";
+import type { IntakeApplicationStatus, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { intakeService } from "../services/massPosting/intake.service";
 import { canAccessMassPosting } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function getIntakeForm(req: AuthRequest, res: Response) {
+export async function getIntakeForm(req: AuthRequest, res: Response<{ form: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -20,7 +21,7 @@ export async function getIntakeForm(req: AuthRequest, res: Response) {
   }
 }
 
-export async function upsertIntakeForm(req: AuthRequest, res: Response) {
+export async function upsertIntakeForm(req: AuthRequest, res: Response<{ form: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -44,7 +45,7 @@ export async function upsertIntakeForm(req: AuthRequest, res: Response) {
   }
 }
 
-export async function submitApplication(req: AuthRequest, res: Response) {
+export async function submitApplication(req: AuthRequest, res: Response<{ application: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -80,7 +81,7 @@ export async function submitApplication(req: AuthRequest, res: Response) {
   }
 }
 
-export async function submitAppeal(req: AuthRequest, res: Response) {
+export async function submitAppeal(req: AuthRequest, res: Response<{ application: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -111,7 +112,7 @@ export async function submitAppeal(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getApplicationStatus(req: AuthRequest, res: Response) {
+export async function getApplicationStatus(req: AuthRequest, res: Response<IntakeApplicationStatus | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -125,7 +126,7 @@ export async function getApplicationStatus(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getLatestApplication(req: AuthRequest, res: Response) {
+export async function getLatestApplication(req: AuthRequest, res: Response<{ application: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {

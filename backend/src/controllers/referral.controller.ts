@@ -1,9 +1,10 @@
 import { Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { referralService } from "../services/referral.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function generateCodeController(req: AuthRequest, res: Response) {
+export async function generateCodeController(req: AuthRequest, res: Response<{ code: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -22,7 +23,7 @@ export async function generateCodeController(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getCodeController(req: AuthRequest, res: Response) {
+export async function getCodeController(req: AuthRequest, res: Response<{ code: any } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -36,7 +37,7 @@ export async function getCodeController(req: AuthRequest, res: Response) {
   }
 }
 
-export async function applyCodeController(req: AuthRequest, res: Response) {
+export async function applyCodeController(req: AuthRequest, res: Response<{ success: boolean; message: string } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const { code } = req.body;
@@ -88,7 +89,7 @@ export async function getStatsController(req: AuthRequest, res: Response) {
   }
 }
 
-export async function validateCodeController(req: AuthRequest, res: Response) {
+export async function validateCodeController(req: AuthRequest, res: Response<{ valid: boolean; code?: string } | ErrorResponse>) {
   try {
     const { code } = req.params;
     if (!code) {

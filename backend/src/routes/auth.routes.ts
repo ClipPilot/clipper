@@ -290,6 +290,8 @@ router.post(
  *   post:
  *     summary: Update password using reset token
  *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -297,18 +299,12 @@ router.post(
  *           schema:
  *             type: object
  *             required:
- *               - token
- *               - newPassword
+ *               - password
  *             properties:
- *               token:
- *                 type: string
- *                 description: Password reset token
- *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *               newPassword:
+ *               password:
  *                 type: string
  *                 format: password
  *                 minLength: 6
- *                 example: newpassword123
  *     responses:
  *       200:
  *         description: Password updated successfully
@@ -319,9 +315,18 @@ router.post(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Password updated successfully
+ *                 session:
+ *                   $ref: '#/components/schemas/Session'
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       400:
- *         description: Bad request - invalid token or password
+ *         description: Bad request - missing password
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - missing or invalid token
  *         content:
  *           application/json:
  *             schema:
@@ -335,11 +340,10 @@ router.post(
 
 /**
  * @openapi
- * /auth/profile:
+ * /api/auth/profile:
  *   patch:
  *     summary: Update user profile
- *     tags:
- *       - Auth
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -349,11 +353,36 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               name:
+ *               firstName:
  *                 type: string
+ *               lastName:
+ *                 type: string
+ *               emailNotificationsEnabled:
+ *                 type: boolean
  *     responses:
  *       200:
- *         description: Profile updated
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.patch(
   "/profile",

@@ -659,7 +659,7 @@ export function PaymentGate({
                 Change
               </Button>
             </div>
-            <SavedPaymentMethodDisplay pm={card} />
+            <SavedPaymentMethodDisplay pm={card!} />
           </div>
 
           {!gate.complete && totalCredits > 0 && (

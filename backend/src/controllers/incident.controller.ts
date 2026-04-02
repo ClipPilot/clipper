@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { incidentService } from "../services/incident.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function getActiveIncidents(req: Request, res: Response) {
+export async function getActiveIncidents(req: Request, res: Response<{ incidents: Record<string, any>[] } | ErrorResponse>) {
   try {
     const incidents = await incidentService.getActiveIncidents();
     return res.json({ incidents });
@@ -28,7 +29,7 @@ export async function getAllIncidents(req: AdminRequest, res: Response) {
   }
 }
 
-export async function createIncident(req: AdminRequest, res: Response) {
+export async function createIncident(req: AdminRequest, res: Response<{ incident: Record<string, any> } | ErrorResponse>) {
   try {
     const { title, status, affected_services, message } = req.body;
 
@@ -59,7 +60,7 @@ export async function createIncident(req: AdminRequest, res: Response) {
   }
 }
 
-export async function updateIncident(req: AdminRequest, res: Response) {
+export async function updateIncident(req: AdminRequest, res: Response<{ incident: Record<string, any> } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
     const { title, affected_services } = req.body;
@@ -83,7 +84,7 @@ export async function updateIncident(req: AdminRequest, res: Response) {
   }
 }
 
-export async function addIncidentUpdate(req: AdminRequest, res: Response) {
+export async function addIncidentUpdate(req: AdminRequest, res: Response<{ incident: Record<string, any> } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
     const { status, message } = req.body;
@@ -113,7 +114,7 @@ export async function addIncidentUpdate(req: AdminRequest, res: Response) {
   }
 }
 
-export async function deleteIncident(req: AdminRequest, res: Response) {
+export async function deleteIncident(req: AdminRequest, res: Response<{ success: true; message: string } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
 

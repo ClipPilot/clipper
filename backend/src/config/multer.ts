@@ -275,7 +275,7 @@ export const faceSwapUpload = multer({
   }),
   fileFilter: faceSwapFileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB max per file
+    fileSize: 500 * 1024 * 1024,
     files: 11, // 1 video + up to 10 images
   },
 });

@@ -19,9 +19,42 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - teamId
+ *               - prompt
+ *               - graphicType
+ *               - aspectRatio
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               prompt:
+ *                 type: string
+ *               graphicType:
+ *                 type: string
+ *                 enum: [instagram-ad, facebook-ad, product-showcase, banner-display-ad, custom]
+ *               aspectRatio:
+ *                 type: string
+ *                 enum: ["1:1", "9:16", "16:9", "4:5", "3:4", "2:3"]
+ *               mode:
+ *                 type: string
+ *                 enum: [variations, carousel]
+ *                 default: variations
+ *               stylePreset:
+ *                 type: string
+ *                 enum: [tile-ad, collage, photoshoot, flat-lay, ugc, minimalist]
+ *                 default: tile-ad
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 maxItems: 4
  *     responses:
  *       200:
- *         description: Graphics generation started
+ *         description: Graphics generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GenerateGraphicsResponse'
  */
 router.post(
   "/generate",
@@ -57,6 +90,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Upload URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GraphicsUploadUrlResponse'
  */
 router.post(
   "/upload-product-image",

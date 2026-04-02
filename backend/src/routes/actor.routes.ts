@@ -330,7 +330,24 @@ router.get(
  *                   $ref: '#/components/schemas/Character'
  *                 creditCost:
  *                   type: integer
- *                   description: Number of credits charged
+ *                 creditsCharged:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     fromBase:
+ *                       type: integer
+ *                     fromAddon:
+ *                       type: integer
+ *                 usage:
+ *                   type: object
+ *                   properties:
+ *                     baseRemaining:
+ *                       type: integer
+ *                     addonRemaining:
+ *                       type: integer
+ *                     totalRemaining:
+ *                       type: integer
  *       400:
  *         description: Missing required parameters
  *       403:
@@ -373,6 +390,8 @@ router.post(
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Character'
+ *                 total:
+ *                   type: integer
  *       400:
  *         description: teamId is required
  */
@@ -425,6 +444,8 @@ router.get(
  *                           primaryImageUrl:
  *                             type: string
  *                             description: Presigned URL for primary image
+ *                 total:
+ *                   type: integer
  */
 router.get(
   "/community",
@@ -628,8 +649,8 @@ router.post(
  *               styleConfig:
  *                 $ref: '#/components/schemas/StyleConfig'
  *     responses:
- *       200:
- *         description: Variation images generated
+ *       202:
+ *         description: Variation generation job queued
  *         content:
  *           application/json:
  *             schema:
@@ -637,16 +658,16 @@ router.post(
  *               properties:
  *                 success:
  *                   type: boolean
- *                 tempCharacterId:
+ *                 jobId:
  *                   type: string
- *                 images:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/GeneratedImage'
+ *                   format: uuid
+ *                 status:
+ *                   type: string
+ *                   enum: [queued]
  *                 originalCharacterId:
  *                   type: integer
- *                 originalAppearance:
- *                   $ref: '#/components/schemas/AppearanceConfig'
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Parent character not found
  *       403:

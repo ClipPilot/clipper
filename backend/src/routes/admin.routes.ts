@@ -252,15 +252,38 @@ router.post("/enterprise/setup", requireAdminAuth, setupEnterprise);
  *             type: object
  *             required:
  *               - teamId
- *               - plan
+ *               - newPlan
  *             properties:
  *               teamId:
  *                 type: integer
- *               plan:
+ *               newPlan:
  *                 type: string
+ *                 enum: [enterprise]
+ *               clipLimit:
+ *                 type: integer
+ *               monthlyPrice:
+ *                 type: number
+ *               customerEmail:
+ *                 type: string
+ *                 format: email
  *     responses:
  *       200:
  *         description: Plan changed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 checkoutUrl:
+ *                   type: string
+ *                 priceId:
+ *                   type: string
+ *                 hasPreviousSubscription:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid plan or missing fields
  *       404:
  *         description: Team not found
  */
@@ -279,6 +302,15 @@ router.post("/teams/change-plan", requireAdminAuth, changePlan);
  *     responses:
  *       200:
  *         description: List of all referrals
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 referrals:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       401:
  *         description: Unauthorized
  */
@@ -297,6 +329,15 @@ router.get("/referrals", requireAdminAuth, getAllReferrals);
  *     responses:
  *       200:
  *         description: List of all affiliates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 affiliates:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       401:
  *         description: Unauthorized
  */
@@ -335,6 +376,13 @@ router.get("/affiliates", requireAdminAuth, (_req, res) => {
  *     responses:
  *       200:
  *         description: Reward set successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Referral not found
  *       401:
@@ -461,6 +509,9 @@ router.get("/campaigns/:campaignId", requireAdminAuth, getCampaignDetail);
  *               adminNotes:
  *                 type: string
  *                 description: Optional admin notes
+ *               minimumFund:
+ *                 type: number
+ *                 description: Optional minimum fund amount
  *     responses:
  *       200:
  *         description: Campaign approved
@@ -504,9 +555,9 @@ router.post("/campaigns/:campaignId/approve", requireAdminAuth, approveCampaign)
  *           schema:
  *             type: object
  *             required:
- *               - reason
+ *               - rejectionReason
  *             properties:
- *               reason:
+ *               rejectionReason:
  *                 type: string
  *                 description: Reason for rejection
  *               adminNotes:
@@ -559,6 +610,10 @@ router.post("/campaigns/:campaignId/reject", requireAdminAuth, rejectCampaign);
  *                 type: integer
  *               adminNotes:
  *                 type: string
+ *               minimumFund:
+ *                 type: number
+ *               budget:
+ *                 type: number
  *     responses:
  *       200:
  *         description: Campaign updated
@@ -746,6 +801,26 @@ router.get("/campaigns/:campaignId/videos", requireAdminAuth, getCampaignVideos)
  *     responses:
  *       200:
  *         description: Campaign posts with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  *       404:
  *         description: Campaign not found
  *       500:
@@ -836,6 +911,13 @@ router.post("/campaigns/:campaignId/post", requireAdminAuth, postCampaignClip);
  *     responses:
  *       200:
  *         description: Master agreement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agreement:
+ *                   type: object
  *       400:
  *         description: Invalid team ID
  *       401:
@@ -863,6 +945,13 @@ router.get("/teams/:teamId/master-agreement", requireAdminAuth, getMasterAgreeme
  *     responses:
  *       200:
  *         description: New master agreement generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agreement:
+ *                   type: object
  *       400:
  *         description: Invalid team ID
  *       401:

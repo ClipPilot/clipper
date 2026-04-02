@@ -1,10 +1,11 @@
 import { Response } from "express";
+import type { AdminTeam, AdminLoginResponse, EnterpriseSetupResponse, ErrorResponse } from "../types/api.types";
 import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function login(req: AdminRequest, res: Response) {
+export async function login(req: AdminRequest, res: Response<AdminLoginResponse | ErrorResponse>) {
   try {
     const { email, password } = req.body;
 
@@ -29,7 +30,7 @@ export async function login(req: AdminRequest, res: Response) {
   }
 }
 
-export async function verify2FA(req: AdminRequest, res: Response) {
+export async function verify2FA(req: AdminRequest, res: Response<AdminLoginResponse | ErrorResponse>) {
   try {
     const { email, code } = req.body;
 
@@ -79,7 +80,7 @@ export async function resend2FA(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getAllTeams(req: AdminRequest, res: Response) {
+export async function getAllTeams(req: AdminRequest, res: Response<{ teams: AdminTeam[]; pagination: { total: number; limit: number; offset: number; hasMore: boolean } } | ErrorResponse>) {
   try {
     const { search, limit, offset } = req.query;
     const result = await adminService.getAllTeams({
@@ -93,7 +94,7 @@ export async function getAllTeams(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getTeam(req: AdminRequest, res: Response) {
+export async function getTeam(req: AdminRequest, res: Response<{ team: AdminTeam } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -111,7 +112,7 @@ export async function getTeam(req: AdminRequest, res: Response) {
   }
 }
 
-export async function setupEnterprise(req: AdminRequest, res: Response) {
+export async function setupEnterprise(req: AdminRequest, res: Response<EnterpriseSetupResponse | ErrorResponse>) {
   try {
     const { teamId, clipLimit, monthlyPrice, customerEmail } = req.body;
 
@@ -141,7 +142,7 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
   }
 }
 
-export async function changePlan(req: AdminRequest, res: Response) {
+export async function changePlan(req: AdminRequest, res: Response<EnterpriseSetupResponse | ErrorResponse>) {
   try {
     const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } =
       req.body;

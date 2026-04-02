@@ -39,27 +39,23 @@ const options: swaggerJsdoc.Options = {
       schemas: {
         User: {
           type: "object",
+          required: ["id", "email"],
           properties: {
             id: {
               type: "string",
-              description: "User ID",
             },
             email: {
               type: "string",
               format: "email",
-              description: "User email address",
             },
-            first_name: {
+            firstName: {
               type: "string",
-              description: "User's first name",
             },
-            last_name: {
+            lastName: {
               type: "string",
-              description: "User's last name",
             },
-            role: {
-              type: "string",
-              description: "User role",
+            emailNotificationsEnabled: {
+              type: "boolean",
             },
           },
         },
@@ -150,12 +146,26 @@ const options: swaggerJsdoc.Options = {
           properties: {
             error: {
               type: "string",
-              description: "Error message describing what went wrong",
+            },
+            message: {
+              type: "string",
             },
           },
         },
         Subscription: {
           type: "object",
+          required: [
+            "id",
+            "team_id",
+            "stripe_customer_id",
+            "stripe_subscription_id",
+            "status",
+            "plan",
+            "price_id",
+            "current_period_start",
+            "current_period_end",
+            "cancel_at_period_end",
+          ],
           properties: {
             id: {
               type: "integer",
@@ -180,7 +190,7 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale", "enterprise"],
+              enum: ["free", "creator", "studio", "scale", "enterprise"],
               description: "Current plan name",
             },
             price_id: {
@@ -225,36 +235,32 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale", "enterprise"],
+              enum: ["free", "creator", "studio", "scale", "enterprise"],
               description: "Current plan name",
             },
           },
         },
         Team: {
           type: "object",
+          required: ["id", "name", "type", "plan", "role", "created_at", "updated_at"],
           properties: {
             id: {
               type: "integer",
-              description: "Team ID",
             },
             name: {
               type: "string",
-              description: "Team name",
             },
             type: {
               type: "string",
               enum: ["personal", "business", "enterprise"],
-              description: "Team type",
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale", "enterprise"],
-              description: "Current subscription plan",
+              enum: ["free", "creator", "studio", "scale", "enterprise"],
             },
             role: {
               type: "string",
               enum: ["owner", "manager", "member"],
-              description: "User's role in the team",
             },
             created_at: {
               type: "string",
@@ -268,110 +274,267 @@ const options: swaggerJsdoc.Options = {
         },
         Folder: {
           type: "object",
+          required: ["id", "team_id", "name", "created_at", "updated_at"],
           properties: {
             id: {
               type: "integer",
-              description: "Folder ID",
             },
             team_id: {
               type: "integer",
-              description: "Team ID",
+            },
+            parent_folder_id: {
+              type: "integer",
+              nullable: true,
             },
             name: {
               type: "string",
-              description: "Folder name",
             },
             color: {
               type: "string",
-              description: "Folder color (hex)",
             },
             message: {
               type: "string",
-              description: "Folder description",
             },
             created_at: {
+              type: "string",
+              format: "date-time",
+            },
+            updated_at: {
               type: "string",
               format: "date-time",
             },
           },
         },
-        Clip: {
+        Tag: {
           type: "object",
+          required: ["id", "team_id", "name", "color", "created_at", "updated_at"],
           properties: {
             id: {
               type: "integer",
-              description: "Clip ID",
             },
             team_id: {
               type: "integer",
-              description: "Team ID",
             },
-            generated_by_user_id: {
-              type: "integer",
-              description: "User who generated the clip",
-            },
-            folder_id: {
-              type: "integer",
-              nullable: true,
-              description: "Folder ID if assigned",
-            },
-            clip_path: {
+            name: {
               type: "string",
-              description: "S3 path to the clip video",
             },
-            blank_video_path: {
+            color: {
               type: "string",
-              description: "S3 path to video without captions",
-            },
-            srt_path: {
-              type: "string",
-              description: "S3 path to SRT subtitle file",
-            },
-            captions_data: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  index: { type: "integer" },
-                  startTime: { type: "number" },
-                  endTime: { type: "number" },
-                  text: { type: "string" },
-                },
-              },
-              description: "Caption timing and text data",
-            },
-            clip_score: {
-              type: "integer",
-              description: "Quality score of the clip",
-            },
-            source_video_path: {
-              type: "string",
-              description: "Original source video path",
-            },
-            clip_metadata: {
-              type: "object",
-              description: "Additional clip metadata",
-            },
-            title: {
-              type: "string",
-              description: "Clip title",
-            },
-            message: {
-              type: "string",
-              description: "User note about the clip",
-            },
-            status: {
-              type: "string",
-              enum: ["pending", "completed", "failed"],
-              description: "Clip processing status",
-            },
-            error_message: {
-              type: "string",
-              description: "Error message if processing failed",
             },
             created_at: {
               type: "string",
               format: "date-time",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
+        CaptionEntry: {
+          type: "object",
+          required: ["index", "startTime", "endTime", "text"],
+          properties: {
+            index: {
+              type: "integer",
+            },
+            startTime: {
+              type: "number",
+            },
+            endTime: {
+              type: "number",
+            },
+            text: {
+              type: "string",
+            },
+          },
+        },
+        TeamMember: {
+          type: "object",
+          required: ["id", "userId", "email", "firstName", "lastName", "role", "joinedAt"],
+          properties: {
+            id: {
+              type: "integer",
+            },
+            userId: {
+              type: "integer",
+            },
+            email: {
+              type: "string",
+              format: "email",
+            },
+            firstName: {
+              type: "string",
+            },
+            lastName: {
+              type: "string",
+            },
+            role: {
+              type: "string",
+              enum: ["owner", "manager", "member"],
+            },
+            joinedAt: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
+        TeamInvite: {
+          type: "object",
+          required: ["id", "email", "role", "status", "expiresAt", "createdAt", "invitedBy"],
+          properties: {
+            id: {
+              type: "integer",
+            },
+            email: {
+              type: "string",
+              format: "email",
+            },
+            role: {
+              type: "string",
+              enum: ["owner", "manager", "member"],
+            },
+            status: {
+              type: "string",
+              enum: ["pending", "accepted", "revoked", "expired"],
+            },
+            expiresAt: {
+              type: "string",
+              format: "date-time",
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+            },
+            invitedBy: {
+              type: "object",
+              required: ["id", "firstName", "lastName", "email"],
+              properties: {
+                id: {
+                  type: "integer",
+                },
+                firstName: {
+                  type: "string",
+                },
+                lastName: {
+                  type: "string",
+                },
+                email: {
+                  type: "string",
+                  format: "email",
+                },
+              },
+            },
+          },
+        },
+        Clip: {
+          type: "object",
+          required: ["id", "team_id", "generated_by_user_id", "status", "saved", "created_at", "updated_at"],
+          properties: {
+            id: {
+              type: "integer",
+            },
+            team_id: {
+              type: "integer",
+            },
+            generated_by_user_id: {
+              type: "integer",
+            },
+            folder_id: {
+              type: "integer",
+              nullable: true,
+            },
+            clip_path: {
+              type: "string",
+            },
+            blank_video_path: {
+              type: "string",
+            },
+            watermarked_clip_path: {
+              type: "string",
+            },
+            srt_path: {
+              type: "string",
+            },
+            captions_data: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/CaptionEntry",
+              },
+            },
+            clip_score: {
+              type: "integer",
+            },
+            source_video_path: {
+              type: "string",
+            },
+            clip_metadata: {
+              oneOf: [
+                { type: "object", additionalProperties: {} },
+                { type: "null" },
+              ],
+            },
+            input_metadata: {
+              oneOf: [
+                { type: "object", additionalProperties: {} },
+                { type: "null" },
+              ],
+            },
+            prompt: {
+              type: "string",
+            },
+            raw_video_id: {
+              type: "integer",
+              nullable: true,
+            },
+            raw_video_path: {
+              type: "string",
+            },
+            title: {
+              type: "string",
+            },
+            message: {
+              type: "string",
+            },
+            status: {
+              type: "string",
+              enum: ["pending", "completed", "failed"],
+            },
+            saved: {
+              type: "boolean",
+            },
+            share_token: {
+              type: "string",
+              nullable: true,
+            },
+            error_message: {
+              type: "string",
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+            },
+            updated_at: {
+              type: "string",
+              format: "date-time",
+            },
+            clipUrl: {
+              type: "string",
+            },
+            sourceVideoUrl: {
+              type: "string",
+            },
+            blankVideoUrl: {
+              type: "string",
+            },
+            rawVideoUrl: {
+              type: "string",
+            },
+            tags: {
+              type: "array",
+              items: {
+                $ref: "#/components/schemas/Tag",
+              },
             },
           },
         },
@@ -412,7 +575,7 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale", "enterprise"],
+              enum: ["free", "creator", "studio", "scale", "enterprise"],
               description: "Current subscription plan",
             },
             clips_created: {
@@ -490,6 +653,914 @@ const options: swaggerJsdoc.Options = {
             },
             team: {
               $ref: "#/components/schemas/AdminTeam",
+            },
+          },
+        },
+        ViralityAccount: {
+          type: "object",
+          required: [
+            "id",
+            "team_id",
+            "platform",
+            "account_type",
+            "username",
+            "profile_url",
+            "is_verified",
+            "alert_enabled",
+            "is_active",
+            "syncs_remaining",
+            "sync_status",
+            "last_synced_at",
+            "created_at",
+            "updated_at",
+          ],
+          properties: {
+            id: { type: "integer" },
+            team_id: { type: "integer" },
+            competitor_id: { type: "integer", nullable: true },
+            platform: { type: "string", enum: ["instagram", "tiktok", "x"] },
+            account_type: { type: "string", enum: ["profile", "hashtag", "keyword"] },
+            username: { type: "string" },
+            profile_url: { type: "string" },
+            display_name: { type: "string", nullable: true },
+            avatar_url: { type: "string", nullable: true },
+            bio: { type: "string", nullable: true },
+            follower_count: { type: "integer", nullable: true },
+            following_count: { type: "integer", nullable: true },
+            total_likes: { type: "integer", nullable: true },
+            post_count: { type: "integer", nullable: true },
+            follower_history: {
+              type: "array",
+              nullable: true,
+              items: {
+                type: "object",
+                required: ["recorded_at", "followers"],
+                properties: {
+                  recorded_at: { type: "string" },
+                  followers: { type: "integer" },
+                },
+              },
+            },
+            is_verified: { type: "boolean" },
+            alert_enabled: { type: "boolean" },
+            is_active: { type: "boolean" },
+            syncs_remaining: { type: "integer" },
+            last_synced_at: { type: "string", format: "date-time", nullable: true },
+            sync_status: { type: "string", enum: ["pending", "syncing", "completed", "failed"] },
+            sync_error: { type: "string", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        ViralityPost: {
+          type: "object",
+          required: [
+            "id",
+            "account_id",
+            "platform_post_id",
+            "post_url",
+            "thumbnail_url",
+            "caption",
+            "hashtags",
+            "post_type",
+            "posted_at",
+            "like_count",
+            "comment_count",
+            "video_view_count",
+            "video_play_count",
+            "metrics_history",
+            "mass_post_id",
+            "campaign_name",
+            "created_at",
+            "updated_at",
+          ],
+          properties: {
+            id: { type: "integer" },
+            account_id: { type: "integer" },
+            platform_post_id: { type: "string" },
+            post_url: { type: "string" },
+            thumbnail_url: { type: "string", nullable: true },
+            caption: { type: "string", nullable: true },
+            hashtags: { type: "array", items: { type: "string" } },
+            post_type: { type: "string", nullable: true },
+            posted_at: { type: "string", format: "date-time", nullable: true },
+            like_count: { type: "integer" },
+            comment_count: { type: "integer" },
+            video_view_count: { type: "integer", nullable: true },
+            video_play_count: { type: "integer", nullable: true },
+            metrics_history: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["recorded_at", "likes", "comments"],
+                properties: {
+                  recorded_at: { type: "string" },
+                  likes: { type: "integer" },
+                  comments: { type: "integer" },
+                  views: { type: "integer", nullable: true },
+                },
+              },
+            },
+            mass_post_id: { type: "integer", nullable: true },
+            campaign_name: { type: "string", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        ViralityCompetitor: {
+          type: "object",
+          required: ["id", "team_id", "name", "created_at", "updated_at"],
+          properties: {
+            id: { type: "integer" },
+            team_id: { type: "integer" },
+            name: { type: "string" },
+            description: { type: "string", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        ViralSettings: {
+          type: "object",
+          required: [
+            "percentThreshold",
+            "absoluteThreshold",
+            "thresholdMode",
+            "timeFrameHours",
+            "enabledAccountIds",
+            "additionalEmails",
+          ],
+          properties: {
+            percentThreshold: { type: "integer", nullable: true },
+            absoluteThreshold: { type: "integer", nullable: true },
+            thresholdMode: { type: "string", enum: ["and", "or"] },
+            timeFrameHours: { type: "integer" },
+            enabledAccountIds: { type: "array", items: { type: "integer" } },
+            additionalEmails: { type: "array", items: { type: "string", format: "email" } },
+          },
+        },
+        Campaign: {
+          type: "object",
+          required: [
+            "id",
+            "team_id",
+            "name",
+            "status",
+            "videos_ready",
+            "payment_ready",
+            "contract_ready",
+            "created_at",
+            "updated_at",
+          ],
+          properties: {
+            id: { type: "integer" },
+            team_id: { type: "integer" },
+            intake_form_id: { type: "integer", nullable: true },
+            name: { type: "string" },
+            status: {
+              type: "string",
+              enum: ["pending", "accepted", "rejected", "appeal", "started", "paused", "completed"],
+            },
+            quoted_cpm: { type: "string", nullable: true },
+            budget: { type: "string", nullable: true },
+            video_minimum: { type: "integer", nullable: true },
+            minimum_fund: { type: "string", nullable: true },
+            rejection_reason: { type: "string", nullable: true },
+            admin_notes: { type: "string", nullable: true },
+            google_drive_folder_id: { type: "string", nullable: true },
+            videos_ready: { type: "boolean" },
+            payment_ready: { type: "boolean" },
+            contract_ready: { type: "boolean" },
+            started_at: { type: "string", format: "date-time", nullable: true },
+            completed_at: { type: "string", format: "date-time", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        CampaignVideo: {
+          type: "object",
+          required: [
+            "id",
+            "campaign_id",
+            "status",
+            "post_count",
+            "user_post_count",
+            "publish_status",
+            "created_at",
+          ],
+          properties: {
+            id: { type: "integer" },
+            campaign_id: { type: "integer" },
+            clip_id: { type: "integer", nullable: true },
+            file_name: { type: "string", nullable: true },
+            title: { type: "string", nullable: true },
+            duration_seconds: { type: "number", nullable: true },
+            presigned_url: { type: "string", nullable: true },
+            status: {
+              type: "string",
+              enum: ["pending", "uploaded", "processing", "ready", "failed"],
+            },
+            post_count: { type: "integer" },
+            user_post_count: { type: "integer" },
+            publish_status: {
+              type: "string",
+              enum: ["waiting_assignment", "in_drive", "published"],
+            },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        CampaignPaymentMethod: {
+          type: "object",
+          required: ["type", "last4"],
+          properties: {
+            type: { type: "string", enum: ["card", "us_bank_account"] },
+            brand: { type: "string" },
+            last4: { type: "string" },
+            exp_month: { type: "integer" },
+            exp_year: { type: "integer" },
+            bank_name: { type: "string" },
+          },
+        },
+        CampaignWallet: {
+          type: "object",
+          required: [
+            "id",
+            "campaign_id",
+            "balance_cents",
+            "total_deposited_cents",
+            "total_spent_cents",
+            "created_at",
+            "updated_at",
+          ],
+          properties: {
+            id: { type: "integer" },
+            campaign_id: { type: "integer" },
+            team_id: { type: "integer" },
+            balance_cents: { type: "integer" },
+            total_deposited_cents: { type: "integer" },
+            total_spent_cents: { type: "integer" },
+            stripe_payment_method_id: { type: "string", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        MasterAgreement: {
+          type: "object",
+          required: ["id", "team_id", "status"],
+          properties: {
+            id: { type: "integer" },
+            team_id: { type: "integer" },
+            status: { type: "string", enum: ["pending", "signed", "voided"] },
+            signer_name: { type: "string", nullable: true },
+            signer_legal_entity_name: { type: "string", nullable: true },
+            signer_title: { type: "string", nullable: true },
+            signer_email: { type: "string", nullable: true },
+            presigned_pdf_url: { type: "string", nullable: true },
+            signed_at: { type: "string", format: "date-time", nullable: true },
+            effective_date: { type: "string", format: "date-time", nullable: true },
+            created_at: { type: "string", format: "date-time", nullable: true },
+            updated_at: { type: "string", format: "date-time", nullable: true },
+          },
+        },
+        CampaignGates: {
+          type: "object",
+          required: ["videos", "payment", "contract"],
+          properties: {
+            videos: {
+              type: "object",
+              required: ["complete", "videoCount", "videoMinimum"],
+              properties: {
+                complete: { type: "boolean" },
+                videoCount: { type: "integer" },
+                videoMinimum: { type: "integer" },
+              },
+            },
+            payment: {
+              type: "object",
+              required: ["complete", "balanceCents", "requiredCents"],
+              properties: {
+                complete: { type: "boolean" },
+                balanceCents: { type: "integer" },
+                requiredCents: { type: "integer" },
+              },
+            },
+            contract: {
+              type: "object",
+              required: ["complete"],
+              properties: {
+                complete: { type: "boolean" },
+                signedAt: { type: "string", format: "date-time", nullable: true },
+              },
+            },
+          },
+        },
+        CpmDailyCharge: {
+          type: "object",
+          required: [
+            "id",
+            "chargeDate",
+            "totalViewsDelta",
+            "cpmRate",
+            "chargeCents",
+            "status",
+            "postBreakdown",
+            "createdAt",
+          ],
+          properties: {
+            id: { type: "integer" },
+            chargeDate: { type: "string" },
+            totalViewsDelta: { type: "integer" },
+            cpmRate: { type: "string" },
+            chargeCents: { type: "integer" },
+            source: { type: "string", enum: ["wallet", "card"], nullable: true },
+            status: { type: "string", enum: ["charged", "failed", "waived"] },
+            failureReason: { type: "string", nullable: true },
+            postBreakdown: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "user_post_id",
+                  "previous_views",
+                  "current_views",
+                  "delta_views",
+                  "charge_cents",
+                ],
+                properties: {
+                  user_post_id: { type: "integer" },
+                  previous_views: { type: "integer" },
+                  current_views: { type: "integer" },
+                  delta_views: { type: "integer" },
+                  charge_cents: { type: "integer" },
+                  post_url: { type: "string", nullable: true },
+                },
+              },
+            },
+            createdAt: { type: "string", format: "date-time" },
+          },
+        },
+        PresignedUploadResponse: {
+          type: "object",
+          required: ["uploadUrl", "s3Key"],
+          properties: {
+            uploadUrl: { type: "string" },
+            s3Key: { type: "string" },
+          },
+        },
+        MultipartUploadResponse: {
+          type: "object",
+          required: ["uploadId", "s3Key", "chunkSize", "totalParts", "partUrls"],
+          properties: {
+            uploadId: { type: "string" },
+            s3Key: { type: "string" },
+            chunkSize: { type: "integer" },
+            totalParts: { type: "integer" },
+            partUrls: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["partNumber", "uploadUrl"],
+                properties: {
+                  partNumber: { type: "integer" },
+                  uploadUrl: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        SubmitClipResponse: {
+          type: "object",
+          required: ["clipIds", "message", "status"],
+          properties: {
+            clipIds: { type: "array", items: { type: "integer" } },
+            message: { type: "string" },
+            status: { type: "string" },
+          },
+        },
+        VideoUrlInfo: {
+          type: "object",
+          required: ["title", "duration", "filesize", "thumbnail", "uploader", "platform"],
+          properties: {
+            title: { type: "string" },
+            duration: { type: "number" },
+            filesize: { type: "number" },
+            thumbnail: { type: "string" },
+            uploader: { type: "string" },
+            platform: { type: "string" },
+          },
+        },
+        GenerateSceneImagesResponse: {
+          type: "object",
+          required: ["success", "jobId", "sceneId", "status", "message"],
+          properties: {
+            success: { type: "boolean" },
+            jobId: { type: "string", format: "uuid" },
+            sceneId: { type: "string" },
+            status: { type: "string", enum: ["queued"] },
+            singleBRollShotIndex: { type: "integer", nullable: true },
+            message: { type: "string" },
+          },
+        },
+        GenerateAllSceneImagesResponse: {
+          type: "object",
+          required: ["success", "jobIds", "message"],
+          properties: {
+            success: { type: "boolean" },
+            jobIds: {
+              type: "array",
+              items: { type: "string", format: "uuid" },
+            },
+            message: { type: "string" },
+          },
+        },
+        SceneGenerationStatus: {
+          type: "object",
+          required: [
+            "success",
+            "jobId",
+            "sceneId",
+            "sceneNumber",
+            "status",
+            "progress",
+            "progressMessage",
+            "createdAt",
+          ],
+          properties: {
+            success: { type: "boolean" },
+            jobId: { type: "string", format: "uuid" },
+            sceneId: { type: "string" },
+            sceneNumber: { type: "integer" },
+            status: {
+              type: "string",
+              enum: ["queued", "generating", "completed", "failed"],
+            },
+            progress: { type: "integer" },
+            progressMessage: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            startedAt: { type: "string", format: "date-time", nullable: true },
+            completedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
+            images: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["key", "url", "index"],
+                properties: {
+                  key: { type: "string" },
+                  url: { type: "string" },
+                  index: { type: "integer" },
+                },
+              },
+            },
+            error: { type: "string" },
+          },
+        },
+        SceneImagesResponse: {
+          type: "object",
+          required: ["success", "sceneImages"],
+          properties: {
+            success: { type: "boolean" },
+            sceneImages: {
+              type: "object",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  id: { type: "integer" },
+                  script_id: { type: "string" },
+                  scene_id: { type: "string" },
+                  scene_number: { type: "integer" },
+                  image_key: { type: "string" },
+                  imageUrl: { type: "string" },
+                  generatedImages: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        key: { type: "string" },
+                        url: { type: "string" },
+                        index: { type: "integer" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        SceneUploadUrlResponse: {
+          type: "object",
+          required: ["success", "uploadUrl", "s3Key"],
+          properties: {
+            success: { type: "boolean" },
+            uploadUrl: { type: "string", format: "uri" },
+            s3Key: { type: "string" },
+          },
+        },
+        AdCloneCreateResponse: {
+          type: "object",
+          required: ["success", "projectId", "uploadUrls"],
+          properties: {
+            success: { type: "boolean" },
+            projectId: { type: "string", format: "uuid" },
+            uploadUrls: {
+              type: "object",
+              required: ["video", "productImages"],
+              properties: {
+                video: {
+                  type: "object",
+                  required: ["uploadUrl", "s3Key"],
+                  properties: {
+                    uploadUrl: { type: "string" },
+                    s3Key: { type: "string" },
+                  },
+                },
+                productImages: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["uploadUrl", "s3Key"],
+                    properties: {
+                      uploadUrl: { type: "string" },
+                      s3Key: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        AdCloneUploadUrlsResponse: {
+          type: "object",
+          required: ["success", "uploadUrls"],
+          properties: {
+            success: { type: "boolean" },
+            uploadUrls: {
+              type: "object",
+              required: ["video", "productImages"],
+              properties: {
+                video: {
+                  type: "object",
+                  required: ["uploadUrl", "s3Key"],
+                  properties: {
+                    uploadUrl: { type: "string" },
+                    s3Key: { type: "string" },
+                  },
+                },
+                productImages: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["uploadUrl", "s3Key"],
+                    properties: {
+                      uploadUrl: { type: "string" },
+                      s3Key: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        AdCloneProjectStatus: {
+          type: "object",
+          required: [
+            "success",
+            "projectId",
+            "status",
+            "progress",
+            "progressMessage",
+            "createdAt",
+            "updatedAt",
+          ],
+          properties: {
+            success: { type: "boolean" },
+            projectId: { type: "string", format: "uuid" },
+            status: {
+              type: "string",
+              enum: [
+                "created",
+                "uploading",
+                "analyzing",
+                "analysis_complete",
+                "generating_script",
+                "script_generated",
+                "generating_video",
+                "completed",
+                "failed",
+              ],
+            },
+            progress: { type: "integer" },
+            progressMessage: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+            hasAnalysis: { type: "boolean" },
+            hasScript: { type: "boolean" },
+            script: { type: "object" },
+            finalVideoUrl: { type: "string" },
+            clipId: { type: "integer" },
+            error: { type: "string" },
+          },
+        },
+        GenerateGraphicsResponse: {
+          type: "object",
+          required: ["success", "images"],
+          properties: {
+            success: { type: "boolean" },
+            images: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["s3Key", "presignedUrl"],
+                properties: {
+                  s3Key: { type: "string" },
+                  presignedUrl: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        GraphicsUploadUrlResponse: {
+          type: "object",
+          required: ["success", "uploadUrl", "s3Key"],
+          properties: {
+            success: { type: "boolean" },
+            uploadUrl: { type: "string", format: "uri" },
+            s3Key: { type: "string" },
+          },
+        },
+        CloneVoiceResponse: {
+          type: "object",
+          required: ["success", "voice"],
+          properties: {
+            success: { type: "boolean" },
+            voice: {
+              type: "object",
+              required: ["id", "name", "voiceId", "previewUrl", "gender"],
+              properties: {
+                id: { type: "integer" },
+                name: { type: "string" },
+                voiceId: { type: "string" },
+                previewUrl: { type: "string", format: "uri" },
+                gender: { type: "string", enum: ["male", "female", "other"] },
+              },
+            },
+          },
+        },
+        ListVoiceClonesResponse: {
+          type: "object",
+          required: ["success", "voices"],
+          properties: {
+            success: { type: "boolean" },
+            voices: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "id",
+                  "name",
+                  "voiceId",
+                  "previewUrl",
+                  "gender",
+                  "createdAt",
+                ],
+                properties: {
+                  id: { type: "integer" },
+                  name: { type: "string" },
+                  voiceId: { type: "string" },
+                  previewUrl: { type: "string", format: "uri" },
+                  gender: {
+                    type: "string",
+                    enum: ["male", "female", "other"],
+                  },
+                  createdAt: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        ApiKeyListResponse: {
+          type: "object",
+          required: ["keys"],
+          properties: {
+            keys: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "id",
+                  "name",
+                  "key_prefix",
+                  "revoked",
+                  "created_at",
+                ],
+                properties: {
+                  id: { type: "integer" },
+                  name: { type: "string" },
+                  key_prefix: { type: "string" },
+                  revoked: { type: "boolean" },
+                  last_used_at: {
+                    type: "string",
+                    format: "date-time",
+                    nullable: true,
+                  },
+                  expires_at: {
+                    type: "string",
+                    format: "date-time",
+                    nullable: true,
+                  },
+                  created_at: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        ApiKeyCreateResponse: {
+          type: "object",
+          required: ["id", "name", "key", "key_prefix", "created_at"],
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" },
+            key: { type: "string" },
+            key_prefix: { type: "string" },
+            expires_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
+            created_at: { type: "string", format: "date-time" },
+          },
+        },
+        PlatformWallet: {
+          type: "object",
+          required: [
+            "balance_cents",
+            "total_spent_cents",
+            "total_topped_up_cents",
+            "active",
+          ],
+          properties: {
+            balance_cents: { type: "integer" },
+            total_spent_cents: { type: "integer" },
+            total_topped_up_cents: { type: "integer" },
+            active: { type: "boolean" },
+          },
+        },
+        PlatformAutoRefillSettings: {
+          type: "object",
+          required: [
+            "auto_refill",
+            "refill_threshold_cents",
+            "refill_amount_cents",
+            "has_payment_method",
+          ],
+          properties: {
+            auto_refill: { type: "boolean" },
+            refill_threshold_cents: { type: "integer" },
+            refill_amount_cents: { type: "integer" },
+            has_payment_method: { type: "boolean" },
+          },
+        },
+        TeamUsageStats: {
+          type: "object",
+          required: [
+            "teamId",
+            "teamName",
+            "clipsCreated",
+            "baseLimit",
+            "baseRemaining",
+            "addonRemaining",
+            "totalRemaining",
+            "clipsGenerated",
+            "generationLimit",
+            "generationsRemaining",
+            "resetsDate",
+            "rollover",
+            "limit",
+            "remaining",
+          ],
+          properties: {
+            teamId: { type: "integer" },
+            teamName: { type: "string" },
+            clipsCreated: { type: "integer" },
+            baseLimit: { type: "integer" },
+            baseRemaining: { type: "integer" },
+            addonRemaining: { type: "integer" },
+            totalRemaining: { type: "integer" },
+            clipsGenerated: { type: "integer" },
+            generationLimit: { type: "integer" },
+            generationsRemaining: { type: "integer" },
+            resetsDate: { type: "string", format: "date-time" },
+            rollover: { type: "boolean" },
+            limit: { type: "integer" },
+            remaining: { type: "integer" },
+          },
+        },
+        ViralityDashboard: {
+          type: "object",
+          required: [
+            "accountsCount",
+            "totalFollowers",
+            "totalLikes",
+            "totalPosts",
+            "totalViews",
+            "avgViewsPerPost",
+            "accountPostStats",
+            "accounts",
+          ],
+          properties: {
+            accountsCount: { type: "integer" },
+            totalFollowers: { type: "integer" },
+            totalLikes: { type: "integer" },
+            totalPosts: { type: "integer" },
+            totalViews: { type: "integer" },
+            avgViewsPerPost: { type: "integer" },
+            accountPostStats: {
+              type: "object",
+              additionalProperties: {
+                type: "object",
+                required: ["totalViews", "postCount"],
+                properties: {
+                  totalViews: { type: "integer" },
+                  postCount: { type: "integer" },
+                },
+              },
+            },
+            accounts: {
+              type: "array",
+              items: { $ref: "#/components/schemas/ViralityAccount" },
+            },
+          },
+        },
+        IntakeApplicationStatus: {
+          type: "object",
+          required: [
+            "hasIntakeForm",
+            "intakeFormCompleted",
+            "applicationStatus",
+            "googleDriveFolderId",
+          ],
+          properties: {
+            hasIntakeForm: { type: "boolean" },
+            intakeFormCompleted: { type: "boolean" },
+            applicationStatus: { type: "string", nullable: true },
+            googleDriveFolderId: { type: "string", nullable: true },
+          },
+        },
+        ClipPostsResponse: {
+          type: "object",
+          required: ["posts"],
+          properties: {
+            posts: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "platform", "status", "created_at"],
+                properties: {
+                  id: { type: "integer" },
+                  platform: { type: "string" },
+                  status: { type: "string" },
+                  post_url: { type: "string", nullable: true },
+                  drive_file_id: { type: "string", nullable: true },
+                  posted_time: {
+                    type: "string",
+                    format: "date-time",
+                    nullable: true,
+                  },
+                  created_at: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+        CpmBillingBreakdown: {
+          type: "object",
+          required: ["summary", "dailyCharges"],
+          properties: {
+            summary: {
+              type: "object",
+              required: [
+                "totalChargedCents",
+                "totalViews",
+                "walletSpentCents",
+                "cardChargedCents",
+                "cpmRate",
+                "daysTracked",
+              ],
+              properties: {
+                totalChargedCents: { type: "integer" },
+                totalViews: { type: "integer" },
+                walletSpentCents: { type: "integer" },
+                cardChargedCents: { type: "integer" },
+                cpmRate: { type: "string", nullable: true },
+                daysTracked: { type: "integer" },
+              },
+            },
+            dailyCharges: {
+              type: "array",
+              items: { $ref: "#/components/schemas/CpmDailyCharge" },
             },
           },
         },

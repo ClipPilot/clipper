@@ -1,35 +1,18 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  Team as SharedTeam,
+  TeamMember as SharedTeamMember,
+  TeamInvite as SharedTeamInvite,
+  TeamUsageStats,
+} from "@clipper/shared-types";
 
-export interface Team {
-  id: number;
-  name: string;
-  type: "personal" | "business" | "enterprise";
-  role: "owner" | "manager" | "member";
-  plan: "free" | "creator" | "studio" | "scale" | "enterprise";
+export interface Team extends SharedTeam {
   teamSubscriptionId?: string;
   logo_url?: string;
-  created_at: string;
-  updated_at: string;
 }
 
-export interface TeamUsageStats {
-  teamId: number;
-  teamName: string;
-  clipsCreated: number;
-  baseLimit: number;
-  baseRemaining: number;
-  addonRemaining: number;
-  totalRemaining: number;
-  clipsGenerated: number;
-  generationLimit: number;
-  generationsRemaining: number;
-  resetsDate: string;
-  rollover: boolean;
-  // Legacy fields for backward compatibility
-  limit: number;
-  remaining: number;
-}
+export type { TeamUsageStats };
 
 export interface UsageHistoryEntry {
   date: string;
@@ -46,30 +29,9 @@ export interface UsageHistoryResponse {
   totalGenerations: number;
 }
 
-export interface TeamMember {
-  id: number;
-  userId: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: "owner" | "manager" | "member";
-  joinedAt: string;
-}
+export type TeamMember = SharedTeamMember;
 
-export interface TeamInvite {
-  id: number;
-  email: string;
-  role: "owner" | "manager" | "member";
-  status: "pending" | "accepted" | "expired" | "revoked";
-  expiresAt: string;
-  createdAt: string;
-  invitedBy: {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-}
+export type TeamInvite = SharedTeamInvite;
 
 export interface InviteDetails {
   id: number;

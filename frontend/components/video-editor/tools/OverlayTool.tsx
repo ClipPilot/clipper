@@ -41,8 +41,8 @@ export function OverlayTool() {
       return;
     }
 
-    if (file.size > 100 * 1024 * 1024) {
-      alert("File size must be less than 100MB");
+    if (file.size > 500 * 1024 * 1024) {
+      alert("File size must be less than 500MB");
       return;
     }
 
@@ -180,7 +180,7 @@ export function OverlayTool() {
           {uploading ? `Uploading... ${uploadProgress}%` : "Add Image/Video Overlay"}
         </Button>
         <p className="text-xs text-text-tertiary mt-2 text-center">
-          Images or videos (max 100MB)
+          Images or videos (max 500MB)
         </p>
       </div>
 

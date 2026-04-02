@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { ApiKeyCreateResponse, ApiKeyListResponse, PlatformWallet, PlatformAutoRefillSettings, ErrorResponse } from "../types/api.types";
 import { AuthRequest, ApiKeyRequest } from "../middleware/auth.middleware";
 import { verifyTeamAccessOrFail, handleControllerError } from "../utils/controllerHelpers";
 import { apiKeyService } from "../services/apiKey.service";
@@ -7,7 +8,7 @@ import { stripeService } from "../services/stripe.service";
 import { stripe } from "../config/stripe.config";
 import { userService } from "../services/user.service";
 
-export const createApiKeyController = async (req: AuthRequest, res: Response) => {
+export const createApiKeyController = async (req: AuthRequest, res: Response<ApiKeyCreateResponse | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
     const { name, expires_at } = req.body;
@@ -43,7 +44,7 @@ export const createApiKeyController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const listApiKeysController = async (req: AuthRequest, res: Response) => {
+export const listApiKeysController = async (req: AuthRequest, res: Response<ApiKeyListResponse | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
 
@@ -85,7 +86,7 @@ export const revokeApiKeyController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const getWalletController = async (req: AuthRequest, res: Response) => {
+export const getWalletController = async (req: AuthRequest, res: Response<PlatformWallet | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
 
@@ -176,7 +177,7 @@ export const getTopUpStatusController = async (req: AuthRequest, res: Response) 
   }
 };
 
-export const getAutoRefillController = async (req: AuthRequest, res: Response) => {
+export const getAutoRefillController = async (req: AuthRequest, res: Response<PlatformAutoRefillSettings | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
 
@@ -200,7 +201,7 @@ export const getAutoRefillController = async (req: AuthRequest, res: Response) =
   }
 };
 
-export const updateAutoRefillController = async (req: AuthRequest, res: Response) => {
+export const updateAutoRefillController = async (req: AuthRequest, res: Response<PlatformAutoRefillSettings | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
     const { auto_refill, refill_threshold_cents, refill_amount_cents } = req.body;
@@ -278,7 +279,7 @@ export const testApiRouteController = async (req: ApiKeyRequest, res: Response) 
 
 // ── /v1/wallet (API-key authenticated) ──────────────────────────────
 
-export const getWalletV1Controller = async (req: ApiKeyRequest, res: Response) => {
+export const getWalletV1Controller = async (req: ApiKeyRequest, res: Response<PlatformWallet | ErrorResponse>) => {
   try {
     const { teamId } = req.apiKey!;
     const account = await apiBillingService.getOrCreateAccount(teamId);

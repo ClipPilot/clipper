@@ -1,10 +1,11 @@
 import { Response } from "express";
+import type { VideoUrlInfo, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { videoDownloadService } from "../services/videoDownload.service";
 import { s3Service } from "../services/s3.service";
 import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
-export const getVideoInfo = async (req: AuthRequest, res: Response) => {
+export const getVideoInfo = async (req: AuthRequest, res: Response<VideoUrlInfo | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -91,7 +92,7 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const downloadVideoSync = async (req: AuthRequest, res: Response) => {
+export const downloadVideoSync = async (req: AuthRequest, res: Response<{ s3Key: string; fileName: string; fileSize: number; downloadUrl: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;

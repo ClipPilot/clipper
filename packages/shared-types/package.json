@@ -15,10 +15,12 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "generate": "npx openapi-typescript openapi.json -o src/generated/api.ts && node scripts/generate-models.js",
+    "build": "npm run generate && tsc",
     "build:watch": "tsc --watch"
   },
   "devDependencies": {
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.3.3"
   }
 }

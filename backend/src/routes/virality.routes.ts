@@ -22,6 +22,17 @@ const router = Router();
  *     responses:
  *       200:
  *         description: List of accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - accounts
+ *               properties:
+ *                 accounts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ViralityAccount'
  *       403:
  *         description: Plan upgrade required
  */
@@ -57,9 +68,24 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  *                 enum: [instagram, tiktok, x]
  *               profileUrl:
  *                 type: string
+ *               accountType:
+ *                 type: string
+ *                 enum: [profile, hashtag, keyword]
+ *                 default: profile
+ *               competitorId:
+ *                 type: integer
  *     responses:
  *       201:
  *         description: Account created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - account
+ *               properties:
+ *                 account:
+ *                   $ref: '#/components/schemas/ViralityAccount'
  *       400:
  *         description: Invalid input or limit reached
  *       403:
@@ -92,6 +118,15 @@ router.post("/:teamId/accounts", requireAuth, (req, res) => viralityController.a
  *     responses:
  *       200:
  *         description: Account details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - account
+ *               properties:
+ *                 account:
+ *                   $ref: '#/components/schemas/ViralityAccount'
  *       404:
  *         description: Account not found
  */
@@ -120,6 +155,15 @@ router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityCo
  *     responses:
  *       200:
  *         description: Account deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Account not found
  */
@@ -159,6 +203,15 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralit
  *     responses:
  *       200:
  *         description: Account status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - account
+ *               properties:
+ *                 account:
+ *                   $ref: '#/components/schemas/ViralityAccount'
  *       400:
  *         description: Invalid input
  *       404:
@@ -188,8 +241,20 @@ router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => v
  *         schema:
  *           type: integer
  *     responses:
- *       200:
- *         description: Sync completed
+ *       202:
+ *         description: Sync accepted (runs in background)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - accepted
+ *                 - accountId
+ *               properties:
+ *                 accepted:
+ *                   type: boolean
+ *                 accountId:
+ *                   type: integer
  *       403:
  *         description: Plan upgrade required
  *       404:
@@ -232,6 +297,17 @@ router.post("/:teamId/accounts/:accountId/sync", requireAuth, (req, res) => vira
  *     responses:
  *       200:
  *         description: List of posts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - posts
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ViralityPost'
  *       404:
  *         description: Account not found
  */
@@ -260,6 +336,15 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => vira
  *     responses:
  *       200:
  *         description: Post deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Post not found
  */
@@ -280,15 +365,27 @@ router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => viralityContr
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
  *     responses:
  *       200:
  *         description: Dashboard statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ViralityDashboard'
  *       403:
  *         description: Plan upgrade required
  */
 router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.getDashboard(req, res));
-
-// ── Competitor routes ──
 
 /**
  * @openapi
@@ -308,6 +405,17 @@ router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.g
  *     responses:
  *       200:
  *         description: List of competitors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitors
+ *               properties:
+ *                 competitors:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ViralityCompetitor'
  *       403:
  *         description: Plan upgrade required
  */
@@ -344,6 +452,15 @@ router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController
  *     responses:
  *       201:
  *         description: Competitor created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitor
+ *               properties:
+ *                 competitor:
+ *                   $ref: '#/components/schemas/ViralityCompetitor'
  *       400:
  *         description: Invalid input (name is required)
  *       403:
@@ -385,6 +502,15 @@ router.post("/:teamId/competitors", requireAuth, (req, res) => viralityControlle
  *     responses:
  *       200:
  *         description: Competitor updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitor
+ *               properties:
+ *                 competitor:
+ *                   $ref: '#/components/schemas/ViralityCompetitor'
  *       400:
  *         description: Invalid input (name cannot be empty)
  *       403:
@@ -417,6 +543,24 @@ router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vi
  *     responses:
  *       200:
  *         description: Competitor details with nested accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitor
+ *               properties:
+ *                 competitor:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/ViralityCompetitor'
+ *                     - type: object
+ *                       required:
+ *                         - accounts
+ *                       properties:
+ *                         accounts:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/ViralityAccount'
  *       404:
  *         description: Competitor not found
  */
@@ -445,12 +589,19 @@ router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vira
  *     responses:
  *       200:
  *         description: Competitor deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Competitor not found
  */
 router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteCompetitor(req, res));
-
-// ── Alert Settings routes ──
 
 /**
  * @openapi
@@ -486,6 +637,15 @@ router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => v
  *     responses:
  *       200:
  *         description: Alert setting updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - account
+ *               properties:
+ *                 account:
+ *                   $ref: '#/components/schemas/ViralityAccount'
  *       400:
  *         description: Invalid input
  *       404:
@@ -511,6 +671,15 @@ router.patch("/:teamId/accounts/:accountId/alerts", requireAuth, (req, res) => v
  *     responses:
  *       200:
  *         description: Viral alert settings including enabled account IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - settings
+ *               properties:
+ *                 settings:
+ *                   $ref: '#/components/schemas/ViralSettings'
  */
 router.get("/:teamId/settings", requireAuth, (req, res) => viralityController.getSettings(req, res));
 
@@ -550,14 +719,29 @@ router.get("/:teamId/settings", requireAuth, (req, res) => viralityController.ge
  *                 enum: [and, or]
  *               timeFrameHours:
  *                 type: integer
+ *                 enum: [12, 24, 48]
  *                 default: 24
  *               enabledAccountIds:
  *                 type: array
  *                 items:
  *                   type: integer
+ *               additionalEmails:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
  *     responses:
  *       200:
  *         description: Settings saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - settings
+ *               properties:
+ *                 settings:
+ *                   $ref: '#/components/schemas/ViralSettings'
  *       400:
  *         description: Invalid input
  */
@@ -591,6 +775,57 @@ router.put("/:teamId/settings", requireAuth, (req, res) => viralityController.sa
  *     responses:
  *       200:
  *         description: List of alert logs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - logs
+ *               properties:
+ *                 logs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required:
+ *                       - id
+ *                       - team_id
+ *                       - email
+ *                       - subject
+ *                       - email_body
+ *                       - viral_post_ids
+ *                       - status
+ *                       - sent_at
+ *                       - created_at
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       team_id:
+ *                         type: integer
+ *                       user_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       email:
+ *                         type: string
+ *                       subject:
+ *                         type: string
+ *                       email_body:
+ *                         type: string
+ *                       viral_post_ids:
+ *                         type: array
+ *                         items:
+ *                           type: integer
+ *                       status:
+ *                         type: string
+ *                         enum: [sent, failed]
+ *                       error_message:
+ *                         type: string
+ *                         nullable: true
+ *                       sent_at:
+ *                         type: string
+ *                         format: date-time
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
  */
 router.get("/:teamId/alert-logs", requireAuth, (req, res) => viralityController.getAlertLogs(req, res));
 

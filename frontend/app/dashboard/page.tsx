@@ -9,6 +9,7 @@ import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { DashboardGrid } from "@/components/dashboard";
+import { StatusChip } from "@clipper/shared-ui";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -80,6 +81,11 @@ export default function DashboardPage() {
             <p className="text-text-secondary mt-1">
               Here&apos;s what&apos;s happening with your clips
             </p>
+            <div className="flex gap-2 mt-2">
+              <StatusChip status="pending" />
+              <StatusChip status="completed" />
+              <StatusChip status="failed" />
+            </div>
           </div>
         </motion.div>
 

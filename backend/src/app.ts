@@ -177,7 +177,7 @@ app.use(
       if (err.code === "LIMIT_FILE_SIZE") {
         return res
           .status(413)
-          .json({ error: "File too large. Maximum size is 100MB." });
+          .json({ error: "File too large. Maximum size is 500MB." });
       }
       if (err.code === "LIMIT_FILE_COUNT") {
         return res

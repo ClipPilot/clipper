@@ -1,19 +1,14 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import { PromptType } from "@/constants/promptTypes";
+import type {
+  PresignedUploadResponse,
+  MultipartUploadResponse,
+  SubmitClipResponse,
+  VideoUrlInfo,
+} from "@clipper/shared-types";
 
-export interface PresignedUploadResponse {
-  uploadUrl: string;
-  s3Key: string;
-}
-
-export interface MultipartUploadResponse {
-  uploadId: string;
-  s3Key: string;
-  chunkSize: number;
-  totalParts: number;
-  partUrls: { partNumber: number; uploadUrl: string }[];
-}
+export type { PresignedUploadResponse, MultipartUploadResponse, SubmitClipResponse, VideoUrlInfo };
 
 export interface UploadProgress {
   loaded: number;
@@ -48,12 +43,6 @@ export interface SubmitClipParams {
   autoHeading?: boolean;
   headingInstructions?: string;
   backgroundMusicS3Key?: string;
-}
-
-export interface SubmitClipResponse {
-  clipIds: number[];
-  message: string;
-  status: string;
 }
 
 // Batch upload types
@@ -93,15 +82,6 @@ export interface SubmitBatchClipParams {
   autoHeading?: boolean;
   headingInstructions?: string;
   backgroundMusicS3Key?: string;
-}
-
-export interface VideoUrlInfo {
-  title: string;
-  duration: number;
-  filesize: number;
-  thumbnail: string;
-  uploader: string;
-  platform: string;
 }
 
 export interface VideoDownloadProgress {

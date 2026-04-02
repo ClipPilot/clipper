@@ -1,26 +1,17 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  ApiKeyListResponse,
+  ApiKeyCreateResponse,
+  PlatformWallet,
+  PlatformAutoRefillSettings,
+} from "@clipper/shared-types";
 
-export interface ApiKey {
-  id: number;
-  name: string;
-  key_prefix: string;
-  revoked: boolean;
-  last_used_at: string | null;
-  expires_at: string | null;
-  created_at: string;
-}
+export type ApiKey = ApiKeyListResponse["keys"][number];
 
-export interface CreatedApiKey extends ApiKey {
-  key: string;
-}
+export type CreatedApiKey = ApiKeyCreateResponse;
 
-export interface Wallet {
-  balance_cents: number;
-  total_spent_cents: number;
-  total_topped_up_cents: number;
-  active: boolean;
-}
+export type Wallet = PlatformWallet;
 
 export interface UsageLog {
   id: number;
@@ -36,12 +27,7 @@ export interface UsageLog {
   created_at: string;
 }
 
-export interface AutoRefillSettings {
-  auto_refill: boolean;
-  refill_threshold_cents: number;
-  refill_amount_cents: number;
-  has_payment_method: boolean;
-}
+export type AutoRefillSettings = PlatformAutoRefillSettings;
 
 class ApiPlatformAPI {
   async createKey(teamId: number, name: string): Promise<CreatedApiKey> {

@@ -1,10 +1,11 @@
 import { Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPreferencesService } from "../services/userPreferences.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
 export class UserPreferencesController {
-  async getPreferences(req: AuthRequest, res: Response) {
+  async getPreferences(req: AuthRequest, res: Response<any | ErrorResponse>) {
     try {
       const userId = req.user!.dbUserId;
       const preferences = await userPreferencesService.getPreferences(userId);
@@ -14,7 +15,7 @@ export class UserPreferencesController {
     }
   }
 
-  async updatePreferences(req: AuthRequest, res: Response) {
+  async updatePreferences(req: AuthRequest, res: Response<any | ErrorResponse>) {
     try {
       const userId = req.user!.dbUserId;
       const { dashboardLayout, widgetColors } = req.body;
@@ -30,7 +31,7 @@ export class UserPreferencesController {
     }
   }
 
-  async resetPreferences(req: AuthRequest, res: Response) {
+  async resetPreferences(req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) {
     try {
       const userId = req.user!.dbUserId;
       await userPreferencesService.resetToDefault(userId);

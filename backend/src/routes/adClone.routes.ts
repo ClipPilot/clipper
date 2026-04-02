@@ -38,6 +38,15 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Structure or conversation response from agent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  */
 router.post(
   "/init-structure",
@@ -74,6 +83,10 @@ router.post(
  *     responses:
  *       201:
  *         description: Project created with upload URLs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdCloneCreateResponse'
  */
 router.post(
   "/create",
@@ -114,6 +127,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Upload URLs returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdCloneUploadUrlsResponse'
  */
 router.post(
   "/upload-urls",
@@ -154,6 +171,18 @@ router.post(
  *     responses:
  *       200:
  *         description: Upload confirmed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  */
 router.post(
   "/:projectId/confirm-upload",
@@ -190,6 +219,26 @@ router.post(
  *     responses:
  *       202:
  *         description: Analysis started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - projectId
+ *                 - status
+ *                 - message
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 projectId:
+ *                   type: string
+ *                   format: uuid
+ *                 status:
+ *                   type: string
+ *                   enum: [analyzing]
+ *                 message:
+ *                   type: string
  */
 router.post(
   "/:projectId/analyze",
@@ -228,6 +277,18 @@ router.post(
  *     responses:
  *       200:
  *         description: Script updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  */
 router.put(
   "/:projectId/script",
@@ -266,6 +327,18 @@ router.put(
  *     responses:
  *       200:
  *         description: Project finalized and saved to library
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - clipId
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 clipId:
+ *                   type: integer
  */
 router.post(
   "/:projectId/finalize",
@@ -302,6 +375,15 @@ router.post(
  *     responses:
  *       200:
  *         description: Video job linked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  */
 router.post(
   "/:projectId/link-video-job",
@@ -327,6 +409,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Status returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdCloneProjectStatus'
  */
 router.get(
   "/:projectId/status",
@@ -352,6 +438,73 @@ router.get(
  *     responses:
  *       200:
  *         description: Project details returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - project
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 project:
+ *                   type: object
+ *                   required:
+ *                     - id
+ *                     - teamId
+ *                     - status
+ *                     - progress
+ *                     - progressMessage
+ *                     - selectedVariantIndex
+ *                     - createdAt
+ *                     - updatedAt
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     teamId:
+ *                       type: integer
+ *                     productName:
+ *                       type: string
+ *                     productDescription:
+ *                       type: string
+ *                     adDirection:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     progress:
+ *                       type: integer
+ *                     progressMessage:
+ *                       type: string
+ *                     selectedVariantIndex:
+ *                       type: integer
+ *                     characterId:
+ *                       type: integer
+ *                       nullable: true
+ *                     voiceId:
+ *                       type: string
+ *                       nullable: true
+ *                     referenceVideoUrl:
+ *                       type: string
+ *                     productImageUrls:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     finalVideoUrl:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                 analysis:
+ *                   type: object
+ *                 scripts:
+ *                   type: array
+ *                   items:
+ *                     type: object
  */
 router.get(
   "/:projectId",

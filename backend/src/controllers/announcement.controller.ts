@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { announcementService } from "../services/announcement.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { emitNewAnnouncement } from "../services/socket.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
-export async function getUnreadAnnouncements(req: Request, res: Response) {
+export async function getUnreadAnnouncements(req: Request, res: Response<{ announcements: Record<string, any>[] } | ErrorResponse>) {
   try {
     const userId = (req as any).user?.dbUserId;
 
@@ -19,7 +20,7 @@ export async function getUnreadAnnouncements(req: Request, res: Response) {
   }
 }
 
-export async function getAllAnnouncementsForUser(req: Request, res: Response) {
+export async function getAllAnnouncementsForUser(req: Request, res: Response<{ announcements: Record<string, any>[] } | ErrorResponse>) {
   try {
     const userId = (req as any).user?.dbUserId;
 
@@ -34,7 +35,7 @@ export async function getAllAnnouncementsForUser(req: Request, res: Response) {
   }
 }
 
-export async function dismissAnnouncement(req: Request, res: Response) {
+export async function dismissAnnouncement(req: Request, res: Response<{ success: true; message: string } | ErrorResponse>) {
   try {
     const userId = (req as any).user?.dbUserId;
     const announcementId = parseInt(req.params.id);
@@ -54,7 +55,7 @@ export async function dismissAnnouncement(req: Request, res: Response) {
   }
 }
 
-export async function dismissAllAnnouncements(req: Request, res: Response) {
+export async function dismissAllAnnouncements(req: Request, res: Response<{ success: true; message: string } | ErrorResponse>) {
   try {
     const userId = (req as any).user?.dbUserId;
 
@@ -85,7 +86,7 @@ export async function getAllAnnouncements(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getAnnouncementById(req: AdminRequest, res: Response) {
+export async function getAnnouncementById(req: AdminRequest, res: Response<{ announcement: Record<string, any> } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
 
@@ -104,7 +105,7 @@ export async function getAnnouncementById(req: AdminRequest, res: Response) {
   }
 }
 
-export async function createAnnouncement(req: AdminRequest, res: Response) {
+export async function createAnnouncement(req: AdminRequest, res: Response<{ announcement: Record<string, any> } | ErrorResponse>) {
   try {
     const { title, content, priority, icon, action_label, action_url } = req.body;
 
@@ -141,7 +142,7 @@ export async function createAnnouncement(req: AdminRequest, res: Response) {
   }
 }
 
-export async function updateAnnouncement(req: AdminRequest, res: Response) {
+export async function updateAnnouncement(req: AdminRequest, res: Response<{ announcement: Record<string, any> } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
     const { title, content, priority, icon, action_label, action_url } = req.body;
@@ -192,7 +193,7 @@ export async function deleteAnnouncement(req: AdminRequest, res: Response) {
   }
 }
 
-export async function publishAnnouncement(req: AdminRequest, res: Response) {
+export async function publishAnnouncement(req: AdminRequest, res: Response<{ announcement: Record<string, any> } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.id);
 
