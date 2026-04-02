@@ -1,0 +1,23 @@
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd ../packages/shared-types && npm install && npm run build
+            - cd ../packages/shared-ui && npm install && npm run build
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+          - ../packages/shared-types/node_modules/**/*
+          - ../packages/shared-ui/node_modules/**/*
