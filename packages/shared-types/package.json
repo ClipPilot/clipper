@@ -16,7 +16,7 @@
   },
   "scripts": {
     "generate": "npx openapi-typescript openapi.json -o src/generated/api.ts && node scripts/generate-models.js",
-    "build": "pnpm generate && tsc",
+    "build": "npm run generate && tsc",
     "build:watch": "tsc --watch"
   },
   "devDependencies": {

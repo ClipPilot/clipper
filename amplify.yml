@@ -5,8 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - cd ../packages/shared-types && npm install && npm run build
-            - cd ../packages/shared-ui && npm install && npm run build
+            - cd ../packages/shared-types && npx openapi-typescript openapi.json -o src/generated/api.ts && node scripts/generate-models.js && npx tsc
+            - cd ../packages/shared-ui && npm install --prefix . && npx tsc
             - npm ci
         build:
           commands:
@@ -19,5 +19,3 @@ applications:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
-          - ../packages/shared-types/node_modules/**/*
-          - ../packages/shared-ui/node_modules/**/*
