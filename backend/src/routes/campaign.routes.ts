@@ -33,8 +33,6 @@ const router = Router();
  *   description: Campaign management for mass posting distribution
  */
 
-// Campaign CRUD
-
 /**
  * @openapi
  * /api/campaigns/teams/{teamId}/campaigns:
@@ -50,7 +48,6 @@ const router = Router();
  *         required: true
  *         schema:
  *           type: integer
- *         description: The team ID
  *     requestBody:
  *       required: true
  *       content:
@@ -62,13 +59,22 @@ const router = Router();
  *             properties:
  *               name:
  *                 type: string
- *                 description: Campaign name
- *               intakeFormId:
- *                 type: integer
- *                 description: Optional intake form ID to link
+ *               brand_description:
+ *                 type: string
+ *               company_website_url:
+ *                 type: string
+ *               icps:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               company_socials:
+ *                 type: object
+ *               competitor_socials:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               budget:
  *                 type: number
- *                 description: Campaign budget
  *     responses:
  *       201:
  *         description: Campaign created
@@ -76,13 +82,17 @@ const router = Router();
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaign
  *               properties:
  *                 campaign:
- *                   type: object
+ *                   $ref: '#/components/schemas/Campaign'
  *       400:
  *         description: Missing required fields
  *       401:
  *         description: Unauthorized
+ *       409:
+ *         description: Campaign already exists
  *       500:
  *         description: Server error
  */
@@ -103,13 +113,21 @@ router.post("/teams/:teamId/campaigns", requireAuth, requireSeatAccess, createCa
  *         required: true
  *         schema:
  *           type: integer
- *         description: The team ID
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *           enum: [pending, accepted, rejected, appeal, started, paused, completed]
- *         description: Filter by campaign status
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
  *     responses:
  *       200:
  *         description: List of campaigns
@@ -117,11 +135,33 @@ router.post("/teams/:teamId/campaigns", requireAuth, requireSeatAccess, createCa
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaigns
+ *                 - total
+ *                 - pagination
  *               properties:
  *                 campaigns:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     $ref: '#/components/schemas/Campaign'
+ *                 total:
+ *                   type: integer
+ *                 pagination:
+ *                   type: object
+ *                   required:
+ *                     - limit
+ *                     - offset
+ *                     - total
+ *                     - hasMore
+ *                   properties:
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
  *       401:
  *         description: Unauthorized
  *       500:
@@ -156,18 +196,14 @@ router.get("/teams/:teamId/campaigns", requireAuth, requireSeatAccess, listCampa
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaign
+ *                 - gates
  *               properties:
  *                 campaign:
- *                   type: object
+ *                   $ref: '#/components/schemas/Campaign'
  *                 gates:
- *                   type: object
- *                   properties:
- *                     videosReady:
- *                       type: boolean
- *                     paymentReady:
- *                       type: boolean
- *                     contractReady:
- *                       type: boolean
+ *                   $ref: '#/components/schemas/CampaignGates'
  *       401:
  *         description: Unauthorized
  *       404:
@@ -225,9 +261,11 @@ router.get("/teams/:teamId/campaigns/:campaignId", requireAuth, requireSeatAcces
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaign
  *               properties:
  *                 campaign:
- *                   type: object
+ *                   $ref: '#/components/schemas/Campaign'
  *       400:
  *         description: Invalid request
  *       401:
@@ -238,8 +276,6 @@ router.get("/teams/:teamId/campaigns/:campaignId", requireAuth, requireSeatAcces
  *         description: Server error
  */
 router.post("/teams/:teamId/campaigns/:campaignId/appeal", requireAuth, requireSeatAccess, appealCampaign);
-
-// Videos
 
 /**
  * @openapi
@@ -274,7 +310,6 @@ router.post("/teams/:teamId/campaigns/:campaignId/appeal", requireAuth, requireS
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: Array of clip IDs to add
  *     responses:
  *       201:
  *         description: Videos added
@@ -282,11 +317,13 @@ router.post("/teams/:teamId/campaigns/:campaignId/appeal", requireAuth, requireS
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - videos
  *               properties:
  *                 videos:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     $ref: '#/components/schemas/CampaignVideo'
  *       400:
  *         description: Missing clipIds or invalid IDs
  *       401:
@@ -330,10 +367,8 @@ router.post("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireS
  *             properties:
  *               fileName:
  *                 type: string
- *                 description: Original file name
  *               contentType:
  *                 type: string
- *                 description: MIME type (e.g. video/mp4)
  *     responses:
  *       200:
  *         description: Presigned upload URL and video record
@@ -341,9 +376,13 @@ router.post("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireS
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - video
+ *                 - uploadUrl
+ *                 - s3Key
  *               properties:
  *                 video:
- *                   type: object
+ *                   $ref: '#/components/schemas/CampaignVideo'
  *                 uploadUrl:
  *                   type: string
  *                 s3Key:
@@ -389,9 +428,11 @@ router.post("/teams/:teamId/campaigns/:campaignId/videos/upload", requireAuth, r
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - video
  *               properties:
  *                 video:
- *                   type: object
+ *                   $ref: '#/components/schemas/CampaignVideo'
  *       401:
  *         description: Unauthorized
  *       404:
@@ -433,8 +474,10 @@ router.post("/teams/:teamId/campaigns/:campaignId/videos/:videoId/complete", req
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - success
  *               properties:
- *                 deleted:
+ *                 success:
  *                   type: boolean
  *       401:
  *         description: Unauthorized
@@ -465,6 +508,31 @@ router.delete("/teams/:teamId/campaigns/:campaignId/videos/:videoId", requireAut
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [created_at, title, publish_status, post_count]
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *       - in: query
+ *         name: filter
+ *         schema:
+ *           type: string
+ *           enum: [published, unpublished, queued]
  *     responses:
  *       200:
  *         description: List of campaign videos with URLs
@@ -472,42 +540,36 @@ router.delete("/teams/:teamId/campaigns/:campaignId/videos/:videoId", requireAut
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - videos
+ *                 - pagination
  *               properties:
  *                 videos:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       campaignId:
- *                         type: integer
- *                       clipId:
- *                         type: integer
- *                         nullable: true
- *                       customVideoName:
- *                         type: string
- *                         nullable: true
- *                       clipTitle:
- *                         type: string
- *                         nullable: true
- *                       durationSeconds:
- *                         type: number
- *                         nullable: true
- *                       videoUrl:
- *                         type: string
- *                         nullable: true
- *                       createdAt:
- *                         type: string
- *                         format: date-time
+ *                     $ref: '#/components/schemas/CampaignVideo'
+ *                 pagination:
+ *                   type: object
+ *                   required:
+ *                     - page
+ *                     - pageSize
+ *                     - totalVideos
+ *                     - totalPages
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalVideos:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 router.get("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireSeatAccess, listVideos);
-
-// Campaign clip IDs (for library "already added" checks)
 
 /**
  * @openapi
@@ -526,16 +588,25 @@ router.get("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireSe
  *           type: integer
  *     responses:
  *       200:
- *         description: Array of clip IDs
+ *         description: Clip IDs and campaign-to-clip mapping
  *         content:
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - clipIds
+ *                 - campaignClipMap
  *               properties:
  *                 clipIds:
  *                   type: array
  *                   items:
  *                     type: integer
+ *                 campaignClipMap:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: array
+ *                     items:
+ *                       type: integer
  *       401:
  *         description: Unauthorized
  *       500:
@@ -543,14 +614,12 @@ router.get("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireSe
  */
 router.get("/teams/:teamId/campaign-clip-ids", requireAuth, requireSeatAccess, getCampaignClipIds);
 
-// Wallet
-
 /**
  * @openapi
  * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet:
  *   get:
  *     summary: Get campaign wallet
- *     description: Returns the campaign wallet balance and top-up history
+ *     description: Returns the campaign wallet balance and payment method
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -572,20 +641,16 @@ router.get("/teams/:teamId/campaign-clip-ids", requireAuth, requireSeatAccess, g
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - wallet
+ *                 - card
  *               properties:
  *                 wallet:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                     campaignId:
- *                       type: integer
- *                     balanceCents:
- *                       type: integer
- *                     totalDepositedCents:
- *                       type: integer
- *                     totalSpentCents:
- *                       type: integer
+ *                   $ref: '#/components/schemas/CampaignWallet'
+ *                 card:
+ *                   nullable: true
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/CampaignPaymentMethod'
  *       401:
  *         description: Unauthorized
  *       500:
@@ -620,10 +685,11 @@ router.get("/teams/:teamId/campaigns/:campaignId/wallet", requireAuth, requireSe
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - clientSecret
  *               properties:
  *                 clientSecret:
  *                   type: string
- *                   description: Stripe SetupIntent client_secret for use with Stripe.js
  *       400:
  *         description: Invalid ID
  *       401:
@@ -638,7 +704,7 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/setup-intent", requireA
  * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/save-card:
  *   post:
  *     summary: Save a payment method to the campaign wallet
- *     description: Stores the Stripe PaymentMethod ID (returned after SetupIntent confirmation) on the campaign wallet for future charges.
+ *     description: Stores the Stripe PaymentMethod ID on the campaign wallet for future charges.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -664,7 +730,6 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/setup-intent", requireA
  *             properties:
  *               paymentMethodId:
  *                 type: string
- *                 description: Stripe PaymentMethod ID (e.g. pm_xxx)
  *     responses:
  *       200:
  *         description: Card saved successfully
@@ -672,21 +737,16 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/setup-intent", requireA
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - saved
+ *                 - card
  *               properties:
  *                 saved:
  *                   type: boolean
  *                 card:
- *                   type: object
  *                   nullable: true
- *                   properties:
- *                     brand:
- *                       type: string
- *                     last4:
- *                       type: string
- *                     exp_month:
- *                       type: integer
- *                     exp_year:
- *                       type: integer
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/CampaignPaymentMethod'
  *       400:
  *         description: Missing or invalid paymentMethodId
  *       401:
@@ -727,7 +787,6 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/save-card", requireAuth
  *             properties:
  *               amountCents:
  *                 type: integer
- *                 description: Amount in cents to top up
  *                 minimum: 100
  *     responses:
  *       200:
@@ -736,7 +795,15 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/save-card", requireAuth
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - confirmed
+ *                 - paymentIntentId
+ *                 - clientSecret
  *               properties:
+ *                 confirmed:
+ *                   type: boolean
+ *                 processing:
+ *                   type: boolean
  *                 clientSecret:
  *                   type: string
  *                 paymentIntentId:
@@ -775,7 +842,6 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/top-up", requireAuth, r
  *         required: true
  *         schema:
  *           type: string
- *         description: Stripe PaymentIntent ID
  *     responses:
  *       200:
  *         description: Credit status
@@ -783,6 +849,8 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/top-up", requireAuth, r
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - credited
  *               properties:
  *                 credited:
  *                   type: boolean
@@ -798,7 +866,7 @@ router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", re
  * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/fund-with-credits:
  *   post:
  *     summary: Fund campaign wallet with Cuttr credits
- *     description: Converts Cuttr credits into campaign wallet dollars at the rate of 1 credit = $3.50. Credits are deducted immediately from the team's balance.
+ *     description: Converts Cuttr credits into campaign wallet dollars at the rate of 1 credit = $3.50.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -825,7 +893,6 @@ router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", re
  *               creditCount:
  *                 type: integer
  *                 minimum: 1
- *                 description: Number of credits to convert to campaign dollars
  *     responses:
  *       200:
  *         description: Credits applied to wallet
@@ -833,6 +900,11 @@ router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", re
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - confirmed
+ *                 - balanceCents
+ *                 - creditsUsed
+ *                 - amountCents
  *               properties:
  *                 confirmed:
  *                   type: boolean
@@ -850,8 +922,6 @@ router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", re
  *         description: Server error
  */
 router.post("/teams/:teamId/campaigns/:campaignId/wallet/fund-with-credits", requireAuth, requireSeatAccess, fundWithCredits);
-
-// Master Agreement
 
 /**
  * @openapi
@@ -875,30 +945,11 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/fund-with-credits", req
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - agreement
  *               properties:
  *                 agreement:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                     team_id:
- *                       type: integer
- *                     status:
- *                       type: string
- *                       enum: [pending, signed, voided]
- *                     signer_name:
- *                       type: string
- *                       nullable: true
- *                     signer_legal_entity_name:
- *                       type: string
- *                       nullable: true
- *                     presigned_pdf_url:
- *                       type: string
- *                       nullable: true
- *                     signed_at:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
+ *                   $ref: '#/components/schemas/MasterAgreement'
  *       401:
  *         description: Unauthorized
  *       500:
@@ -911,7 +962,7 @@ router.get("/teams/:teamId/master-agreement", requireAuth, requireSeatAccess, ge
  * /api/campaigns/teams/{teamId}/master-agreement/sign:
  *   post:
  *     summary: Sign the master agreement
- *     description: Signs the master agreement with entity info and signature image. Auto-marks contract_ready on all accepted campaigns.
+ *     description: Signs the master agreement with entity info and signature image.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -951,9 +1002,11 @@ router.get("/teams/:teamId/master-agreement", requireAuth, requireSeatAccess, ge
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - agreement
  *               properties:
  *                 agreement:
- *                   type: object
+ *                   $ref: '#/components/schemas/MasterAgreement'
  *       400:
  *         description: Missing required fields
  *       401:
@@ -965,14 +1018,12 @@ router.get("/teams/:teamId/master-agreement", requireAuth, requireSeatAccess, ge
  */
 router.post("/teams/:teamId/master-agreement/sign", requireAuth, requireSeatAccess, signMasterAgreement);
 
-// Start
-
 /**
  * @openapi
  * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/start:
  *   post:
  *     summary: Start a campaign
- *     description: Starts the campaign after validating all three gates (videos, payment, contract). Creates a Google Drive folder.
+ *     description: Starts the campaign after validating all three gates (videos, payment, contract).
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -994,11 +1045,11 @@ router.post("/teams/:teamId/master-agreement/sign", requireAuth, requireSeatAcce
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaign
  *               properties:
  *                 campaign:
- *                   type: object
- *                 message:
- *                   type: string
+ *                   $ref: '#/components/schemas/Campaign'
  *       400:
  *         description: Not all gates are ready
  *       401:
@@ -1011,8 +1062,6 @@ router.post("/teams/:teamId/master-agreement/sign", requireAuth, requireSeatAcce
  *         description: Server error
  */
 router.post("/teams/:teamId/campaigns/:campaignId/start", requireAuth, requireSeatAccess, startCampaign);
-
-// End
 
 /**
  * @openapi
@@ -1041,9 +1090,11 @@ router.post("/teams/:teamId/campaigns/:campaignId/start", requireAuth, requireSe
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - campaign
  *               properties:
  *                 campaign:
- *                   type: object
+ *                   $ref: '#/components/schemas/Campaign'
  *       400:
  *         description: Campaign is not in started or paused status
  *       401:
@@ -1055,14 +1106,12 @@ router.post("/teams/:teamId/campaigns/:campaignId/start", requireAuth, requireSe
  */
 router.post("/teams/:teamId/campaigns/:campaignId/end", requireAuth, requireSeatAccess, endCampaign);
 
-// CPM Billing
-
 /**
  * @openapi
  * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/billing:
  *   get:
  *     summary: Get CPM billing breakdown
- *     description: Returns daily CPM charges with per-post view breakdowns, wallet spend, and card charges for the campaign
+ *     description: Returns daily CPM charges with per-post view breakdowns, wallet spend, and card charges
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -1083,27 +1132,7 @@ router.post("/teams/:teamId/campaigns/:campaignId/end", requireAuth, requireSeat
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 summary:
- *                   type: object
- *                   properties:
- *                     totalChargedCents:
- *                       type: integer
- *                     totalViews:
- *                       type: integer
- *                     walletSpentCents:
- *                       type: integer
- *                     cardChargedCents:
- *                       type: integer
- *                     cpmRate:
- *                       type: string
- *                     daysTracked:
- *                       type: integer
- *                 dailyCharges:
- *                   type: array
- *                   items:
- *                     type: object
+ *               $ref: '#/components/schemas/CpmBillingBreakdown'
  *       401:
  *         description: Unauthorized
  *       500:

@@ -1,5 +1,8 @@
 import API_URL from "@/config/constants";
 import { tokenManager, apiFetch } from "@/lib/apiClient";
+import type { User, ErrorResponse } from "@clipper/shared-types";
+
+export type { User };
 
 export interface SignUpData {
   email: string;
@@ -20,24 +23,13 @@ export interface Session {
   expiresAt: string;
 }
 
-export interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  emailNotificationsEnabled?: boolean;
-}
-
 export interface AuthResponse {
   user: User;
   session: Session;
   message?: string;
 }
 
-export interface ErrorResponse {
-  error: string;
-  message?: string;
-}
+export { ErrorResponse };
 
 class AuthAPI {
   async signUp(data: SignUpData): Promise<AuthResponse> {

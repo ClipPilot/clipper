@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/face-swap/faceSwap.service";
 import { detectFaceSegmentsWithPadding, detectFaceSegmentsFromS3Key } from "../services/face-swap/faceDetection.service";
@@ -22,7 +23,7 @@ const MOBILE_DOWNLOAD_SETTINGS = [
   "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
 ];
 
-export const trimVideo = async (req: AuthRequest, res: Response) => {
+export const trimVideo = async (req: AuthRequest, res: Response<{ success: true; trimmedVideoKey: string; trimmedVideoUrl: string; duration: number } | ErrorResponse>) => {
   const uploadedFile = req.file;
 
   try {
@@ -366,7 +367,7 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
  * Detect faces in a video and return time segments where faces appear
  * Uses BlazeFace ML model for detection at 5 fps sampling
  */
-export const detectFaces = async (req: AuthRequest, res: Response) => {
+export const detectFaces = async (req: AuthRequest, res: Response<{ success: true; segments: { start: number; end: number }[]; videoDuration: number; segmentCount: number } | ErrorResponse>) => {
   const uploadedFile = req.file;
 
   try {
@@ -423,7 +424,7 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
 /**
  * Get a presigned URL for uploading a video for face detection
  */
-export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) => {
+export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response<{ success: true; uploadUrl: string; s3Key: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -454,7 +455,7 @@ export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) =
 /**
  * Detect faces from a video already uploaded to S3
  */
-export const detectFacesFromS3 = async (req: AuthRequest, res: Response) => {
+export const detectFacesFromS3 = async (req: AuthRequest, res: Response<{ success: true; segments: { start: number; end: number }[]; videoDuration: number; segmentCount: number } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;

@@ -18,7 +18,7 @@ const DEFAULT_ANGLES: [string, string] = [
   "three-quarter view from the right, sitting comfortably, one hand near microphone",
 ];
 
-const PODCAST_BACKGROUND_PROMPT = `Professional podcast recording studio interior. A modern desk with two podcast microphones on adjustable boom arms, positioned across from each other. Warm moody lighting with soft key light and subtle colored accent lighting. Acoustic foam panels on walls. Two chairs visible. NO PEOPLE — the studio is completely empty. Photorealistic, cinematic lighting, vertical 9:16 framing.
+const PODCAST_BACKGROUND_PROMPT = `Professional podcast recording studio interior viewed from a centered angle. A modern desk with two podcast microphones on adjustable boom arms — one microphone on the LEFT side of the desk and one on the RIGHT side, positioned facing each other across the desk. Warm moody lighting with soft key light and subtle colored accent lighting. Acoustic foam panels on walls. Two empty chairs, one on each side. NO PEOPLE — the studio is completely empty. Photorealistic, cinematic lighting, vertical 9:16 framing.
 
 NEGATIVE: person, human, hands, face, body, cartoon, illustration, text, watermark`;
 
@@ -32,35 +32,7 @@ async function loadCharactersConfig(scriptId: string): Promise<Array<{ character
   return (row?.characters_config as Array<{ characterId: number }> | null) || [];
 }
 
-async function loadAnchorSceneCharacterMapping(
-  scriptId: string,
-  anchorKeys: string[],
-): Promise<Map<number, string>> {
-  const charMap = new Map<number, string>();
 
-  const [row] = await db
-    .select({ scripts_data: schema.ugcScripts.scripts_data })
-    .from(schema.ugcScripts)
-    .where(eq(schema.ugcScripts.id, scriptId))
-    .limit(1);
-
-  if (!row?.scripts_data) return charMap;
-
-  const scripts = row.scripts_data as Array<{ scenes: Array<{ shotType: string; arollShots?: Array<{ characterIndex: number }> }> }>;
-  const allScenes = scripts[0]?.scenes || [];
-
-  const anchorScene = allScenes.find((s) => s.shotType === "a-roll-multi" && s.arollShots?.length);
-  if (!anchorScene?.arollShots) return charMap;
-
-  for (let i = 0; i < Math.min(anchorScene.arollShots.length, anchorKeys.length); i++) {
-    const charIdx = anchorScene.arollShots[i].characterIndex;
-    if (!charMap.has(charIdx)) {
-      charMap.set(charIdx, anchorKeys[i]);
-    }
-  }
-
-  return charMap;
-}
 
 function createCharacterLoader(
   charactersConfig: Array<{ characterId: number }>,
@@ -118,6 +90,31 @@ function createCharacterLoader(
   };
 }
 
+async function storeAnchorData(
+  jobId: string,
+  bgKey: string,
+  char0Key: string,
+  char1Key: string,
+): Promise<void> {
+  const anchorData = { bgKey, char0Key, char1Key };
+  await db
+    .update(schema.sceneImageGenerationJobs)
+    .set({ progress_message: `ANCHOR:${JSON.stringify(anchorData)}` })
+    .where(eq(schema.sceneImageGenerationJobs.id, jobId));
+  console.log(`[AROLL_MULTI] Stored anchor data: ${JSON.stringify(anchorData)}`);
+}
+
+export function parseAnchorData(
+  progressMessage: string | null,
+): { bgKey: string; char0Key: string; char1Key: string } | null {
+  if (!progressMessage?.startsWith("ANCHOR:")) return null;
+  try {
+    return JSON.parse(progressMessage.slice(7));
+  } catch {
+    return null;
+  }
+}
+
 async function generateBackground(
   teamId: number,
   scriptId: string,
@@ -129,6 +126,9 @@ async function generateBackground(
   });
 
   const response = await fetch(result.imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download background image: HTTP ${response.status}`);
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   const key = await s3Service.uploadSceneImage(buffer, teamId, scriptId, sceneId, 999);
   const url = await s3Service.getPresignedUrl(key, 3600);
@@ -152,12 +152,24 @@ async function generateShot(
   const angle = shot.angle || DEFAULT_ANGLES[shot.characterIndex % 2];
 
   const shotRefs: string[] = [];
-  if (charRef.url) shotRefs.push(charRef.url);
+  if (charRef.url) {
+    shotRefs.push(charRef.url);
+  } else {
+    console.warn(
+      `[AROLL_MULTI] WARNING: No character reference URL for shot ${index} (charIndex=${shot.characterIndex}). The generated image will not match the intended character.`,
+    );
+  }
   if (sameCharGeneratedRef) {
     const urls = await getReferenceImageUrls([sameCharGeneratedRef]);
     if (urls.length > 0) shotRefs.push(urls[0]);
   }
-  shotRefs.push(bgUrl);
+  if (isEstablishing) {
+    shotRefs.push(bgUrl);
+  }
+
+  console.log(
+    `[AROLL_MULTI] Shot ${index} (char ${shot.characterIndex}): ${shotRefs.length} refs [charUrl=${!!charRef.url}, sameCharRef=${!!sameCharGeneratedRef}, bg=${isEstablishing}]`,
+  );
 
   const shotSceneData = {
     ...sceneData,
@@ -169,14 +181,14 @@ async function generateShot(
 
   let promptPrefix: string;
 
-  const micSide = shot.characterIndex % 2 === 0 ? "LEFT" : "RIGHT";
+  const deskSide = shot.characterIndex % 2 === 0 ? "LEFT" : "RIGHT";
 
   if (isEstablishing) {
     promptPrefix = `**PODCAST SHOT ${index + 1} — ESTABLISHING CHARACTER ${shot.characterIndex}**
 Camera angle and body position: ${angle}
-Microphone position: The microphone MUST be on the ${micSide} side of the frame.
-Place this character in the podcast studio background. The character speaks toward a microphone, NOT the camera. No eye contact with camera.
-This exact pose, angle, and microphone placement will be reused for all subsequent shots of this character.
+This character sits on the ${deskSide} side of the desk, using the ${deskSide} microphone. Place this character in the podcast studio background at the ${deskSide} microphone position.
+The character speaks toward the microphone, NOT the camera. No eye contact with camera.
+This exact pose, angle, and desk position will be reused for all subsequent shots of this character.
 
 **REFERENCE IMAGES:**
 1. FIRST image = CHARACTER identity. Depict THIS exact person — match face, skin tone, features precisely.
@@ -184,12 +196,11 @@ ${sameCharGeneratedRef ? `2. NEXT image = this character's previous shot. Copy O
   } else {
     promptPrefix = `**PODCAST SHOT ${index + 1} — CONTINUITY CHARACTER ${shot.characterIndex}**
 Camera angle: ${angle}
-Replicate the EXACT same camera angle, pose, seating position, and framing from the previous shot reference. Only facial expression and subtle hand gestures change. Outfit, setting, and angle stay IDENTICAL.
+Replicate the EXACT same camera angle, pose, seating position, and framing from the previous shot reference. Only facial expression and subtle hand gestures change. Outfit, setting, angle, and background stay IDENTICAL.
 
 **REFERENCE IMAGES:**
 1. FIRST image = CHARACTER identity — face reference.
-2. NEXT image = this character's PREVIOUS shot. Copy pose, angle, outfit, and setting EXACTLY. Only expression changes.
-3. LAST image = BACKGROUND reference.\n\n`;
+2. SECOND image = this character's PREVIOUS shot. Copy pose, angle, outfit, background, and setting EXACTLY. Only expression changes.\n\n`;
   }
 
   const shotPrompt = promptPrefix + buildSceneImagePrompt(
@@ -214,6 +225,9 @@ Replicate the EXACT same camera angle, pose, seating position, and framing from 
   });
 
   const response = await fetch(result.imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download shot image: HTTP ${response.status}`);
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   const imageKey = await s3Service.uploadSceneImage(buffer, teamId, scriptId, sceneId, index);
 
@@ -238,6 +252,17 @@ export async function processArollMultiImages(
   }
 
   const charactersConfig = await loadCharactersConfig(scriptId);
+  if (charactersConfig.length < 2) {
+    console.error(
+      `[AROLL_MULTI] CRITICAL: characters_config has ${charactersConfig.length} entries for script ${scriptId}. ` +
+      `Podcast a-roll-multi requires 2 characters. Fallback characterId=${characterId}. ` +
+      `This likely means the script was saved without multi-character config.`,
+    );
+  } else {
+    console.log(
+      `[AROLL_MULTI] characters_config: ${JSON.stringify(charactersConfig)}`,
+    );
+  }
   const getCharRefs = createCharacterLoader(charactersConfig, characterId);
 
   // --- Flow C: Single-shot regen ---
@@ -281,79 +306,76 @@ export async function processArollMultiImages(
   }
 
   const generatedImages: string[] = [];
-  const referenceByCharacter = new Map<number, string>();
+  const anchorByCharacter = new Map<number, string>();
+  let bgUrl: string;
+  let bgKey: string | undefined;
+  const isAnchorScene = !settingAnchorKeys || settingAnchorKeys.length < 2;
 
-  // --- Flow B: Non-anchor scene (settingAnchorKeys from Scene 1's established shots) ---
-  // Characters were already established in the anchor scene. Every shot here is continuity —
-  // just replicate the character's pose/outfit from their anchor image.
-  if (settingAnchorKeys && settingAnchorKeys.length >= 2) {
+  if (!isAnchorScene) {
+    // --- Non-anchor scene: anchors exist from the first a-roll-multi scene ---
+    // settingAnchorKeys layout: [bgImageKey, char0AnchorKey, char1AnchorKey]
     console.log(
-      `[AROLL_MULTI] Scene ${sceneNumber}: Non-anchor — all ${arollShots.length} shots as continuity`,
+      `[AROLL_MULTI] Scene ${sceneNumber}: Non-anchor — using existing anchors for all ${arollShots.length} shots`,
     );
 
-    // settingAnchorKeys contains Scene 1's generated images: [shot0_charX, shot1_charY, ...]
-    // Map each character index to their anchor image by scanning the anchor scene's shot order.
-    // Anchor scene's shots alternate characters, so anchorKeys[0] = first character, anchorKeys[1] = second character.
-    // We load the anchor scene's arollShots to get the actual characterIndex mapping.
-    const anchorCharMap = new Map<number, string>();
-    const anchorSceneData = await loadAnchorSceneCharacterMapping(scriptId, settingAnchorKeys);
-    for (const [charIdx, key] of anchorSceneData.entries()) {
-      anchorCharMap.set(charIdx, key);
-    }
+    const anchorUrls = await getReferenceImageUrls(settingAnchorKeys!);
+    bgUrl = anchorUrls[0];
+    anchorByCharacter.set(0, settingAnchorKeys![1]);
+    anchorByCharacter.set(1, settingAnchorKeys![2] || settingAnchorKeys![1]);
+  } else {
+    // --- Anchor scene: first a-roll-multi in the script ---
+    // Step 1: Generate empty background
+    console.log(
+      `[AROLL_MULTI] Scene ${sceneNumber}: Anchor — generating background + 2 establishing shots`,
+    );
+    await updateProgress(jobId, 5, "Generating podcast studio background...");
+    const bg = await generateBackground(teamId, scriptId, sceneId);
+    bgUrl = bg.url;
+    bgKey = bg.key;
+    console.log(`[AROLL_MULTI] Background generated: ${bgKey}`);
 
-    const bgUrl = (await getReferenceImageUrls([settingAnchorKeys[0]]))[0];
-
-    await updateProgress(jobId, 10, `Generating ${arollShots.length} continuity shots...`);
-
-    const results = await Promise.all(
-      arollShots.map(async (shot, i) => {
+    // Step 2: Generate 2 anchor shots in parallel (one per character)
+    await updateProgress(jobId, 20, "Generating 2 establishing shots in parallel...");
+    const anchorResults = await Promise.all(
+      arollShots.slice(0, 2).map(async (shot, i) => {
         const charRef = await getCharRefs(shot.characterIndex);
-        const sameCharRef = anchorCharMap.get(shot.characterIndex);
-        return generateShot(shot, i, sceneData, charRef, bgUrl, sameCharRef, false, teamId, scriptId, sceneId, productName);
+        return generateShot(shot, i, sceneData, charRef, bgUrl, undefined, true, teamId, scriptId, sceneId, productName);
       }),
     );
 
-    for (const { index, imageKey } of results.sort((a, b) => a.index - b.index)) {
+    for (const { index, imageKey } of anchorResults) {
       generatedImages[index] = imageKey;
+      anchorByCharacter.set(arollShots[index].characterIndex, imageKey);
     }
 
-    return generatedImages;
+    if (arollShots.length <= 2) {
+      // Store anchor data (bg + char establishing shots) so controller can pass to other scenes
+      await storeAnchorData(jobId, bgKey, generatedImages[0], generatedImages[1]);
+      return generatedImages;
+    }
   }
 
-  // --- Flow A: Anchor scene (first a-roll-multi, generate background) ---
-  console.log(
-    `[AROLL_MULTI] Scene ${sceneNumber}: Anchor — generating background + ${arollShots.length} shots`,
-  );
-  await updateProgress(jobId, 5, "Generating podcast studio background...");
-  const bg = await generateBackground(teamId, scriptId, sceneId);
-  console.log(`[AROLL_MULTI] Background generated: ${bg.key}`);
+  // --- All remaining shots are continuity ---
+  const remainingShots = isAnchorScene ? arollShots.slice(2) : arollShots;
+  const startIndex = isAnchorScene ? 2 : 0;
 
-  await updateProgress(jobId, 20, `Generating 2 establishing shots in parallel...`);
-  const establishingResults = await Promise.all(
-    arollShots.slice(0, 2).map(async (shot, i) => {
+  await updateProgress(jobId, 50, `Generating ${remainingShots.length} continuity shots...`);
+
+  const continuityResults = await Promise.all(
+    remainingShots.map(async (shot, offsetIdx) => {
+      const i = startIndex + offsetIdx;
       const charRef = await getCharRefs(shot.characterIndex);
-      return generateShot(shot, i, sceneData, charRef, bg.url, undefined, true, teamId, scriptId, sceneId, productName);
+      const sameCharRef = anchorByCharacter.get(shot.characterIndex);
+      return generateShot(shot, i, sceneData, charRef, bgUrl, sameCharRef, false, teamId, scriptId, sceneId, productName);
     }),
   );
 
-  for (const { index, imageKey } of establishingResults) {
+  for (const { index, imageKey } of continuityResults.sort((a, b) => a.index - b.index)) {
     generatedImages[index] = imageKey;
-    referenceByCharacter.set(arollShots[index].characterIndex, imageKey);
   }
 
-  if (arollShots.length > 2) {
-    await updateProgress(jobId, 60, `Generating ${arollShots.length - 2} continuity shots...`);
-    const continuityResults = await Promise.all(
-      arollShots.slice(2).map(async (shot, offsetIdx) => {
-        const i = offsetIdx + 2;
-        const charRef = await getCharRefs(shot.characterIndex);
-        const sameCharRef = referenceByCharacter.get(shot.characterIndex);
-        return generateShot(shot, i, sceneData, charRef, bg.url, sameCharRef, false, teamId, scriptId, sceneId, productName);
-      }),
-    );
-    for (const { index, imageKey } of continuityResults.sort((a, b) => a.index - b.index)) {
-      generatedImages[index] = imageKey;
-    }
+  if (isAnchorScene && bgKey) {
+    await storeAnchorData(jobId, bgKey, generatedImages[0], generatedImages[1]);
   }
 
   return generatedImages;

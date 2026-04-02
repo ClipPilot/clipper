@@ -292,12 +292,21 @@ export async function processSceneImageJob(
 
     if (arollShots && arollShots.length > 0) {
       const images = await processArollMultiImages(job, updateJobProgress);
+      // Read back progress_message in case it contains anchor data (set by storeAnchorData)
+      const [currentJob] = await db
+        .select({ progress_message: schema.sceneImageGenerationJobs.progress_message })
+        .from(schema.sceneImageGenerationJobs)
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId))
+        .limit(1);
+      const anchorMsg = currentJob?.progress_message?.startsWith("ANCHOR:")
+        ? currentJob.progress_message
+        : `${arollShots.length} podcast shots generated`;
       await db
         .update(schema.sceneImageGenerationJobs)
         .set({
           status: "completed",
           progress: 100,
-          progress_message: `${arollShots.length} podcast shots generated`,
+          progress_message: anchorMsg,
           generated_images: images,
           completed_at: new Date(),
         })

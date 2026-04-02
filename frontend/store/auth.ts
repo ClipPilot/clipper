@@ -2,14 +2,9 @@
 
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import type { User } from "@clipper/shared-types";
 
-export interface User {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  emailNotificationsEnabled?: boolean;
-}
+export type { User };
 
 export interface Team {
   id: number;

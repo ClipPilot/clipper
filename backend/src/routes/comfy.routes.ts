@@ -42,20 +42,15 @@ const conditionalMulter = (req: any, res: any, next: any) => {
  *             type: object
  *             required:
  *               - teamId
- *               - files
+ *               - videoFileName
+ *               - imageFileName
  *             properties:
  *               teamId:
  *                 type: integer
- *                 description: The team ID
- *               files:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     fileName:
- *                       type: string
- *                     contentType:
- *                       type: string
+ *               videoFileName:
+ *                 type: string
+ *               imageFileName:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Presigned upload URLs generated
@@ -220,6 +215,61 @@ router.post(
  *     responses:
  *       200:
  *         description: Job details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     status:
+ *                       type: string
+ *                       enum: [queued, pending_upload, processing, completed, failed, deleted]
+ *                     progress:
+ *                       type: integer
+ *                     progressMessage:
+ *                       type: string
+ *                       nullable: true
+ *                     outputFile:
+ *                       type: string
+ *                       nullable: true
+ *                     outputUrl:
+ *                       type: string
+ *                       nullable: true
+ *                     errorMessage:
+ *                       type: string
+ *                       nullable: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     finishedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     clipId:
+ *                       type: integer
+ *                       nullable: true
+ *                     title:
+ *                       type: string
+ *                       nullable: true
+ *                     spliceSegments:
+ *                       type: array
+ *                       nullable: true
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           url:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                           start:
+ *                             type: number
+ *                           end:
+ *                             type: number
  *       404:
  *         description: Job not found
  */
@@ -245,6 +295,69 @@ router.get(
  *     responses:
  *       200:
  *         description: List of jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       status:
+ *                         type: string
+ *                         enum: [queued, pending_upload, processing, completed, failed, deleted]
+ *                       progress:
+ *                         type: integer
+ *                       progressMessage:
+ *                         type: string
+ *                         nullable: true
+ *                       outputFile:
+ *                         type: string
+ *                         nullable: true
+ *                       outputUrl:
+ *                         type: string
+ *                         nullable: true
+ *                       errorMessage:
+ *                         type: string
+ *                         nullable: true
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       finishedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       clipId:
+ *                         type: integer
+ *                         nullable: true
+ *                       title:
+ *                         type: string
+ *                         nullable: true
+ *                       spliceSegments:
+ *                         type: array
+ *                         nullable: true
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             url:
+ *                               type: string
+ *                             type:
+ *                               type: string
+ *                             start:
+ *                               type: number
+ *                             end:
+ *                               type: number
+ *                 total:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 offset:
+ *                   type: integer
  */
 router.get(
   "/team/:teamId/jobs",
@@ -269,6 +382,13 @@ router.get(
  *     responses:
  *       200:
  *         description: Job deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Job not found
  */
@@ -303,6 +423,17 @@ router.delete(
  *     responses:
  *       200:
  *         description: Job updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 title:
+ *                   type: string
+ *                 clipId:
+ *                   type: integer
  *       404:
  *         description: Job not found
  */
@@ -342,6 +473,8 @@ router.patch(
  *                       id:
  *                         type: integer
  *                       name:
+ *                         type: string
+ *                       imageKey:
  *                         type: string
  *                       imageUrl:
  *                         type: string
@@ -402,6 +535,8 @@ router.get(
  *                     id:
  *                       type: integer
  *                     name:
+ *                       type: string
+ *                     imageKey:
  *                       type: string
  *                     imageUrl:
  *                       type: string

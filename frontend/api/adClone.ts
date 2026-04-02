@@ -5,37 +5,17 @@ import {
   AdCloneProjectData,
   AdCloneProjectStatus,
 } from "@/store/adClone";
+import type {
+  AdCloneCreateResponse,
+  AdCloneUploadUrlsResponse,
+  AdCloneProjectStatus as AdCloneProjectStatusResponse,
+} from "@clipper/shared-types";
 
-export interface CreateProjectResponse {
-  success: boolean;
-  projectId: string;
-  uploadUrls: {
-    video: { uploadUrl: string; s3Key: string };
-    productImages: { uploadUrl: string; s3Key: string }[];
-  };
-}
+export type CreateProjectResponse = AdCloneCreateResponse;
 
-export interface UploadUrlsResponse {
-  success: boolean;
-  uploadUrls: {
-    video: { uploadUrl: string; s3Key: string };
-    productImages: { uploadUrl: string; s3Key: string }[];
-  };
-}
+export type UploadUrlsResponse = AdCloneUploadUrlsResponse;
 
-export interface ProjectStatusResponse {
-  success: boolean;
-  projectId: string;
-  status: AdCloneProjectStatus;
-  progress: number;
-  progressMessage: string | null;
-  hasAnalysis?: boolean;
-  hasScript?: boolean;
-  script?: any;
-  finalVideoUrl?: string;
-  clipId?: number;
-  error?: string;
-}
+export type ProjectStatusResponse = AdCloneProjectStatusResponse;
 
 export interface ProjectResponse {
   success: boolean;

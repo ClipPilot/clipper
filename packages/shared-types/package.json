@@ -1,0 +1,26 @@
+{
+  "name": "@clipper/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for Clipper monorepo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "generate": "npx openapi-typescript openapi.json -o src/generated/api.ts && node scripts/generate-models.js",
+    "build": "npm run generate && tsc",
+    "build:watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.3.3"
+  }
+}

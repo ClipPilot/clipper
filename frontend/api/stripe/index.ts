@@ -1,20 +1,10 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type { Subscription as SharedSubscription, paths } from "@clipper/shared-types";
 
 export { STRIPE_PRICES, PLAN_DETAILS } from "@/config/stripe.constants";
 
-export interface Subscription {
-  id: number;
-  team_id: number;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  status: string;
-  plan: string;
-  price_id: string;
-  current_period_start: string;
-  current_period_end: string;
-  cancel_at_period_end: boolean;
-}
+export type Subscription = SharedSubscription;
 
 class StripeAPI {
   async createCheckoutSession(

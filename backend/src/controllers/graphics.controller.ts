@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { GenerateGraphicsResponse, GraphicsUploadUrlResponse, ErrorResponse } from "../types/api.types";
 import { graphicsService, GraphicType, GenerationMode } from "../services/ai-ugc/graphics.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
@@ -36,7 +37,7 @@ const VALID_MODES: GenerationMode[] = ["variations", "carousel"];
 const CREDIT_COST = 4;
 
 export class GraphicsController {
-  async generate(req: AuthRequest, res: Response) {
+  async generate(req: AuthRequest, res: Response<GenerateGraphicsResponse | ErrorResponse>) {
     try {
       const { teamId, prompt, graphicType, aspectRatio, productImageKeys, mode = "variations", stylePreset = "tile-ad" } = req.body;
 
@@ -115,7 +116,7 @@ export class GraphicsController {
     }
   }
 
-  async getUploadUrl(req: AuthRequest, res: Response) {
+  async getUploadUrl(req: AuthRequest, res: Response<GraphicsUploadUrlResponse | ErrorResponse>) {
     try {
       const { teamId, fileName, contentType } = req.body;
 

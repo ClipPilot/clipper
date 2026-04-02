@@ -72,6 +72,12 @@ const router = Router();
  *                         description: Presigned URL (only for completed)
  *                       totalDurationSeconds:
  *                         type: integer
+ *                       errorMessage:
+ *                         type: string
+ *                         nullable: true
+ *                       clipId:
+ *                         type: integer
+ *                         nullable: true
  *                       createdAt:
  *                         type: string
  *                         format: date-time
@@ -190,6 +196,9 @@ router.post(
  *                 jobId:
  *                   type: string
  *                   format: uuid
+ *                 scriptId:
+ *                   type: string
+ *                   format: uuid
  *                 status:
  *                   type: string
  *                   enum: [queued, generating, completed, failed]
@@ -199,12 +208,44 @@ router.post(
  *                   maximum: 100
  *                 progressMessage:
  *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 startedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                 completedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
  *                 finalVideoUrl:
  *                   type: string
  *                   description: Presigned URL (only when completed)
+ *                 finalVideoKey:
+ *                   type: string
+ *                   description: S3 key (only when completed)
  *                 totalDurationSeconds:
  *                   type: integer
  *                   description: Total video duration (only when completed)
+ *                 sceneVideos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sceneId:
+ *                         type: string
+ *                       sceneNumber:
+ *                         type: integer
+ *                       audioKey:
+ *                         type: string
+ *                       videoKey:
+ *                         type: string
+ *                   description: Scene video details (only when completed)
+ *                 clipId:
+ *                   type: integer
+ *                   nullable: true
+ *                   description: Clip ID if finalized (only when completed)
  *                 error:
  *                   type: string
  *                   description: Error message (only when failed)
@@ -266,6 +307,12 @@ router.get(
  *                         type: string
  *                       videoKey:
  *                         type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 completedAt:
+ *                   type: string
+ *                   format: date-time
  *       404:
  *         description: No completed video found for this script
  */
@@ -351,6 +398,13 @@ router.post(
  *     responses:
  *       200:
  *         description: Job deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Job not found
  */

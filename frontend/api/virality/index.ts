@@ -1,97 +1,34 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  ViralityAccount as SharedViralityAccount,
+  ViralityPost as SharedViralityPost,
+  ViralityCompetitor as SharedViralityCompetitor,
+  ViralSettings as SharedViralSettings,
+  ViralityDashboard,
+} from "@clipper/shared-types";
 
-export interface MetricsEntry {
-  recorded_at: string;
-  likes: number;
-  comments: number;
-  views: number | null;
-}
+export type ViralityAccount = SharedViralityAccount;
 
-export interface FollowerEntry {
-  recorded_at: string;
-  followers: number;
-}
+export type ViralityPost = SharedViralityPost;
 
-export interface ViralityAccount {
-  id: number;
-  team_id: number;
-  competitor_id: number | null;
-  platform: "instagram" | "tiktok" | "x";
-  account_type: "profile" | "hashtag" | "keyword";
-  username: string;
-  profile_url: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  bio: string | null;
-  follower_count: number | null;
-  following_count: number | null;
-  total_likes: number | null;
-  post_count: number | null;
-  follower_history: FollowerEntry[] | null;
-  is_verified: boolean;
-  alert_enabled: boolean;
-  is_active: boolean;
-  syncs_remaining: number;
-  last_synced_at: string | null;
-  sync_status: "pending" | "syncing" | "completed" | "failed";
-  sync_error: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ViralityCompetitor = SharedViralityCompetitor;
 
-export interface ViralityPost {
-  id: number;
-  account_id: number;
-  platform_post_id: string;
-  post_url: string;
-  thumbnail_url: string | null;
-  caption: string | null;
-  hashtags: string[];
-  post_type: string | null;
-  posted_at: string | null;
-  like_count: number;
-  comment_count: number;
-  video_play_count: number | null;
-  metrics_history: MetricsEntry[];
-  mass_post_id?: number | null;
-  campaign_name?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type CompetitorWithAccounts = SharedViralityCompetitor & {
+  accounts: SharedViralityAccount[];
+};
 
-export interface ViralityCompetitor {
-  id: number;
-  team_id: number;
-  name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ViralSettings = SharedViralSettings;
 
-export interface CompetitorWithAccounts extends ViralityCompetitor {
-  accounts: ViralityAccount[];
-}
+export type DashboardStats = ViralityDashboard;
 
-export interface AccountPostStats {
-  totalViews: number;
-  postCount: number;
-}
+export type MetricsEntry = NonNullable<ViralityPost["metrics_history"]>[number];
 
-export interface DashboardStats {
-  accountsCount: number;
-  totalFollowers: number;
-  totalLikes: number;
-  totalPosts: number;
-  totalViews: number;
-  avgViewsPerPost: number;
-  accountPostStats: Record<number, AccountPostStats>;
-  accounts: ViralityAccount[];
-}
+export type FollowerEntry = NonNullable<ViralityAccount["follower_history"]>[number];
+
+export type AccountPostStats = NonNullable<DashboardStats["accountPostStats"]>[string];
 
 class ViralityAPI {
-  // ── Accounts ──
-
   async getAccounts(teamId: number): Promise<ViralityAccount[]> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
       method: "GET",
@@ -267,8 +204,6 @@ class ViralityAPI {
     return response.json();
   }
 
-  // ── Competitors ──
-
   async getCompetitors(teamId: number): Promise<ViralityCompetitor[]> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/competitors`,
@@ -374,8 +309,6 @@ class ViralityAPI {
     }
   }
 
-  // ── Alert Settings ──
-
   async updateAlertEnabled(teamId: number, accountId: number, alertEnabled: boolean): Promise<ViralityAccount> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/accounts/${accountId}/alerts`,
@@ -430,15 +363,6 @@ class ViralityAPI {
     const data = await response.json();
     return data.settings;
   }
-}
-
-export interface ViralSettings {
-  percentThreshold: number | null;
-  absoluteThreshold: number | null;
-  thresholdMode: "and" | "or";
-  timeFrameHours: number;
-  enabledAccountIds: number[];
-  additionalEmails: string[];
 }
 
 export const viralityAPI = new ViralityAPI();

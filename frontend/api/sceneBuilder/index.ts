@@ -1,5 +1,12 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  GenerateSceneImagesResponse,
+  GenerateAllSceneImagesResponse,
+  SceneGenerationStatus,
+  SceneImagesResponse,
+  SceneUploadUrlResponse,
+} from "@clipper/shared-types";
 
 export interface AdvancedSceneOptions {
   generateEndFrame?: boolean;
@@ -22,12 +29,7 @@ export interface GenerateSceneImagesRequest {
   existingBRollImages?: string[];
 }
 
-export interface GenerateSceneImagesResponse {
-  success: boolean;
-  jobId: string;
-  status: string;
-  message: string;
-}
+export type { GenerateSceneImagesResponse };
 
 export interface BRollShotData {
   action: string;
@@ -42,7 +44,6 @@ export interface GenerateAllSceneImagesRequest {
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
-    // Scene content - use this instead of re-fetching from DB
     sceneType: string;
     dialogue: string;
     action: string;
@@ -68,26 +69,9 @@ export interface GenerateAllSceneImagesRequest {
   }>;
 }
 
-export interface GenerateAllSceneImagesResponse {
-  success: boolean;
-  jobIds: string[];
-  message: string;
-}
+export type { GenerateAllSceneImagesResponse };
 
-export interface GenerationStatusResponse {
-  success: boolean;
-  jobId: string;
-  sceneId: string;
-  sceneNumber: number;
-  status: "queued" | "generating" | "completed" | "failed";
-  progress: number;
-  progressMessage: string;
-  createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  images?: { key: string; url: string; index: number }[];
-  error?: string;
-}
+export type GenerationStatusResponse = SceneGenerationStatus;
 
 export interface SelectSceneImageRequest {
   scriptId: string;
@@ -109,16 +93,9 @@ export interface SceneImage {
   updated_at: string;
 }
 
-export interface GetSceneImagesResponse {
-  success: boolean;
-  sceneImages: Record<string, SceneImage>;
-}
+export type GetSceneImagesResponse = SceneImagesResponse;
 
-export interface UploadUrlResponse {
-  success: boolean;
-  uploadUrl: string;
-  s3Key: string;
-}
+export type UploadUrlResponse = SceneUploadUrlResponse;
 
 class SceneBuilderAPI {
   /**

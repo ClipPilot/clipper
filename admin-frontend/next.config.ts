@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: ["@clipper/shared-ui", "@clipper/shared-types"],
+  turbopack: {},
 };
 
 export default nextConfig;

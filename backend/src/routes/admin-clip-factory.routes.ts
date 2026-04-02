@@ -38,6 +38,15 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Presigned URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uploadUrl:
+ *                   type: string
+ *                 s3Key:
+ *                   type: string
  *       400:
  *         description: Invalid input
  */
@@ -70,6 +79,19 @@ router.post("/presigned-url", requireAdminAuth, getPresignedUrl);
  *     responses:
  *       200:
  *         description: Multipart upload initiated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uploadId:
+ *                   type: string
+ *                 s3Key:
+ *                   type: string
+ *                 partUrls:
+ *                   type: array
+ *                   items:
+ *                     type: string
  */
 router.post("/multipart/initiate", requireAdminAuth, initiateMultipart);
 
@@ -98,6 +120,10 @@ router.post("/multipart/initiate", requireAdminAuth, initiateMultipart);
  *     responses:
  *       200:
  *         description: Upload completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  */
 router.post("/multipart/complete", requireAdminAuth, completeMultipart);
 
@@ -153,6 +179,10 @@ router.post("/multipart/complete", requireAdminAuth, completeMultipart);
  *     responses:
  *       200:
  *         description: Jobs started successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  *       400:
  *         description: Invalid input
  */
@@ -183,6 +213,10 @@ router.post("/start", requireAdminAuth, startClipFactory);
  *     responses:
  *       200:
  *         description: Job statuses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  */
 router.post("/status", requireAdminAuth, getClipFactoryStatus);
 
@@ -203,6 +237,10 @@ router.post("/status", requireAdminAuth, getClipFactoryStatus);
  *     responses:
  *       200:
  *         description: Batch status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  */
 router.get("/batch/:batchId", requireAdminAuth, getClipFactoryBatchStatus);
 
@@ -223,6 +261,10 @@ router.get("/batch/:batchId", requireAdminAuth, getClipFactoryBatchStatus);
  *     responses:
  *       200:
  *         description: Batch cancelled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  *       400:
  *         description: Invalid batchId
  */
@@ -245,6 +287,15 @@ router.post("/batch/:batchId/cancel", requireAdminAuth, cancelClipFactoryBatch);
  *     responses:
  *       200:
  *         description: Active jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobs:
+ *                   type: array
+ *                   items:
+ *                     type: object
  */
 router.get("/active-jobs", requireAdminAuth, getActiveJobs);
 

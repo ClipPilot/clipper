@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { Team, TeamMember, UsageInfo, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
@@ -7,7 +8,7 @@ import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 import { handleControllerError, requireUser, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
-export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
+export const getUserTeamsController = async (req: AuthRequest, res: Response<{ teams: Team[] } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -24,7 +25,7 @@ export const getUserTeamsController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const getDefaultTeamController = async (req: AuthRequest, res: Response) => {
+export const getDefaultTeamController = async (req: AuthRequest, res: Response<Team | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -41,7 +42,7 @@ export const getDefaultTeamController = async (req: AuthRequest, res: Response) 
   }
 };
 
-export const getTeamUsageStatsController = async (req: AuthRequest, res: Response) => {
+export const getTeamUsageStatsController = async (req: AuthRequest, res: Response<UsageInfo | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -85,7 +86,7 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const getTeamMembersController = async (req: AuthRequest, res: Response) => {
+export const getTeamMembersController = async (req: AuthRequest, res: Response<{ members: TeamMember[] } | ErrorResponse>) => {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -225,7 +226,7 @@ export const leaveTeamController = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateTeamNameController = async (req: AuthRequest, res: Response) => {
+export const updateTeamNameController = async (req: AuthRequest, res: Response<{ team: Team } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -281,7 +282,7 @@ export const deleteTeamController = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const createTeamController = async (req: AuthRequest, res: Response) => {
+export const createTeamController = async (req: AuthRequest, res: Response<{ team: Team } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;

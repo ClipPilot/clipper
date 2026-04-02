@@ -1,4 +1,12 @@
 import { Request, Response } from "express";
+import type {
+  GenerateSceneImagesResponse,
+  GenerateAllSceneImagesResponse,
+  SceneGenerationStatus,
+  SceneImagesResponse,
+  SceneUploadUrlResponse,
+  ErrorResponse,
+} from "../types/api.types";
 import { db } from "../db";
 import {
   sceneImageGenerationJobs,
@@ -15,6 +23,7 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and } from "drizzle-orm";
 import { handleControllerError } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { parseAnchorData } from "../worker/processors/arollMultiProcessor";
 
 interface ArollChainInfo {
   isPartOfChain: boolean;
@@ -155,7 +164,7 @@ export class SceneBuilderController {
   /**
    * Generate images for a single scene
    */
-  async generateSceneImages(req: AuthRequest, res: Response) {
+  async generateSceneImages(req: AuthRequest, res: Response<GenerateSceneImagesResponse | ErrorResponse>) {
     try {
       const {
         teamId,
@@ -387,7 +396,7 @@ export class SceneBuilderController {
   /**
    * Generate images for all scenes in a script (batch)
    */
-  async generateAllSceneImages(req: AuthRequest, res: Response) {
+  async generateAllSceneImages(req: AuthRequest, res: Response<GenerateAllSceneImagesResponse | ErrorResponse>) {
     try {
       const { teamId, scriptId, characterId, scenes } = req.body as {
         teamId: number;
@@ -648,15 +657,25 @@ export class SceneBuilderController {
           console.log(
             `[SCENE_BUILDER] A-roll-multi anchor scene ${scenes[firstIdx].sceneNumber}: Waiting for completion to establish setting...`,
           );
+          // Wait for anchor scene to complete, then read anchor data (bg + char keys) from progress_message
           const anchorImages = await waitForJobImages(firstJobId);
-          if (anchorImages && anchorImages.length >= 2) {
-            settingAnchorKeys = anchorImages;
-            console.log(
-              `[SCENE_BUILDER] Setting anchors established: ${settingAnchorKeys.length} images from scene ${scenes[firstIdx].sceneNumber}`,
-            );
-          } else if (anchorImages && anchorImages.length === 1) {
-            settingAnchorKeys = anchorImages;
-            console.warn(`[SCENE_BUILDER] Only 1 anchor image from scene ${scenes[firstIdx].sceneNumber}`);
+          if (anchorImages) {
+            // Read the anchor data stored by processArollMultiImages
+            const [anchorJob] = await db
+              .select({ progress_message: sceneImageGenerationJobs.progress_message })
+              .from(sceneImageGenerationJobs)
+              .where(eq(sceneImageGenerationJobs.id, firstJobId))
+              .limit(1);
+
+            const anchor = parseAnchorData(anchorJob?.progress_message ?? null);
+            if (anchor) {
+              settingAnchorKeys = [anchor.bgKey, anchor.char0Key, anchor.char1Key];
+              console.log(
+                `[SCENE_BUILDER] Setting anchors established: bg=${anchor.bgKey}, char0=${anchor.char0Key}, char1=${anchor.char1Key}`,
+              );
+            } else {
+              console.warn(`[SCENE_BUILDER] Anchor scene completed but no anchor data found in progress_message`);
+            }
           } else {
             console.warn(`[SCENE_BUILDER] Anchor scene failed or timed out, remaining a-roll-multi scenes will generate without setting anchors`);
           }
@@ -736,7 +755,7 @@ export class SceneBuilderController {
   /**
    * Get generation status for a job
    */
-  async getGenerationStatus(req: AuthRequest, res: Response) {
+  async getGenerationStatus(req: AuthRequest, res: Response<SceneGenerationStatus | ErrorResponse>) {
     try {
       const jobId = req.params.jobId;
 
@@ -796,7 +815,7 @@ export class SceneBuilderController {
   /**
    * Get all scene images for a script
    */
-  async getSceneImages(req: AuthRequest, res: Response) {
+  async getSceneImages(req: AuthRequest, res: Response<SceneImagesResponse | ErrorResponse>) {
     try {
       const scriptId = req.params.scriptId;
 
@@ -868,7 +887,7 @@ export class SceneBuilderController {
   /**
    * Select/save an image for a scene
    */
-  async selectSceneImage(req: AuthRequest, res: Response) {
+  async selectSceneImage(req: AuthRequest, res: Response<{ success: boolean; sceneImage: any } | ErrorResponse>) {
     try {
       const { scriptId, sceneId, sceneNumber, imageKey, generationJobId } =
         req.body;
@@ -929,7 +948,7 @@ export class SceneBuilderController {
   /**
    * Cancel a stuck or generating job - allows user to retry
    */
-  async cancelJob(req: AuthRequest, res: Response) {
+  async cancelJob(req: AuthRequest, res: Response<{ success: boolean; message: string } | ErrorResponse>) {
     try {
       const jobId = req.params.jobId;
 
@@ -971,7 +990,7 @@ export class SceneBuilderController {
   /**
    * Get presigned upload URL for supporting images
    */
-  async getUploadUrl(req: AuthRequest, res: Response) {
+  async getUploadUrl(req: AuthRequest, res: Response<SceneUploadUrlResponse | ErrorResponse>) {
     try {
       const { teamId, fileName } = req.body;
 
@@ -998,7 +1017,7 @@ export class SceneBuilderController {
    * Get presigned upload URL for replacing an existing image (e.g., custom B-roll)
    * This allows uploading to a specific S3 key to replace the generated image
    */
-  async getUploadUrlForKey(req: AuthRequest, res: Response) {
+  async getUploadUrlForKey(req: AuthRequest, res: Response<SceneUploadUrlResponse | ErrorResponse>) {
     try {
       const { s3Key, contentType } = req.body;
 

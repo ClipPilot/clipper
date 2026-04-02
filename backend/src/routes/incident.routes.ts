@@ -117,6 +117,17 @@ router.get("/active", publicLimiter, getActiveIncidents);
  *     responses:
  *       200:
  *         description: Successfully retrieved incidents
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incidents:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
  */
 router.get("/admin", requireAdminAuth, adminLimiter, getAllIncidents);
 
@@ -154,6 +165,25 @@ router.get("/admin", requireAdminAuth, adminLimiter, getAllIncidents);
  *     responses:
  *       201:
  *         description: Incident created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incident:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       enum: [investigating, identified, monitoring, resolved]
+ *                     affected_services:
+ *                       type: array
+ *                       items:
+ *                         type: string
  *       400:
  *         description: Validation error
  */
@@ -189,6 +219,13 @@ router.post("/admin", requireAdminAuth, adminLimiter, createIncident);
  *     responses:
  *       200:
  *         description: Incident updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incident:
+ *                   type: object
  *       404:
  *         description: Incident not found
  */
@@ -227,6 +264,13 @@ router.patch("/admin/:id", requireAdminAuth, adminLimiter, updateIncident);
  *     responses:
  *       200:
  *         description: Update added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 incident:
+ *                   type: object
  *       404:
  *         description: Incident not found
  */
@@ -249,6 +293,15 @@ router.post("/admin/:id/update", requireAdminAuth, adminLimiter, addIncidentUpda
  *     responses:
  *       200:
  *         description: Incident deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  */
 router.delete("/admin/:id", requireAdminAuth, adminLimiter, deleteIncident);
 

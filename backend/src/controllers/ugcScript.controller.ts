@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { s3Service } from "../services/s3.service";
 import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
@@ -10,7 +11,7 @@ import { handleControllerError } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 export class UGCScriptController {
-  async getScriptStatus(req: AuthRequest, res: Response) {
+  async getScriptStatus(req: AuthRequest, res: Response<any | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
 
@@ -57,7 +58,7 @@ export class UGCScriptController {
     }
   }
 
-  async regenerateScene(req: AuthRequest, res: Response) {
+  async regenerateScene(req: AuthRequest, res: Response<{ success: boolean; scene: any } | ErrorResponse>) {
     try {
       const { teamId, scriptId, sceneId, currentDialogue, currentEmotion, regenerationType, customPrompt } =
         req.body;
@@ -86,7 +87,7 @@ export class UGCScriptController {
     }
   }
 
-  async regenerateBRollPrompt(req: AuthRequest, res: Response) {
+  async regenerateBRollPrompt(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { scriptId, sceneId, bRollShotIndex, newAction } = req.body;
 
@@ -109,7 +110,7 @@ export class UGCScriptController {
     }
   }
 
-  async regenerateAllBRollShots(req: AuthRequest, res: Response) {
+  async regenerateAllBRollShots(req: AuthRequest, res: Response<{ success: boolean; bRollShots: any[] } | ErrorResponse>) {
     try {
       const { scriptId, sceneId, newSceneAction, shotCount, shotDurations } = req.body;
 
@@ -133,7 +134,7 @@ export class UGCScriptController {
     }
   }
 
-  async generateAutoStructure(req: AuthRequest, res: Response) {
+  async generateAutoStructure(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { scriptDirection, productName, hasProductImages } = req.body;
 
@@ -158,7 +159,7 @@ export class UGCScriptController {
     }
   }
 
-  async generateScriptAgent(req: AuthRequest, res: Response) {
+  async generateScriptAgent(req: AuthRequest, res: Response<{ success: boolean; scriptId: string; script: any } | ErrorResponse>) {
     try {
       const {
         teamId,
@@ -211,7 +212,7 @@ export class UGCScriptController {
     }
   }
 
-  async saveScript(req: AuthRequest, res: Response) {
+  async saveScript(req: AuthRequest, res: Response<{ success: boolean; scriptId: string } | ErrorResponse>) {
     try {
       const { teamId, script, characterId, productImageKeys, isSilent, videoType } = req.body;
 
@@ -256,7 +257,7 @@ export class UGCScriptController {
     }
   }
 
-  async initStructure(req: AuthRequest, res: Response) {
+  async initStructure(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { message, productImageKeys, threadId, conversationHistory } = req.body;
 
@@ -284,7 +285,7 @@ export class UGCScriptController {
     }
   }
 
-  async getUploadUrl(req: AuthRequest, res: Response) {
+  async getUploadUrl(req: AuthRequest, res: Response<{ success: boolean; uploadUrl: string; s3Key: string } | ErrorResponse>) {
     try {
       const { teamId, fileName, contentType } = req.body;
 
@@ -313,7 +314,7 @@ export class UGCScriptController {
     }
   }
 
-  async updateScript(req: AuthRequest, res: Response) {
+  async updateScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number } | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
       const { scenes, selectedVariantIndex } = req.body;
@@ -341,7 +342,7 @@ export class UGCScriptController {
     }
   }
 
-  async getFullScript(req: AuthRequest, res: Response) {
+  async getFullScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number; characterId: any; isSilent: boolean; hasCharacter: boolean; videoType: string } | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
 
@@ -367,7 +368,7 @@ export class UGCScriptController {
     }
   }
 
-  async listScripts(req: AuthRequest, res: Response) {
+  async listScripts(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; hasMore: boolean } | ErrorResponse>) {
     try {
       const { teamId } = req.params;
       const limit = parseInt(req.query.limit as string) || 20;
@@ -445,7 +446,7 @@ export class UGCScriptController {
       return handleControllerError(res, "[UGC_SCRIPT] List scripts error", error, "Failed to list scripts");
     }
   }
-  async deleteScript(req: AuthRequest, res: Response) {
+  async deleteScript(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
       const { teamId } = req.body;
@@ -470,7 +471,7 @@ export class UGCScriptController {
     }
   }
 
-  async storyboardChat(req: AuthRequest, res: Response) {
+  async storyboardChat(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { scriptId, message, threadId, teamId, characterId } = req.body;
 
