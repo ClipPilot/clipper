@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
+import type { Subscription, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
 import { ENV } from "../config/env";
 import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
-export const createCheckoutSession = async (req: AuthRequest, res: Response) => {
+export const createCheckoutSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -35,7 +36,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
   }
 };
 
-export const createPortalSession = async (req: AuthRequest, res: Response) => {
+export const createPortalSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -57,7 +58,7 @@ export const createPortalSession = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getSubscription = async (req: AuthRequest, res: Response) => {
+export const getSubscription = async (req: AuthRequest, res: Response<{ subscription: Subscription; plan: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -140,13 +141,13 @@ export const handleWebhook = async (req: Request, res: Response) => {
   }
 };
 
-export const getPrices = async (_req: Request, res: Response) => {
+export const getPrices = async (_req: Request, res: Response<{ prices: typeof STRIPE_PRICES }>) => {
   return res.json({
     prices: STRIPE_PRICES,
   });
 };
 
-export const changePlan = async (req: AuthRequest, res: Response) => {
+export const changePlan = async (req: AuthRequest, res: Response<{ success: boolean; effectiveDate: string | Date; newPlan: string; message: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;

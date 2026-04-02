@@ -67,6 +67,8 @@ const router = Router();
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - message
  *               properties:
  *                 message:
  *                   type: string
@@ -120,32 +122,7 @@ router.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 posts:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       platform:
- *                         type: string
- *                       status:
- *                         type: string
- *                       post_url:
- *                         type: string
- *                         nullable: true
- *                       drive_file_id:
- *                         type: string
- *                         nullable: true
- *                       posted_time:
- *                         type: string
- *                         format: date-time
- *                         nullable: true
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *               $ref: '#/components/schemas/ClipPostsResponse'
  *       400:
  *         description: Invalid team ID or clip ID
  *       401:
@@ -200,6 +177,8 @@ router.get(
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - success
  *               properties:
  *                 success:
  *                   type: boolean
@@ -294,11 +273,19 @@ router.post("/webhook/posted", webhookMarkAsPosted);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - posts
+ *                 - pagination
  *               properties:
  *                 posts:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     required:
+ *                       - id
+ *                       - platform
+ *                       - status
+ *                       - created_at
  *                     properties:
  *                       id:
  *                         type: integer
@@ -329,6 +316,11 @@ router.post("/webhook/posted", webhookMarkAsPosted);
  *                         format: date-time
  *                 pagination:
  *                   type: object
+ *                   required:
+ *                     - page
+ *                     - pageSize
+ *                     - total
+ *                     - totalPages
  *                   properties:
  *                     page:
  *                       type: integer
@@ -346,9 +338,127 @@ router.post("/webhook/posted", webhookMarkAsPosted);
  *         description: Server error
  */
 router.get("/teams/:teamId/posts", requireAuth, requireSeatAccess, getPostsForTeam);
+
+/**
+ * @openapi
+ * /api/ad-posting/teams/{teamId}/accounts:
+ *   get:
+ *     summary: Get posting account stats for a team
+ *     description: Returns aggregated account-level statistics for ad posting
+ *     tags:
+ *       - Ad Posting
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: dateRange
+ *         schema:
+ *           type: string
+ *           enum: [7days, 30days, 90days, all]
+ *     responses:
+ *       200:
+ *         description: Account stats (shape returned by service)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid team ID
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
 router.get("/teams/:teamId/accounts", requireAuth, requireSeatAccess, getAccountStats);
 
+/**
+ * @openapi
+ * /api/ad-posting/teams/{teamId}/custom-video:
+ *   post:
+ *     summary: Upload a custom video for ad posting
+ *     description: Creates a clip record and returns a presigned S3 upload URL
+ *     tags:
+ *       - Ad Posting
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fileName
+ *               - contentType
+ *             properties:
+ *               fileName:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Upload URL and clip record
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Requires Studio plan or higher
+ *       500:
+ *         description: Server error
+ */
 router.post("/teams/:teamId/custom-video", requireAuth, requireSeatAccess, uploadCustomVideo);
+
+/**
+ * @openapi
+ * /api/ad-posting/teams/{teamId}/custom-video/{clipId}/complete:
+ *   post:
+ *     summary: Complete a custom video upload
+ *     description: Marks a custom video upload as complete after the file has been uploaded to S3
+ *     tags:
+ *       - Ad Posting
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Custom video marked complete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid team ID or clip ID
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
 router.post("/teams/:teamId/custom-video/:clipId/complete", requireAuth, requireSeatAccess, completeCustomVideo);
 
 export default router;

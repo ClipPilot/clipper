@@ -146,6 +146,15 @@ router.get("/all", requireAuth, userAnnouncementLimiter, getAllAnnouncementsForU
  *     responses:
  *       200:
  *         description: Announcement dismissed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Invalid announcement ID
  *       401:
@@ -164,6 +173,15 @@ router.post("/:id/dismiss", requireAuth, userAnnouncementLimiter, dismissAnnounc
  *     responses:
  *       200:
  *         description: All announcements dismissed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       401:
  *         description: Unauthorized
  */
@@ -234,6 +252,13 @@ router.get("/admin", requireAdminAuth, adminAnnouncementLimiter, getAllAnnouncem
  *     responses:
  *       200:
  *         description: Successfully retrieved announcement
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 announcement:
+ *                   type: object
  *       404:
  *         description: Announcement not found
  */
@@ -277,6 +302,13 @@ router.get("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, getAnnounce
  *     responses:
  *       201:
  *         description: Announcement created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 announcement:
+ *                   type: object
  *       400:
  *         description: Validation error
  */
@@ -319,6 +351,13 @@ router.post("/admin", requireAdminAuth, adminAnnouncementLimiter, createAnnounce
  *     responses:
  *       200:
  *         description: Announcement updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 announcement:
+ *                   type: object
  *       404:
  *         description: Announcement not found
  */
@@ -341,6 +380,15 @@ router.patch("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, updateAnn
  *     responses:
  *       200:
  *         description: Announcement deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Announcement not found
  */
@@ -363,6 +411,13 @@ router.delete("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, deleteAn
  *     responses:
  *       200:
  *         description: Announcement published successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 announcement:
+ *                   type: object
  *       404:
  *         description: Announcement not found
  */

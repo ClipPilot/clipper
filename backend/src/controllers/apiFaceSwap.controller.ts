@@ -3,6 +3,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { eq } from "drizzle-orm";
 import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
 import { verifyTeamAccessOrFail, handleControllerError } from "../utils/controllerHelpers";
@@ -87,7 +88,7 @@ function calculateSpliceSegments(
 // -------------------------------------------------------------------
 export const createFaceSwapJobController = async (
   req: ApiKeyRequest,
-  res: Response,
+  res: Response<{ job_id: string; mode: string; duration_seconds: number; cost_cents: number; status: string } | ErrorResponse | { error: string; required_cents: number; balance_cents: number }>,
 ) => {
   const { teamId, userId, id: apiKeyId } = req.apiKey!;
 
@@ -275,7 +276,7 @@ export const createFaceSwapJobController = async (
 // -------------------------------------------------------------------
 export const getFaceSwapStatusController = async (
   req: ApiKeyRequest,
-  res: Response,
+  res: Response<{ job_id: string; status: string; created_at: Date | null; download_url?: string | null; error?: string; progress?: number | null } | ErrorResponse>,
 ) => {
   const { teamId } = req.apiKey!;
   const jobId = req.params.jobId;
@@ -585,7 +586,7 @@ function cleanupFiles(files: string[]) {
  */
 export const getFaceSwapStatusBearerController = async (
   req: AuthRequest,
-  res: Response,
+  res: Response<{ job_id: string; status: string; created_at: Date | null; download_url?: string | null; error?: string; progress?: number | null } | ErrorResponse>,
 ) => {
   const teamId = parseInt(req.params.teamId);
   const jobId = req.params.jobId;

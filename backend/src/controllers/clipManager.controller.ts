@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
+import type { Clip, ErrorResponse } from "../types/api.types";
+
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -46,7 +48,7 @@ async function enrichClipsWithSignedUrls<
 }
 
 export class ClipManagerController {
-  async getClips(req: AuthRequest, res: Response) {
+  async getClips(req: AuthRequest, res: Response<{ clips: Clip[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
@@ -65,7 +67,7 @@ export class ClipManagerController {
     }
   }
 
-  async getPendingClips(req: AuthRequest, res: Response) {
+  async getPendingClips(req: AuthRequest, res: Response<{ clips: Clip[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
@@ -99,7 +101,7 @@ export class ClipManagerController {
     }
   }
 
-  async getCompletedClips(req: AuthRequest, res: Response) {
+  async getCompletedClips(req: AuthRequest, res: Response<{ clips: Clip[]; pagination: { limit: number; offset: number; hasMore: boolean } } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
@@ -139,7 +141,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClip(req: AuthRequest, res: Response) {
+  async getClip(req: AuthRequest, res: Response<{ clip: Clip } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -284,7 +286,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClipsByFolder(req: AuthRequest, res: Response) {
+  async getClipsByFolder(req: AuthRequest, res: Response<{ clips: Clip[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       const folderId = parseInt(req.params.folderId);
@@ -713,7 +715,7 @@ export class ClipManagerController {
     }
   }
 
-  async getUnsavedClips(req: AuthRequest, res: Response) {
+  async getUnsavedClips(req: AuthRequest, res: Response<{ clips: Clip[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
@@ -759,7 +761,7 @@ export class ClipManagerController {
     }
   }
 
-  async getSavedClips(req: AuthRequest, res: Response) {
+  async getSavedClips(req: AuthRequest, res: Response<{ clips: Clip[]; pagination: { limit: number; offset: number; hasMore: boolean } } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
@@ -897,7 +899,7 @@ export class ClipManagerController {
     }
   }
 
-  async getSharedClip(req: Request, res: Response) {
+  async getSharedClip(req: Request, res: Response<{ clip: Partial<Clip> } | ErrorResponse>) {
     try {
       const { shareToken } = req.params;
 
@@ -954,7 +956,7 @@ export class ClipManagerController {
       return handleControllerError(res, "Download shared clip error", error, "Shared clip not found", 404);
     }
   }
-  async searchClips(req: AuthRequest, res: Response) {
+  async searchClips(req: AuthRequest, res: Response<{ clips: Clip[]; pagination: any; query: string | null; filters: any } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.query.teamId as string);
       if (isNaN(teamId)) {

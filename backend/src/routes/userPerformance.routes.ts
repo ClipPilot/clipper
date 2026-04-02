@@ -22,6 +22,15 @@ const router = Router();
  *     responses:
  *       200:
  *         description: List of accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accounts:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       403:
  *         description: Plan upgrade required
  */
@@ -64,6 +73,13 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => userPerformanceContro
  *     responses:
  *       201:
  *         description: Account created and initial sync triggered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
  *       400:
  *         description: Invalid input
  *       403:
@@ -96,6 +112,13 @@ router.post("/:teamId/accounts", requireAuth, (req, res) => userPerformanceContr
  *     responses:
  *       200:
  *         description: Account details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
  *       404:
  *         description: Account not found
  */
@@ -124,6 +147,13 @@ router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPerfor
  *     responses:
  *       200:
  *         description: Account deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Account not found
  */
@@ -163,6 +193,13 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPer
  *     responses:
  *       200:
  *         description: Account status updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 account:
+ *                   type: object
  *       400:
  *         description: Invalid input
  *       404:
@@ -192,8 +229,17 @@ router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => u
  *         schema:
  *           type: integer
  *     responses:
- *       200:
- *         description: Sync completed
+ *       202:
+ *         description: Sync accepted (runs in background)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accepted:
+ *                   type: boolean
+ *                 accountId:
+ *                   type: integer
  *       403:
  *         description: Plan upgrade required
  *       404:
@@ -220,8 +266,19 @@ router.post("/:teamId/accounts/:accountId/sync", requireAuth, (req, res) => user
  *         schema:
  *           type: integer
  *     responses:
- *       200:
- *         description: Sync results
+ *       202:
+ *         description: Sync accepted for all accounts (runs in background)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accepted:
+ *                   type: boolean
+ *                 accountIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
  *       403:
  *         description: Plan upgrade required
  */
@@ -273,6 +330,15 @@ router.post("/:teamId/sync-all", requireAuth, (req, res) => userPerformanceContr
  *     responses:
  *       200:
  *         description: List of posts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       404:
  *         description: Account not found
  */
@@ -301,6 +367,13 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => user
  *     responses:
  *       200:
  *         description: Post deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Post not found
  */
@@ -334,6 +407,17 @@ router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => userPerforman
  *     responses:
  *       200:
  *         description: Posts grouped by account ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 postsByAccount:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: array
+ *                     items:
+ *                       type: object
  */
 router.get("/:teamId/posts", requireAuth, (req, res) => userPerformanceController.getAllPosts(req, res));
 
@@ -366,7 +450,11 @@ router.get("/:teamId/posts", requireAuth, (req, res) => userPerformanceControlle
  *         description: Filter stats until this date
  *     responses:
  *       200:
- *         description: Dashboard statistics
+ *         description: Dashboard statistics (returned directly from service)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
  *       403:
  *         description: Plan upgrade required
  */

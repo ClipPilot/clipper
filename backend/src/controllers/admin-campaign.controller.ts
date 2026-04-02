@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { Campaign, CampaignVideo, MasterAgreement, ErrorResponse } from "../types/api.types";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
 import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
@@ -22,7 +23,7 @@ export async function getAllCampaigns(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getCampaignDetail(req: AdminRequest, res: Response) {
+export async function getCampaignDetail(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -37,7 +38,7 @@ export async function getCampaignDetail(req: AdminRequest, res: Response) {
   }
 }
 
-export async function approveCampaign(req: AdminRequest, res: Response) {
+export async function approveCampaign(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -65,7 +66,7 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
   }
 }
 
-export async function rejectCampaign(req: AdminRequest, res: Response) {
+export async function rejectCampaign(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -85,7 +86,7 @@ export async function rejectCampaign(req: AdminRequest, res: Response) {
   }
 }
 
-export async function updateCampaign(req: AdminRequest, res: Response) {
+export async function updateCampaign(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -109,7 +110,7 @@ export async function updateCampaign(req: AdminRequest, res: Response) {
   }
 }
 
-export async function pauseCampaign(req: AdminRequest, res: Response) {
+export async function pauseCampaign(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -127,7 +128,7 @@ export async function pauseCampaign(req: AdminRequest, res: Response) {
   }
 }
 
-export async function endCampaign(req: AdminRequest, res: Response) {
+export async function endCampaign(req: AdminRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
@@ -194,7 +195,7 @@ export async function getCampaignPosts(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getMasterAgreement(req: AdminRequest, res: Response) {
+export async function getMasterAgreement(req: AdminRequest, res: Response<{ agreement: MasterAgreement } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
@@ -206,7 +207,7 @@ export async function getMasterAgreement(req: AdminRequest, res: Response) {
   }
 }
 
-export async function voidAndRegenerateMasterContract(req: AdminRequest, res: Response) {
+export async function voidAndRegenerateMasterContract(req: AdminRequest, res: Response<{ agreement: MasterAgreement } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });

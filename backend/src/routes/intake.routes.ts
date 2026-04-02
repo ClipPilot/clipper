@@ -38,6 +38,33 @@ const router = Router();
  *               properties:
  *                 form:
  *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     brand_description:
+ *                       type: string
+ *                       nullable: true
+ *                     company_website_url:
+ *                       type: string
+ *                       nullable: true
+ *                     icps:
+ *                       type: array
+ *                       nullable: true
+ *                       items:
+ *                         type: object
+ *                     company_socials:
+ *                       type: object
+ *                       nullable: true
+ *                     competitor_socials:
+ *                       type: array
+ *                       nullable: true
+ *                       items:
+ *                         type: string
+ *                     completed:
+ *                       type: boolean
  *       400:
  *         description: Invalid team ID
  *       401:
@@ -96,6 +123,19 @@ router.get("/teams/:teamId/form", requireAuth, requireSeatAccess, getIntakeForm)
  *               properties:
  *                 form:
  *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     brand_description:
+ *                       type: string
+ *                       nullable: true
+ *                     company_website_url:
+ *                       type: string
+ *                       nullable: true
+ *                     completed:
+ *                       type: boolean
  *       400:
  *         description: Invalid team ID
  *       401:
@@ -154,6 +194,14 @@ router.post("/teams/:teamId/form", requireAuth, requireSeatAccess, upsertIntakeF
  *               properties:
  *                 application:
  *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, accepted, rejected, appeal]
  *       400:
  *         description: Missing brand description or invalid team ID
  *       401:
@@ -212,6 +260,14 @@ router.post("/teams/:teamId/submit", requireAuth, requireSeatAccess, submitAppli
  *               properties:
  *                 application:
  *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, accepted, rejected, appeal]
  *       400:
  *         description: Invalid team ID
  *       401:
@@ -245,7 +301,7 @@ router.post("/teams/:teamId/appeal", requireAuth, requireSeatAccess, submitAppea
  *         content:
  *           application/json:
  *             schema:
- *               type: object
+ *               $ref: '#/components/schemas/IntakeApplicationStatus'
  *       400:
  *         description: Invalid team ID
  *       401:
@@ -281,6 +337,15 @@ router.get("/teams/:teamId/status", requireAuth, requireSeatAccess, getApplicati
  *               properties:
  *                 application:
  *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, accepted, rejected, appeal, started, paused, completed]
  *       400:
  *         description: Invalid team ID
  *       401:

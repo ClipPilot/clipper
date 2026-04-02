@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import path from "path";
 import fs from "fs";
 import { db } from "../db";
@@ -49,7 +50,7 @@ export class UGCVideoController {
   /**
    * List video generation jobs for a team with pagination
    */
-  async listVideoJobs(req: AuthRequest, res: Response) {
+  async listVideoJobs(req: AuthRequest, res: Response<{ jobs: any[]; total: number; limit: number; offset: number } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.query.teamId as string, 10);
       const limit = Math.min(parseInt(req.query.limit as string, 10) || 10, 50);
@@ -192,7 +193,7 @@ export class UGCVideoController {
    * Generate a UGC video from a script
    * Queues a background job that processes all scenes
    */
-  async generateVideo(req: AuthRequest, res: Response) {
+  async generateVideo(req: AuthRequest, res: Response<{ success: boolean; jobId: string; status: string; message: string } | ErrorResponse | { error: string; code: string; required: number; available: number }>) {
     try {
       const { teamId, scriptId, voiceId, isSilent: requestSilent } = req.body;
 
@@ -396,7 +397,7 @@ export class UGCVideoController {
   /**
    * Get video generation job status
    */
-  async getVideoGenerationStatus(req: AuthRequest, res: Response) {
+  async getVideoGenerationStatus(req: AuthRequest, res: Response<any | ErrorResponse>) {
     try {
       const { jobId } = req.params;
 
@@ -455,7 +456,7 @@ export class UGCVideoController {
   /**
    * Get the generated video for a script (if any)
    */
-  async getScriptVideo(req: AuthRequest, res: Response) {
+  async getScriptVideo(req: AuthRequest, res: Response<{ jobId: string; videoKey: string; videoUrl: string; totalDurationSeconds: any; sceneVideos: any; createdAt: any; completedAt: any } | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
 
@@ -501,7 +502,7 @@ export class UGCVideoController {
   /**
    * Finalize a completed video and create a clip in the library
    */
-  async finalizeVideo(req: AuthRequest, res: Response) {
+  async finalizeVideo(req: AuthRequest, res: Response<{ success: boolean; clipId: number; clipPath: string | null } | ErrorResponse>) {
     try {
       const { jobId, teamId, folderId } = req.body;
 
@@ -642,7 +643,7 @@ export class UGCVideoController {
   /**
    * Delete a video generation job and its S3 assets
    */
-  async deleteVideoJob(req: AuthRequest, res: Response) {
+  async deleteVideoJob(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const { jobId } = req.params;
 

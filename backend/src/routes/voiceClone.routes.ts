@@ -40,6 +40,10 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Voice cloned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CloneVoiceResponse'
  *       400:
  *         description: Missing required fields
  *       500:
@@ -71,6 +75,10 @@ router.post(
  *     responses:
  *       200:
  *         description: List of cloned voices
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ListVoiceClonesResponse'
  *       400:
  *         description: Invalid team ID
  *       500:
@@ -101,6 +109,15 @@ router.get(
  *     responses:
  *       200:
  *         description: Voice deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       404:
  *         description: Voice not found
  *       500:

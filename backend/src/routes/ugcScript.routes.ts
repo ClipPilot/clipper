@@ -21,17 +21,35 @@ const router = Router();
  *             type: object
  *             required:
  *               - scriptId
- *               - sceneIndex
+ *               - sceneId
  *             properties:
+ *               teamId:
+ *                 type: number
  *               scriptId:
  *                 type: string
- *               sceneIndex:
- *                 type: number
- *               instruction:
+ *               sceneId:
+ *                 type: string
+ *               currentDialogue:
+ *                 type: string
+ *               currentEmotion:
+ *                 type: string
+ *               regenerationType:
+ *                 type: string
+ *                 default: full
+ *               customPrompt:
  *                 type: string
  *     responses:
  *       200:
  *         description: Scene regenerated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scene:
+ *                   type: object
  */
 router.post(
   "/regenerate-scene",
@@ -71,6 +89,13 @@ router.post(
  *     responses:
  *       200:
  *         description: B-roll prompt regenerated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
  */
 router.post(
   "/regenerate-broll-prompt",
@@ -290,6 +315,16 @@ router.post(
  *     responses:
  *       200:
  *         description: Script saved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scriptId:
+ *                   type: string
+ *                   format: uuid
  */
 router.post(
   "/save-script",
@@ -437,6 +472,18 @@ router.post(
  *     responses:
  *       200:
  *         description: Upload URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 uploadUrl:
+ *                   type: string
+ *                   format: uri
+ *                 s3Key:
+ *                   type: string
  */
 router.post(
   "/upload-product-image",
@@ -473,6 +520,19 @@ router.post(
  *     responses:
  *       200:
  *         description: Script updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scripts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 selectedVariantIndex:
+ *                   type: integer
  */
 router.put(
   "/script/:scriptId",
@@ -498,6 +558,28 @@ router.put(
  *     responses:
  *       200:
  *         description: Full script data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scripts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 selectedVariantIndex:
+ *                   type: integer
+ *                 characterId:
+ *                   type: integer
+ *                   nullable: true
+ *                 isSilent:
+ *                   type: boolean
+ *                 hasCharacter:
+ *                   type: boolean
+ *                 videoType:
+ *                   type: string
  */
 router.get(
   "/script/:scriptId/full",
@@ -523,6 +605,40 @@ router.get(
  *     responses:
  *       200:
  *         description: Script status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scriptId:
+ *                   type: string
+ *                   format: uuid
+ *                 status:
+ *                   type: string
+ *                   enum: [pending, generating, completed, failed]
+ *                 progress:
+ *                   type: integer
+ *                 progressMessage:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 startedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 completedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 scripts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 selectedVariantIndex:
+ *                   type: integer
+ *                 error:
+ *                   type: string
  */
 router.get(
   "/script/:scriptId/status",
@@ -548,6 +664,50 @@ router.get(
  *     responses:
  *       200:
  *         description: List of scripts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scripts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       productName:
+ *                         type: string
+ *                       scriptDirection:
+ *                         type: string
+ *                       structureId:
+ *                         type: string
+ *                       characterId:
+ *                         type: integer
+ *                         nullable: true
+ *                       characterName:
+ *                         type: string
+ *                         nullable: true
+ *                       sceneCount:
+ *                         type: integer
+ *                       totalDuration:
+ *                         type: number
+ *                       title:
+ *                         type: string
+ *                       hook:
+ *                         type: string
+ *                       viralScore:
+ *                         type: number
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       hasVideo:
+ *                         type: boolean
+ *                 hasMore:
+ *                   type: boolean
  */
 router.get(
   "/scripts/:teamId",

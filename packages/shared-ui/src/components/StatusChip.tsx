@@ -1,16 +1,17 @@
 "use client";
 
 import { Chip } from "@heroui/react";
-import type { JobStatus } from "@clipper/shared-types";
+import type { Clip } from "@clipper/shared-types";
 
-const statusConfig: Record<JobStatus, { color: "default" | "accent" | "success" | "danger" | "warning"; label: string }> = {
-  queued: { color: "default", label: "Queued" },
-  processing: { color: "accent", label: "Processing" },
+type ClipStatus = Clip["status"];
+
+const statusConfig: Record<ClipStatus, { color: "default" | "accent" | "success" | "danger" | "warning"; label: string }> = {
+  pending: { color: "default", label: "Pending" },
   completed: { color: "success", label: "Completed" },
   failed: { color: "danger", label: "Failed" },
 };
 
-export function StatusChip({ status, size = "sm" }: { status: JobStatus; size?: "sm" | "md" | "lg" }) {
+export function StatusChip({ status, size = "sm" }: { status: ClipStatus; size?: "sm" | "md" | "lg" }) {
   const config = statusConfig[status];
 
   return (

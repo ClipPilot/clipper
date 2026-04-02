@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
+import type { Folder, ErrorResponse } from "../types/api.types";
 import { folderService } from "../services/folder.service";
 import { teamService } from "../services/team.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
 
 export class FolderController {
-  async getFolders(req: Request, res: Response) {
+  async getFolders(req: Request, res: Response<{ folders: Folder[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
 
@@ -21,7 +22,7 @@ export class FolderController {
     }
   }
 
-  async getFolder(req: Request, res: Response) {
+  async getFolder(req: Request, res: Response<{ folder: Folder } | ErrorResponse>) {
     try {
       const folderId = parseInt(req.params.folderId);
       const teamId = parseInt(req.params.teamId);
@@ -38,7 +39,7 @@ export class FolderController {
     }
   }
 
-  async getFolderTree(req: Request, res: Response) {
+  async getFolderTree(req: Request, res: Response<{ tree: Folder[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
 
@@ -54,7 +55,7 @@ export class FolderController {
     }
   }
 
-  async getFolderPath(req: Request, res: Response) {
+  async getFolderPath(req: Request, res: Response<{ path: Folder[] } | ErrorResponse>) {
     try {
       const folderId = parseInt(req.params.folderId);
       const teamId = parseInt(req.params.teamId);
@@ -71,7 +72,7 @@ export class FolderController {
     }
   }
 
-  async createFolder(req: Request, res: Response) {
+  async createFolder(req: Request, res: Response<{ message: string; folder: Folder } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       const { name, color, message, parentFolderId } = req.body;
@@ -108,7 +109,7 @@ export class FolderController {
     }
   }
 
-  async updateFolder(req: Request, res: Response) {
+  async updateFolder(req: Request, res: Response<{ message: string; folder: Folder } | ErrorResponse>) {
     try {
       const folderId = parseInt(req.params.folderId);
       const teamId = parseInt(req.params.teamId);

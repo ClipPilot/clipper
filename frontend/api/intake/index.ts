@@ -1,5 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type { IntakeApplicationStatus } from "@clipper/shared-types";
 
 export interface IntakeFormData {
   name?: string;
@@ -51,12 +52,7 @@ export interface MassPostingApplication {
   updated_at: string;
 }
 
-export interface ApplicationStatus {
-  hasIntakeForm: boolean;
-  intakeFormCompleted: boolean;
-  applicationStatus: string | null;
-  googleDriveFolderId: string | null;
-}
+export type ApplicationStatus = IntakeApplicationStatus;
 
 class IntakeAPI {
   async getIntakeForm(teamId: number): Promise<{ form: IntakeForm | null }> {

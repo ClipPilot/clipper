@@ -63,24 +63,7 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 name:
- *                   type: string
- *                 key:
- *                   type: string
- *                   description: The raw API key (shown only once)
- *                 key_prefix:
- *                   type: string
- *                 expires_at:
- *                   type: string
- *                   format: date-time
- *                   nullable: true
- *                 created_at:
- *                   type: string
- *                   format: date-time
+ *               $ref: '#/components/schemas/ApiKeyCreateResponse'
  *       400:
  *         description: Invalid input
  *       401:
@@ -110,32 +93,7 @@ router.post("/teams/:teamId/keys", requireAuth, createApiKeyController);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 keys:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       key_prefix:
- *                         type: string
- *                       revoked:
- *                         type: boolean
- *                       last_used_at:
- *                         type: string
- *                         format: date-time
- *                         nullable: true
- *                       expires_at:
- *                         type: string
- *                         format: date-time
- *                         nullable: true
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *               $ref: '#/components/schemas/ApiKeyListResponse'
  *       401:
  *         description: Unauthorized
  */
@@ -165,6 +123,15 @@ router.get("/teams/:teamId/keys", requireAuth, listApiKeysController);
  *     responses:
  *       200:
  *         description: API key revoked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
  *       401:
  *         description: Unauthorized
  *       404:
@@ -172,14 +139,303 @@ router.get("/teams/:teamId/keys", requireAuth, listApiKeysController);
  */
 router.delete("/teams/:teamId/keys/:keyId", requireAuth, revokeApiKeyController);
 
-// Dashboard-only routes (bearer auth, teamId in URL) — used by frontend
+/**
+ * @openapi
+ * /platform/teams/{teamId}/wallet:
+ *   get:
+ *     summary: Get wallet balance for a team
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Wallet balance
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlatformWallet'
+ */
 router.get("/teams/:teamId/wallet", requireAuth, getWalletController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/wallet/topup:
+ *   post:
+ *     summary: Create a wallet top-up payment intent
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount_cents
+ *             properties:
+ *               amount_cents:
+ *                 type: integer
+ *                 minimum: 500
+ *                 description: Top-up amount in cents (minimum $5.00)
+ *     responses:
+ *       200:
+ *         description: Payment intent created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - clientSecret
+ *                 - paymentIntentId
+ *               properties:
+ *                 clientSecret:
+ *                   type: string
+ *                 paymentIntentId:
+ *                   type: string
+ *       400:
+ *         description: Minimum top-up is $5.00
+ */
 router.post("/teams/:teamId/wallet/topup", requireAuth, createWalletTopUpController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/wallet/topup/{paymentIntentId}/status:
+ *   get:
+ *     summary: Check if a top-up payment has been credited
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: paymentIntentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Top-up credit status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - credited
+ *               properties:
+ *                 credited:
+ *                   type: boolean
+ */
 router.get("/teams/:teamId/wallet/topup/:paymentIntentId/status", requireAuth, getTopUpStatusController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/wallet/auto-refill:
+ *   get:
+ *     summary: Get auto-refill settings
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Auto-refill settings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlatformAutoRefillSettings'
+ */
 router.get("/teams/:teamId/wallet/auto-refill", requireAuth, getAutoRefillController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/wallet/auto-refill:
+ *   put:
+ *     summary: Update auto-refill settings
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               auto_refill:
+ *                 type: boolean
+ *               refill_threshold_cents:
+ *                 type: integer
+ *                 minimum: 100
+ *               refill_amount_cents:
+ *                 type: integer
+ *                 minimum: 500
+ *     responses:
+ *       200:
+ *         description: Updated auto-refill settings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PlatformAutoRefillSettings'
+ *       400:
+ *         description: Invalid threshold or amount, or no payment method
+ */
 router.put("/teams/:teamId/wallet/auto-refill", requireAuth, updateAutoRefillController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/usage:
+ *   get:
+ *     summary: Get API usage logs for a team
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 100
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Usage logs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - logs
+ *                 - total
+ *                 - limit
+ *                 - offset
+ *               properties:
+ *                 logs:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     required:
+ *                       - id
+ *                       - action
+ *                       - cost_cents
+ *                       - created_at
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       action:
+ *                         type: string
+ *                       cost_cents:
+ *                         type: integer
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 total:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 offset:
+ *                   type: integer
+ */
 router.get("/teams/:teamId/usage", requireAuth, getUsageLogsController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/jobs/clip/{jobId}:
+ *   get:
+ *     summary: Get clip job status (bearer auth)
+ *     tags:
+ *       - AI Clipping
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Job status
+ *       404:
+ *         description: Job not found
+ */
 router.get("/teams/:teamId/jobs/clip/:jobId", requireAuth, getClipJobStatusBearerController);
+
+/**
+ * @openapi
+ * /platform/teams/{teamId}/jobs/face-swap/{jobId}:
+ *   get:
+ *     summary: Get face swap job status (bearer auth)
+ *     tags:
+ *       - Face Swap
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Job status
+ *       404:
+ *         description: Job not found
+ */
 router.get("/teams/:teamId/jobs/face-swap/:jobId", requireAuth, getFaceSwapStatusBearerController);
 
 /**
@@ -235,16 +491,7 @@ router.get("/v1/test", validateAPIKey, testApiRouteController);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 balance_cents:
- *                   type: integer
- *                 total_spent_cents:
- *                   type: integer
- *                 total_topped_up_cents:
- *                   type: integer
- *                 active:
- *                   type: boolean
+ *               $ref: '#/components/schemas/PlatformWallet'
  *       401:
  *         description: Invalid or missing API key
  */

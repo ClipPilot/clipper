@@ -1,4 +1,12 @@
 import { Request, Response } from "express";
+import type {
+  GenerateSceneImagesResponse,
+  GenerateAllSceneImagesResponse,
+  SceneGenerationStatus,
+  SceneImagesResponse,
+  SceneUploadUrlResponse,
+  ErrorResponse,
+} from "../types/api.types";
 import { db } from "../db";
 import {
   sceneImageGenerationJobs,
@@ -140,7 +148,7 @@ export class SceneBuilderController {
   /**
    * Generate images for a single scene
    */
-  async generateSceneImages(req: AuthRequest, res: Response) {
+  async generateSceneImages(req: AuthRequest, res: Response<GenerateSceneImagesResponse | ErrorResponse>) {
     try {
       const {
         teamId,
@@ -365,7 +373,7 @@ export class SceneBuilderController {
   /**
    * Generate images for all scenes in a script (batch)
    */
-  async generateAllSceneImages(req: AuthRequest, res: Response) {
+  async generateAllSceneImages(req: AuthRequest, res: Response<GenerateAllSceneImagesResponse | ErrorResponse>) {
     try {
       const { teamId, scriptId, characterId, scenes } = req.body as {
         teamId: number;
@@ -636,7 +644,7 @@ export class SceneBuilderController {
   /**
    * Get generation status for a job
    */
-  async getGenerationStatus(req: AuthRequest, res: Response) {
+  async getGenerationStatus(req: AuthRequest, res: Response<SceneGenerationStatus | ErrorResponse>) {
     try {
       const jobId = req.params.jobId;
 
@@ -696,7 +704,7 @@ export class SceneBuilderController {
   /**
    * Get all scene images for a script
    */
-  async getSceneImages(req: AuthRequest, res: Response) {
+  async getSceneImages(req: AuthRequest, res: Response<SceneImagesResponse | ErrorResponse>) {
     try {
       const scriptId = req.params.scriptId;
 
@@ -768,7 +776,7 @@ export class SceneBuilderController {
   /**
    * Select/save an image for a scene
    */
-  async selectSceneImage(req: AuthRequest, res: Response) {
+  async selectSceneImage(req: AuthRequest, res: Response<{ success: boolean; sceneImage: any } | ErrorResponse>) {
     try {
       const { scriptId, sceneId, sceneNumber, imageKey, generationJobId } =
         req.body;
@@ -829,7 +837,7 @@ export class SceneBuilderController {
   /**
    * Cancel a stuck or generating job - allows user to retry
    */
-  async cancelJob(req: AuthRequest, res: Response) {
+  async cancelJob(req: AuthRequest, res: Response<{ success: boolean; message: string } | ErrorResponse>) {
     try {
       const jobId = req.params.jobId;
 
@@ -871,7 +879,7 @@ export class SceneBuilderController {
   /**
    * Get presigned upload URL for supporting images
    */
-  async getUploadUrl(req: AuthRequest, res: Response) {
+  async getUploadUrl(req: AuthRequest, res: Response<SceneUploadUrlResponse | ErrorResponse>) {
     try {
       const { teamId, fileName } = req.body;
 
@@ -898,7 +906,7 @@ export class SceneBuilderController {
    * Get presigned upload URL for replacing an existing image (e.g., custom B-roll)
    * This allows uploading to a specific S3 key to replace the generated image
    */
-  async getUploadUrlForKey(req: AuthRequest, res: Response) {
+  async getUploadUrlForKey(req: AuthRequest, res: Response<SceneUploadUrlResponse | ErrorResponse>) {
     try {
       const { s3Key, contentType } = req.body;
 

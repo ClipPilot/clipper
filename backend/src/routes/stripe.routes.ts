@@ -43,6 +43,8 @@ const router = Router();
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - received
  *               properties:
  *                 received:
  *                   type: boolean
@@ -86,26 +88,22 @@ router.post("/webhook", handleWebhook);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - prices
  *               properties:
  *                 prices:
  *                   type: object
  *                   properties:
+ *                     CREATOR:
+ *                       type: string
  *                     STUDIO:
  *                       type: string
- *                       description: Price ID for Studio plan (500 clips/month, recurring)
- *                       example: "price_1SeiLyGu9cYiGgY365Gs60AW"
  *                     SCALE:
  *                       type: string
- *                       description: Price ID for Scale plan (1000 clips/month, recurring)
- *                       example: "price_1SeiLyGu9cYiGgY320k4zUWp"
  *                     STUDIO_ADDON:
  *                       type: string
- *                       description: Price ID for Studio addon (+50 clips, one-time purchase)
- *                       example: "price_1SeiLzGu9cYiGgY3c734FM7S"
  *                     SCALE_ADDON:
  *                       type: string
- *                       description: Price ID for Scale addon (+100 clips, one-time purchase)
- *                       example: "price_1SeiLzGu9cYiGgY3KT3zya5Z"
  */
 router.get("/prices", getPrices);
 
@@ -164,6 +162,8 @@ router.get("/prices", getPrices);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - url
  *               properties:
  *                 url:
  *                   type: string
@@ -228,6 +228,8 @@ router.post("/checkout", requireAuth, createCheckoutSession);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - url
  *               properties:
  *                 url:
  *                   type: string
@@ -282,6 +284,9 @@ router.post("/portal", requireAuth, createPortalSession);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - subscription
+ *                 - plan
  *               properties:
  *                 subscription:
  *                   oneOf:
@@ -345,6 +350,11 @@ router.get("/subscription/:teamId", requireAuth, getSubscription);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - success
+ *                 - effectiveDate
+ *                 - newPlan
+ *                 - message
  *               properties:
  *                 success:
  *                   type: boolean
@@ -353,14 +363,27 @@ router.get("/subscription/:teamId", requireAuth, getSubscription);
  *                   format: date-time
  *                 newPlan:
  *                   type: string
+ *                   enum: [creator, studio, scale]
  *                 message:
  *                   type: string
  *       400:
  *         description: Invalid request or plan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: Failed to change plan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/change-plan", requireAuth, changePlan);
 

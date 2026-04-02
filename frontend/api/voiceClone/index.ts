@@ -1,24 +1,14 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  CloneVoiceResponse,
+  ListVoiceClonesResponse,
+} from "@clipper/shared-types";
 
-export interface ClonedVoice {
-  id: number;
-  name: string;
-  voiceId: string;
-  previewUrl: string;
-  gender: "male" | "female" | "other";
-  createdAt?: string;
-}
+export type { CloneVoiceResponse, ListVoiceClonesResponse };
+export type ListClonedVoicesResponse = ListVoiceClonesResponse;
 
-export interface CloneVoiceResponse {
-  success: boolean;
-  voice: ClonedVoice;
-}
-
-export interface ListClonedVoicesResponse {
-  success: boolean;
-  voices: ClonedVoice[];
-}
+export type ClonedVoice = CloneVoiceResponse["voice"];
 
 class VoiceCloneAPI {
   async cloneVoice(

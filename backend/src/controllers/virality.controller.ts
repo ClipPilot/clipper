@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
 import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
@@ -12,7 +13,7 @@ async function requirePlanAccess(teamId: number, res: Response): Promise<boolean
 class ViralityController {
   // ── Account Controllers ──
 
-  async listAccounts(req: AuthRequest, res: Response) {
+  async listAccounts(req: AuthRequest, res: Response<{ accounts: ViralityAccount[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -25,7 +26,7 @@ class ViralityController {
     }
   }
 
-  async addAccount(req: AuthRequest, res: Response) {
+  async addAccount(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -64,7 +65,7 @@ class ViralityController {
     }
   }
 
-  async getAccount(req: AuthRequest, res: Response) {
+  async getAccount(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -81,7 +82,7 @@ class ViralityController {
     }
   }
 
-  async deleteAccount(req: AuthRequest, res: Response) {
+  async deleteAccount(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -94,7 +95,7 @@ class ViralityController {
     }
   }
 
-  async updateAccountStatus(req: AuthRequest, res: Response) {
+  async updateAccountStatus(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -112,7 +113,7 @@ class ViralityController {
     }
   }
 
-  async syncAccount(req: AuthRequest, res: Response) {
+  async syncAccount(req: AuthRequest, res: Response<{ accepted: boolean; accountId: number } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -131,7 +132,7 @@ class ViralityController {
     }
   }
 
-  async getPosts(req: AuthRequest, res: Response) {
+  async getPosts(req: AuthRequest, res: Response<{ posts: ViralityPost[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -156,7 +157,7 @@ class ViralityController {
     }
   }
 
-  async deletePost(req: AuthRequest, res: Response) {
+  async deletePost(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const postId = parseId(req.params.postId);
@@ -170,7 +171,7 @@ class ViralityController {
     }
   }
 
-  async getDashboard(req: AuthRequest, res: Response) {
+  async getDashboard(req: AuthRequest, res: Response<ViralityDashboard | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -188,7 +189,7 @@ class ViralityController {
 
   // ── Competitor Controllers ──
 
-  async listCompetitors(req: AuthRequest, res: Response) {
+  async listCompetitors(req: AuthRequest, res: Response<{ competitors: ViralityCompetitor[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -201,7 +202,7 @@ class ViralityController {
     }
   }
 
-  async createCompetitor(req: AuthRequest, res: Response) {
+  async createCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -219,7 +220,7 @@ class ViralityController {
     }
   }
 
-  async updateCompetitor(req: AuthRequest, res: Response) {
+  async updateCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const competitorId = parseId(req.params.competitorId);
@@ -241,7 +242,7 @@ class ViralityController {
     }
   }
 
-  async getCompetitor(req: AuthRequest, res: Response) {
+  async getCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const competitorId = parseId(req.params.competitorId);
@@ -254,7 +255,7 @@ class ViralityController {
     }
   }
 
-  async deleteCompetitor(req: AuthRequest, res: Response) {
+  async deleteCompetitor(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const competitorId = parseId(req.params.competitorId);
@@ -269,7 +270,7 @@ class ViralityController {
 
   // ── Alert Settings Controllers ──
 
-  async updateAlertEnabled(req: AuthRequest, res: Response) {
+  async updateAlertEnabled(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -287,7 +288,7 @@ class ViralityController {
     }
   }
 
-  async getSettings(req: AuthRequest, res: Response) {
+  async getSettings(req: AuthRequest, res: Response<{ settings: ViralSettings } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -300,7 +301,7 @@ class ViralityController {
     }
   }
 
-  async saveSettings(req: AuthRequest, res: Response) {
+  async saveSettings(req: AuthRequest, res: Response<{ settings: ViralSettings } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -353,7 +354,7 @@ class ViralityController {
     }
   }
 
-  async getAlertLogs(req: AuthRequest, res: Response) {
+  async getAlertLogs(req: AuthRequest, res: Response<{ logs: any[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });

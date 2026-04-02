@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { PresignedUploadResponse, MultipartUploadResponse, ErrorResponse } from "../types/api.types";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { adminClipFactoryService } from "../services/admin-clip-factory.service";
 import { teamService } from "../services/team.service";
@@ -8,7 +9,7 @@ import { handleControllerError } from "../utils/controllerHelpers";
 
 const VALID_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
 
-export async function getPresignedUrl(req: AdminRequest, res: Response) {
+export async function getPresignedUrl(req: AdminRequest, res: Response<PresignedUploadResponse | ErrorResponse>) {
   try {
     const { teamId, fileName, contentType } = req.body;
     if (!teamId || !fileName || !contentType) {
@@ -26,7 +27,7 @@ export async function getPresignedUrl(req: AdminRequest, res: Response) {
   }
 }
 
-export async function initiateMultipart(req: AdminRequest, res: Response) {
+export async function initiateMultipart(req: AdminRequest, res: Response<MultipartUploadResponse | ErrorResponse>) {
   try {
     const { teamId, fileName, contentType, fileSize } = req.body;
     if (!teamId || !fileName || !contentType || !fileSize) {

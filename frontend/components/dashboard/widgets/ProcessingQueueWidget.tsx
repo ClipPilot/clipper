@@ -48,28 +48,24 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
     return () => clearInterval(interval);
   }, [selectedTeam?.id]);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: Clip["status"]) => {
     switch (status) {
       case "pending":
-        return "solar:hourglass-bold";
-      case "processing":
         return "solar:refresh-bold";
       case "completed":
         return "solar:check-circle-bold";
-      default:
-        return "solar:clock-circle-bold";
+      case "failed":
+        return "solar:danger-bold";
     }
   };
 
-  const getStatusColor = (status: string): "warning" | "accent" | "success" | "default" => {
+  const getStatusColor = (status: Clip["status"]): "warning" | "accent" | "success" | "default" => {
     switch (status) {
       case "pending":
         return "warning";
-      case "processing":
-        return "accent";
       case "completed":
         return "success";
-      default:
+      case "failed":
         return "default";
     }
   };
@@ -126,7 +122,7 @@ export function ProcessingQueueWidget({ color, onColorChange }: ProcessingQueueW
                   <Icon
                     icon={getStatusIcon(job.status)}
                     width={16}
-                    className={job.status === "processing" ? "animate-spin" : ""}
+                    className={job.status === "pending" ? "animate-spin" : ""}
                     style={{ color: color || "#4F47E6" }}
                   />
                 </div>

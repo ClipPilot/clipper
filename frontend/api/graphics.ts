@@ -1,21 +1,15 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  GenerateGraphicsResponse,
+  GraphicsUploadUrlResponse,
+} from "@clipper/shared-types";
 
-export interface GeneratedGraphic {
-  s3Key: string;
-  presignedUrl: string;
-}
+export type { GenerateGraphicsResponse };
 
-export interface GenerateGraphicsResponse {
-  success: boolean;
-  images: GeneratedGraphic[];
-}
+export type GeneratedGraphic = GenerateGraphicsResponse["images"][number];
 
-export interface UploadUrlResponse {
-  success: boolean;
-  uploadUrl: string;
-  s3Key: string;
-}
+export type UploadUrlResponse = GraphicsUploadUrlResponse;
 
 class GraphicsAPI {
   async generate(data: {
