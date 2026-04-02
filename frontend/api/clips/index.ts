@@ -1,67 +1,11 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type { Clip, Folder, Tag, CaptionEntry } from "@clipper/shared-types";
 
-export interface CaptionEntry {
-  index: number;
-  startTime: number;
-  endTime: number;
-  text: string;
-}
-
-export interface Clip {
-  id: number;
-  team_id: number;
-  generated_by_user_id: number;
-  folder_id?: number | null;
-  clip_path?: string;
-  blank_video_path?: string;
-  watermarked_clip_path?: string;
-  srt_path?: string;
-  captions_data?: CaptionEntry[];
-  source_video_path?: string;
-  clip_score?: number;
-  clip_metadata?: any;
-  input_metadata?: any;
-  prompt?: string;
-  message?: string;
-  status: string;
-  saved: boolean;
-  share_token?: string | null;
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
-  clipUrl?: string;
-  sourceVideoUrl?: string;
-  blankVideoUrl?: string;
-  title?: string;
-  raw_video_id?: number | null;
-  raw_video_path?: string;
-  rawVideoUrl?: string;
-  tags?: Tag[];
-}
-
-export interface Folder {
-  id: number;
-  team_id: number;
-  parent_folder_id?: number | null;
-  name: string;
-  color?: string;
-  message?: string;
-  created_at: string;
-  updated_at: string;
-}
+export type { Clip, Folder, Tag, CaptionEntry };
 
 export interface FolderTreeNode extends Folder {
   children: FolderTreeNode[];
-}
-
-export interface Tag {
-  id: number;
-  team_id: number;
-  name: string;
-  color: string;
-  created_at: string;
-  updated_at: string;
 }
 
 class ClipsAPI {

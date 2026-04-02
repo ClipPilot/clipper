@@ -48,6 +48,10 @@ const router = Router();
  *     responses:
  *       202:
  *         description: Generation job queued successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GenerateSceneImagesResponse'
  *       400:
  *         description: Missing required parameters
  *       403:
@@ -110,6 +114,10 @@ router.post(
  *     responses:
  *       202:
  *         description: Generation jobs queued successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GenerateAllSceneImagesResponse'
  *       400:
  *         description: Missing required parameters
  *       403:
@@ -143,6 +151,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Job status retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SceneGenerationStatus'
  *       404:
  *         description: Job not found
  */
@@ -172,6 +184,18 @@ router.get(
  *     responses:
  *       200:
  *         description: Job cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - message
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Cannot cancel completed job
  *       404:
@@ -203,6 +227,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Scene images retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SceneImagesResponse'
  */
 router.get(
   "/script/:scriptId/scene-images",
@@ -247,8 +275,32 @@ router.get(
  *     responses:
  *       200:
  *         description: Scene image updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - sceneImage
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 sceneImage:
+ *                   type: object
  *       201:
  *         description: Scene image created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - sceneImage
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 sceneImage:
+ *                   type: object
  *       400:
  *         description: Missing required parameters
  */
@@ -285,6 +337,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Presigned URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SceneUploadUrlResponse'
  */
 router.post(
   "/upload-supporting-image",
@@ -320,6 +376,22 @@ router.post(
  *     responses:
  *       200:
  *         description: Presigned URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *                 - uploadUrl
+ *                 - s3Key
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 uploadUrl:
+ *                   type: string
+ *                   format: uri
+ *                 s3Key:
+ *                   type: string
  */
 router.post(
   "/upload-to-key",

@@ -1,128 +1,34 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import type {
+  Campaign as SharedCampaign,
+  CampaignVideo as SharedCampaignVideo,
+  CampaignGates as SharedCampaignGates,
+  CampaignPaymentMethod as SharedCampaignPaymentMethod,
+  CampaignWallet as SharedCampaignWallet,
+  MasterAgreement as SharedMasterAgreement,
+  CpmDailyCharge as SharedCpmDailyCharge,
+  CpmBillingBreakdown as SharedCpmBillingBreakdown,
+} from "@clipper/shared-types";
 
-export interface Campaign {
-  id: number;
-  team_id: number;
-  intake_form_id: number | null;
-  name: string;
-  status: "pending" | "accepted" | "rejected" | "appeal" | "started" | "paused" | "completed";
-  quoted_cpm: string | null;
-  budget: string | null;
-  video_minimum: number | null;
-  minimum_fund: string | null;
-  rejection_reason: string | null;
-  admin_notes: string | null;
-  google_drive_folder_id: string | null;
-  videos_ready: boolean;
-  payment_ready: boolean;
-  contract_ready: boolean;
-  started_at: string | null;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type Campaign = SharedCampaign;
 
-export interface CampaignVideo {
-  id: number;
-  campaign_id: number;
-  clip_id: number | null;
-  s3_key: string | null;
-  file_name: string | null;
-  title: string | null;
-  status: "pending" | "uploaded" | "processing" | "ready" | "failed";
-  presigned_url: string | null;
-  post_count: number;
-  user_post_count: number;
-  publish_status: "waiting_assignment" | "in_drive" | "published";
-  created_at: string;
-  updated_at: string;
-}
+export type CampaignVideo = SharedCampaignVideo;
 
-export interface CampaignPaymentMethod {
-  type: "card" | "us_bank_account";
-  brand?: string;
-  last4: string;
-  exp_month?: number;
-  exp_year?: number;
-  bank_name?: string;
-}
+export type CampaignGates = SharedCampaignGates;
+
+export type CampaignPaymentMethod = SharedCampaignPaymentMethod;
 
 /** @deprecated Use CampaignPaymentMethod */
 export type CampaignCard = CampaignPaymentMethod;
 
-export interface CampaignWallet {
-  id: number;
-  campaign_id: number;
-  balance_cents: number;
-  total_topped_up_cents: number;
-  created_at: string;
-  updated_at: string;
-}
+export type CampaignWallet = SharedCampaignWallet;
 
-export interface MasterAgreement {
-  id: number;
-  team_id: number;
-  status: "pending" | "signed" | "voided";
-  signer_name: string | null;
-  signer_legal_entity_name: string | null;
-  signer_title: string | null;
-  signer_email: string | null;
-  presigned_pdf_url: string | null;
-  signed_at: string | null;
-  effective_date: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+export type MasterAgreement = SharedMasterAgreement;
 
-export interface CpmDailyCharge {
-  id: number;
-  chargeDate: string;
-  totalViewsDelta: number;
-  cpmRate: string;
-  chargeCents: number;
-  source: "wallet" | "card" | null;
-  status: "charged" | "failed" | "waived";
-  failureReason: string | null;
-  postBreakdown: {
-    user_post_id: number;
-    previous_views: number;
-    current_views: number;
-    delta_views: number;
-    charge_cents: number;
-    post_url: string | null;
-  }[];
-  createdAt: string;
-}
+export type CpmDailyCharge = SharedCpmDailyCharge;
 
-export interface CpmBillingBreakdown {
-  summary: {
-    totalChargedCents: number;
-    totalViews: number;
-    walletSpentCents: number;
-    cardChargedCents: number;
-    cpmRate: string | null;
-    daysTracked: number;
-  };
-  dailyCharges: CpmDailyCharge[];
-}
-
-export interface CampaignGates {
-  videos: {
-    complete: boolean;
-    videoCount: number;
-    videoMinimum: number;
-  };
-  payment: {
-    complete: boolean;
-    balanceCents: number;
-    requiredCents: number;
-  };
-  contract: {
-    complete: boolean;
-    signedAt: string | null;
-  };
-}
+export type CpmBillingBreakdown = SharedCpmBillingBreakdown;
 
 class CampaignAPI {
   async listCampaigns(
@@ -292,7 +198,7 @@ class CampaignAPI {
     teamId: number,
     campaignId: number,
     videoId: number
-  ): Promise<{ deleted: boolean }> {
+  ): Promise<{ success: boolean }> {
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos/${videoId}`,
       {
@@ -342,7 +248,7 @@ class CampaignAPI {
   async getWallet(
     teamId: number,
     campaignId: number
-  ): Promise<{ wallet: CampaignWallet; card: CampaignCard | null }> {
+  ): Promise<{ wallet: CampaignWallet; card: CampaignPaymentMethod | null }> {
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/wallet`,
       {
@@ -385,7 +291,7 @@ class CampaignAPI {
     teamId: number,
     campaignId: number,
     paymentMethodId: string
-  ): Promise<{ saved: boolean; card: CampaignCard | null }> {
+  ): Promise<{ saved: boolean; card: CampaignPaymentMethod | null }> {
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/wallet/save-card`,
       {
@@ -586,7 +492,7 @@ class CampaignAPI {
   async startCampaign(
     teamId: number,
     campaignId: number
-  ): Promise<{ campaign: Campaign; message: string }> {
+  ): Promise<{ campaign: Campaign; message?: string }> {
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/start`,
       {

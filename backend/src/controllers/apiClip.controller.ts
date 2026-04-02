@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { Response } from "express";
+import type { SubmitClipResponse, ErrorResponse } from "../types/api.types";
 import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
 import { apiBillingService } from "../services/apiBilling.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
@@ -50,7 +51,7 @@ const resolveCaptionFont = (v: string): string =>
  */
 export const createClipJobController = async (
   req: ApiKeyRequest,
-  res: Response,
+  res: Response<SubmitClipResponse | ErrorResponse>,
 ) => {
   const { teamId, userId, id: apiKeyId } = req.apiKey!;
 
@@ -337,7 +338,7 @@ export const createClipJobController = async (
  */
 export const getClipJobStatusController = async (
   req: ApiKeyRequest,
-  res: Response,
+  res: Response<SubmitClipResponse | ErrorResponse>,
 ) => {
   const { teamId } = req.apiKey!;
   const jobId = req.params.jobId;
@@ -569,7 +570,7 @@ function processInBackground(params: {
  */
 export const getClipJobStatusBearerController = async (
   req: AuthRequest,
-  res: Response,
+  res: Response<SubmitClipResponse | ErrorResponse>,
 ) => {
   const teamId = parseInt(req.params.teamId);
   const jobId = req.params.jobId;

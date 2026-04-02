@@ -33,6 +33,21 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Trimmed video uploaded to S3
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 trimmedVideoKey:
+ *                   type: string
+ *                 trimmedVideoUrl:
+ *                   type: string
+ *                 duration:
+ *                   type: number
+ *       400:
+ *         description: Missing fields, invalid time range, or no video uploaded
  */
 router.post("/trim", requireAuth, upload.single("video"), faceSwapController.trimVideo);
 
@@ -57,6 +72,12 @@ router.post("/trim", requireAuth, upload.single("video"), faceSwapController.tri
  *         schema:
  *           type: string
  *         description: Output filename
+ *       - in: query
+ *         name: mode
+ *         schema:
+ *           type: string
+ *           enum: [direct, remux]
+ *         description: Download mode. direct = stream from S3 (fastest), remux = copy streams without re-encoding (fast), omit = full re-encode (slowest but most compatible)
  *     responses:
  *       200:
  *         description: Normalized video file
@@ -87,6 +108,12 @@ router.get("/download-fixed", requireAuth, faceSwapController.downloadFixed);
  *         schema:
  *           type: string
  *         description: Output filename
+ *       - in: query
+ *         name: mode
+ *         schema:
+ *           type: string
+ *           enum: [direct, remux]
+ *         description: Download mode. direct = stream from S3 (fastest), remux = copy streams without re-encoding (fast), omit = full re-encode (slowest but most compatible)
  *     responses:
  *       200:
  *         description: Normalized video file
@@ -218,6 +245,32 @@ router.post("/detect-faces/upload-url", requireAuth, faceSwapController.getDetec
  *     responses:
  *       200:
  *         description: Face segments detected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 segments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: number
+ *                       end:
+ *                         type: number
+ *                 videoDuration:
+ *                   type: number
+ *                 segmentCount:
+ *                   type: integer
+ *       400:
+ *         description: Missing fields or video too long
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Face detection failed
  */
 router.post("/detect-faces/from-s3", requireAuth, faceSwapController.detectFacesFromS3);
 

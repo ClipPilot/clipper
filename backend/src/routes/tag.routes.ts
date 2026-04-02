@@ -226,8 +226,19 @@ router.patch(
  *     responses:
  *       200:
  *         description: Tag deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Tag not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete(
   "/teams/:teamId/tags/:tagId",
@@ -421,28 +432,5 @@ router.delete(
   requireAuth,
   tagController.removeTagFromClip.bind(tagController)
 );
-
-/**
- * @openapi
- * components:
- *   schemas:
- *     Tag:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         team_id:
- *           type: integer
- *         name:
- *           type: string
- *         color:
- *           type: string
- *         created_at:
- *           type: string
- *           format: date-time
- *         updated_at:
- *           type: string
- *           format: date-time
- */
 
 export default router;

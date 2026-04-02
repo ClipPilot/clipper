@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
+import type { ErrorResponse } from "../types/api.types";
 import { db } from "../db";
 import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
@@ -373,7 +374,7 @@ export class ComfyController {
     }
   }
 
-  async getJobStatus(req: Request, res: Response) {
+  async getJobStatus(req: Request, res: Response<{ job: Record<string, any> } | ErrorResponse>) {
     try {
       const { jobId } = req.params;
 
@@ -451,7 +452,7 @@ export class ComfyController {
     }
   }
 
-  async getTeamJobs(req: Request, res: Response) {
+  async getTeamJobs(req: Request, res: Response<{ jobs: Record<string, any>[]; total: number; limit: number; offset: number } | ErrorResponse>) {
     try {
       const { teamId } = req.params;
       const limit = Math.min(parseInt(req.query.limit as string) || 6, 50);
@@ -869,7 +870,7 @@ export class ComfyController {
     }
   }
 
-  async getSavedFaces(req: AuthRequest, res: Response) {
+  async getSavedFaces(req: AuthRequest, res: Response<{ faces: Record<string, any>[] } | ErrorResponse>) {
     try {
       const { teamId } = req.params;
 
@@ -899,7 +900,7 @@ export class ComfyController {
     }
   }
 
-  async saveFace(req: AuthRequest, res: Response) {
+  async saveFace(req: AuthRequest, res: Response<{ face: Record<string, any> } | ErrorResponse>) {
     try {
       const { teamId, name } = req.body;
       const file = req.file;

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { Character, GeneratedImage, ErrorResponse } from "../types/api.types";
 import { db } from "../db";
 import { characters, characterGenerationJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
@@ -90,7 +91,7 @@ export class ActorController {
     }
   }
 
-  async getGenerationStatus(req: AuthRequest, res: Response) {
+  async getGenerationStatus(req: AuthRequest, res: Response<{ success: true; jobId: string; status: string; progress: number | null; progressMessage: string | null; images?: GeneratedImage[] } | ErrorResponse>) {
     try {
       const jobId = req.params.jobId;
 
@@ -237,7 +238,7 @@ export class ActorController {
     }
   }
 
-  async list(req: AuthRequest, res: Response) {
+  async list(req: AuthRequest, res: Response<{ success: true; characters: Character[]; total: unknown } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.query.teamId as string);
       const limit = parseInt(req.query.limit as string) || 50;
@@ -286,7 +287,7 @@ export class ActorController {
     }
   }
 
-  async listCommunity(req: AuthRequest, res: Response) {
+  async listCommunity(req: AuthRequest, res: Response<{ success: true; characters: Character[]; total: unknown } | ErrorResponse>) {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -331,7 +332,7 @@ export class ActorController {
     }
   }
 
-  async getById(req: AuthRequest, res: Response) {
+  async getById(req: AuthRequest, res: Response<{ success: true; character: Character } | ErrorResponse>) {
     try {
       const id = parseInt(req.params.id);
 

@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
+import type { User, Session, AuthResponse, ErrorResponse } from "../types/api.types";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 export class AuthController {
-  async signUp(req: Request, res: Response) {
+  async signUp(req: Request, res: Response<AuthResponse | ErrorResponse>) {
     try {
       const { email, password, firstName, lastName } = req.body;
 
@@ -38,7 +39,7 @@ export class AuthController {
     }
   }
 
-  async signIn(req: Request, res: Response) {
+  async signIn(req: Request, res: Response<AuthResponse | ErrorResponse>) {
     try {
       const { email, password, rememberMe = false } = req.body;
 
@@ -67,7 +68,7 @@ export class AuthController {
     }
   }
 
-  async signInWithSupabase(req: Request, res: Response) {
+  async signInWithSupabase(req: Request, res: Response<AuthResponse | ErrorResponse>) {
     try {
       const { accessToken, refreshToken } = req.body;
 
@@ -119,7 +120,7 @@ export class AuthController {
     }
   }
 
-  async getMe(req: Request, res: Response) {
+  async getMe(req: Request, res: Response<{ user: User } | ErrorResponse>) {
     try {
       const authHeader = req.headers.authorization;
 
@@ -146,7 +147,7 @@ export class AuthController {
     }
   }
 
-  async refreshSession(req: Request, res: Response) {
+  async refreshSession(req: Request, res: Response<{ session: Session | null; user: User | null } | ErrorResponse>) {
     try {
       const { refreshToken } = req.body;
 
@@ -185,7 +186,7 @@ export class AuthController {
     }
   }
 
-  async updatePassword(req: Request, res: Response) {
+  async updatePassword(req: Request, res: Response<AuthResponse | ErrorResponse>) {
     try {
       const authHeader = req.headers.authorization;
 
@@ -221,7 +222,7 @@ export class AuthController {
       return handleControllerError(res, "Update password error", error, "Failed to update password", 400);
     }
   }
-  async updateProfile(req: AuthRequest, res: Response) {
+  async updateProfile(req: AuthRequest, res: Response<{ message: string; user: User } | ErrorResponse>) {
     try {
       const userId = requireUser(req, res);
       if (!userId) return;

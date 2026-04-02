@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { CloneVoiceResponse, ListVoiceClonesResponse, ErrorResponse } from "../types/api.types";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { clonedVoices } from "@clipper/shared-db/src/schema";
@@ -8,7 +9,7 @@ import { s3Service } from "../services/s3.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
 class VoiceCloneController {
-  async cloneVoice(req: AuthRequest, res: Response) {
+  async cloneVoice(req: AuthRequest, res: Response<CloneVoiceResponse | ErrorResponse>) {
     try {
       const { teamId, name, gender } = req.body;
       const audioFile = req.file;
@@ -74,7 +75,7 @@ class VoiceCloneController {
     }
   }
 
-  async listClonedVoices(req: AuthRequest, res: Response) {
+  async listClonedVoices(req: AuthRequest, res: Response<ListVoiceClonesResponse | ErrorResponse>) {
     try {
       const teamId = parseInt(req.query.teamId as string);
       if (isNaN(teamId)) {
@@ -104,7 +105,7 @@ class VoiceCloneController {
     }
   }
 
-  async deleteClonedVoice(req: AuthRequest, res: Response) {
+  async deleteClonedVoice(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {

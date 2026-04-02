@@ -56,14 +56,7 @@ const router = Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 uploadUrl:
- *                   type: string
- *                   description: Presigned S3 URL for PUT upload
- *                 s3Key:
- *                   type: string
- *                   description: S3 key where the file will be stored
+ *               $ref: '#/components/schemas/PresignedUploadResponse'
  *       400:
  *         description: Invalid request
  *       401:
@@ -111,29 +104,7 @@ router.post("/presigned-upload", requireAuth, getPresignedUploadUrl);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 uploadId:
- *                   type: string
- *                   description: AWS S3 upload ID for this multipart upload
- *                 s3Key:
- *                   type: string
- *                   description: S3 key where the file will be stored
- *                 chunkSize:
- *                   type: integer
- *                   description: Size of each chunk in bytes (10MB)
- *                 totalParts:
- *                   type: integer
- *                   description: Total number of parts to upload
- *                 partUrls:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       partNumber:
- *                         type: integer
- *                       uploadUrl:
- *                         type: string
+ *               $ref: '#/components/schemas/MultipartUploadResponse'
  *       400:
  *         description: Invalid request
  *       401:
@@ -185,6 +156,9 @@ router.post("/multipart/initiate", requireAuth, initiateMultipartUpload);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - success
+ *                 - s3Key
  *               properties:
  *                 success:
  *                   type: boolean
@@ -232,6 +206,8 @@ router.post("/multipart/complete", requireAuth, completeMultipartUpload);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - success
  *               properties:
  *                 success:
  *                   type: boolean
@@ -266,6 +242,12 @@ router.post("/multipart/abort", requireAuth, abortMultipartUpload);
  *     responses:
  *       200:
  *         description: Video info retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VideoUrlInfo'
+ *       400:
+ *         description: Invalid URL or failed to fetch info
  */
 router.post("/url/info", requireAuth, getVideoInfo);
 
@@ -295,7 +277,23 @@ router.post("/url/info", requireAuth, getVideoInfo);
  *                 type: integer
  *     responses:
  *       200:
- *         description: SSE stream with download progress
+ *         description: SSE stream with download progress events
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   enum: [start, progress, uploading, complete, error]
+ *                 s3Key:
+ *                   type: string
+ *                 fileName:
+ *                   type: string
+ *                 fileSize:
+ *                   type: integer
+ *                 downloadUrl:
+ *                   type: string
  */
 router.post("/url/download", requireAuth, downloadVideo);
 
@@ -326,6 +324,23 @@ router.post("/url/download", requireAuth, downloadVideo);
  *     responses:
  *       200:
  *         description: Video downloaded and uploaded to S3
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - s3Key
+ *                 - fileName
+ *                 - fileSize
+ *               properties:
+ *                 s3Key:
+ *                   type: string
+ *                 fileName:
+ *                   type: string
+ *                 fileSize:
+ *                   type: integer
+ *                 downloadUrl:
+ *                   type: string
  */
 router.post("/url/download-sync", requireAuth, downloadVideoSync);
 
@@ -399,16 +414,7 @@ router.post("/url/download-sync", requireAuth, downloadVideoSync);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 clipIds:
- *                   type: array
- *                   items:
- *                     type: integer
- *                 message:
- *                   type: string
- *                 status:
- *                   type: string
+ *               $ref: '#/components/schemas/SubmitClipResponse'
  *       400:
  *         description: Invalid request
  *       401:
@@ -503,6 +509,10 @@ router.post("/submit", requireAuth, submitClipJob);
  *           application/json:
  *             schema:
  *               type: object
+ *               required:
+ *                 - clipIds
+ *                 - message
+ *                 - status
  *               properties:
  *                 clipIds:
  *                   type: array
@@ -549,29 +559,16 @@ router.post("/batch-submit", requireAuth, submitBatchClipJob);
  *                 clips:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       generated_by_user_id:
- *                         type: integer
- *                       clip_path:
- *                         type: string
- *                       source_video_path:
- *                         type: string
- *                       clip_score:
- *                         type: integer
- *                       clip_metadata:
- *                         type: object
- *                       prompt:
- *                         type: string
- *                       message:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
  *       400:
  *         description: Invalid team ID
  *       500:
@@ -611,7 +608,13 @@ router.get(
  *                 clips:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           rawVideoUrl:
+ *                             type: string
+ *                             nullable: true
  *       400:
  *         description: Invalid team ID
  *       500:
@@ -664,7 +667,16 @@ router.get(
  *                 clips:
  *                   type: array
  *                   items:
- *                     type: object
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
  *                 pagination:
  *                   type: object
  *                   properties:
@@ -713,21 +725,16 @@ router.get(
  *                 clips:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       clip_path:
- *                         type: string
- *                       is_saved:
- *                         type: boolean
- *                       status:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
  *       400:
  *         description: Invalid team ID
  *       500:
@@ -780,24 +787,20 @@ router.get(
  *                 clips:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       clip_path:
- *                         type: string
- *                       is_saved:
- *                         type: boolean
- *                       saved_at:
- *                         type: string
- *                         format: date-time
- *                       status:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           tags:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Tag'
  *                 pagination:
  *                   type: object
  *                   properties:
@@ -848,7 +851,23 @@ router.get(
  *               type: object
  *               properties:
  *                 clip:
- *                   type: object
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/Clip'
+ *                     - type: object
+ *                       properties:
+ *                         clipUrl:
+ *                           type: string
+ *                           nullable: true
+ *                         sourceVideoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                         blankVideoUrl:
+ *                           type: string
+ *                           nullable: true
+ *                         tags:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Clip not found
  */
@@ -934,6 +953,22 @@ router.get(
  *     responses:
  *       200:
  *         description: Clip updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 clip:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/Clip'
+ *                     - type: object
+ *                       properties:
+ *                         tags:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Tag'
  *       404:
  *         description: Clip not found
  */
@@ -968,6 +1003,13 @@ router.patch(
  *     responses:
  *       200:
  *         description: Clip deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Clip not found
  */
@@ -1002,6 +1044,28 @@ router.delete(
  *     responses:
  *       200:
  *         description: Successfully retrieved clips
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clips:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           tags:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Tag'
  *       401:
  *         description: Unauthorized - missing or invalid bearer token
  *       500:
@@ -1067,7 +1131,7 @@ router.get(
  *                 description: Hex color for caption highlight (e.g., "#FFD600")
  *     responses:
  *       200:
- *         description: Captions updated successfully
+ *         description: Captions update queued for processing
  *         content:
  *           application/json:
  *             schema:
@@ -1075,12 +1139,10 @@ router.get(
  *               properties:
  *                 message:
  *                   type: string
- *                 clipUrl:
+ *                 jobId:
  *                   type: string
- *                   description: Presigned URL to the updated clip
- *                 captionsData:
- *                   type: array
- *                   description: The updated captions data
+ *                 clipId:
+ *                   type: integer
  *       400:
  *         description: Invalid request - missing captions data or no blank video available
  *       404:
@@ -1161,7 +1223,7 @@ router.post(
  *                 description: Font size in pixels
  *     responses:
  *       200:
- *         description: Text overlay applied successfully
+ *         description: Text overlay queued for processing
  *         content:
  *           application/json:
  *             schema:
@@ -1169,9 +1231,10 @@ router.post(
  *               properties:
  *                 message:
  *                   type: string
- *                 clipUrl:
+ *                 jobId:
  *                   type: string
- *                   description: Presigned URL to the updated clip
+ *                 clipId:
+ *                   type: integer
  *       400:
  *         description: Invalid request - missing text or no blank video available
  *       404:
@@ -1209,6 +1272,13 @@ router.post(
  *     responses:
  *       200:
  *         description: Generated heading text
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 heading:
+ *                   type: string
  *       404:
  *         description: Clip not found
  */
@@ -1256,6 +1326,15 @@ router.post(
  *                 type: array
  *                 items:
  *                   type: object
+ *                   properties:
+ *                     index:
+ *                       type: integer
+ *                     startTime:
+ *                       type: number
+ *                     endTime:
+ *                       type: number
+ *                     text:
+ *                       type: string
  *               captionColor:
  *                 type: string
  *               captionFont:
@@ -1275,9 +1354,23 @@ router.post(
  *                     type: number
  *                   fontSize:
  *                     type: number
+ *                   style:
+ *                     type: string
+ *                     enum: [stroke, instagram]
  *     responses:
  *       200:
  *         description: Overlays update queued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 jobId:
+ *                   type: string
+ *                 clipId:
+ *                   type: integer
  *       400:
  *         description: Invalid request
  *       403:
@@ -1345,6 +1438,15 @@ router.post(
  *                         enum: ["9:16", "16:9", "1:1", "4:5", "custom"]
  *                       customCrop:
  *                         type: object
+ *                         properties:
+ *                           x:
+ *                             type: number
+ *                           y:
+ *                             type: number
+ *                           width:
+ *                             type: number
+ *                           height:
+ *                             type: number
  *                   speed:
  *                     type: number
  *                     minimum: 0.25
@@ -1358,13 +1460,65 @@ router.post(
  *                         type: boolean
  *                       backgroundMusic:
  *                         type: object
+ *                         properties:
+ *                           s3Key:
+ *                             type: string
+ *                           volume:
+ *                             type: number
  *                   captions:
  *                     type: object
+ *                     properties:
+ *                       enabled:
+ *                         type: boolean
+ *                       data:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             index:
+ *                               type: integer
+ *                             startTime:
+ *                               type: number
+ *                             endTime:
+ *                               type: number
+ *                             text:
+ *                               type: string
+ *                       color:
+ *                         type: string
+ *                       font:
+ *                         type: string
  *                   heading:
  *                     type: object
+ *                     properties:
+ *                       text:
+ *                         type: string
+ *                       color:
+ *                         type: string
+ *                       font:
+ *                         type: string
+ *                       x:
+ *                         type: number
+ *                       y:
+ *                         type: number
+ *                       fontSize:
+ *                         type: number
+ *                       style:
+ *                         type: string
+ *                         enum: [stroke, instagram]
  *     responses:
  *       200:
  *         description: Video edit job queued successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 jobId:
+ *                   type: string
+ *                 clipId:
+ *                   type: integer
  *       400:
  *         description: Invalid configuration
  *       403:
@@ -1461,6 +1615,15 @@ router.post(
  *     responses:
  *       200:
  *         description: Upload URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uploadUrl:
+ *                   type: string
+ *                 s3Key:
+ *                   type: string
  */
 router.post(
   "/teams/:teamId/clips/:clipId/overlay-upload",
@@ -1489,9 +1652,31 @@ router.post(
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - s3Keys
+ *             properties:
+ *               s3Keys:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *     responses:
  *       200:
  *         description: Overlay URLs returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 urls:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: string
  */
 router.post(
   "/teams/:teamId/clips/:clipId/overlay-urls",
@@ -1534,8 +1719,17 @@ router.post(
  *                 message:
  *                   type: string
  *                 clip:
- *                   type: object
- *                   description: The updated clip object
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/Clip'
+ *                     - type: object
+ *                       properties:
+ *                         saved:
+ *                           type: boolean
+ *                         clipUrl:
+ *                           type: string
+ *                           nullable: true
+ *                 usage:
+ *                   $ref: '#/components/schemas/UsageInfo'
  *       400:
  *         description: Clip already saved
  *       403:
@@ -1675,6 +1869,13 @@ router.post(
  *     responses:
  *       200:
  *         description: Share link removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Clip not found
  *       500:
@@ -1783,9 +1984,101 @@ router.get(
  *         in: query
  *         schema:
  *           type: integer
+ *       - name: tags
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Comma-separated tag IDs
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [pending, completed, failed, rejected, expired]
+ *       - name: folderId
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Folder ID or "null" for unorganized clips
+ *       - name: from
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - name: to
+ *         in: query
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *       - name: offset
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 0
  *     responses:
  *       200:
  *         description: Search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clips:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Clip'
+ *                       - type: object
+ *                         properties:
+ *                           clipUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           sourceVideoUrl:
+ *                             type: string
+ *                             nullable: true
+ *                           tags:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Tag'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
+ *                 query:
+ *                   type: string
+ *                   nullable: true
+ *                 filters:
+ *                   type: object
+ *                   properties:
+ *                     tags:
+ *                       type: array
+ *                       items:
+ *                         type: integer
+ *                       nullable: true
+ *                     status:
+ *                       type: string
+ *                       nullable: true
+ *                     folderId:
+ *                       type: integer
+ *                       nullable: true
+ *                     dateFrom:
+ *                       type: string
+ *                       nullable: true
+ *                     dateTo:
+ *                       type: string
+ *                       nullable: true
  */
 router.get(
   "/search-clips",

@@ -50,20 +50,7 @@ const router = Router();
  *                 teams:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       role:
- *                         type: string
- *                         enum: [owner, manager, member]
- *                       teamSubscriptionId:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *                     $ref: '#/components/schemas/Team'
  *       401:
  *         description: Unauthorized
  *       500:
@@ -95,8 +82,19 @@ router.get("/", requireAuth, getUserTeamsController);
  *     responses:
  *       201:
  *         description: Team created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
  *       400:
  *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Unauthorized
  */
@@ -115,6 +113,10 @@ router.post("/", requireAuth, createTeamController);
  *     responses:
  *       200:
  *         description: Successfully retrieved default team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Team'
  *       401:
  *         description: Unauthorized
  *       500:
@@ -145,23 +147,7 @@ router.get("/default", requireAuth, getDefaultTeamController);
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 teamId:
- *                   type: integer
- *                 teamName:
- *                   type: string
- *                 clipsCreated:
- *                   type: integer
- *                 limit:
- *                   type: integer
- *                 remaining:
- *                   type: integer
- *                 resetsDate:
- *                   type: string
- *                   format: date-time
- *                 rollover:
- *                   type: boolean
+ *               $ref: '#/components/schemas/TeamUsageStats'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -191,6 +177,15 @@ router.get("/:teamId/usage-stats", requireAuth, getTeamUsageStatsController);
  *     responses:
  *       200:
  *         description: Successfully retrieved team members
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 members:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TeamMember'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -234,8 +229,19 @@ router.get("/:teamId/members", requireAuth, getTeamMembersController);
  *     responses:
  *       200:
  *         description: Member added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 member:
+ *                   $ref: '#/components/schemas/TeamMember'
  *       403:
  *         description: Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:teamId/members", requireAuth, requireActiveSubscription, addTeamMemberController);
 
@@ -263,8 +269,19 @@ router.post("/:teamId/members", requireAuth, requireActiveSubscription, addTeamM
  *     responses:
  *       200:
  *         description: Member removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       403:
  *         description: Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:teamId/members/:memberId", requireAuth, removeTeamMemberController);
 
@@ -304,8 +321,19 @@ router.delete("/:teamId/members/:memberId", requireAuth, removeTeamMemberControl
  *     responses:
  *       200:
  *         description: Role updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 member:
+ *                   $ref: '#/components/schemas/TeamMember'
  *       403:
  *         description: Only owners can change roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.patch("/:teamId/members/:memberId/role", requireAuth, updateTeamMemberRoleController);
 
@@ -328,8 +356,19 @@ router.patch("/:teamId/members/:memberId/role", requireAuth, updateTeamMemberRol
  *     responses:
  *       200:
  *         description: Left team successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Cannot leave as last owner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:teamId/leave", requireAuth, leaveTeamController);
 
@@ -363,8 +402,19 @@ router.post("/:teamId/leave", requireAuth, leaveTeamController);
  *     responses:
  *       200:
  *         description: Team name updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
  *       403:
  *         description: Only owners can rename team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.patch("/:teamId", requireAuth, updateTeamNameController);
 
@@ -387,8 +437,19 @@ router.patch("/:teamId", requireAuth, updateTeamNameController);
  *     responses:
  *       200:
  *         description: Team deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       403:
  *         description: Only owners can delete team
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:teamId", requireAuth, deleteTeamController);
 
@@ -447,8 +508,19 @@ router.get("/:teamId/logo", getTeamLogoController);
  *     responses:
  *       200:
  *         description: Logo uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
  *       403:
  *         description: Only owners can update team logo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:teamId/logo", requireAuth, imageUpload.single("logo"), uploadTeamLogoController);
 
@@ -471,8 +543,19 @@ router.post("/:teamId/logo", requireAuth, imageUpload.single("logo"), uploadTeam
  *     responses:
  *       200:
  *         description: Logo removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 team:
+ *                   $ref: '#/components/schemas/Team'
  *       403:
  *         description: Only owners can remove team logo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:teamId/logo", requireAuth, removeTeamLogoController);
 
@@ -492,8 +575,25 @@ router.delete("/:teamId/logo", requireAuth, removeTeamLogoController);
  *     responses:
  *       200:
  *         description: Invite details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invite:
+ *                   $ref: '#/components/schemas/TeamInvite'
+ *       400:
+ *         description: Invite expired or already used
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Invite not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/invites/:token", getInviteByTokenController);
 
@@ -515,8 +615,19 @@ router.get("/invites/:token", getInviteByTokenController);
  *     responses:
  *       200:
  *         description: Invite accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       404:
  *         description: Invite not found or expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/invites/:token/accept", requireAuth, acceptInviteController);
 
@@ -538,6 +649,21 @@ router.post("/invites/:token/accept", requireAuth, acceptInviteController);
  *     responses:
  *       200:
  *         description: List of invites
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invites:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TeamInvite'
+ *       403:
+ *         description: Access denied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/:teamId/invites", requireAuth, getTeamInvitesController);
 
@@ -574,6 +700,19 @@ router.get("/:teamId/invites", requireAuth, getTeamInvitesController);
  *     responses:
  *       201:
  *         description: Invite created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invite:
+ *                   $ref: '#/components/schemas/TeamInvite'
+ *       403:
+ *         description: Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:teamId/invites", requireAuth, requireActiveSubscription, createInviteController);
 
@@ -600,6 +739,19 @@ router.post("/:teamId/invites", requireAuth, requireActiveSubscription, createIn
  *     responses:
  *       200:
  *         description: Invite revoked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:teamId/invites/:inviteId", requireAuth, revokeInviteController);
 
@@ -626,6 +778,19 @@ router.delete("/:teamId/invites/:inviteId", requireAuth, revokeInviteController)
  *     responses:
  *       200:
  *         description: Invite resent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Insufficient permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:teamId/invites/:inviteId/resend", requireAuth, resendInviteController);
 

@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { MultipartUploadResponse, PresignedUploadResponse, SubmitClipResponse, ErrorResponse } from "../types/api.types";
 import { z } from "zod";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
@@ -83,7 +84,7 @@ async function checkFreePlanGenerationLimit(
   return null;
 }
 
-export const initiateMultipartUpload = async (req: AuthRequest, res: Response) => {
+export const initiateMultipartUpload = async (req: AuthRequest, res: Response<MultipartUploadResponse | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -130,7 +131,7 @@ export const initiateMultipartUpload = async (req: AuthRequest, res: Response) =
   }
 };
 
-export const completeMultipartUpload = async (req: AuthRequest, res: Response) => {
+export const completeMultipartUpload = async (req: AuthRequest, res: Response<{ success: boolean; s3Key: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -149,7 +150,7 @@ export const completeMultipartUpload = async (req: AuthRequest, res: Response) =
   }
 };
 
-export const abortMultipartUpload = async (req: AuthRequest, res: Response) => {
+export const abortMultipartUpload = async (req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -168,7 +169,7 @@ export const abortMultipartUpload = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => {
+export const getPresignedUploadUrl = async (req: AuthRequest, res: Response<PresignedUploadResponse | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -208,7 +209,7 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
   }
 };
 
-export const submitClipJob = async (req: AuthRequest, res: Response) => {
+export const submitClipJob = async (req: AuthRequest, res: Response<SubmitClipResponse | ErrorResponse>) => {
   try {
     if (!requireUser(req, res)) return;
 
@@ -328,7 +329,7 @@ const MAX_BATCH_VIDEOS = 5;
 // Maximum duration per video in seconds (30 minutes)
 const MAX_VIDEO_DURATION_SECONDS = 30 * 60;
 
-export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
+export const submitBatchClipJob = async (req: AuthRequest, res: Response<SubmitClipResponse | ErrorResponse>) => {
   try {
     if (!requireUser(req, res)) return;
 

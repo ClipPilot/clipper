@@ -1,4 +1,5 @@
 import { Response } from "express";
+import type { Campaign, CampaignVideo, CampaignWallet, CampaignPaymentMethod, CampaignGates, MasterAgreement, CpmBillingBreakdown, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
 import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
@@ -11,7 +12,7 @@ import { handleControllerError } from "../utils/controllerHelpers";
 
 // ── Campaign CRUD ────────────────────────────────
 
-export async function createCampaign(req: AuthRequest, res: Response) {
+export async function createCampaign(req: AuthRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
@@ -52,7 +53,7 @@ export async function listCampaigns(req: AuthRequest, res: Response) {
   }
 }
 
-export async function getCampaign(req: AuthRequest, res: Response) {
+export async function getCampaign(req: AuthRequest, res: Response<{ campaign: Campaign; gates: CampaignGates } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);
@@ -70,7 +71,7 @@ export async function getCampaign(req: AuthRequest, res: Response) {
   }
 }
 
-export async function appealCampaign(req: AuthRequest, res: Response) {
+export async function appealCampaign(req: AuthRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);
@@ -94,7 +95,7 @@ export async function appealCampaign(req: AuthRequest, res: Response) {
 
 // ── Videos ───────────────────────────────────────
 
-export async function addVideos(req: AuthRequest, res: Response) {
+export async function addVideos(req: AuthRequest, res: Response<{ videos: CampaignVideo[] } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);
@@ -202,7 +203,7 @@ export async function listVideos(req: AuthRequest, res: Response) {
 
 // ── Wallet ───────────────────────────────────────
 
-export async function getWallet(req: AuthRequest, res: Response) {
+export async function getWallet(req: AuthRequest, res: Response<{ wallet: CampaignWallet; card: CampaignPaymentMethod | null } | ErrorResponse>) {
   try {
     const campaignId = parseInt(req.params.campaignId);
     const teamId = parseInt(req.params.teamId);
@@ -435,7 +436,7 @@ export async function fundWithCredits(req: AuthRequest, res: Response) {
 
 // ── Master Agreement ─────────────────────────────
 
-export async function getMasterAgreement(req: AuthRequest, res: Response) {
+export async function getMasterAgreement(req: AuthRequest, res: Response<{ agreement: MasterAgreement } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
@@ -447,7 +448,7 @@ export async function getMasterAgreement(req: AuthRequest, res: Response) {
   }
 }
 
-export async function signMasterAgreement(req: AuthRequest, res: Response) {
+export async function signMasterAgreement(req: AuthRequest, res: Response<{ agreement: MasterAgreement } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
@@ -495,7 +496,7 @@ export async function getCampaignClipIds(req: AuthRequest, res: Response) {
 
 // ── End Campaign ─────────────────────────────────
 
-export async function endCampaign(req: AuthRequest, res: Response) {
+export async function endCampaign(req: AuthRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);
@@ -518,7 +519,7 @@ export async function endCampaign(req: AuthRequest, res: Response) {
 
 // ── CPM Billing Breakdown ────────────────────────
 
-export async function getCpmBillingBreakdown(req: AuthRequest, res: Response) {
+export async function getCpmBillingBreakdown(req: AuthRequest, res: Response<CpmBillingBreakdown | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);
@@ -538,7 +539,7 @@ export async function getCpmBillingBreakdown(req: AuthRequest, res: Response) {
 
 // ── Start Campaign ───────────────────────────────
 
-export async function startCampaign(req: AuthRequest, res: Response) {
+export async function startCampaign(req: AuthRequest, res: Response<{ campaign: Campaign } | ErrorResponse>) {
   try {
     const teamId = parseInt(req.params.teamId);
     const campaignId = parseInt(req.params.campaignId);

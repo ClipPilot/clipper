@@ -1,11 +1,12 @@
 import { Response, Request } from "express";
+import type { TeamInvite, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamInviteService } from "../services/teamInvite.service";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
 import { handleControllerError, requireUser } from "../utils/controllerHelpers";
 
-export const createInviteController = async (req: AuthRequest, res: Response) => {
+export const createInviteController = async (req: AuthRequest, res: Response<{ invite: TeamInvite } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -40,7 +41,7 @@ export const createInviteController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const getTeamInvitesController = async (req: AuthRequest, res: Response) => {
+export const getTeamInvitesController = async (req: AuthRequest, res: Response<{ invites: TeamInvite[] } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -65,7 +66,7 @@ export const getTeamInvitesController = async (req: AuthRequest, res: Response) 
   }
 };
 
-export const getInviteByTokenController = async (req: Request, res: Response) => {
+export const getInviteByTokenController = async (req: Request, res: Response<{ invite: TeamInvite } | ErrorResponse>) => {
   try {
     const { token } = req.params;
     if (!token) {
@@ -92,7 +93,7 @@ export const getInviteByTokenController = async (req: Request, res: Response) =>
   }
 };
 
-export const acceptInviteController = async (req: AuthRequest, res: Response) => {
+export const acceptInviteController = async (req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -111,7 +112,7 @@ export const acceptInviteController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const revokeInviteController = async (req: AuthRequest, res: Response) => {
+export const revokeInviteController = async (req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
@@ -138,7 +139,7 @@ export const revokeInviteController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const resendInviteController = async (req: AuthRequest, res: Response) => {
+export const resendInviteController = async (req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { AdCloneCreateResponse, AdCloneUploadUrlsResponse, AdCloneProjectStatus, ErrorResponse } from "../types/api.types";
 import path from "path";
 import fs from "fs";
 import { adCloneService } from "../services/ad-clone/adclone.service";
@@ -40,7 +41,7 @@ export class AdCloneController {
     }
   }
 
-  async createProject(req: AuthRequest, res: Response) {
+  async createProject(req: AuthRequest, res: Response<AdCloneCreateResponse | ErrorResponse>) {
     try {
       const { teamId, productName, productDescription, adDirection } = req.body;
 
@@ -76,7 +77,7 @@ export class AdCloneController {
     }
   }
 
-  async getUploadUrls(req: AuthRequest, res: Response) {
+  async getUploadUrls(req: AuthRequest, res: Response<AdCloneUploadUrlsResponse | ErrorResponse>) {
     try {
       const { teamId, projectId, videoFileName, productImageFileNames } = req.body;
 
@@ -213,7 +214,7 @@ export class AdCloneController {
     }
   }
 
-  async getStatus(req: AuthRequest, res: Response) {
+  async getStatus(req: AuthRequest, res: Response<AdCloneProjectStatus | ErrorResponse>) {
     try {
       const { projectId } = req.params;
 
@@ -315,7 +316,7 @@ export class AdCloneController {
     }
   }
 
-  async getProject(req: AuthRequest, res: Response) {
+  async getProject(req: AuthRequest, res: Response<AdCloneProjectStatus | ErrorResponse>) {
     try {
       const { projectId } = req.params;
 

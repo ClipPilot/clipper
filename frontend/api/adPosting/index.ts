@@ -1,16 +1,9 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import type { TeamPostsResponse, AccountStatsResponse } from "@/types/massPosting";
+import type { ClipPostsResponse } from "@clipper/shared-types";
 
-export interface ClipPost {
-  id: number;
-  platform: string;
-  status: string;
-  post_url: string | null;
-  drive_file_id: string | null;
-  posted_time: string | null;
-  created_at: string;
-}
+export type ClipPost = ClipPostsResponse["posts"][number];
 
 export interface GetTeamPostsParams {
   tab?: "queued" | "published";

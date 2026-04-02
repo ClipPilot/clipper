@@ -32,21 +32,7 @@ const router = Router();
  *                 folders:
  *                   type: array
  *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       color:
- *                         type: string
- *                       message:
- *                         type: string
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *                     $ref: '#/components/schemas/Folder'
  *       400:
  *         description: Invalid team ID
  *       500:
@@ -73,8 +59,28 @@ router.get("/teams/:teamId/folders", requireAuth, folderController.getFolders.bi
  *     responses:
  *       200:
  *         description: Successfully retrieved folder tree
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tree:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/Folder'
+ *                       - type: object
+ *                         properties:
+ *                           children:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Folder'
  *       400:
  *         description: Invalid team ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/teams/:teamId/folders/tree", requireAuth, folderController.getFolderTree.bind(folderController));
 
@@ -108,9 +114,13 @@ router.get("/teams/:teamId/folders/tree", requireAuth, folderController.getFolde
  *               type: object
  *               properties:
  *                 folder:
- *                   type: object
+ *                   $ref: '#/components/schemas/Folder'
  *       404:
  *         description: Folder not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/teams/:teamId/folders/:folderId", requireAuth, folderController.getFolder.bind(folderController));
 
@@ -138,8 +148,21 @@ router.get("/teams/:teamId/folders/:folderId", requireAuth, folderController.get
  *     responses:
  *       200:
  *         description: Successfully retrieved folder path
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 path:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Folder'
  *       404:
  *         description: Folder not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/teams/:teamId/folders/:folderId/path", requireAuth, folderController.getFolderPath.bind(folderController));
 
@@ -170,21 +193,37 @@ router.get("/teams/:teamId/folders/:folderId/path", requireAuth, folderControlle
  *             properties:
  *               name:
  *                 type: string
- *                 description: Folder name
- *                 example: "Product Demos"
  *               color:
  *                 type: string
- *                 description: Optional color tag for the folder
- *                 example: "#3B82F6"
  *               message:
  *                 type: string
- *                 description: Optional description or note
- *                 example: "All product demo clips for Q1"
+ *               parentFolderId:
+ *                 type: integer
+ *                 nullable: true
  *     responses:
  *       201:
  *         description: Folder created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 folder:
+ *                   $ref: '#/components/schemas/Folder'
  *       400:
  *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Plan does not support folders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/teams/:teamId/folders", requireAuth, requireSeatAccess, folderController.createFolder.bind(folderController));
 
@@ -224,8 +263,27 @@ router.post("/teams/:teamId/folders", requireAuth, requireSeatAccess, folderCont
  *     responses:
  *       200:
  *         description: Folder updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 folder:
+ *                   $ref: '#/components/schemas/Folder'
+ *       403:
+ *         description: Plan does not support folders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Folder not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.patch("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess, folderController.updateFolder.bind(folderController));
 
@@ -263,10 +321,33 @@ router.patch("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess,
  *     responses:
  *       200:
  *         description: Folder moved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 folder:
+ *                   $ref: '#/components/schemas/Folder'
  *       400:
  *         description: Cannot move folder into itself or descendant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Plan does not support folders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Folder not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.patch("/teams/:teamId/folders/:folderId/move", requireAuth, requireSeatAccess, folderController.moveFolder.bind(folderController));
 
@@ -294,8 +375,25 @@ router.patch("/teams/:teamId/folders/:folderId/move", requireAuth, requireSeatAc
  *     responses:
  *       200:
  *         description: Folder deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: Plan does not support folders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       404:
  *         description: Folder not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess, folderController.deleteFolder.bind(folderController));
 

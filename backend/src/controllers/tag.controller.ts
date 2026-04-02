@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
+import type { Tag, ErrorResponse } from "../types/api.types";
 import { tagService } from "../services/tag.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
 export class TagController {
-  async getTags(req: Request, res: Response) {
+  async getTags(req: Request, res: Response<{ tags: Tag[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
 
@@ -19,7 +20,7 @@ export class TagController {
     }
   }
 
-  async getTag(req: Request, res: Response) {
+  async getTag(req: Request, res: Response<{ tag: Tag } | ErrorResponse>) {
     try {
       const tagId = parseInt(req.params.tagId);
       const teamId = parseInt(req.params.teamId);
@@ -36,7 +37,7 @@ export class TagController {
     }
   }
 
-  async createTag(req: Request, res: Response) {
+  async createTag(req: Request, res: Response<{ message: string; tag: Tag } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
       const { name, color } = req.body;
@@ -64,7 +65,7 @@ export class TagController {
     }
   }
 
-  async updateTag(req: Request, res: Response) {
+  async updateTag(req: Request, res: Response<{ message: string; tag: Tag } | ErrorResponse>) {
     try {
       const tagId = parseInt(req.params.tagId);
       const teamId = parseInt(req.params.teamId);
@@ -93,7 +94,7 @@ export class TagController {
     }
   }
 
-  async deleteTag(req: Request, res: Response) {
+  async deleteTag(req: Request, res: Response<{ message: string } | ErrorResponse>) {
     try {
       const tagId = parseInt(req.params.tagId);
       const teamId = parseInt(req.params.teamId);
@@ -112,7 +113,7 @@ export class TagController {
     }
   }
 
-  async getClipTags(req: Request, res: Response) {
+  async getClipTags(req: Request, res: Response<{ tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
 
@@ -128,7 +129,7 @@ export class TagController {
     }
   }
 
-  async addTagToClip(req: Request, res: Response) {
+  async addTagToClip(req: Request, res: Response<{ message: string; tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
       const tagId = parseInt(req.params.tagId);
@@ -149,7 +150,7 @@ export class TagController {
     }
   }
 
-  async removeTagFromClip(req: Request, res: Response) {
+  async removeTagFromClip(req: Request, res: Response<{ message: string; tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
       const tagId = parseInt(req.params.tagId);
@@ -170,7 +171,7 @@ export class TagController {
     }
   }
 
-  async setClipTags(req: Request, res: Response) {
+  async setClipTags(req: Request, res: Response<{ message: string; tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
       const { tagIds } = req.body;
