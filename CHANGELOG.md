@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/ClipPilot/clipper/compare/v1.3.0...v1.3.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* Docker file supdated for shared types ([e48c38b](https://github.com/ClipPilot/clipper/commit/e48c38ba927aebe0561e6eb6679a718aaa9397b2))
+* Notification fixes ([0838341](https://github.com/ClipPilot/clipper/commit/08383411c26532ff50b36ca908985e02c9c263cb))
+
 ## [1.3.0](https://github.com/ClipPilot/clipper/compare/v1.2.5...v1.3.0) (2026-04-01)
 
 
