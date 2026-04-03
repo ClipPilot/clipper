@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/ClipPilot/clipper/compare/v1.3.1...v1.3.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* Amplify yml fixes ([e421a5b](https://github.com/ClipPilot/clipper/commit/e421a5b4736ae5f3052763cd2e6454a651c4358e))
+* regenerate va-tools package-lock.json with full dependency tree ([ac8f2c6](https://github.com/ClipPilot/clipper/commit/ac8f2c6e23dca2d805cd746a9f3a052aae53b42d))
+
 ## [1.3.1](https://github.com/ClipPilot/clipper/compare/v1.3.0...v1.3.1) (2026-04-02)
 
 
