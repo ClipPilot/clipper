@@ -5,8 +5,8 @@ applications:
       phases:
         preBuild:
           commands:
-            - cd ../packages/shared-types && npm install && npm run build && cd ../../frontend
-            - cd ../packages/shared-ui && npm install && npm run build && cd ../../frontend
+            - cd ../packages/shared-types && npx -p typescript@5 tsc && cd ../../frontend
+            - cd ../packages/shared-ui && npm install && cd ../../frontend
             - npm ci
         build:
           commands:
