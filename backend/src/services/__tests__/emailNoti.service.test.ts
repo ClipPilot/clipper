@@ -89,7 +89,7 @@ describe("EmailNotiService", () => {
     it("uses singular subject for 1 clip", async () => {
       mockSend.mockResolvedValue({ data: { id: "msg-3" }, error: null });
 
-      await emailNotiService.sendClipsReady("u@t.com", {
+      await emailNotiService.sendClipsReady("u@t.com", 1, {
         clipCount: 1,
       } as any);
 
@@ -101,7 +101,7 @@ describe("EmailNotiService", () => {
     it("uses plural subject for multiple clips", async () => {
       mockSend.mockResolvedValue({ data: { id: "msg-4" }, error: null });
 
-      await emailNotiService.sendClipsReady("u@t.com", {
+      await emailNotiService.sendClipsReady("u@t.com", 1, {
         clipCount: 5,
       } as any);
 
@@ -145,7 +145,7 @@ describe("EmailNotiService", () => {
     });
 
     it("sendUgcReady", async () => {
-      await emailNotiService.sendUgcReady("u@t.com", {} as any);
+      await emailNotiService.sendUgcReady("u@t.com", 1, {} as any);
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({ subject: "Your UGC video is ready! 🎉" })
       );

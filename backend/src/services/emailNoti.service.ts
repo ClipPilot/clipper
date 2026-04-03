@@ -105,23 +105,23 @@ export class EmailNotiService {
     );
   }
 
-  async isNotificationEnabled(email: string): Promise<boolean> {
+  async isNotificationEnabled(userId: number): Promise<boolean> {
     try {
       const [user] = await db
         .select({ enabled: users.email_notifications_enabled })
         .from(users)
-        .where(eq(users.email, email))
+        .where(eq(users.id, userId))
         .limit(1);
       if (!user) return false;
       return user.enabled === true;
     } catch (err) {
-      console.error(`[EmailNoti] Failed to check notification preference for ${email}:`, err);
+      console.error(`[EmailNoti] Failed to check notification preference for userId ${userId}:`, err);
       return false;
     }
   }
 
-  async sendClipsReady(to: string, data: ClipsReadyEmailData) {
-    if (!(await this.isNotificationEnabled(to))) return;
+  async sendClipsReady(to: string, userId: number, data: ClipsReadyEmailData) {
+    if (!(await this.isNotificationEnabled(userId))) return;
     const html = clipsReadyEmail(data);
     const subject = data.clipCount > 1
       ? `Your ${data.clipCount} clips are ready!`
@@ -154,8 +154,8 @@ export class EmailNotiService {
     return this.sendEmailNotification(to, "Your referral reward has been set!", html);
   }
 
-  async sendUgcReady(to: string, data: UgcReadyEmailData) {
-    if (!(await this.isNotificationEnabled(to))) return;
+  async sendUgcReady(to: string, userId: number, data: UgcReadyEmailData) {
+    if (!(await this.isNotificationEnabled(userId))) return;
     const html = ugcReadyEmail(data);
     return this.sendEmailNotification(to, "Your UGC video is ready! 🎉", html);
   }
@@ -170,8 +170,8 @@ export class EmailNotiService {
     return this.sendEmailNotification(to, `Update on your Mass Posting application`, html);
   }
 
-  async sendAdPostingReady(to: string, data: AdPostingReadyEmailData) {
-    if (!(await this.isNotificationEnabled(to))) return;
+  async sendAdPostingReady(to: string, userId: number, data: AdPostingReadyEmailData) {
+    if (!(await this.isNotificationEnabled(userId))) return;
     const html = adPostingReadyEmail(data);
     return this.sendEmailNotification(to, "Your clip is prepared and will be posted momentarily!", html);
   }
