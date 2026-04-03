@@ -243,10 +243,10 @@ export function CharacterStep({
                 <Button
                   className="bg-accent-400 text-white font-semibold"
                   size="sm"
-                  endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
                   onPress={onContinue}
                 >
                   Continue
+                  <Icon icon="solar:arrow-right-bold" width={18} />
                 </Button>
               )}
             </div>
