@@ -92,9 +92,10 @@ class UGCScriptAPI {
 
   async generateScriptAgent(data: {
     teamId: number;
-    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    structure: Array<{ sceneType: string; slug: string; description: string; characterIndex?: number; shots?: Array<{ label: string; shotType: string }> }>;
     characterId?: number;
     character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
+    characters?: Array<{ characterId: number; character: { name: string; gender: string | null; age_range: string | null; appearance_config: any }; voiceId?: string }>;
     voice?: { name: string; style?: string } | null;
     targetAudience: string;
     productImageKeys?: string[];
@@ -278,6 +279,8 @@ class UGCScriptAPI {
     isSilent: boolean;
     hasCharacter: boolean;
     videoType: string;
+    charactersConfig?: Array<{ characterId: number; voiceId: string | null }>;
+    characterCount?: number;
   }> {
     const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/full`, {
       method: "GET",

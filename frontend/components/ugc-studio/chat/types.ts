@@ -14,11 +14,13 @@ export interface InitAgentResult {
   videoType: string;
   isSilent: boolean;
   character: boolean;
+  characterCount?: number;
   targetAudience: string;
   structure: Array<{
     sceneType: string;
     slug: string;
     description: string;
+    characterIndex?: number;
     shots?: BRollShot[];
   }>;
 }
@@ -31,12 +33,13 @@ export interface ScriptAgentShot {
   cinematicPrompt: string;
   durationSeconds: number;
   productImageNeeded: boolean;
+  characterIndex?: number;
 }
 
 export interface ScriptAgentScene {
   sceneNumber: number;
   slug: string;
-  sceneType: "a-roll" | "b-roll" | "visual";
+  sceneType: "a-roll" | "a-roll-multi" | "b-roll" | "visual";
   storyBeat: string;
   dialogue: string;
   isSilent: boolean;
@@ -45,6 +48,14 @@ export interface ScriptAgentScene {
   imageGenPrompt: string;
   cinematicPrompt: string;
   ambientSound: string | null;
+  characterIndex?: number;
+  arollShots?: Array<{
+    dialogue: string;
+    action: string;
+    characterIndex: number;
+    ambientSound: string | null;
+    angle?: string;
+  }>;
   shots: ScriptAgentShot[];
 }
 

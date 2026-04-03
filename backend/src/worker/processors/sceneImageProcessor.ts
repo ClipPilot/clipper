@@ -12,6 +12,7 @@ import {
   buildSceneImagePrompt,
 } from "./sceneImagePrompts";
 import { getReferenceImageUrls } from "../../utils/s3Helpers";
+import { processArollMultiImages } from "./arollMultiProcessor";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -102,9 +103,11 @@ export async function processSceneImageJob(
     previousArollImageKey,
     isConsecutiveAroll,
     previousSceneSetting,
+    settingAnchorKeys,
     adCloneReferenceVideoKey,
     adCloneSceneTimestamp,
     existingSceneImageKey,
+    arollShots,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -284,6 +287,30 @@ export async function processSceneImageJob(
         })
         .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
+      return;
+    }
+
+    if (arollShots && arollShots.length > 0) {
+      const images = await processArollMultiImages(job, updateJobProgress);
+      // Read back progress_message in case it contains anchor data (set by storeAnchorData)
+      const [currentJob] = await db
+        .select({ progress_message: schema.sceneImageGenerationJobs.progress_message })
+        .from(schema.sceneImageGenerationJobs)
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId))
+        .limit(1);
+      const anchorMsg = currentJob?.progress_message?.startsWith("ANCHOR:")
+        ? currentJob.progress_message
+        : `${arollShots.length} podcast shots generated`;
+      await db
+        .update(schema.sceneImageGenerationJobs)
+        .set({
+          status: "completed",
+          progress: 100,
+          progress_message: anchorMsg,
+          generated_images: images,
+          completed_at: new Date(),
+        })
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId));
       return;
     }
 

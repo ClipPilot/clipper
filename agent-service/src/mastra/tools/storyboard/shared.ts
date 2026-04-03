@@ -29,12 +29,25 @@ export interface ScriptScene {
   dialogue: string;
   emotion: string;
   estimatedDurationSeconds: number;
-  shotType: "a-roll" | "b-roll";
+  shotType: "a-roll" | "a-roll-multi" | "b-roll";
   cameraAngle: string;
   cinematicPrompt: string;
   ambientSound: string | null;
+  characterIndex?: number;
   bRollShots?: BRollShot[] | null;
+  arollShots?: ArollShot[] | null;
   mergedSceneTypes?: string[] | null;
+}
+
+export interface ArollShot {
+  dialogue: string;
+  action: string;
+  imageGenPrompt?: string;
+  emotion: string;
+  characterIndex: number;
+  ambientSound?: string | null;
+  cinematicPrompt?: string;
+  angle?: string;
 }
 
 export interface BRollShot {
@@ -102,9 +115,9 @@ export async function loadScript(
       if (!s.estimatedDurationSeconds && s.duration) {
         s.estimatedDurationSeconds = s.duration;
       }
-      // Normalize storyBeat → sceneType (if sceneType looks like a-roll/b-roll)
-      if (s.storyBeat && (s.sceneType === "a-roll" || s.sceneType === "b-roll" || s.sceneType === "visual")) {
-        s.shotType = s.sceneType === "a-roll" ? "a-roll" : "b-roll";
+      // Normalize storyBeat → sceneType (if sceneType looks like a-roll/b-roll/a-roll-multi)
+      if (s.storyBeat && (s.sceneType === "a-roll" || s.sceneType === "a-roll-multi" || s.sceneType === "b-roll" || s.sceneType === "visual")) {
+        s.shotType = s.sceneType === "a-roll" ? "a-roll" : s.sceneType === "a-roll-multi" ? "a-roll-multi" : "b-roll";
         s.sceneType = s.storyBeat;
       }
       // Ensure id exists

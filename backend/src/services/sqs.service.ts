@@ -287,14 +287,26 @@ export interface GenerateSceneImageJob extends BaseJob {
     productImageNeeded: boolean;
     shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
   }>;
+  arollShots?: Array<{
+    characterIndex: number;
+    action: string;
+    dialogue: string;
+    imageGenPrompt?: string;
+    cinematicPrompt?: string;
+    ambientSound?: string | null;
+    angle?: string;
+  }>;
   singleBRollShotIndex?: number;
   existingBRollImages?: string[];
   previousArollImageKey?: string;
   isConsecutiveAroll?: boolean;
   previousSceneSetting?: string;
+  settingAnchorKeys?: string[];
   adCloneReferenceVideoKey?: string;
   adCloneSceneTimestamp?: number;
   existingSceneImageKey?: string;
+  singleArollShotIndex?: number;
+  existingArollImages?: string[];
 }
 
 export interface GenerateUGCVideoJob extends BaseJob {
@@ -302,6 +314,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   jobId: string;
   scriptId: string;
   voiceId: string;
+  voiceConfig?: Array<{ characterId: number; voiceId: string }>;
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
@@ -314,11 +327,22 @@ export interface GenerateUGCVideoJob extends BaseJob {
     emotion: string;
     ambientSound?: string | null;
     regenerate?: boolean;
+    voiceId?: string;
     bRollShots?: Array<{
       action: string;
       cinematicPrompt: string;
       durationSeconds: number;
       imageKey: string;
+    }>;
+    arollShots?: Array<{
+      dialogue: string;
+      action: string;
+      emotion: string;
+      characterIndex: number;
+      voiceId: string;
+      imageKey: string;
+      ambientSound?: string | null;
+      cinematicPrompt?: string;
     }>;
   }>;
   regenerateSceneId?: string;
@@ -586,14 +610,18 @@ class SQSService {
     customStartImageKey?: string;
     customEndImageKey?: string;
     bRollShots?: GenerateSceneImageJob["bRollShots"];
+    arollShots?: GenerateSceneImageJob["arollShots"];
     singleBRollShotIndex?: number;
     existingBRollImages?: string[];
     previousArollImageKey?: string;
     isConsecutiveAroll?: boolean;
     previousSceneSetting?: string;
+    settingAnchorKeys?: string[];
     adCloneReferenceVideoKey?: string;
     adCloneSceneTimestamp?: number;
     existingSceneImageKey?: string;
+    singleArollShotIndex?: number;
+    existingArollImages?: string[];
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -613,14 +641,18 @@ class SQSService {
       customStartImageKey: params.customStartImageKey,
       customEndImageKey: params.customEndImageKey,
       bRollShots: params.bRollShots,
+      arollShots: params.arollShots,
       singleBRollShotIndex: params.singleBRollShotIndex,
       existingBRollImages: params.existingBRollImages,
       previousArollImageKey: params.previousArollImageKey,
       isConsecutiveAroll: params.isConsecutiveAroll,
       previousSceneSetting: params.previousSceneSetting,
+      settingAnchorKeys: params.settingAnchorKeys,
       adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
       adCloneSceneTimestamp: params.adCloneSceneTimestamp,
       existingSceneImageKey: params.existingSceneImageKey,
+      singleArollShotIndex: params.singleArollShotIndex,
+      existingArollImages: params.existingArollImages,
       createdAt: new Date().toISOString(),
     };
 
@@ -633,6 +665,7 @@ class SQSService {
     userId: number;
     scriptId: string;
     voiceId: string;
+    voiceConfig?: Array<{ characterId: number; voiceId: string }>;
     scenes?: GenerateUGCVideoJob["scenes"];
     regenerateSceneId?: string;
     characterId?: number;
@@ -648,6 +681,7 @@ class SQSService {
       userId: params.userId,
       scriptId: params.scriptId,
       voiceId: params.voiceId,
+      voiceConfig: params.voiceConfig,
       scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
       ttsSpeed: params.ttsSpeed,
