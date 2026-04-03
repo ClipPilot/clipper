@@ -572,8 +572,8 @@ export function SceneImageCard({
   }
 
   return (
-    <Card
-      className={`bg-surface-elevated border ${
+    <div
+      className={`rounded-xl bg-surface-elevated border overflow-hidden ${
         isCurrentlyGenerating
           ? "border-blue-500 animate-pulse"
           : (scene.shotType === "a-roll" && !scene.dialogue?.trim()) || (scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s: any) => !s.dialogue?.trim())))
@@ -581,7 +581,7 @@ export function SceneImageCard({
             : "border-accent-400/30"
       }`}
     >
-      <CardBody className="p-4 space-y-4">
+      <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-text-primary">

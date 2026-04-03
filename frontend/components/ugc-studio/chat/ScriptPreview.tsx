@@ -372,7 +372,7 @@ function SceneCard({
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 {isGenerating ? (
-                  <Spinner size="sm" color="primary" />
+                  <Spinner size="sm" color="accent" />
                 ) : (
                   <Icon
                     icon="solar:microphone-3-bold-duotone"
@@ -569,12 +569,12 @@ function SceneCard({
                           />
                           {shotGenerating && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                              <Spinner size="sm" color="primary" />
+                              <Spinner size="sm" color="accent" />
                             </div>
                           )}
                         </>
                       ) : shotGenerating ? (
-                        <Spinner size="sm" color="primary" />
+                        <Spinner size="sm" color="accent" />
                       ) : (
                         <Icon
                           icon="solar:user-speak-bold-duotone"

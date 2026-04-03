@@ -157,8 +157,7 @@ export function SceneCard({
   const isArollMultiMissingDialogue = scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s) => !s.dialogue?.trim()));
 
   return (
-    <Card className={`bg-surface-elevated border overflow-visible ${isArollMissingDialogue || isArollMultiMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
-      <CardBody className="p-4 space-y-3">
+    <div className={`rounded-xl bg-surface-elevated border overflow-visible p-4 space-y-3 ${isArollMissingDialogue || isArollMultiMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Dropdown>
@@ -225,10 +224,9 @@ export function SceneCard({
 
           <div className="flex items-center gap-1">
             <Dropdown>
-              <DropdownTrigger>
                 <Chip
                   size="sm"
-                  variant="flat"
+                  variant="tertiary"
                   className={`cursor-pointer hover:opacity-80 ${
                     scene.shotType === "a-roll"
                       ? "bg-blue-500/20 text-blue-400"
