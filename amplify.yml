@@ -19,3 +19,56 @@ applications:
         paths:
           - node_modules/**/*
           - .next/cache/**/*
+  - appRoot: admin-frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - cd ../packages/shared-types && npx -p typescript@5 tsc && cd ../../admin-frontend
+            - cd ../packages/shared-ui && npm install && cd ../../admin-frontend
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+  - appRoot: va-tools
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+  - appRoot: status
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
