@@ -152,10 +152,12 @@ export function SceneCard({
   };
 
   const showBRollSection = scene.shotType === "b-roll";
+  const hasArollShots = scene.shotType === "a-roll-multi" && scene.arollShots && scene.arollShots.length > 0;
   const isArollMissingDialogue = scene.shotType === "a-roll" && !scene.dialogue?.trim();
+  const isArollMultiMissingDialogue = scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s) => !s.dialogue?.trim()));
 
   return (
-    <div className={`rounded-xl border overflow-visible bg-surface-elevated p-4 space-y-3 ${isArollMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
+    <div className={`rounded-xl bg-surface-elevated border overflow-visible p-4 space-y-3 ${isArollMissingDialogue || isArollMultiMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Dropdown>
@@ -222,15 +224,17 @@ export function SceneCard({
 
           <div className="flex items-center gap-1">
             <Dropdown>
-<Chip
- size="sm"
- variant="tertiary"
- className={`cursor-pointer hover:opacity-80 ${
- scene.shotType === "a-roll"
- ? "bg-blue-500/20 text-blue-400"
- : "bg-amber-500/20 text-amber-400"
- }`}
- >
+                <Chip
+                  size="sm"
+                  variant="tertiary"
+                  className={`cursor-pointer hover:opacity-80 ${
+                    scene.shotType === "a-roll"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : scene.shotType === "a-roll-multi"
+                      ? "bg-purple-500/20 text-purple-400"
+                      : "bg-amber-500/20 text-amber-400"
+                  }`}
+                >
                   {scene.shotType}
                 </Chip>
 <Dropdown.Popover>
@@ -258,7 +262,7 @@ export function SceneCard({
                   <Dropdown.Item
                     key={shotType}
                     className={
-                      shotType === "a-roll" ? "text-blue-400" : "text-amber-400"
+                      shotType === "a-roll" ? "text-blue-400" : shotType === "a-roll-multi" ? "text-purple-400" : "text-amber-400"
                     }
                   >
                     {shotType}
@@ -353,7 +357,31 @@ export function SceneCard({
           </div>
         )}
 
-        {(scene.shotType !== "b-roll" || scene.dialogue) && (
+        {hasArollShots && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Icon icon="solar:microphone-3-bold-duotone" width={14} className="text-purple-400" />
+              <span className="text-xs font-medium text-purple-400 uppercase tracking-wider">
+                Conversation ({scene.arollShots!.length} turns)
+              </span>
+            </div>
+            {scene.arollShots!.map((shot, idx) => (
+              <div key={idx} className="bg-surface-base rounded-lg p-2.5 border-l-2 border-purple-500/40">
+                <div className="flex items-center gap-2 mb-1">
+                  <Chip size="sm" className="bg-purple-500/20 text-purple-400 h-5 text-[10px]">
+                    Actor {shot.characterIndex + 1}
+                  </Chip>
+                  <span className="text-[10px] text-text-muted">Turn {idx + 1}</span>
+                </div>
+                <p className="text-text-primary text-xs leading-relaxed">
+                  &quot;{shot.dialogue}&quot;
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!hasArollShots && (scene.shotType !== "b-roll" || scene.dialogue) && (
           isEditingDialogue ? (
             <div className="space-y-2">
               <TextArea
@@ -395,6 +423,13 @@ export function SceneCard({
           <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
             <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
             <span className="text-xs text-red-400">A-roll scenes require dialogue to proceed</span>
+          </div>
+        )}
+
+        {isArollMultiMissingDialogue && (
+          <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+            <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
+            <span className="text-xs text-red-400">Podcast scenes require dialogue in all conversation turns</span>
           </div>
         )}
 

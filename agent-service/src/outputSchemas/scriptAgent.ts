@@ -22,14 +22,47 @@ export const scriptAgentShotSchema = z.object({
   productImageNeeded: z
     .boolean()
     .describe("Whether this shot requires a product reference image"),
+  characterIndex: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("For CHARACTER or CHARACTER_AND_PRODUCT shots in multi-character videos: which character (0 or 1) appears. Defaults to scene-level characterIndex if omitted."),
+});
+
+export const scriptAgentArollShotSchema = z.object({
+  dialogue: z
+    .string()
+    .describe("What this character says. Every sentence starts with an ElevenLabs emotion tag."),
+  action: z
+    .string()
+    .describe("Physical action. Character faces a microphone, NOT the camera. No eye contact with camera."),
+  imageGenPrompt: z
+    .string()
+    .describe("Self-contained first-frame image prompt for THIS shot. Describe THIS character's appearance (hair, skin, clothing), podcast studio setting, camera angle (side/three-quarter), microphone. Each shot should have a different angle or framing."),
+  cinematicPrompt: z
+    .string()
+    .describe("Camera movement and visual progression for this shot's video generation."),
+  characterIndex: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Which character speaks (0 or 1). Must alternate between consecutive shots."),
+  ambientSound: z
+    .string()
+    .nullable()
+    .describe("Per-shot ambient override. Null inherits from scene-level ambientSound."),
+  angle: z
+    .string()
+    .describe("Camera angle and body position for this character. Character A and Character B MUST have different angles (one faces left, other faces right). All shots of the SAME character reuse the SAME angle."),
 });
 
 export const scriptAgentSceneSchema = z.object({
   sceneNumber: z.number().describe("Scene number (1-based)"),
   slug: z.string().describe("Short descriptive label (2-4 words)"),
   sceneType: z
-    .enum(["a-roll", "b-roll", "visual"])
-    .describe("a-roll = actor to camera, b-roll = product with VO, visual = silent"),
+    .enum(["a-roll", "a-roll-multi", "b-roll", "visual"])
+    .describe("a-roll = actor to camera, a-roll-multi = podcast multi-character conversation (ONLY for podcast videoType), b-roll = product with VO, visual = silent"),
   storyBeat: z
     .string()
     .describe("Narrative purpose (hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta, or custom)"),
@@ -57,10 +90,22 @@ export const scriptAgentSceneSchema = z.object({
     .describe(
       "REQUIRED for a-roll scenes: detailed background audio description matching the environment (e.g. 'Recorded through iPhone mic — clear voice with slight room echo. Faint air conditioning hum.'). Set to null for b-roll/visual scenes.",
     ),
+  characterIndex: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe("Index of the character for this scene (0 or 1). Required for a-roll scenes in multi-character videos. Omit for single-character videos."),
+  arollShots: z
+    .array(scriptAgentArollShotSchema)
+    .min(2)
+    .max(6)
+    .optional()
+    .describe("For podcast a-roll-multi scenes ONLY: 2-6 alternating character shots. Each shot is one character's turn in the conversation. Omit for regular a-roll/b-roll/visual scenes."),
   shots: z
     .array(scriptAgentShotSchema)
     .describe(
-      "Shot breakdown for b-roll/visual scenes (1-5 shots). Empty array for a-roll scenes.",
+      "Shot breakdown for b-roll/visual scenes (1-5 shots). Empty array for a-roll and a-roll-multi scenes.",
     ),
 });
 

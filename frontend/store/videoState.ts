@@ -6,11 +6,19 @@ import type { UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 import type { Voice } from "@/config/voicesConfig";
 
+export interface CharacterWithVoice {
+  character: Character;
+  voiceId?: string;
+  voiceName?: string;
+}
+
 export interface VideoState {
   scriptId: string | null;
   teamId: number | null;
   scenes: UGCScene[];
   character: Character | null;
+  characters: CharacterWithVoice[];
+  characterCount: number;
   voice: Voice | null;
   videoType: string;
   isSilent: boolean;
@@ -30,6 +38,8 @@ export const DEFAULT_VIDEO_STATE: VideoState = {
   teamId: null,
   scenes: [],
   character: null,
+  characters: [],
+  characterCount: 1,
   voice: null,
   videoType: "ugc",
   isSilent: false,
@@ -55,23 +65,51 @@ export function resolveAgent(state: VideoState): AgentTarget {
   return "storyboard";
 }
 
+export function currentCharacterIndex(state: VideoState): number {
+  if (state.characterCount <= 1) return 0;
+  const lastChar = state.characters[state.characters.length - 1];
+  if (!lastChar) return 0;
+  if (!state.isSilent && !lastChar.voiceId) return state.characters.length - 1;
+  return state.characters.length;
+}
+
 export function currentStep(state: VideoState): StepType {
   const hasStructureOrScript = state.structureBlueprint || state.scriptId;
   if (!hasStructureOrScript) return null;
 
-  if (state.hasCharacter && !state.character) return "character";
-  if (!state.isSilent && !state.voice) return "voice";
+  if (state.characterCount <= 1) {
+    if (state.hasCharacter && !state.character) return "character";
+    if (!state.isSilent && !state.voice) return "voice";
+    return "script";
+  }
+
+  if (!state.hasCharacter) return "script";
+
+  const filled = state.characters.length;
+  if (filled === 0) return "character";
+
+  const lastChar = state.characters[filled - 1];
+  if (!state.isSilent && !lastChar.voiceId) return "voice";
+
+  if (filled < state.characterCount) return "character";
+
   return "script";
 }
 
 export function isReady(state: VideoState): boolean {
   if (!state.scriptId || state.scenes.length === 0) return false;
-  if (state.hasCharacter && !state.character) return false;
-  if (!state.isSilent && !state.voice) return false;
+  if (state.characterCount <= 1) {
+    if (state.hasCharacter && !state.character) return false;
+    if (!state.isSilent && !state.voice) return false;
+    return true;
+  }
+  if (state.hasCharacter && state.characters.length < state.characterCount) return false;
+  if (!state.isSilent && state.characters.some((c) => !c.voiceId)) return false;
   return true;
 }
 
 export const currentStepAtom = atom((get) => currentStep(get(videoStateAtom)));
+export const currentCharacterIndexAtom = atom((get) => currentCharacterIndex(get(videoStateAtom)));
 export const agentTargetAtom = atom((get) =>
   resolveAgent(get(videoStateAtom)),
 );

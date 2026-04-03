@@ -168,7 +168,8 @@ export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
       while (
         j < scenes.length &&
         scenes[j].shotType === "a-roll" &&
-        consecutiveArolls.length < MAX_AROLL_MERGE_COUNT
+        consecutiveArolls.length < MAX_AROLL_MERGE_COUNT &&
+        (scenes[j] as any).characterIndex === (current as any).characterIndex
       ) {
         consecutiveArolls.push(scenes[j]);
         j++;
@@ -383,10 +384,19 @@ Return a JSON object with a "descriptions" array of strings, one description per
     }
   }
 
+  private static ELEVENLABS_TO_EMOTION: Record<string, string> = {
+    whispering: "sincere",
+    laughing: "playful",
+    satisfied: "relieved",
+    dramatic: "urgent",
+  };
+
   private extractEmotionFromDialogue(dialogue: string | undefined): string | null {
     if (!dialogue) return null;
     const match = dialogue.match(/\[([a-z]+)\]/i);
-    return match ? match[1].toLowerCase() : null;
+    if (!match) return null;
+    const tag = match[1].toLowerCase();
+    return UGCScriptService.ELEVENLABS_TO_EMOTION[tag] || tag;
   }
 
   private formatAppearanceConfig(config: any): string {
@@ -412,6 +422,8 @@ Return a JSON object with a "descriptions" array of strings, one description per
     isSilent: boolean;
     hasCharacter: boolean;
     videoType: string;
+    charactersConfig: Array<{ characterId: number; voiceId: string | null }> | null;
+    characterCount: number;
   } | null> {
     const [script] = await db
       .select()
@@ -421,6 +433,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
 
     if (!script) return null;
 
+    const charactersConfig = script.characters_config as Array<{ characterId: number; voiceId: string | null }> | null;
+    const characterCount = charactersConfig?.length || (script.has_character ? 1 : 0);
+
     return {
       scripts: script.scripts_data as UGCScript[],
       selectedVariantIndex: script.selected_variant_index || 0,
@@ -428,6 +443,8 @@ Return a JSON object with a "descriptions" array of strings, one description per
       isSilent: script.is_silent,
       hasCharacter: script.has_character,
       videoType: script.video_type,
+      charactersConfig,
+      characterCount,
     };
   }
 
@@ -775,7 +792,8 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
   async generateScriptViaAgent(params: {
     teamId: number;
     characterId?: number;
-    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    characters?: Array<{ characterId: number; character: { name: string; gender: string | null; age_range: string | null; appearance_config: any }; voiceId?: string }>;
+    structure: Array<{ sceneType: string; slug: string; description: string; characterIndex?: number; shots?: Array<{ label: string; shotType: string }> }>;
     character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
     voice?: { name: string; style?: string } | null;
     targetAudience: string;
@@ -787,6 +805,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const {
       teamId,
       characterId,
+      characters,
       structure,
       character,
       voice,
@@ -815,13 +834,21 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
         const shots = s.shots?.length
           ? ` | Shots: ${s.shots.map((sh) => `${sh.label} (${sh.shotType})`).join(", ")}`
           : "";
-        return `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}${shots}`;
+        const charIdx = s.characterIndex !== undefined ? ` | characterIndex=${s.characterIndex}` : "";
+        return `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}${charIdx}${shots}`;
       })
       .join("\n");
 
-    const characterSummary = character
-      ? `Character: ${character.name}, ${character.gender || "unspecified"}, ${character.age_range || "25-35"}, ${this.formatAppearanceConfig(character.appearance_config)}`
-      : "No character (product-only video)";
+    let characterSummary: string;
+    if (characters && characters.length > 1) {
+      characterSummary = `Characters (${characters.length}):\n` + characters
+        .map((c, i) => `  [${i}] ${c.character.name}, ${c.character.gender || "unspecified"}, ${c.character.age_range || "25-35"}, ${this.formatAppearanceConfig(c.character.appearance_config)}`)
+        .join("\n");
+    } else if (character) {
+      characterSummary = `Character: ${character.name}, ${character.gender || "unspecified"}, ${character.age_range || "25-35"}, ${this.formatAppearanceConfig(character.appearance_config)}`;
+    } else {
+      characterSummary = "No character (product-only video)";
+    }
 
     const voiceSummary = voice
       ? `Voice: ${voice.name}${voice.style ? ` (${voice.style})` : ""}`
@@ -905,11 +932,28 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
         emotion: this.extractEmotionFromDialogue(scene.dialogue) || "confident",
         // Agent's duration → backend's estimatedDurationSeconds
         estimatedDurationSeconds: scene.duration || scene.estimatedDurationSeconds || 5,
-        // Agent's sceneType (a-roll/b-roll/visual) → backend's shotType (a-roll/b-roll)
-        shotType: scene.sceneType === "a-roll" ? "a-roll" : "b-roll",
+        // Agent's sceneType (a-roll/a-roll-multi/b-roll/visual) → backend's shotType
+        // a-roll-multi is ONLY allowed for podcast videoType; downgrade to a-roll otherwise
+        shotType: scene.sceneType === "a-roll" ? "a-roll"
+          : scene.sceneType === "a-roll-multi" && videoType === "podcast" ? "a-roll-multi"
+          : scene.sceneType === "a-roll-multi" ? "a-roll"
+          : "b-roll",
         cameraAngle: scene.cameraAngle || "medium-shot",
         cinematicPrompt: scene.cinematicPrompt || "",
         ambientSound: scene.ambientSound || null,
+        characterIndex: scene.characterIndex ?? undefined,
+        arollShots: videoType === "podcast" && scene.arollShots && scene.arollShots.length > 0
+          ? scene.arollShots.map((shot: any) => ({
+              dialogue: shot.dialogue,
+              action: shot.action,
+              imageGenPrompt: shot.imageGenPrompt || "",
+              emotion: this.extractEmotionFromDialogue(shot.dialogue) || "confident",
+              characterIndex: shot.characterIndex,
+              ambientSound: shot.ambientSound ?? null,
+              cinematicPrompt: shot.cinematicPrompt || "",
+              angle: shot.angle || undefined,
+            }))
+          : null,
         // Agent's shots[] → backend's bRollShots[]
         bRollShots: scene.shots && scene.shots.length > 0
           ? scene.shots.map((shot: any) => ({
@@ -918,6 +962,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
               durationSeconds: shot.durationSeconds,
               productImageNeeded: shot.productImageNeeded ?? false,
               shotType: shot.shotType || "PRODUCT",
+              characterIndex: shot.characterIndex ?? undefined,
             }))
           : null,
       })),
@@ -927,6 +972,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     };
 
     const scriptsData = [normalizedScript];
+    const effectiveCharacterId = characters?.length ? characters[0].characterId : characterId;
     const insertValues: Record<string, unknown> = {
       team_id: teamId,
       product_image_keys: productImageKeys || [],
@@ -935,11 +981,17 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       selected_variant_index: 0,
       status: "completed",
       is_silent: isSilent,
-      has_character: !!characterId,
+      has_character: !!effectiveCharacterId,
       video_type: videoType || "ugc",
     };
-    if (characterId) {
-      insertValues.character_id = characterId;
+    if (effectiveCharacterId) {
+      insertValues.character_id = effectiveCharacterId;
+    }
+    if (characters && characters.length > 1) {
+      insertValues.characters_config = characters.map((c) => ({
+        characterId: c.characterId,
+        voiceId: c.voiceId || null,
+      }));
     }
     const [inserted] = await db
       .insert(ugcScripts)
@@ -997,6 +1049,16 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
               .map(
                 (shot, i) =>
                   `\n      Shot ${i + 1}: ${shot.action.slice(0, 80)}${shot.action.length > 80 ? "..." : ""} (${shot.durationSeconds}s)`,
+              )
+              .join("");
+        }
+        if ((s as any).arollShots?.length) {
+          const aShots = (s as any).arollShots as Array<{ dialogue: string; action: string; characterIndex: number }>;
+          shotDetails += `\n    A-Roll Shots (${aShots.length} conversation turns):` +
+            aShots
+              .map(
+                (shot, i) =>
+                  `\n      Turn ${i + 1} [char ${shot.characterIndex}]: "${shot.dialogue?.slice(0, 80) || shot.action.slice(0, 80)}${(shot.dialogue || shot.action).length > 80 ? "..." : ""}"`,
               )
               .join("");
         }

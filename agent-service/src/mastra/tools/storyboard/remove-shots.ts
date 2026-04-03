@@ -32,7 +32,10 @@ export const removeShotsTool = createTool({
     }
 
     if (scene.shotType === "a-roll") {
-      throw new Error("Cannot remove shots from an a-roll scene (a-roll has no shots array)");
+      throw new Error("Cannot remove shots from an a-roll scene");
+    }
+    if (scene.shotType === "a-roll-multi") {
+      throw new Error("Cannot remove individual shots from a podcast scene. Use changeDialogue with arollShotDialogues to edit specific turns.");
     }
 
     if (!scene.bRollShots || scene.bRollShots.length === 0) {

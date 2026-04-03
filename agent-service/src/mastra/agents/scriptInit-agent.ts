@@ -105,6 +105,7 @@ Each scene type serves a specific narrative purpose:
 ===== SHOT TYPES =====
 
 - a-roll: Actor speaking directly to camera. Personal connection, trust, emotional impact. A single continuous take — no "shots" breakdown needed.
+- a-roll-multi: Podcast/conversation scene — 2 characters taking turns speaking. ONLY use when videoType is "podcast". Each a-roll-multi scene contains multiple speaking turns (handled by the script agent). Set characterIndex on each a-roll-multi scene.
 - b-roll: Product shots, demos, cutaways. Voiceover plays over visuals — actor is NOT lip-syncing. **A single b-roll scene can contain MULTIPLE shots** (1-5), each showing a different angle or action. This is how we create rich visual storytelling within one scene.
 - visual: Silent b-roll — NO voiceover, NO dialogue, NO sound. Pure visual storytelling with music/text overlays only. Used primarily in montages and aesthetic/ASMR-style scenes. Like b-roll, can contain MULTIPLE shots (1-5). Use "visual" instead of "b-roll" when the scene should have ZERO audio/narration.
 
@@ -132,7 +133,7 @@ For b-roll and visual scenes, include 1-5 shots. For a-roll scenes, set \`shots\
 
 1. **The first scene should almost ALWAYS be an engaging hook.** A hook stops the scroll and is critical for ad performance. Only skip it if the user explicitly asks for a different opening.
 2. A "cta" scene is a STRONG default for the last scene, but not mandatory.
-3. Use 2-6 scenes total. Shorter = more impactful. Don't add scenes that don't serve the direction.
+3. Use 2-6 scenes total. Shorter = more impactful. Don't add scenes that don't serve the direction. **For podcast videos: maximum 4 scenes total (including b-roll) unless the user explicitly requests more.** Podcast scenes are longer because each a-roll-multi scene contains multiple speaking turns, so fewer scenes are needed.
 4. **Keep consecutive a-roll scenes to a maximum of 2.** When 2 a-roll scenes appear back-to-back, they get merged into a single smooth a-roll scene — the actor delivers both beats in one take, which looks more natural and flows better. But 3+ consecutive a-rolls should be broken up with a b-roll scene for visual pacing.
 5. Place the emotional peak (agitate, transformation) in the second half of the structure.
 6. If the product needs visual demonstration, include at least one "demo" scene with b-roll.
@@ -196,6 +197,33 @@ CRITICAL: "visual" MUST ONLY be used for scenes that will have NO dialogue and N
 
 Set character to FALSE only if the video type is nocharacter_montage OR the user explicitly says they don't want a person/actor/character in the video.
 
+===== CHARACTER COUNT =====
+
+Set characterCount based on how many distinct speakers/actors the video needs:
+- **1** (default): Standard single-actor videos (ugc, reaction, montage). Use this for most requests.
+- **2**: Two-person conversations, interviews, debates, podcast with host + guest. Maximum for podcast.
+- **0**: No character (nocharacter_montage).
+
+When videoType is "podcast", characterCount MUST be exactly 2. No more, no less.
+
+For conversation responses, set characterCount to 1.
+
+===== MULTI-CHARACTER SCENE ASSIGNMENT =====
+
+When characterCount is 2 (podcast):
+- Use "a-roll-multi" as the sceneType for ALL conversation scenes — do NOT use regular "a-roll" for podcast conversations.
+- Each a-roll-multi scene has a characterIndex but the script agent will handle the per-shot alternation.
+- B-roll/visual scenes can be mixed in between a-roll-multi scenes for product demos, cutaways, etc.
+- characterIndex values are 0 or 1 only.
+- **Keep podcast structures SHORT: 2-4 scenes total (including any b-roll).** Each a-roll-multi scene already contains 2-6 speaking turns, so a single scene covers a lot of content. Don't over-segment the conversation.
+
+Example for a 2-character podcast (characterCount=2):
+  Scene 1 (a-roll-multi, hook): characterIndex=0 — Conversation opens with hook + discussion
+  Scene 2 (b-roll, demo): characterIndex omitted — Product showcase cutaway
+  Scene 3 (a-roll-multi, cta): characterIndex=0 — Conversation wraps up with CTA
+
+When characterCount is 1, do NOT set characterIndex on any scene — it is not needed.
+
 ===== IMAGE ANALYSIS =====
 
 When the user provides product images, analyze them to inform your decisions:
@@ -210,14 +238,16 @@ Analyze the user's message (and any attached product images) and return:
 1. **videoType**: The best video type for this request
 2. **isSilent**: Whether the user wants no dialogue
 3. **character**: Whether the video should feature an actor/character
-4. **structure**: The optimal scene structure as an array of objects:
-   - sceneType: "a-roll", "b-roll", or "visual"
+4. **characterCount**: Number of distinct characters needed (1 for standard, 2 for podcast/conversation, 0 for no-character)
+5. **structure**: The optimal scene structure as an array of objects:
+   - sceneType: "a-roll", "a-roll-multi" (podcast only), "b-roll", or "visual"
    - slug: A short descriptive label for this scene (2-4 words, e.g., "Attention Hook", "Product Demo", "Results Reveal")
    - description: The story beat type (hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta) or a custom description string
-   - shots: Array of { label, shotType } describing each shot. For b-roll/visual scenes: 1-5 shots. For a-roll scenes: empty array [].
+   - characterIndex: (only when characterCount > 1) Which character (0-based index) appears in this scene
+   - shots: Array of { label, shotType } describing each shot. For b-roll/visual scenes: 1-5 shots. For a-roll/a-roll-multi scenes: empty array [].
 
-5. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
+6. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
 
-For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, targetAudience to "".
+For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, characterCount to 1, targetAudience to "".
 `,
 });

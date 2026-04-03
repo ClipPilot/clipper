@@ -95,7 +95,7 @@ export function StoryboardThumbnail({
                 : "bg-purple-500/80 text-white"
           }`}
         >
-          {scene.shotType === "a-roll" ? "A" : scene.shotType === "b-roll" ? "B" : "M"}
+          {scene.shotType === "a-roll" ? "A" : scene.shotType === "a-roll-multi" ? "P" : scene.shotType === "b-roll" ? "B" : "M"}
         </div>
 
         {/* Generation progress overlay */}

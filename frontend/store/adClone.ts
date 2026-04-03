@@ -139,7 +139,9 @@ export const adCloneHasArollWithoutDialogueAtom = atom((get) => {
   const script = scripts?.[selectedVariant];
   if (!script?.scenes) return false;
   return script.scenes.some(
-    (scene: any) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+    (scene: any) =>
+      (scene.shotType === "a-roll" && !scene.dialogue?.trim()) ||
+      (scene.shotType === "a-roll-multi" && (!scene.arollShots?.length || scene.arollShots.some((s: any) => !s.dialogue?.trim())))
   );
 });
 

@@ -6,6 +6,7 @@ import type { Character } from "./types";
 interface CharacterGridProps {
   characters: Character[];
   selectedId?: number;
+  selectedIds?: number[];
   onSelect: (character: Character) => void;
   showShareToggle?: boolean;
   onShareToggle?: (character: Character, isPublic: boolean) => void;
@@ -14,6 +15,7 @@ interface CharacterGridProps {
 export function CharacterGrid({
   characters,
   selectedId,
+  selectedIds,
   onSelect,
   showShareToggle = false,
   onShareToggle,
@@ -24,7 +26,7 @@ export function CharacterGrid({
         <CharacterCard
           key={character.id}
           character={character}
-          isSelected={character.id === selectedId}
+          isSelected={selectedIds ? selectedIds.includes(character.id) : character.id === selectedId}
           onSelect={onSelect}
           showShareToggle={showShareToggle}
           onShareToggle={onShareToggle}

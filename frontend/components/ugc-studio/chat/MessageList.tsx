@@ -136,7 +136,7 @@ export function MessageList({ messages, isThinking, acceptedResult, onAccept, on
             <div className="max-w-[80%] flex flex-col items-start gap-1.5">
               <span className="text-[11px] font-medium text-accent-400/80">Cuttr AI</span>
               <div className="rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed bg-white/[0.03] text-text-primary/90 rounded-bl-sm border border-white/[0.06] backdrop-blur-sm">
-                Your scenes are ready! Click <strong className="font-semibold">Generate Video</strong> to create your video, or ask me to make modifications if you&apos;d like to change anything.
+                Your scenes are ready! Click <strong className="font-semibold">Generate Video</strong>  to create your video, or ask me to make modifications if you&apos;d like to change anything.
               </div>
               <Button
                 size="lg"

@@ -285,6 +285,8 @@ export function buildSceneImagePrompt(
 ): string {
   const sections: string[] = [];
 
+  const isPodcastScene = sceneData.shotType === "a-roll-multi";
+
   if (isConsecutiveAroll) {
     sections.push(`**CRITICAL - CONSECUTIVE SHOT CONTINUITY**
 This is a CONTINUATION of the previous scene. You MUST maintain EXACT visual consistency:
@@ -292,10 +294,19 @@ This is a CONTINUATION of the previous scene. You MUST maintain EXACT visual con
 - SAME lighting setup, SAME color temperature, SAME shadows
 - SAME props, furniture, and objects in frame - nothing added or removed
 - SAME camera position and framing
-- Character wears the SAME outfit in the SAME position
+- Character wears the SAME outfit — identical clothing, accessories, hairstyle
 - Only the character's expression and subtle pose changes${previousSceneSetting ? `\n\nPREVIOUS SCENE ENVIRONMENT: ${previousSceneSetting}` : ""}
 
 The first reference image shows the PREVIOUS FRAME - match its environment EXACTLY. This should look like the next frame in a video, not a new scene.`);
+  }
+
+  if (isPodcastScene) {
+    sections.push(`**PODCAST SCENE - STRICT RULES**
+- EXACTLY ONE person in frame. NEVER show two people, silhouettes, reflections, or shadows of a second person.
+- Character sits at a podcast desk speaking into a microphone. They face the microphone or the other host — NEVER the camera. No eye contact with the camera.
+- Character wears the EXACT same outfit shown in the character reference image. Do not change, add, or remove any clothing or accessories.
+- The setting is a podcast studio: desk, microphone, headphones, soft studio lighting. This setting MUST be IDENTICAL across all shots in this scene.
+- Each character has their OWN fixed camera angle and pose. Character A and Character B are viewed from DIFFERENT angles. But the SAME character always appears in the SAME angle and pose across all their shots — only facial expression changes.`);
   }
 
   if (hasVideoFrameReference) {

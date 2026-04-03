@@ -45,8 +45,10 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     generateScript,
     updateScene,
     confirmCharacter,
+    confirmCharacters,
     regenerateAllImages,
     selectedCharacterRef,
+    selectedCharactersRef,
     teamIdRef,
   } = useChatAgent();
 
@@ -72,11 +74,20 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
       const script = response.scripts[response.selectedVariantIndex];
       savedCharacterIdRef.current = response.characterId ?? null;
 
+      const restoredCharacters = response.charactersConfig
+        ? response.charactersConfig.map((c) => ({
+            character: { id: c.characterId } as Character,
+            voiceId: c.voiceId ?? undefined,
+          }))
+        : [];
+
       setVideoState({
         scriptId: resumeScriptId,
         teamId: teamId,
         scenes: script?.scenes ?? [],
         character: null,
+        characters: restoredCharacters,
+        characterCount: response.characterCount ?? (response.hasCharacter ? 1 : 0),
         voice: null,
         videoType: response.videoType,
         isSilent: response.isSilent,
@@ -149,10 +160,18 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     if (!teamId || !videoState.scriptId) return;
     setIsStartingGeneration(true);
     try {
+      const voiceConfig = videoState.characters.length > 1
+        ? videoState.characters.map((c) => ({
+            characterId: c.character.id,
+            voiceId: c.voiceId || "",
+          }))
+        : undefined;
+
       const result = await ugcVideoAPI.generateVideo({
         teamId,
         scriptId: videoState.scriptId,
         voiceId: videoState.voice?.id,
+        voiceConfig,
         isSilent: videoState.isSilent,
       });
       if (adCloneProjectId) {
@@ -181,11 +200,17 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
   );
 
   const handleCharacterConfirm = useCallback(() => {
-    confirmCharacter();
-    if (resumeScriptId && selectedCharacter && savedCharacterIdRef.current !== selectedCharacter.id) {
-      setSceneImages({});
+    if (videoState.characterCount > 1 && selectedCharacter) {
+      const updated = [...videoState.characters, { character: selectedCharacter }];
+      confirmCharacters(updated);
+      setSelectedCharacter(null);
+    } else {
+      confirmCharacter();
+      if (resumeScriptId && selectedCharacter && savedCharacterIdRef.current !== selectedCharacter.id) {
+        setSceneImages({});
+      }
     }
-  }, [confirmCharacter, resumeScriptId, selectedCharacter, setSceneImages]);
+  }, [confirmCharacter, confirmCharacters, videoState.characterCount, videoState.characters, selectedCharacter, resumeScriptId, setSceneImages]);
 
   const handleDropFiles = useCallback((files: File[]) => {
     chatInputRef.current?.addFiles(files);
@@ -202,6 +227,8 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
           teamId: teamId,
           scenes: script?.scenes ?? [],
           character: null,
+          characters: [],
+          characterCount: 1,
           voice: null,
           videoType: response.videoType,
           isSilent: response.isSilent,

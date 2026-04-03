@@ -31,7 +31,7 @@ export const EMOTIONS = [
   "determined",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll", "visual"] as const;
+export const SHOT_TYPES = ["a-roll", "a-roll-multi", "b-roll", "visual"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",
@@ -51,6 +51,17 @@ export const BRollShotSchema = z.object({
   durationSeconds: z.number().min(1).max(4).describe("Duration of this shot (1-4 seconds)"),
   productImageNeeded: z.boolean().describe("Whether this shot should include/show the product. Set to true for product closeups, unboxing, demos. Set to false for lifestyle, mood, reaction, or 'before' shots where product shouldn't appear."),
   shotType: z.enum(B_ROLL_SHOT_TYPES).describe("What this shot features: CHARACTER (person doing an action), PRODUCT (product-only/environment shot), or CHARACTER_AND_PRODUCT (person interacting with the product)."),
+});
+
+export const ArollShotSchema = z.object({
+  dialogue: z.string().min(1).describe("What this character says. Every sentence starts with an ElevenLabs emotion tag. Must not be empty."),
+  action: z.string().describe("Physical action — what the character does while speaking. Character faces a microphone, NOT the camera."),
+  emotion: z.enum(EMOTIONS).describe("Emotional delivery style."),
+  characterIndex: z.number().min(0).max(3).describe("Which character speaks (0-based index). Must alternate between consecutive shots."),
+  ambientSound: z.string().nullable().describe("Per-shot ambient override. Null inherits from scene."),
+  cinematicPrompt: z.string().optional().describe("Optional per-shot cinematic prompt."),
+  imageGenPrompt: z.string().optional().describe("Optional per-shot image generation prompt describing the character and studio setup."),
+  angle: z.string().optional().describe("Camera angle and body position for this shot. Set by the script agent. All shots of the same character should use the same angle."),
 });
 
 export const UGCSceneBaseSchema = z.object({
@@ -89,6 +100,13 @@ export const UGCSceneBaseSchema = z.object({
     .nullable()
     .optional()
     .describe("For b-roll scenes. PRODUCT-FOCUSED scenes: use multiple shots (2-5) to showcase product from different angles. NON-PRODUCT scenes (character actions, emotions, lifestyle, transformations): default to 1 single shot (max 3) — multiple actions can happen within one shot. Only use 2-3 shots if the user explicitly requests it or if the scene truly demands distinct visuals."),
+  arollShots: z
+    .array(ArollShotSchema)
+    .min(2)
+    .max(6)
+    .nullable()
+    .optional()
+    .describe("For a-roll-multi scenes (podcast): 2-6 alternating character shots. Each has own dialogue, voice, character. Consecutive shots MUST have different characterIndex."),
   mergedSceneTypes: z
     .array(z.enum(SCENE_TYPES))
     .nullable()
@@ -117,6 +135,32 @@ export const UGCSceneSchema = UGCSceneBaseSchema.refine(
   {
     message: "A-roll scenes MUST have non-empty dialogue",
     path: ["dialogue"],
+  }
+).refine(
+  (scene) => {
+    if (scene.shotType === "a-roll-multi" && scene.arollShots) {
+      return scene.arollShots.length >= 2 && scene.arollShots.length <= 6;
+    }
+    return true;
+  },
+  {
+    message: "a-roll-multi scenes must have 2-6 shots",
+    path: ["arollShots"],
+  }
+).refine(
+  (scene) => {
+    if (scene.shotType === "a-roll-multi" && scene.arollShots) {
+      for (let i = 1; i < scene.arollShots.length; i++) {
+        if (scene.arollShots[i].characterIndex === scene.arollShots[i - 1].characterIndex) {
+          return false;
+        }
+      }
+    }
+    return true;
+  },
+  {
+    message: "Consecutive a-roll-multi shots must have different characterIndex",
+    path: ["arollShots"],
   }
 );
 
@@ -164,6 +208,7 @@ export type Emotion = (typeof EMOTIONS)[number];
 export type ShotType = (typeof SHOT_TYPES)[number];
 export type CameraAngle = (typeof CAMERA_ANGLES)[number];
 export type BRollShot = z.infer<typeof BRollShotSchema>;
+export type ArollShot = z.infer<typeof ArollShotSchema>;
 export type UGCScene = z.infer<typeof UGCSceneSchema>;
 export type UGCScript = z.infer<typeof UGCScriptSchema>;
 export type GenerateUGCScriptResponse = z.infer<
@@ -176,8 +221,8 @@ export const AutoStructureResponseSchema = z.object({
       z.object({
         type: z.enum(SCENE_TYPES).describe("Scene type for this step"),
         shot: z
-          .enum(["a-roll", "b-roll", "visual"])
-          .describe("Shot type: a-roll for speaking, b-roll for product visuals, visual for silent"),
+          .enum(["a-roll", "a-roll-multi", "b-roll", "visual"])
+          .describe("Shot type: a-roll for speaking, a-roll-multi for podcast multi-character, b-roll for product visuals, visual for silent"),
       })
     )
     .min(2)

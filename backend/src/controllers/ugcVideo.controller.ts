@@ -31,6 +31,15 @@ interface BRollShotData {
   productImageNeeded: boolean;
 }
 
+interface ArollShotData {
+  dialogue: string;
+  action: string;
+  emotion: string;
+  characterIndex: number;
+  ambientSound?: string | null;
+  cinematicPrompt?: string;
+}
+
 interface SceneData {
   id: string;
   sceneNumber: number;
@@ -44,6 +53,7 @@ interface SceneData {
   durationSeconds: number;
   ambientSound?: string | null;
   bRollShots?: BRollShotData[] | null;
+  arollShots?: ArollShotData[] | null;
 }
 
 export class UGCVideoController {
@@ -195,7 +205,7 @@ export class UGCVideoController {
    */
   async generateVideo(req: AuthRequest, res: Response<{ success: boolean; jobId: string; status: string; message: string } | ErrorResponse | { error: string; code: string; required: number; available: number }>) {
     try {
-      const { teamId, scriptId, voiceId, isSilent: requestSilent } = req.body;
+      const { teamId, scriptId, voiceId, voiceConfig, isSilent: requestSilent } = req.body;
 
       if (!teamId || !scriptId) {
         return res.status(400).json({
@@ -244,16 +254,20 @@ export class UGCVideoController {
         script.custom_pattern as { type: string; shot: string }[] | null,
       );
 
-      // voiceId is required unless silent mode
-      if (!isSilent && !voiceId) {
+      const hasVoiceConfig = Array.isArray(voiceConfig) && voiceConfig.length > 0;
+      if (!isSilent && !voiceId && !hasVoiceConfig) {
         return res.status(400).json({
-          error: "voiceId is required for non-silent videos",
+          error: "voiceId or voiceConfig is required for non-silent videos",
         });
       }
 
-      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
+      // Calculate credit cost (2 credits per original scene/shot)
+      // Merged a-rolls count individually, a-roll-multi shots count individually
       const CREDIT_PER_SCENE = 2;
       const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        if (scene.shotType === "a-roll-multi" && scene.arollShots?.length) {
+          return count + scene.arollShots.length;
+        }
         return count + (scene.mergedSceneTypes?.length || 1);
       }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
@@ -299,7 +313,20 @@ export class UGCVideoController {
         .where(eq(ugcScripts.id, scriptId));
       const scenes: GenerateUGCVideoJob["scenes"] = [];
 
-      for (const scene of selectedScript.scenes as (SceneData & { slug?: string })[]) {
+      const charactersConfig = script.characters_config as Array<{ characterId: number; voiceId: string }> | null;
+      const validatedVoiceConfig = Array.isArray(voiceConfig)
+        ? voiceConfig.filter(
+            (v: unknown): v is { characterId: number; voiceId: string } =>
+              typeof v === "object" && v !== null &&
+              typeof (v as any).characterId === "number" &&
+              typeof (v as any).voiceId === "string" && (v as any).voiceId.length > 0,
+          )
+        : undefined;
+      const effectiveVoiceConfig = (validatedVoiceConfig && validatedVoiceConfig.length > 0 ? validatedVoiceConfig : undefined)
+        || charactersConfig
+        || null;
+
+      for (const scene of selectedScript.scenes as (SceneData & { slug?: string; characterIndex?: number })[]) {
         const sceneId = scene.id || scene.slug;
         const savedImage = savedImages.find((img) => img.scene_id === sceneId);
 
@@ -307,6 +334,14 @@ export class UGCVideoController {
           return res.status(400).json({
             error: `No image selected for scene ${scene.sceneNumber}. Please select images for all scenes first.`,
           });
+        }
+
+        let sceneVoiceId: string | undefined;
+        if (scene.characterIndex !== undefined && effectiveVoiceConfig) {
+          sceneVoiceId = effectiveVoiceConfig[scene.characterIndex]?.voiceId;
+        }
+        if (!sceneVoiceId && voiceId) {
+          sceneVoiceId = voiceId;
         }
 
         const sceneData: GenerateUGCVideoJob["scenes"][number] = {
@@ -320,6 +355,7 @@ export class UGCVideoController {
           action: scene.action,
           emotion: scene.emotion,
           ambientSound: scene.ambientSound,
+          voiceId: sceneVoiceId,
         };
 
         if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
@@ -353,12 +389,49 @@ export class UGCVideoController {
           );
         }
 
+        if (scene.arollShots && scene.arollShots.length > 0 && scene.shotType === "a-roll-multi") {
+          let shotKeys: string[] | undefined;
+          if (savedImage.generation_job_id) {
+            const [job] = await db
+              .select({ generated_images: sceneImageGenerationJobs.generated_images })
+              .from(sceneImageGenerationJobs)
+              .where(eq(sceneImageGenerationJobs.id, savedImage.generation_job_id))
+              .limit(1);
+            if (job?.generated_images) {
+              shotKeys = job.generated_images as string[];
+            }
+          }
+
+          sceneData.arollShots = scene.arollShots.map((shot, index) => ({
+            dialogue: shot.dialogue,
+            action: shot.action,
+            emotion: shot.emotion,
+            characterIndex: shot.characterIndex,
+            voiceId: effectiveVoiceConfig?.[shot.characterIndex]?.voiceId || voiceId || undefined,
+            imageKey: shotKeys?.[index] || savedImage.image_key,
+            ambientSound: shot.ambientSound,
+            cinematicPrompt: shot.cinematicPrompt,
+          }));
+
+          if (!isSilent) {
+            const missingVoice = sceneData.arollShots.find((s) => !s.voiceId);
+            if (missingVoice) {
+              return res.status(400).json({
+                error: `Scene ${scene.sceneNumber}: character ${missingVoice.characterIndex} has no voice assigned. Please assign voices to all characters.`,
+              });
+            }
+          }
+
+          console.log(
+            `[UGC_VIDEO] Scene ${scene.sceneNumber}: Built ${sceneData.arollShots!.length}-shot podcast a-roll-multi`
+          );
+        }
+
         scenes.push(sceneData);
       }
 
       await teamService.incrementTeamUsage(teamId, creditCost);
 
-      // Create the job record
       const [job] = await db
         .insert(ugcVideoGenerationJobs)
         .values({
@@ -366,7 +439,8 @@ export class UGCVideoController {
           user_id: req.user.dbUserId,
           script_id: scriptId,
           voice_id: voiceId || "",
-          status: "queued",
+          voice_config: effectiveVoiceConfig || undefined,
+          status: "queued" as const,
           progress: 0,
           progress_message: "Queued for video generation...",
         })
@@ -379,6 +453,7 @@ export class UGCVideoController {
         userId: req.user.dbUserId,
         scriptId,
         voiceId: voiceId || "",
+        voiceConfig: effectiveVoiceConfig || undefined,
         scenes,
         isSilent,
       });

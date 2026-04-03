@@ -72,6 +72,15 @@ Do NOT regenerate for non-visual changes like dialogue or emotion changes.
   - Non-null ambientSound (background audio description)
   - No bRollShots (empty/null — a-roll is a single continuous take)
 
+- **A-roll-multi scenes** (podcast only) MUST have:
+  - Scene-level dialogue = "" (empty — dialogue lives in arollShots)
+  - Non-null ambientSound (shared podcast studio environment)
+  - arollShots array with 2-6 alternating character turns
+  - Each arollShot has: dialogue (with emotion tags), action, characterIndex (0 or 1), ambientSound (null inherits scene-level)
+  - Characters face a MICROPHONE, not the camera, they do not make eye contact with the camera
+  - No bRollShots (empty/null)
+  - To edit podcast dialogue, use changeDialogue on the scene — it will update the arollShots
+
 - **B-roll scenes** MUST have:
   - 1-5 shots in their bRollShots array
   - Each shot classified as CHARACTER, PRODUCT, or CHARACTER_AND_PRODUCT

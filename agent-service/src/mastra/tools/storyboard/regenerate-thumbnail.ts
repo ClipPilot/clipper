@@ -31,6 +31,12 @@ export const regenerateThumbnailTool = createTool({
       .describe(
         "If specified, only regenerate this specific b-roll shot (0-based index). Omit to regenerate all shots in the scene.",
       ),
+    singleArollShotIndex: z
+      .number()
+      .optional()
+      .describe(
+        "If specified, only regenerate this specific a-roll-multi shot (0-based index). For podcast scenes only.",
+      ),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -45,6 +51,7 @@ export const regenerateThumbnailTool = createTool({
     teamId,
     userRefinement,
     singleBRollShotIndex,
+    singleArollShotIndex,
   }) => {
     const { script } = await loadScript(scriptId, variantIndex);
 
@@ -70,16 +77,36 @@ export const regenerateThumbnailTool = createTool({
       shotType: scene.shotType,
       cameraAngle: scene.cameraAngle,
       bRollShots: scene.bRollShots,
+      arollShots: scene.arollShots,
     };
 
     if (userRefinement) {
       body.userRefinement = userRefinement;
     }
 
+    if (scene.shotType === "a-roll-multi") {
+      const pool = getPool();
+      const existingResult = await pool.query(
+        `SELECT generated_images FROM scene_image_generation_jobs
+         WHERE script_id = $1 AND scene_id = $2 AND status = 'completed'
+         ORDER BY completed_at DESC LIMIT 1`,
+        [scriptId, scene.id],
+      );
+      const existingImages = existingResult.rows[0]?.generated_images as string[] | undefined;
+
+      if (singleArollShotIndex !== undefined) {
+        body.singleArollShotIndex = singleArollShotIndex;
+        if (existingImages) {
+          body.existingArollImages = existingImages;
+        }
+      } else if (existingImages && existingImages.length > 0) {
+        body.settingAnchorKeys = existingImages.slice(0, 2);
+      }
+    }
+
     if (singleBRollShotIndex !== undefined) {
       body.singleBRollShotIndex = singleBRollShotIndex;
 
-      // Query existing images so backend preserves other shots during single-shot regen
       const pool = getPool();
       const existingResult = await pool.query(
         `SELECT generated_images FROM scene_image_generation_jobs

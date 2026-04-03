@@ -8,8 +8,19 @@ import { videoStateAtom, DEFAULT_VIDEO_STATE } from "./videoState";
 
 export const selectedVoiceAtom = atom(
   (get) => get(videoStateAtom).voice,
-  (get, set, value: Voice | null) =>
-    set(videoStateAtom, { ...get(videoStateAtom), voice: value }),
+  (get, set, value: Voice | null) => {
+    const state = get(videoStateAtom);
+    if (state.characterCount > 1 && value) {
+      const chars = [...state.characters];
+      const lastIdx = chars.length - 1;
+      if (lastIdx >= 0 && !chars[lastIdx].voiceId) {
+        chars[lastIdx] = { ...chars[lastIdx], voiceId: value.id, voiceName: value.name };
+        set(videoStateAtom, { ...state, characters: chars });
+        return;
+      }
+    }
+    set(videoStateAtom, { ...state, voice: value });
+  },
 );
 
 export const scriptIdAtom = atom(

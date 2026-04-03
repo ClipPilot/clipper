@@ -9,7 +9,7 @@ import { ScriptPreview } from "./ScriptPreview";
 import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
 import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom } from "@/store/ugc";
-import { currentStepAtom, videoStateAtom } from "@/store/videoState";
+import { currentStepAtom, currentCharacterIndexAtom, videoStateAtom } from "@/store/videoState";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
@@ -37,6 +37,7 @@ export function ArtifactPanel({
   isContinueLoading,
 }: ArtifactPanelProps) {
   const step = useAtomValue(currentStepAtom);
+  const charIndex = useAtomValue(currentCharacterIndexAtom);
   const videoState = useAtomValue(videoStateAtom);
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
@@ -107,13 +108,20 @@ export function ArtifactPanel({
       <AnimatePresence mode="wait">
         {step === "character" && (
           <motion.div
-            key="character"
+            key={`character-${charIndex}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
             className="flex-1 p-4 overflow-y-auto"
           >
+            {videoState.characterCount > 1 && (
+              <div className="text-center mb-4">
+                <span className="text-sm text-text-secondary font-medium">
+                  Actor {charIndex + 1} of {videoState.characterCount}
+                </span>
+              </div>
+            )}
             <CharacterStep
               selectedCharacter={selectedCharacter}
               onCharacterSelect={onCharacterSelect}
@@ -124,13 +132,20 @@ export function ArtifactPanel({
 
         {step === "voice" && (
           <motion.div
-            key="voice"
+            key={`voice-${charIndex}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
             className="flex-1 p-4 overflow-y-auto"
           >
+            {videoState.characterCount > 1 && (
+              <div className="text-center mb-4">
+                <span className="text-sm text-text-secondary font-medium">
+                  Voice for {videoState.characters[charIndex]?.character?.name || `Actor ${charIndex + 1}`}
+                </span>
+              </div>
+            )}
             <AudioStep teamId={teamId} />
           </motion.div>
         )}
