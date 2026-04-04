@@ -188,7 +188,8 @@ async function generateShot(
 Camera angle and body position: ${angle}
 This character sits on the ${deskSide} side of the desk, using the ${deskSide} microphone. Place this character in the podcast studio background at the ${deskSide} microphone position.
 The character speaks toward the microphone, NOT the camera. No eye contact with camera.
-This exact pose, angle, and desk position will be reused for all subsequent shots of this character.
+This exact pose, angle, and desk position will be reused for all subsequent shots of this character.Frame only one side of the podcast set — the speaking character's half. The other host's position must be completely out  
+  of frame.
 
 **REFERENCE IMAGES:**
 1. FIRST image = CHARACTER identity. Depict THIS exact person — match face, skin tone, features precisely.
