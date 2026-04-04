@@ -342,7 +342,7 @@ export class UGCScriptController {
     }
   }
 
-  async getFullScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number; characterId: any; isSilent: boolean; hasCharacter: boolean; videoType: string } | ErrorResponse>) {
+  async getFullScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number; characterId: any; isSilent: boolean; hasCharacter: boolean; videoType: string; charactersConfig: Array<{ characterId: number; voiceId: string | null }> | null; characterCount: number } | ErrorResponse>) {
     try {
       const { scriptId } = req.params;
 
