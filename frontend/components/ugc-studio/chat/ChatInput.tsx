@@ -9,7 +9,7 @@ import {
   useEffect,
   type KeyboardEvent,
 } from "react";
-import { TextArea, Input, Button } from "@heroui/react";
+import { Input, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtom } from "jotai";
@@ -222,6 +222,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       onSend(trimmed, ready);
       setText("");
       setAttachments([]);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
     };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -462,14 +463,20 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     )}
                   </div>
                 )}
-                <TextArea
+                <textarea
+                  ref={textareaRef}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    const ta = e.target;
+                    ta.style.height = "auto";
+                    ta.style.height = `${Math.min(ta.scrollHeight, window.innerHeight * 0.2)}px`;
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder={customPlaceholder || (hasVideo ? "Describe your product and any creative direction..." : "Describe the video you want to make, or attach a video to clone...")}
                   rows={1}
                   disabled={isDisabled}
-                  className="w-full bg-transparent border-none outline-none resize-none text-sm text-text-primary placeholder:text-text-muted leading-relaxed px-3 py-2 max-h-32"
+                  className="w-full bg-transparent border-none outline-none resize-none text-sm text-text-primary placeholder:text-text-muted leading-relaxed px-3 py-2 max-h-[20vh] overflow-y-auto"
                 />
               </div>
 
