@@ -4,18 +4,18 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
 import { ENV } from "../config/env";
-import { handleControllerError, requireUser, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { handleControllerError, requireUser, requireTeamOwner, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
-    const userId = requireUser(req, res);
-    if (!userId) return;
-
     const { teamId, priceId, successUrl, cancelUrl } = req.body;
 
     if (!teamId || !priceId) {
       return res.status(400).json({ error: "Missing teamId or priceId" });
     }
+
+    const user = await requireTeamOwner(req, parseInt(teamId), res);
+    if (!user) return;
 
     const validPrices = Object.values(STRIPE_PRICES);
     if (!validPrices.includes(priceId)) {
@@ -38,14 +38,14 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response<{ ur
 
 export const createPortalSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
-    const userId = requireUser(req, res);
-    if (!userId) return;
-
     const { teamId, returnUrl } = req.body;
 
     if (!teamId) {
       return res.status(400).json({ error: "Missing teamId" });
     }
+
+    const user = await requireTeamOwner(req, parseInt(teamId), res);
+    if (!user) return;
 
     const url = await stripeService.createPortalSession(
       parseInt(teamId),
@@ -60,11 +60,10 @@ export const createPortalSession = async (req: AuthRequest, res: Response<{ url:
 
 export const getSubscription = async (req: AuthRequest, res: Response<{ subscription: Subscription; plan: string } | ErrorResponse>) => {
   try {
-    const userId = requireUser(req, res);
-    if (!userId) return;
-
     const { teamId } = req.params;
 
+    const user = await requireTeamOwner(req, parseInt(teamId), res);
+    if (!user) return;
     if (!(await verifyTeamAccessOrFail(req, parseInt(teamId), res))) return;
 
     const subscription = await stripeService.getTeamSubscription(parseInt(teamId));
@@ -151,16 +150,15 @@ export const getPrices = async (_req: Request, res: Response<{ prices: typeof ST
 
 export const changePlan = async (req: AuthRequest, res: Response<{ success: boolean; effectiveDate: string | Date; newPlan: string; message: string } | ErrorResponse>) => {
   try {
-    const userId = requireUser(req, res);
-    if (!userId) return;
-
     const { teamId, newPriceId } = req.body;
 
     if (!teamId || !newPriceId) {
       return res.status(400).json({ error: "Missing teamId or newPriceId" });
     }
 
-    // Only allow changing between Creator, Studio, and Scale
+    const user = await requireTeamOwner(req, parseInt(teamId), res);
+    if (!user) return;
+
     const validPrices = [STRIPE_PRICES.CREATOR, STRIPE_PRICES.STUDIO, STRIPE_PRICES.SCALE];
     if (!validPrices.includes(newPriceId)) {
       return res.status(400).json({ error: "Invalid plan. Can only change between Creator, Studio, and Scale." });

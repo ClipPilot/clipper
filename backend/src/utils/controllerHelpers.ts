@@ -60,6 +60,22 @@ export async function verifyTeamAccessOrFail(
   return user;
 }
 
+export async function requireTeamOwner(
+  req: AuthRequest,
+  teamId: number,
+  res: Response,
+): Promise<{ id: number } | null> {
+  const user = await verifyTeamAccessOrFail(req, teamId, res);
+  if (!user) return null;
+
+  const role = await teamService.getUserTeamRole(teamId, user.id);
+  if (role !== "owner") {
+    res.status(403).json({ error: "Only team owners can manage billing" });
+    return null;
+  }
+  return user;
+}
+
 export async function requirePlanAccess(
   teamId: number,
   res: Response,

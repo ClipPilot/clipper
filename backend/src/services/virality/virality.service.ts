@@ -316,6 +316,20 @@ class ViralityService extends AccountTrackingService {
       .limit(limit)
       .offset(offset);
   }
+
+  async pauseAllAccountsForTeam(teamId: number) {
+    await db
+      .update(viralityAccounts)
+      .set({ is_active: false })
+      .where(eq(viralityAccounts.team_id, teamId));
+  }
+
+  async unpauseAllAccountsForTeam(teamId: number) {
+    await db
+      .update(viralityAccounts)
+      .set({ is_active: true })
+      .where(eq(viralityAccounts.team_id, teamId));
+  }
 }
 
 export const viralityService = new ViralityService();
