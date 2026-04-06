@@ -35,6 +35,10 @@ vi.mock("../../services/stripe.service", () => ({ stripeService: mockStripeServi
 vi.mock("../../config/stripe.config", () => ({ stripe: mockStripeSDK, STRIPE_PRICES: mockSTRIPE_PRICES }));
 vi.mock("../../config/env", () => ({ ENV: mockENV }));
 vi.mock("@sentry/node", () => ({ captureException: vi.fn() }));
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return { ...actual, verifyTeamAccessOrFail: vi.fn().mockResolvedValue({ id: 1 }) };
+});
 
 import {
   createCheckoutSession,

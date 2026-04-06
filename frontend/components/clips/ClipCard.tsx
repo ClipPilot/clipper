@@ -84,13 +84,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText =
       "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1A1A1A; border: 1px solid #9333EA; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
-    dragPreview.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M21 7V17C21 20 19.5 22 16 22H8C4.5 22 3 20 3 17V7C3 4 4.5 2 8 2H16C19.5 2 21 4 21 7Z" stroke="#9333EA" stroke-width="1.5"/>
-        <path d="M9.5 12L12 14.5L14.5 12" stroke="#9333EA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span style="color: #E5E5E5; font-size: 13px; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${clip.title || `Clip #${clip.id}`}</span>
-    `;
+    const svgEl = document.createElement("span");
+    svgEl.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 7V17C21 20 19.5 22 16 22H8C4.5 22 3 20 3 17V7C3 4 4.5 2 8 2H16C19.5 2 21 4 21 7Z" stroke="#9333EA" stroke-width="1.5"/><path d="M9.5 12L12 14.5L14.5 12" stroke="#9333EA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const titleEl = document.createElement("span");
+    titleEl.style.cssText = "color: #E5E5E5; font-size: 13px; font-weight: 500; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+    titleEl.textContent = clip.title || `Clip #${clip.id}`;
+    dragPreview.appendChild(svgEl);
+    dragPreview.appendChild(titleEl);
     dragPreview.style.position = "absolute";
     dragPreview.style.top = "-1000px";
     document.body.appendChild(dragPreview);

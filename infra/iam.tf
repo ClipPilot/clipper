@@ -47,6 +47,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.resend_api_key.arn,
         aws_secretsmanager_secret.gemini_api_key.arn,
         aws_secretsmanager_secret.admin_jwt_secret.arn,
+        aws_secretsmanager_secret.admin_email.arn,
+        aws_secretsmanager_secret.admin_password_hash.arn,
         aws_secretsmanager_secret.sync_key.arn,
         aws_secretsmanager_secret.elevenlabs_api_key.arn,
         aws_secretsmanager_secret.fal_key.arn,

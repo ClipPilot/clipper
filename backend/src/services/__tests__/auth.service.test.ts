@@ -50,7 +50,7 @@ describe("AuthService", () => {
 
       await expect(
         authService.signUp("a@b.com", "pass", "A", "B")
-      ).rejects.toThrow("already exists");
+      ).rejects.toThrow("If this email is not already registered");
     });
 
     it("throws when Supabase returns error", async () => {
@@ -74,7 +74,7 @@ describe("AuthService", () => {
 
       await expect(
         authService.signUp("a@b.com", "pass", "A", "B")
-      ).rejects.toThrow("already exists");
+      ).rejects.toThrow("If this email is not already registered");
     });
 
     it("creates user, team, usage stats, and accepts invites on success", async () => {

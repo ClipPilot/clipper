@@ -1,10 +1,20 @@
 import * as Sentry from "@sentry/node";
-import { Server as SocketServer } from "socket.io";
+import { Server as SocketServer, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Redis } from "ioredis";
+import { authService } from "./auth.service";
+import { userService } from "./user.service";
+import { teamService } from "./team.service";
 
 let io: SocketServer | null = null;
+
+interface AuthenticatedSocket extends Socket {
+  data: {
+    userId?: number;
+    supabaseUid?: string;
+  };
+}
 
 export const initializeSocket = async (httpServer: HttpServer) => {
   io = new SocketServer(httpServer, {
@@ -15,7 +25,6 @@ export const initializeSocket = async (httpServer: HttpServer) => {
     },
   });
 
-  // Set up Redis adapter if REDIS_URL is configured
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
     try {
@@ -38,12 +47,52 @@ export const initializeSocket = async (httpServer: HttpServer) => {
     console.log("REDIS_URL not set, using in-memory Socket.io adapter");
   }
 
-  io.on("connection", (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+  io.use(async (socket: AuthenticatedSocket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        return next(new Error("Authentication required"));
+      }
 
-    socket.on("join-team", (teamId: number) => {
-      socket.join(`team-${teamId}`);
-      console.log(`Socket ${socket.id} joined team-${teamId}`);
+      const supabaseUser = await authService.verifyToken(token);
+      if (!supabaseUser) {
+        return next(new Error("Invalid or expired token"));
+      }
+
+      const dbUser = await userService.getUserBySupabaseUid(supabaseUser.id);
+      if (!dbUser) {
+        return next(new Error("User not found"));
+      }
+
+      socket.data.userId = dbUser.id;
+      socket.data.supabaseUid = supabaseUser.id;
+      next();
+    } catch (error) {
+      next(new Error("Authentication failed"));
+    }
+  });
+
+  io.on("connection", (socket: AuthenticatedSocket) => {
+    console.log(`Client connected: ${socket.id} (user: ${socket.data.userId})`);
+
+    socket.on("join-team", async (teamId: number) => {
+      try {
+        if (!socket.data.userId) {
+          socket.emit("error", { message: "Not authenticated" });
+          return;
+        }
+
+        const hasAccess = await teamService.verifyTeamAccess(teamId, socket.data.userId);
+        if (!hasAccess) {
+          socket.emit("error", { message: "Access denied to this team" });
+          return;
+        }
+
+        socket.join(`team-${teamId}`);
+        console.log(`Socket ${socket.id} joined team-${teamId}`);
+      } catch (error) {
+        socket.emit("error", { message: "Failed to join team" });
+      }
     });
 
     socket.on("leave-team", (teamId: number) => {

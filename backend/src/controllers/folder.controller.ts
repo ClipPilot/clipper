@@ -2,17 +2,21 @@ import { Request, Response } from "express";
 import type { Folder, ErrorResponse } from "../types/api.types";
 import { folderService } from "../services/folder.service";
 import { teamService } from "../services/team.service";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { stripHtmlTags } from "../utils/urlValidator";
 
 
 export class FolderController {
-  async getFolders(req: Request, res: Response<{ folders: Folder[] } | ErrorResponse>) {
+  async getFolders(req: AuthRequest, res: Response<{ folders: Folder[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
 
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
 
       const folders = await folderService.getFoldersByTeam(teamId);
 
@@ -39,13 +43,15 @@ export class FolderController {
     }
   }
 
-  async getFolderTree(req: Request, res: Response<{ tree: Folder[] } | ErrorResponse>) {
+  async getFolderTree(req: AuthRequest, res: Response<{ tree: Folder[] } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
 
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
 
       const tree = await folderService.getFolderTree(teamId);
 
@@ -75,7 +81,8 @@ export class FolderController {
   async createFolder(req: Request, res: Response<{ message: string; folder: Folder } | ErrorResponse>) {
     try {
       const teamId = parseInt(req.params.teamId);
-      const { name, color, message, parentFolderId } = req.body;
+      const { name: rawName, color, message, parentFolderId } = req.body;
+      const name = rawName ? stripHtmlTags(rawName) : rawName;
 
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
@@ -113,7 +120,8 @@ export class FolderController {
     try {
       const folderId = parseInt(req.params.folderId);
       const teamId = parseInt(req.params.teamId);
-      const { name, color, message } = req.body;
+      const { name: rawName, color, message } = req.body;
+      const name = rawName ? stripHtmlTags(rawName) : rawName;
 
       if (isNaN(folderId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });

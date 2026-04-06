@@ -208,6 +208,18 @@ variable "admin_jwt_secret" {
   sensitive   = true
 }
 
+variable "admin_email" {
+  description = "Admin dashboard login email"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password_hash" {
+  description = "Admin dashboard password hash (scrypt format: salt:hash)"
+  type        = string
+  sensitive   = true
+}
+
 variable "sync_key" {
   description = "Sync key for service synchronization"
   type        = string
