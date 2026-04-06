@@ -14,6 +14,7 @@ import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controll
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
 import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
+import { stripHtmlTags } from "../utils/urlValidator";
 import { generateViralHeading } from "../services/clips/headingAI.service";
 import path from "path";
 import archiver from "archiver";
@@ -244,7 +245,8 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { message, clipScore, folderId, title } = req.body;
+      const { message, clipScore, folderId, title: rawTitle } = req.body;
+      const title = rawTitle ? stripHtmlTags(rawTitle) : rawTitle;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });

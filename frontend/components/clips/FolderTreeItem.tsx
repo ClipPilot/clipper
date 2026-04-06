@@ -63,12 +63,13 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
 
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1A1A1A; border: 1px solid #9333EA; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
-    dragPreview.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="${folder.color || '#3B82F6'}">
-        <path d="M21.0002 7V17C21.0002 20 19.5002 22 16.0002 22H8.00024C4.50024 22 3.00024 20 3.00024 17V7C3.00024 4 4.50024 2 8.00024 2H9.00024C10.1002 2 11.1402 2.53 11.8202 3.4L12.8202 4.7C13.2402 5.23 13.8002 5.5 14.4002 5.5H16.0002C19.5002 5.5 21.0002 7 21.0002 10V7Z"/>
-      </svg>
-      <span style="color: #E5E5E5; font-size: 14px; font-weight: 500;">${folder.name}</span>
-    `;
+    const svgEl = document.createElement("span");
+    svgEl.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="${folder.color || '#3B82F6'}"><path d="M21.0002 7V17C21.0002 20 19.5002 22 16.0002 22H8.00024C4.50024 22 3.00024 20 3.00024 17V7C3.00024 4 4.50024 2 8.00024 2H9.00024C10.1002 2 11.1402 2.53 11.8202 3.4L12.8202 4.7C13.2402 5.23 13.8002 5.5 14.4002 5.5H16.0002C19.5002 5.5 21.0002 7 21.0002 10V7Z"/></svg>`;
+    const nameEl = document.createElement("span");
+    nameEl.style.cssText = "color: #E5E5E5; font-size: 14px; font-weight: 500;";
+    nameEl.textContent = folder.name;
+    dragPreview.appendChild(svgEl);
+    dragPreview.appendChild(nameEl);
     dragPreview.style.position = "absolute";
     dragPreview.style.top = "-1000px";
     dragPreview.style.left = "-1000px";

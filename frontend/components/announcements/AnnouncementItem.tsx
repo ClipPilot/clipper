@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import DOMPurify from "dompurify";
 import { Card, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Announcement } from "@/store/announcements";
@@ -90,7 +91,7 @@ export default function AnnouncementItem({ announcement, onDismiss }: Announceme
               </div>
               <div
                 className="text-text-secondary text-sm announcement-content leading-relaxed mb-3"
-                dangerouslySetInnerHTML={{ __html: announcement.content }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(announcement.content, { ALLOWED_TAGS: ["p", "br", "strong", "em", "a", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6"], ALLOWED_ATTR: ["href", "target", "rel"] }) }}
               />
               {announcement.action_url && (
                 <Button variant="primary"

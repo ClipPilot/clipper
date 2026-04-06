@@ -31,6 +31,10 @@ vi.mock("../../services/team.service", () => ({ teamService: mockTeamService }))
 vi.mock("../../services/s3.service", () => ({ s3Service: mockS3Service }));
 vi.mock("../../services/sqs.service", () => ({ sqsService: mockSqsService }));
 vi.mock("../../utils/plans", () => ({ canAccessUGCStudio: mockCanAccessUGCStudio }));
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return { ...actual, verifyTeamAccessOrFail: vi.fn().mockResolvedValue({ id: 1 }) };
+});
 
 import { actorController } from "../actor.controller";
 

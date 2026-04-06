@@ -69,7 +69,7 @@ class AuthService {
       .limit(1);
 
     if (existingUser) {
-      throw new Error("An account with this email already exists");
+      throw new Error("If this email is not already registered, a confirmation email has been sent");
     }
 
     const { data: authData, error: authError } =
@@ -91,7 +91,7 @@ class AuthService {
 
     // Supabase returns empty identities array if email already exists (but unconfirmed)
     if (authData.user.identities && authData.user.identities.length === 0) {
-      throw new Error("An account with this email already exists");
+      throw new Error("If this email is not already registered, a confirmation email has been sent");
     }
 
     const [user] = await db

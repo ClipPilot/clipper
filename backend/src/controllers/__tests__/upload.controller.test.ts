@@ -52,6 +52,10 @@ vi.mock("../../config/stripe.config", () => ({
   },
 }));
 vi.mock("@sentry/node", () => ({ captureException: vi.fn() }));
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return { ...actual, verifyTeamAccessOrFail: vi.fn().mockResolvedValue({ id: 1 }) };
+});
 
 import {
   initiateMultipartUpload,

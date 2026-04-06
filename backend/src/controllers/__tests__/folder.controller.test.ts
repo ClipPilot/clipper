@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockResponse } from "../../../test/helpers/express.helper";
 import type { Request } from "express";
 
-const { mockFolderService, mockTeamService } = vi.hoisted(() => ({
+const { mockFolderService, mockTeamService, mockVerifyTeamAccess } = vi.hoisted(() => ({
   mockFolderService: {
     getFoldersByTeam: vi.fn(),
     getFolderById: vi.fn(),
@@ -16,6 +16,7 @@ const { mockFolderService, mockTeamService } = vi.hoisted(() => ({
   mockTeamService: {
     getTeamById: vi.fn(),
   },
+  mockVerifyTeamAccess: vi.fn().mockResolvedValue({ id: 1 }),
 }));
 
 vi.mock("../../services/folder.service", () => ({
@@ -25,6 +26,11 @@ vi.mock("../../services/folder.service", () => ({
 vi.mock("../../services/team.service", () => ({
   teamService: mockTeamService,
 }));
+
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return { ...actual, verifyTeamAccessOrFail: mockVerifyTeamAccess };
+});
 
 import { folderController } from "../folder.controller";
 

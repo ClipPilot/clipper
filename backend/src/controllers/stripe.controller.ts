@@ -4,7 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
 import { ENV } from "../config/env";
-import { handleControllerError, requireUser } from "../utils/controllerHelpers";
+import { handleControllerError, requireUser, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
@@ -64,6 +64,8 @@ export const getSubscription = async (req: AuthRequest, res: Response<{ subscrip
     if (!userId) return;
 
     const { teamId } = req.params;
+
+    if (!(await verifyTeamAccessOrFail(req, parseInt(teamId), res))) return;
 
     const subscription = await stripeService.getTeamSubscription(parseInt(teamId));
     const plan = await stripeService.getTeamPlan(parseInt(teamId));

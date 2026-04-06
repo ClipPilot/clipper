@@ -7,7 +7,7 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
 import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
 import { eq, desc, and, isNotNull } from "drizzle-orm";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 export class UGCScriptController {
@@ -352,6 +352,9 @@ export class UGCScriptController {
         return res.status(404).json({ error: "Script not found" });
       }
 
+      const [scriptRow] = await db.select({ team_id: ugcScripts.team_id }).from(ugcScripts).where(eq(ugcScripts.id, scriptId));
+      if (scriptRow && !(await verifyTeamAccessOrFail(req, scriptRow.team_id, res))) return;
+
       return res.status(200).json({
         success: true,
         scripts: fullScript.scripts,
@@ -462,6 +465,8 @@ export class UGCScriptController {
       if (!team || !canAccessUGCStudio(team.plan)) {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
 
       await ugcScriptService.deleteScript(scriptId, teamId);
 

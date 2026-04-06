@@ -1,4 +1,6 @@
 import * as Sentry from "@sentry/node";
+import crypto from "crypto";
+import { promisify } from "util";
 import jwt from "jsonwebtoken";
 import { Redis } from "ioredis";
 import { db } from "../db";
@@ -12,10 +14,42 @@ import {
 import { eq, count, and, sql, desc } from "drizzle-orm";
 import { stripe, ENTERPRISE_PRODUCT } from "../config/stripe.config";
 import { emailNotiService } from "./emailNoti.service";
-import adminConfig from "../config/admin.config.json";
 
-const ADMIN_JWT_SECRET =
-  process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production";
+const scryptAsync = promisify(crypto.scrypt);
+
+function getAdminJwtSecret(): string {
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret) {
+    throw new Error("ADMIN_JWT_SECRET environment variable is required");
+  }
+  return secret;
+}
+
+function getAdminEmail(): string {
+  return process.env.ADMIN_EMAIL || "admin@cuttr.com";
+}
+
+function getAdminPasswordHash(): string {
+  const hash = process.env.ADMIN_PASSWORD_HASH;
+  if (!hash) {
+    throw new Error("ADMIN_PASSWORD_HASH environment variable is required");
+  }
+  return hash;
+}
+
+async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  const [salt, hash] = storedHash.split(":");
+  if (!salt || !hash) return false;
+  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), derivedKey);
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.randomBytes(32).toString("hex");
+  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+
 const TWO_FA_CODE_EXPIRY = 15 * 60;
 const TWO_FA_CODE_PREFIX = "admin_2fa:";
 const TWO_FA_RECIPIENT_EMAIL = "contact@cuttr.com";
@@ -37,26 +71,27 @@ const initRedis = async () => {
   }
 };
 
-// Initialize Redis on module load
 initRedis();
 
 class AdminService {
-  validateCredentials(email: string, password: string): boolean {
-    return (
-      email === adminConfig.credentials.email &&
-      password === adminConfig.credentials.password
-    );
+  async validateCredentials(email: string, password: string): Promise<boolean> {
+    if (email !== getAdminEmail()) return false;
+    try {
+      return await verifyPassword(password, getAdminPasswordHash());
+    } catch {
+      return false;
+    }
   }
 
   generateToken(email: string): string {
-    return jwt.sign({ email, isAdmin: true }, ADMIN_JWT_SECRET, {
-      expiresIn: "7d",
+    return jwt.sign({ email, isAdmin: true }, getAdminJwtSecret(), {
+      expiresIn: "4h",
     });
   }
 
   verifyToken(token: string): { email: string; isAdmin: boolean } | null {
     try {
-      return jwt.verify(token, ADMIN_JWT_SECRET) as {
+      return jwt.verify(token, getAdminJwtSecret()) as {
         email: string;
         isAdmin: boolean;
       };
@@ -65,12 +100,10 @@ class AdminService {
     }
   }
 
-  // Generate a 6-digit code
   private generate2FACode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 999999).toString();
   }
 
-  // Store 2FA code
   async store2FACode(email: string, code: string): Promise<void> {
     const key = TWO_FA_CODE_PREFIX + email;
 
@@ -84,7 +117,6 @@ class AdminService {
     }
   }
 
-  // Verify and consume 2FA code
   async verify2FACode(email: string, code: string): Promise<boolean> {
     const key = TWO_FA_CODE_PREFIX + email;
 
@@ -105,7 +137,6 @@ class AdminService {
     }
   }
 
-  // Send 2FA code via email (always sent to contact@cuttr.com)
   async send2FACode(email: string): Promise<void> {
     const code = this.generate2FACode();
     await this.store2FACode(email, code);

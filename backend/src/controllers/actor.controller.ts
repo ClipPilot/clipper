@@ -13,7 +13,7 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { eq, desc, and, sql } from "drizzle-orm";
 import crypto from "crypto";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { CREDIT_PER_IMAGE } from "../constants/credits";
 import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
@@ -349,6 +349,8 @@ export class ActorController {
         return res.status(404).json({ error: "Character not found" });
       }
 
+      if (!character.public && !(await verifyTeamAccessOrFail(req, character.team_id, res))) return;
+
       const images = character.character_images as string[];
       const imageUrls = await Promise.all(
         images.map((key) => s3Service.getPresignedUrl(key, 3600))
@@ -407,6 +409,12 @@ export class ActorController {
       if (!id) {
         return res.status(400).json({ error: "id is required" });
       }
+
+      const [existing] = await db.select({ team_id: characters.team_id }).from(characters).where(eq(characters.id, id));
+      if (!existing) {
+        return res.status(404).json({ error: "Character not found" });
+      }
+      if (!(await verifyTeamAccessOrFail(req, existing.team_id, res))) return;
 
       const [deleted] = await db
         .delete(characters)
