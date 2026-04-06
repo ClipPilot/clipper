@@ -50,6 +50,8 @@ vi.mock("../../config/stripe.config", () => ({
 }));
 vi.mock("../emailNoti.service", () => ({ emailNotiService: mockEmailNotiService }));
 vi.mock("../referral.service", () => ({ referralService: mockReferralService }));
+vi.mock("../virality/virality.service", () => ({ viralityService: { pauseAllAccountsForTeam: vi.fn() } }));
+vi.mock("../virality/userPerformance.service", () => ({ userPerformanceService: { pauseAllAccountsForTeam: vi.fn() } }));
 vi.mock("@sentry/node", () => ({ captureException: vi.fn() }));
 vi.mock("@clipper/shared-db/src/schema", () => ({
   teams: "teams",

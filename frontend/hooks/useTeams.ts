@@ -45,6 +45,7 @@ export function useTeams() {
           hasAppliedDefault.current = true;
           return;
         }
+        localStorage.removeItem("selectedTeam");
       }
 
       // No stored selection - use default team if set

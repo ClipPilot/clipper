@@ -21,6 +21,8 @@ import { emailNotiService } from "./emailNoti.service";
 import { campaignBillingService } from "./massPosting/campaignBilling.service";
 import { referralService } from "./referral.service";
 import { apiBillingService } from "./apiBilling.service";
+import { viralityService } from "./virality/virality.service";
+import { userPerformanceService } from "./virality/userPerformance.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -579,6 +581,9 @@ class StripeService {
         updated_at: new Date(),
       })
       .where(eq(usageStats.team_id, existingSub.team_id));
+
+    await viralityService.pauseAllAccountsForTeam(existingSub.team_id);
+    await userPerformanceService.pauseAllAccountsForTeam(existingSub.team_id);
 
     const [teamForEmail] = await db
       .select()

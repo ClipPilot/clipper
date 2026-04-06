@@ -93,10 +93,11 @@ const onClose = overlayState.close;
     setIsDeleting(true);
     try {
       await teamAPI.deleteTeam(team.id);
-      onTeamDeleted();
       onClose();
+      onTeamDeleted();
     } catch (err) {
       console.error("Failed to delete team:", err);
+    } finally {
       setIsDeleting(false);
     }
   };
