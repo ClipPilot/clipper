@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { Response } from "express";
 import type { SubmitClipResponse, ErrorResponse } from "../types/api.types";
+import { validateUserUrlSync } from "../utils/urlValidator";
 import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
 import { apiBillingService } from "../services/apiBilling.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
@@ -76,10 +77,9 @@ export const createClipJobController = async (
     }
 
     if (videoUrl) {
-      try {
-        new URL(videoUrl);
-      } catch {
-        return res.status(400).json({ error: "video_url must be a valid URL" });
+      const urlCheck = validateUserUrlSync(videoUrl);
+      if (!urlCheck.valid) {
+        return res.status(400).json({ error: `video_url rejected: ${urlCheck.error}` });
       }
     }
 
@@ -248,10 +248,9 @@ export const createClipJobController = async (
       if (uploadedMusic) {
         backgroundMusicS3Key = await s3Service.uploadRawVideo(uploadedMusic.path, teamId);
       } else if (musicUrl) {
-        try {
-          new URL(musicUrl);
-        } catch {
-          return res.status(400).json({ error: "music_url must be a valid URL" });
+        const musicUrlCheck = validateUserUrlSync(musicUrl);
+        if (!musicUrlCheck.valid) {
+          return res.status(400).json({ error: `music_url rejected: ${musicUrlCheck.error}` });
         }
         const outDir = ensureOutputDir();
         const musicTempPath = path.join(outDir, `api_music_${Date.now()}.mp3`);

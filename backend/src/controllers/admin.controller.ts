@@ -13,7 +13,7 @@ export async function login(req: AdminRequest, res: Response<AdminLoginResponse 
       return res.status(400).json({ error: "Email and password required" });
     }
 
-    if (!adminService.validateCredentials(email, password)) {
+    if (!(await adminService.validateCredentials(email, password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -65,7 +65,7 @@ export async function resend2FA(req: AdminRequest, res: Response) {
     }
 
     // Re-validate credentials before resending
-    if (!adminService.validateCredentials(email, password)) {
+    if (!(await adminService.validateCredentials(email, password))) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 

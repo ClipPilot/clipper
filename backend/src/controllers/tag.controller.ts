@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import type { Tag, ErrorResponse } from "../types/api.types";
 import { tagService } from "../services/tag.service";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { db } from "../db";
+import { clips } from "@clipper/shared-db/src/schema";
+import { eq } from "drizzle-orm";
 
 export class TagController {
   async getTags(req: Request, res: Response<{ tags: Tag[] } | ErrorResponse>) {
@@ -113,13 +117,17 @@ export class TagController {
     }
   }
 
-  async getClipTags(req: Request, res: Response<{ tags: Tag[] } | ErrorResponse>) {
+  async getClipTags(req: AuthRequest, res: Response<{ tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
 
       if (isNaN(clipId)) {
         return res.status(400).json({ error: "Invalid clip ID" });
       }
+
+      const [clip] = await db.select({ team_id: clips.team_id }).from(clips).where(eq(clips.id, clipId));
+      if (!clip) return res.status(404).json({ error: "Clip not found" });
+      if (!(await verifyTeamAccessOrFail(req, clip.team_id, res))) return;
 
       const clipTags = await tagService.getTagsForClip(clipId);
 
@@ -171,7 +179,7 @@ export class TagController {
     }
   }
 
-  async setClipTags(req: Request, res: Response<{ message: string; tags: Tag[] } | ErrorResponse>) {
+  async setClipTags(req: AuthRequest, res: Response<{ message: string; tags: Tag[] } | ErrorResponse>) {
     try {
       const clipId = parseInt(req.params.clipId);
       const { tagIds } = req.body;
@@ -183,6 +191,10 @@ export class TagController {
       if (!Array.isArray(tagIds)) {
         return res.status(400).json({ error: "tagIds must be an array" });
       }
+
+      const [clip] = await db.select({ team_id: clips.team_id }).from(clips).where(eq(clips.id, clipId));
+      if (!clip) return res.status(404).json({ error: "Clip not found" });
+      if (!(await verifyTeamAccessOrFail(req, clip.team_id, res))) return;
 
       const clipTags = await tagService.setClipTags(clipId, tagIds);
 

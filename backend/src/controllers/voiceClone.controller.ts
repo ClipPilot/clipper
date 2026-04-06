@@ -6,7 +6,7 @@ import { clonedVoices } from "@clipper/shared-db/src/schema";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { elevenLabsService } from "../services/ai-ugc/elevenlabs.service";
 import { s3Service } from "../services/s3.service";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 class VoiceCloneController {
   async cloneVoice(req: AuthRequest, res: Response<CloneVoiceResponse | ErrorResponse>) {
@@ -121,6 +121,8 @@ class VoiceCloneController {
       if (!voice) {
         return res.status(404).json({ error: "Cloned voice not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, voice.team_id, res))) return;
 
       // Delete from ElevenLabs, S3, and DB in parallel
       await Promise.allSettled([

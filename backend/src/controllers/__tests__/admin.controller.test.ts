@@ -50,7 +50,7 @@ describe("admin login", () => {
   });
 
   it("returns 401 for invalid credentials", async () => {
-    mockAdminService.validateCredentials.mockReturnValue(false);
+    mockAdminService.validateCredentials.mockResolvedValue(false);
     const req = createReq({ body: { email: "a@b.com", password: "wrong" } });
     const res = createMockResponse();
     await login(req as any, res);
@@ -58,7 +58,7 @@ describe("admin login", () => {
   });
 
   it("sends 2FA code on valid credentials", async () => {
-    mockAdminService.validateCredentials.mockReturnValue(true);
+    mockAdminService.validateCredentials.mockResolvedValue(true);
     mockAdminService.send2FACode.mockResolvedValue(undefined);
     const req = createReq({ body: { email: "admin@cuttr.com", password: "secret" } });
     const res = createMockResponse();
@@ -101,7 +101,7 @@ describe("admin resend2FA", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 401 for invalid credentials", async () => {
-    mockAdminService.validateCredentials.mockReturnValue(false);
+    mockAdminService.validateCredentials.mockResolvedValue(false);
     const req = createReq({ body: { email: "a@b.com", password: "wrong" } });
     const res = createMockResponse();
     await resend2FA(req as any, res);
@@ -109,7 +109,7 @@ describe("admin resend2FA", () => {
   });
 
   it("resends code on valid credentials", async () => {
-    mockAdminService.validateCredentials.mockReturnValue(true);
+    mockAdminService.validateCredentials.mockResolvedValue(true);
     mockAdminService.send2FACode.mockResolvedValue(undefined);
     const req = createReq({ body: { email: "a@b.com", password: "correct" } });
     const res = createMockResponse();

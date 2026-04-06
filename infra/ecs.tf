@@ -180,6 +180,14 @@ resource "aws_ecs_task_definition" "backend" {
         valueFrom = aws_secretsmanager_secret.admin_jwt_secret.arn
       },
       {
+        name      = "ADMIN_EMAIL"
+        valueFrom = aws_secretsmanager_secret.admin_email.arn
+      },
+      {
+        name      = "ADMIN_PASSWORD_HASH"
+        valueFrom = aws_secretsmanager_secret.admin_password_hash.arn
+      },
+      {
         name      = "SYNC_KEY"
         valueFrom = aws_secretsmanager_secret.sync_key.arn
       },

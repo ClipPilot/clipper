@@ -140,7 +140,7 @@ router.post("/signin", authLimiter, authController.signIn.bind(authController));
  *       401:
  *         description: Unauthorized
  */
-router.post("/supabase", authController.signInWithSupabase.bind(authController));
+router.post("/supabase", authLimiter, authController.signInWithSupabase.bind(authController));
 
 /**
  * @openapi
@@ -239,7 +239,7 @@ router.get("/me", requireAuth, authController.getMe.bind(authController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/refresh", authController.refreshSession.bind(authController));
+router.post("/refresh", authLimiter, authController.refreshSession.bind(authController));
 
 /**
  * @openapi

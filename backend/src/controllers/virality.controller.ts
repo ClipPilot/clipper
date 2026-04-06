@@ -2,7 +2,7 @@ import { Response } from "express";
 import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
-import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
+import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
   return requirePlanAccessBase(teamId, res, (id) => viralityService.checkTeamPlanAccess(id), "Virality tracking requires a Studio plan or higher");
@@ -17,6 +17,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const accounts = await viralityService.getAccountsByTeam(teamId);
@@ -30,6 +31,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { platform, profileUrl, competitorId, accountType } = req.body;
@@ -118,6 +120,7 @@ class ViralityController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       // Fire-and-forget: respond immediately, sync runs in background.
@@ -162,6 +165,7 @@ class ViralityController {
       const teamId = parseId(req.params.teamId);
       const postId = parseId(req.params.postId);
       if (!teamId || !postId) return res.status(400).json({ error: "Invalid team or post ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       await viralityService.deletePost(postId, teamId);
@@ -175,6 +179,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const startDate = parseDateQuery(req.query.startDate);
@@ -193,6 +198,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const competitors = await viralityService.getCompetitorsByTeam(teamId);
@@ -206,6 +212,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { name, description } = req.body;
@@ -225,6 +232,7 @@ class ViralityController {
       const teamId = parseId(req.params.teamId);
       const competitorId = parseId(req.params.competitorId);
       if (!teamId || !competitorId) return res.status(400).json({ error: "Invalid team or competitor ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { name, description } = req.body;
@@ -292,6 +300,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const settings = await viralityService.getSettings(teamId);
@@ -305,6 +314,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds, additionalEmails } = req.body;
@@ -358,6 +368,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);

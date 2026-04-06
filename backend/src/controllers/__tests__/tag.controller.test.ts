@@ -20,6 +20,21 @@ vi.mock("../../services/tag.service", () => ({
   tagService: mockTagService,
 }));
 
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return { ...actual, verifyTeamAccessOrFail: vi.fn().mockResolvedValue({ id: 1 }) };
+});
+
+vi.mock("../../db", () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ team_id: 1 }]),
+      }),
+    }),
+  },
+}));
+
 import { tagController } from "../tag.controller";
 
 function createReq(overrides: Partial<Request> = {}): Request {
