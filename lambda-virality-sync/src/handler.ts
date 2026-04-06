@@ -680,50 +680,6 @@ async function updateAccountProfile(
   console.log(`[DB] Updated profile for account ${accountId}: followers=${profile.followersCount ?? "N/A"} | follower_history: ${trimmed.length} entries`);
 }
 
-// ── Credit helpers ──
-
-async function consumeOneCredit(
-  db: ReturnType<typeof drizzle>,
-  teamId: number
-): Promise<boolean> {
-  // Get latest usage stats for the team
-  const [stats] = await db
-    .select()
-    .from(schema.usageStats)
-    .where(eq(schema.usageStats.team_id, teamId))
-    .orderBy(sql`${schema.usageStats.created_at} DESC`)
-    .limit(1);
-
-  if (!stats) return false;
-
-  // Atomic increment: only succeeds if clips_created < limit (prevents double-charge under concurrency)
-  const baseUpdated = await db
-    .update(schema.usageStats)
-    .set({ clips_created: sql`${schema.usageStats.clips_created} + 1`, updated_at: new Date() })
-    .where(
-      and(
-        eq(schema.usageStats.id, stats.id),
-        sql`${schema.usageStats.clips_created} < ${schema.usageStats.limit}`
-      )
-    )
-    .returning({ id: schema.usageStats.id });
-
-  if (baseUpdated.length > 0) return true;
-
-  // Atomic decrement: only succeeds if addon_clips_remaining > 0
-  const addonUpdated = await db
-    .update(schema.teams)
-    .set({ addon_clips_remaining: sql`${schema.teams.addon_clips_remaining} - 1`, updated_at: new Date() })
-    .where(
-      and(
-        eq(schema.teams.id, teamId),
-        sql`${schema.teams.addon_clips_remaining} > 0`
-      )
-    )
-    .returning({ id: schema.teams.id });
-
-  return addonUpdated.length > 0;
-}
 
 // ── URL normalization ──
 
@@ -1238,23 +1194,12 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
       .returning({ id: accountsTable.id });
 
     if (decremented.length === 0) {
-      // syncs_remaining was 0 — need to charge a credit
-      const charged = await consumeOneCredit(db, account.team_id);
-      if (charged) {
-        await db
-          .update(accountsTable)
-          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
-          .where(eq(accountsTable.id, account.id));
-        console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
-      } else {
-        // No credits — deactivate account
-        await db
-          .update(accountsTable)
-          .set({ is_active: false, updated_at: new Date() })
-          .where(eq(accountsTable.id, account.id));
-        console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
-        return { accountId, username: account.username, source: sourceLabel, status: "deactivated", postsUpserted: 0 };
-      }
+      await db
+        .update(accountsTable)
+        .set({ is_active: false, updated_at: new Date() })
+        .where(eq(accountsTable.id, account.id));
+      console.log(`[Sync] Sync budget exhausted for @${account.username} (team=${account.team_id}), deactivated`);
+      return { accountId, username: account.username, source: sourceLabel, status: "deactivated", postsUpserted: 0 };
     }
 
     // Set sync_status to syncing
