@@ -3,7 +3,7 @@ import { createMockResponse } from "../../../test/helpers/express.helper";
 import type { AuthRequest } from "../../middleware/auth.middleware";
 import type { Request } from "express";
 
-const { mockStripeService, mockStripeSDK, mockSTRIPE_PRICES, mockENV } = vi.hoisted(() => ({
+const { mockStripeService, mockStripeSDK, mockSTRIPE_PRICES, mockENV, mockUserService, mockTeamService } = vi.hoisted(() => ({
   mockStripeService: {
     createCheckoutSession: vi.fn(),
     createPortalSession: vi.fn(),
@@ -16,12 +16,14 @@ const { mockStripeService, mockStripeSDK, mockSTRIPE_PRICES, mockENV } = vi.hois
     handleAsyncPaymentFailed: vi.fn(),
     handleInvoicePaymentSucceeded: vi.fn(),
     handleInvoicePaymentFailed: vi.fn(),
+    handlePaymentIntentSucceeded: vi.fn(),
     changePlan: vi.fn(),
   },
   mockStripeSDK: {
     webhooks: { constructEvent: vi.fn() },
   },
   mockSTRIPE_PRICES: {
+    CREATOR: "price_creator",
     STUDIO: "price_studio",
     SCALE: "price_scale",
     ADDON_100: "price_addon_100",
@@ -29,11 +31,20 @@ const { mockStripeService, mockStripeSDK, mockSTRIPE_PRICES, mockENV } = vi.hois
   mockENV: {
     STRIPE_WEBHOOK_SECRET: "whsec_test",
   },
+  mockUserService: {
+    getUserBySupabaseUid: vi.fn(),
+  },
+  mockTeamService: {
+    verifyTeamAccess: vi.fn(),
+    getUserTeamRole: vi.fn(),
+  },
 }));
 
 vi.mock("../../services/stripe.service", () => ({ stripeService: mockStripeService }));
 vi.mock("../../config/stripe.config", () => ({ stripe: mockStripeSDK, STRIPE_PRICES: mockSTRIPE_PRICES }));
 vi.mock("../../config/env", () => ({ ENV: mockENV }));
+vi.mock("../../services/user.service", () => ({ userService: mockUserService }));
+vi.mock("../../services/team.service", () => ({ teamService: mockTeamService }));
 vi.mock("@sentry/node", () => ({ captureException: vi.fn() }));
 
 import {
@@ -49,11 +60,23 @@ function createReq(overrides: Record<string, any> = {}): AuthRequest {
   return { headers: {}, params: {}, body: {}, query: {}, ...overrides } as unknown as AuthRequest;
 }
 
+function setupOwnerMocks() {
+  mockUserService.getUserBySupabaseUid.mockResolvedValue({ id: 1 });
+  mockTeamService.verifyTeamAccess.mockResolvedValue(true);
+  mockTeamService.getUserTeamRole.mockResolvedValue("owner");
+}
+
+function setupMemberMocks() {
+  mockUserService.getUserBySupabaseUid.mockResolvedValue({ id: 1 });
+  mockTeamService.verifyTeamAccess.mockResolvedValue(true);
+  mockTeamService.getUserTeamRole.mockResolvedValue("member");
+}
+
 describe("createCheckoutSession", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 401 when no user", async () => {
-    const req = createReq({ body: {} });
+    const req = createReq({ body: { teamId: "1", priceId: "price_studio" } });
     const res = createMockResponse();
     await createCheckoutSession(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
@@ -66,7 +89,31 @@ describe("createCheckoutSession", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it("returns 403 when user is not team owner", async () => {
+    setupMemberMocks();
+    const req = createReq({
+      user: { id: "uid-123", email: "a@b.com" },
+      body: { teamId: "1", priceId: "price_studio" },
+    });
+    const res = createMockResponse();
+    await createCheckoutSession(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it("returns 403 when user has no team access", async () => {
+    mockUserService.getUserBySupabaseUid.mockResolvedValue({ id: 1 });
+    mockTeamService.verifyTeamAccess.mockResolvedValue(false);
+    const req = createReq({
+      user: { id: "uid-123", email: "a@b.com" },
+      body: { teamId: "1", priceId: "price_studio" },
+    });
+    const res = createMockResponse();
+    await createCheckoutSession(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it("returns 400 for invalid priceId", async () => {
+    setupOwnerMocks();
     const req = createReq({
       user: { id: "uid-123", email: "a@b.com" },
       body: { teamId: "1", priceId: "price_bogus" },
@@ -77,6 +124,7 @@ describe("createCheckoutSession", () => {
   });
 
   it("returns checkout URL on success", async () => {
+    setupOwnerMocks();
     mockStripeService.createCheckoutSession.mockResolvedValue("https://checkout.stripe.com/session");
     const req = createReq({
       user: { id: "uid-123", email: "a@b.com" },
@@ -93,7 +141,7 @@ describe("createPortalSession", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 401 when no user", async () => {
-    const req = createReq({ body: {} });
+    const req = createReq({ body: { teamId: "1" } });
     const res = createMockResponse();
     await createPortalSession(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
@@ -106,7 +154,19 @@ describe("createPortalSession", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it("returns 403 when user is not team owner", async () => {
+    setupMemberMocks();
+    const req = createReq({
+      user: { id: "u1" },
+      body: { teamId: "1" },
+    });
+    const res = createMockResponse();
+    await createPortalSession(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it("returns portal URL on success", async () => {
+    setupOwnerMocks();
     mockStripeService.createPortalSession.mockResolvedValue("https://billing.stripe.com/portal");
     const req = createReq({
       user: { id: "u1" },
@@ -129,7 +189,16 @@ describe("getSubscription", () => {
     expect(res.status).toHaveBeenCalledWith(401);
   });
 
+  it("returns 403 when user is not team owner", async () => {
+    setupMemberMocks();
+    const req = createReq({ user: { id: "u1" }, params: { teamId: "1" } });
+    const res = createMockResponse();
+    await getSubscription(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it("returns subscription and plan", async () => {
+    setupOwnerMocks();
     mockStripeService.getTeamSubscription.mockResolvedValue({ id: 1, plan: "studio" });
     mockStripeService.getTeamPlan.mockResolvedValue("studio");
     const req = createReq({ user: { id: "u1" }, params: { teamId: "1" } });
@@ -233,7 +302,7 @@ describe("changePlan", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 401 when no user", async () => {
-    const req = createReq({ body: {} });
+    const req = createReq({ body: { teamId: "1", newPriceId: "price_scale" } });
     const res = createMockResponse();
     await changePlan(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
@@ -246,7 +315,19 @@ describe("changePlan", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it("returns 400 for invalid price (not studio/scale)", async () => {
+  it("returns 403 when user is not team owner", async () => {
+    setupMemberMocks();
+    const req = createReq({
+      user: { id: "u1" },
+      body: { teamId: "1", newPriceId: "price_scale" },
+    });
+    const res = createMockResponse();
+    await changePlan(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it("returns 400 for invalid price (not creator/studio/scale)", async () => {
+    setupOwnerMocks();
     const req = createReq({
       user: { id: "u1" },
       body: { teamId: "1", newPriceId: "price_addon_100" },
@@ -257,6 +338,7 @@ describe("changePlan", () => {
   });
 
   it("changes plan successfully", async () => {
+    setupOwnerMocks();
     mockStripeService.changePlan.mockResolvedValue({
       success: true,
       effectiveDate: new Date("2025-03-01"),

@@ -354,6 +354,19 @@ class ViralityController {
     }
   }
 
+  async unpauseAllAccounts(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      await viralityService.unpauseAllAccountsForTeam(teamId);
+      return res.json({ success: true });
+    } catch (error) {
+      return handleError(res, "Unpause all accounts error", error, "Failed to unpause accounts");
+    }
+  }
+
   async getAlertLogs(req: AuthRequest, res: Response<{ logs: any[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
