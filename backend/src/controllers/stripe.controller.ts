@@ -4,7 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
 import { ENV } from "../config/env";
-import { handleControllerError, requireUser, requireTeamOwner, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+import { handleControllerError, requireTeamOwner, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 export const createCheckoutSession = async (req: AuthRequest, res: Response<{ url: string } | ErrorResponse>) => {
   try {
