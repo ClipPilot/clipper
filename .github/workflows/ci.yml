@@ -301,6 +301,8 @@ jobs:
           amplify_branch      = "$AMPLIFY_BRANCH"
 
           admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+          admin_email         = "${{ secrets.ADMIN_EMAIL }}"
+          admin_password_hash = "${{ secrets.ADMIN_PASSWORD_HASH }}"
           sync_key            = "${{ secrets.SYNC_KEY }}"
 
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
@@ -478,6 +480,8 @@ jobs:
           amplify_branch      = "$AMPLIFY_BRANCH"
 
           admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+          admin_email         = "${{ secrets.ADMIN_EMAIL }}"
+          admin_password_hash = "${{ secrets.ADMIN_PASSWORD_HASH }}"
           sync_key            = "${{ secrets.SYNC_KEY }}"
 
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"

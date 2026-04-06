@@ -15,6 +15,7 @@ import fs from "fs";
 import path from "path";
 import { config } from "../config/env";
 import { sanitizeFileName } from "../utils/fileUtils";
+import { validateUserUrlSync } from "../utils/urlValidator";
 
 const s3Client = new S3Client({
   region: config.aws.region,
@@ -539,6 +540,11 @@ class S3Service {
   }
 
   async downloadVideoFromUrl(url: string, localPath: string): Promise<void> {
+    const urlCheck = validateUserUrlSync(url);
+    if (!urlCheck.valid) {
+      throw new Error(`Blocked URL: ${urlCheck.error}`);
+    }
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download video: ${response.statusText}`);

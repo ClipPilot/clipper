@@ -1,5 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { createDrizzleChain } from "../../../test/helpers/db.helper";
+import crypto from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(crypto.scrypt);
+
+async function generateTestHash(password: string): Promise<string> {
+  const salt = crypto.randomBytes(32).toString("hex");
+  const derivedKey = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+
+let TEST_PASSWORD_HASH: string;
 
 const { mockDb, mockJwt, mockStripe, mockSendAdmin2FA } = vi.hoisted(() => ({
   mockDb: {
@@ -34,39 +46,47 @@ vi.mock("ioredis", () => ({
     ping = vi.fn().mockRejectedValue(new Error("not available"));
   },
 }));
-vi.mock("../../config/admin.config.json", () => ({
-  default: {
-    credentials: { email: "admin@cuttr.com", password: "secret123" },
-  },
-}));
 
-import { adminService } from "../admin.service";
+beforeAll(async () => {
+  TEST_PASSWORD_HASH = await generateTestHash("secret123");
+  process.env.ADMIN_EMAIL = "admin@cuttr.com";
+  process.env.ADMIN_PASSWORD_HASH = TEST_PASSWORD_HASH;
+  process.env.ADMIN_JWT_SECRET = "test-jwt-secret-for-tests";
+});
+
+const { adminService } = await import("../admin.service");
 
 describe("AdminService", () => {
   beforeEach(() => vi.clearAllMocks());
 
   describe("validateCredentials", () => {
-    it("returns true for valid credentials", () => {
-      expect(adminService.validateCredentials("admin@cuttr.com", "secret123")).toBe(true);
+    it("returns true for valid credentials", async () => {
+      expect(await adminService.validateCredentials("admin@cuttr.com", "secret123")).toBe(true);
     });
 
-    it("returns false for wrong email", () => {
-      expect(adminService.validateCredentials("wrong@cuttr.com", "secret123")).toBe(false);
+    it("returns false for wrong email", async () => {
+      expect(await adminService.validateCredentials("wrong@cuttr.com", "secret123")).toBe(false);
     });
 
-    it("returns false for wrong password", () => {
-      expect(adminService.validateCredentials("admin@cuttr.com", "wrong")).toBe(false);
+    it("returns false for wrong password", async () => {
+      expect(await adminService.validateCredentials("admin@cuttr.com", "wrong")).toBe(false);
+    });
+
+    it("uses crypto.scrypt (not plaintext comparison)", async () => {
+      const hash = process.env.ADMIN_PASSWORD_HASH!;
+      expect(hash).toContain(":");
+      expect(hash.split(":")[0].length).toBe(64);
     });
   });
 
   describe("generateToken", () => {
-    it("calls jwt.sign with correct payload", () => {
+    it("calls jwt.sign with 4h expiry (not 7d)", () => {
       mockJwt.sign.mockReturnValue("token-123");
       const result = adminService.generateToken("admin@cuttr.com");
       expect(mockJwt.sign).toHaveBeenCalledWith(
         { email: "admin@cuttr.com", isAdmin: true },
-        expect.any(String),
-        { expiresIn: "7d" }
+        "test-jwt-secret-for-tests",
+        { expiresIn: "4h" }
       );
       expect(result).toBe("token-123");
     });
@@ -85,6 +105,16 @@ describe("AdminService", () => {
       });
       const result = adminService.verifyToken("bad-token");
       expect(result).toBeNull();
+    });
+  });
+
+  describe("generate2FACode (via send2FACode)", () => {
+    it("generates 6-digit code using crypto.randomInt (not Math.random)", async () => {
+      mockSendAdmin2FA.mockResolvedValue(undefined);
+      const spy = vi.spyOn(crypto, "randomInt");
+      await adminService.send2FACode("admin@cuttr.com");
+      expect(spy).toHaveBeenCalledWith(100000, 999999);
+      spy.mockRestore();
     });
   });
 
@@ -117,7 +147,6 @@ describe("AdminService", () => {
         "contact@cuttr.com",
         expect.objectContaining({ code: expect.any(String) })
       );
-      // Code should be 6 digits
       const code = mockSendAdmin2FA.mock.calls[0][1].code;
       expect(code).toMatch(/^\d{6}$/);
     });

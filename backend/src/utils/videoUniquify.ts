@@ -1,13 +1,11 @@
-import { exec, execSync } from "child_process";
-import { promisify } from "util";
+import { execFileSync, spawn } from "child_process";
 import { generateJumbledMetadataString } from "./videoMetadata";
-
-const execAsync = promisify(exec);
 
 export function hasAudioStream(inputPath: string): boolean {
   try {
-    const result = execSync(
-      `ffprobe -v quiet -select_streams a -show_entries stream=codec_type -of csv=p=0 "${inputPath}"`,
+    const result = execFileSync(
+      "ffprobe",
+      ["-v", "quiet", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", inputPath],
       { encoding: "utf-8" }
     );
     return result.trim().length > 0;
@@ -135,6 +133,16 @@ export async function uniquifyVideo(
 ): Promise<void> {
   const audio = hasAudioStream(inputPath);
   const { fullArgs } = generateUniquifyString(params, audio);
-  const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
-  await execAsync(cmd, { timeout: 600000 });
+  const args = ["-y", "-i", inputPath, ...fullArgs.split(/\s+/).filter(Boolean), outputPath];
+  return new Promise((resolve, reject) => {
+    const proc = spawn("ffmpeg", args);
+    let stderr = "";
+    proc.stderr.on("data", (d) => { stderr += d.toString(); });
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+    });
+    proc.on("error", reject);
+    setTimeout(() => { proc.kill(); reject(new Error("ffmpeg timeout")); }, 600000);
+  });
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { Modal,
   Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -118,7 +119,7 @@ export default function AnnouncementPopupModal() {
         <Modal.Body className="p-8 bg-surface-base">
           <div
             className="text-text-primary text-base announcement-content leading-relaxed prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: currentAnnouncement.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(currentAnnouncement.content, { ALLOWED_TAGS: ["p", "br", "strong", "em", "a", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6"], ALLOWED_ATTR: ["href", "target", "rel"] }) }}
           />
 
           {currentAnnouncement.action_url && (

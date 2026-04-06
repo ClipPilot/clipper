@@ -8,5 +8,5 @@ Sentry.init({
   tracesSampleRate: 1.0,
   profileSessionSampleRate: 1.0,
   profileLifecycle: "trace",
-  sendDefaultPii: true,
+  sendDefaultPii: false,
 });

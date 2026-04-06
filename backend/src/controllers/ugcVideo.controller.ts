@@ -18,7 +18,7 @@ import { eq, and, desc, count, sql } from "drizzle-orm";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { ugcScriptService, detectSilentMode } from "../services/ai-ugc/ugcScript.service";
 import type { ShotType } from "../types/ugcScript.types";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -488,6 +488,8 @@ export class UGCVideoController {
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, job.team_id, res))) return;
 
       const response: any = {
         jobId: job.id,

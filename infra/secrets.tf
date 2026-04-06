@@ -161,6 +161,32 @@ resource "aws_secretsmanager_secret_version" "admin_jwt_secret" {
   secret_string = var.admin_jwt_secret
 }
 
+resource "aws_secretsmanager_secret" "admin_email" {
+  name                    = "${var.project_name}-${var.environment}/admin-email"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-admin-email-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "admin_email" {
+  secret_id     = aws_secretsmanager_secret.admin_email.id
+  secret_string = var.admin_email
+}
+
+resource "aws_secretsmanager_secret" "admin_password_hash" {
+  name                    = "${var.project_name}-${var.environment}/admin-password-hash"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-admin-password-hash-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "admin_password_hash" {
+  secret_id     = aws_secretsmanager_secret.admin_password_hash.id
+  secret_string = var.admin_password_hash
+}
+
 # Sync Key
 resource "aws_secretsmanager_secret" "sync_key" {
   name                    = "${var.project_name}-${var.environment}/sync-key"

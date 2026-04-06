@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import multer from "multer";
 import swaggerUi from "swagger-ui-express";
 import transcribeRoutes from "./routes/clip.routes";
@@ -52,14 +53,12 @@ const allowedOrigins = [
   "https://va-staging.cuttr.com",
 ];
 
+app.use(helmet());
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        /\.amplifyapp\.com$/.test(origin)
-      ) {
+      if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -71,10 +70,12 @@ app.use(
 
 app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
 
-app.use(express.json({ limit: "10gb" }));
-app.use(express.urlencoded({ limit: "10gb", extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -118,16 +119,13 @@ app.get("/health/worker", async (req, res) => {
     res.status(status === "unhealthy" ? 503 : 200).json({
       status,
       timestamp: new Date().toISOString(),
-      service: "clipster-worker",
       queue: { depth: queueDepth, inFlight },
-      ecs: { running: runningTasks, desired: desiredTasks },
+      workers: { running: runningTasks, desired: desiredTasks },
     });
   } catch (err: any) {
     res.status(503).json({
       status: "unhealthy",
       timestamp: new Date().toISOString(),
-      service: "clipster-worker",
-      error: err.message,
     });
   }
 });
@@ -160,10 +158,6 @@ app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/incidents", incidentRoutes);
-
-app.get("/debug-sentry", function mainHandler(req, res) {
-  throw new Error("My first Sentry error!");
-});
 
 app.use(
   (

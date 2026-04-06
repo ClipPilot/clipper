@@ -42,7 +42,9 @@ export async function requireAuth(
     // Scoped to specific route prefixes only
     const internalKey = req.headers["x-internal-api-key"];
     const expectedKey = process.env.INTERNAL_API_KEY;
-    if (internalKey && expectedKey && internalKey === expectedKey) {
+    if (internalKey && expectedKey && typeof internalKey === "string" &&
+        internalKey.length === expectedKey.length &&
+        crypto.timingSafeEqual(Buffer.from(internalKey), Buffer.from(expectedKey))) {
       const allowedPrefixes = [
         "/api/scene-builder",
         "/api/ugc",
