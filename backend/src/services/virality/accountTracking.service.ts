@@ -264,11 +264,22 @@ export class AccountTrackingService {
       .returning() as any[];
 
     if (decremented.length === 0) {
-      await db
-        .update(this.accountsTable)
-        .set({ is_active: false, updated_at: new Date() })
-        .where(eq(this.accountsTable.id, accountId));
-      throw new Error("Sync budget exhausted. Account has been deactivated.");
+      // No syncs remaining — charge a credit and reset
+      const { success: charged } = await teamService.consumeClip(teamId);
+      if (charged) {
+        await db
+          .update(this.accountsTable)
+          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
+          .where(eq(this.accountsTable.id, accountId));
+        console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
+      } else {
+        // No credits — deactivate account
+        await db
+          .update(this.accountsTable)
+          .set({ is_active: false, updated_at: new Date() })
+          .where(eq(this.accountsTable.id, accountId));
+        throw new Error("No credits available. Account has been deactivated.");
+      }
     }
 
     // Update status to syncing
