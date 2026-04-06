@@ -446,6 +446,26 @@ export default function ViralityPage() {
     }
   };
 
+  const pausedCount = useMemo(() => {
+    return Object.values(accountStatuses).filter((s) => s === "inactive").length;
+  }, [accountStatuses]);
+
+  const [isUnpausing, setIsUnpausing] = useState(false);
+
+  const handleUnpauseAll = async () => {
+    if (!selectedTeam?.id) return;
+    setIsUnpausing(true);
+    try {
+      await viralityAPI.unpauseAllAccounts(selectedTeam.id);
+      toast({ title: "All accounts reactivated", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Failed to reactivate accounts", description: err.message, color: "danger" });
+    } finally {
+      setIsUnpausing(false);
+    }
+  };
+
   const handleOpenSettings = async () => {
     if (!selectedTeam?.id) return;
     try {
@@ -515,6 +535,26 @@ export default function ViralityPage() {
             </Button>
           </div>
         </div>
+
+        {pausedCount > 0 && (
+          <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-center gap-3">
+              <Icon icon="solar:pause-circle-bold-duotone" className="text-amber-500 flex-shrink-0" width={22} />
+              <p className="text-sm text-amber-500">
+                {pausedCount} {pausedCount === 1 ? "account is" : "accounts are"} paused and not syncing.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="bg-amber-500 text-white hover:bg-amber-600 flex-shrink-0"
+              onPress={handleUnpauseAll}
+              isPending={isUnpausing}
+            >
+              <Icon icon="solar:play-circle-bold" width={16} />
+              Reactivate All
+            </Button>
+          </div>
+        )}
 
         {/* Competitor Cards (My Performance first, then competitors) */}
         <RecalcOverlay active={isRecalculating}>

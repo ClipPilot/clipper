@@ -329,6 +329,22 @@ class ViralityAPI {
     return data.account;
   }
 
+  async unpauseAllAccounts(teamId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/accounts/unpause-all`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to reactivate accounts");
+    }
+  }
+
   async getSettings(teamId: number): Promise<ViralSettings> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/settings`,
