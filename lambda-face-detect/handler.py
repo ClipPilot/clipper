@@ -539,7 +539,6 @@ def get_video_info(video_path: str) -> Tuple[float, float]:
     duration = 0.0
     fps = 30.0
 
-    import re
     duration_match = re.search(r'Duration: (\d+):(\d+):(\d+)\.(\d+)', stderr)
     if duration_match:
         h, m, s, ms = duration_match.groups()
