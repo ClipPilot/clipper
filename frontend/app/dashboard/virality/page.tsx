@@ -13,14 +13,14 @@ import {
   AddAccountModal,
   DateRangeFilter,
   ActivityFeed,
-  HeadToHeadTable,
   RecalcOverlay,
 } from "@/components/virality";
 import { ViralSettingsModal } from "@/components/virality/ViralSettingsModal";
-import type { Platform } from "@/components/virality/AccountsTable";
+import type { Platform } from "@/lib/platformUtils";
 import { CompetitorCard } from "@/components/virality/CompetitorCard";
 import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import { useTeams } from "@/hooks/useTeams";
+import { HeadToHeadTable } from "@clipper/shared-ui";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
@@ -32,7 +32,10 @@ import {
   type ViralSettings,
 } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
-import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
+import {
+  pct,
+  computePostsPerWeek,
+} from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 import {
   MY_PERFORMANCE_NAME,
@@ -49,27 +52,46 @@ export default function ViralityPage() {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
-  const { isOpen: isSettingsOpen, open: onSettingsOpen, close: onSettingsClose } = useOverlayState();
-  const [viralSettings, setViralSettings] = useState<ViralSettings | null>(null);
+  const {
+    isOpen: isSettingsOpen,
+    open: onSettingsOpen,
+    close: onSettingsClose,
+  } = useOverlayState();
+  const [viralSettings, setViralSettings] = useState<ViralSettings | null>(
+    null,
+  );
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
-  const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
-  const [allPostsByAccountUnfiltered, setAllPostsByAccountUnfiltered] = useState<Record<number, ViralityPost[]>>({});
+  const [simpleCompetitors, setSimpleCompetitors] = useState<
+    ViralityCompetitor[]
+  >([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
+    null,
+  );
+  const [postsByAccount, setPostsByAccount] = useState<
+    Record<number, ViralityPost[]>
+  >({});
+  const [allPostsByAccountUnfiltered, setAllPostsByAccountUnfiltered] =
+    useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
-  const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(null);
+  const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(
+    null,
+  );
   const [editingName, setEditingName] = useState("");
   const initialLoadDone = useRef(false);
 
   // My Performance state
   const [myAccounts, setMyAccounts] = useState<ViralityAccount[]>([]);
-  const [myPostsByAccount, setMyPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
-  const [myDashboardStats, setMyDashboardStats] = useState<DashboardStats | null>(null);
+  const [myPostsByAccount, setMyPostsByAccount] = useState<
+    Record<number, ViralityPost[]>
+  >({});
+  const [myDashboardStats, setMyDashboardStats] =
+    useState<DashboardStats | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
+    if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan))
+      return;
     if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const { startDate, endDate } = dateRange;
@@ -79,7 +101,11 @@ export default function ViralityPage() {
         viralityAPI.getCompetitors(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getAccounts(selectedTeam.id),
-        userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
+        userPerformanceAPI.getDashboardStats(
+          selectedTeam.id,
+          startDate,
+          endDate,
+        ),
       ]);
 
       setSimpleCompetitors(competitorsList);
@@ -89,8 +115,8 @@ export default function ViralityPage() {
 
       const withAccounts: CompetitorWithAccounts[] = await Promise.all(
         competitorsList.map((c) =>
-          viralityAPI.getCompetitor(selectedTeam.id, c.id)
-        )
+          viralityAPI.getCompetitor(selectedTeam.id, c.id),
+        ),
       );
       setCompetitors(withAccounts);
 
@@ -103,14 +129,18 @@ export default function ViralityPage() {
       await Promise.all([
         // Competitor account posts
         ...allCompAccounts.flatMap((a) => {
-          const filtered = viralityAPI.getAccountPosts(
-            selectedTeam.id, a.id, 50, 0, startDate, endDate
-          ).then((posts) => { postsMap[a.id] = posts; });
+          const filtered = viralityAPI
+            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
+            .then((posts) => {
+              postsMap[a.id] = posts;
+            });
 
           if (hasDateFilter) {
-            const unfiltered = viralityAPI.getAccountPosts(
-              selectedTeam.id, a.id, 100, 0
-            ).then((posts) => { unfilteredMap[a.id] = posts; });
+            const unfiltered = viralityAPI
+              .getAccountPosts(selectedTeam.id, a.id, 100, 0)
+              .then((posts) => {
+                unfilteredMap[a.id] = posts;
+              });
             return [filtered, unfiltered];
           }
           return [filtered];
@@ -118,18 +148,21 @@ export default function ViralityPage() {
         // My Performance account posts (stored with negative IDs)
         ...myAccts.flatMap((a) => {
           const negId = toMyPerfId(a.id);
-          const filtered = userPerformanceAPI.getAccountPosts(
-            selectedTeam.id, a.id, 50, 0, startDate, endDate
-          ).then((posts) => {
-            postsMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
-          });
+          const filtered = userPerformanceAPI
+            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
+            .then((posts) => {
+              postsMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
+            });
 
           if (hasDateFilter) {
-            const unfiltered = userPerformanceAPI.getAccountPosts(
-              selectedTeam.id, a.id, 100, 0
-            ).then((posts) => {
-              unfilteredMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
-            });
+            const unfiltered = userPerformanceAPI
+              .getAccountPosts(selectedTeam.id, a.id, 100, 0)
+              .then((posts) => {
+                unfilteredMap[negId] = posts.map((p) => ({
+                  ...p,
+                  account_id: negId,
+                }));
+              });
             return [filtered, unfiltered];
           }
           return [filtered];
@@ -196,29 +229,46 @@ export default function ViralityPage() {
     return map;
   }, [allCompetitors]);
 
-  // Derive account statuses from real data (is_active defaults to true if missing)
-  const accountStatuses = useMemo(() => {
-    const map: Record<number, "active" | "inactive"> = {};
-    for (const c of allCompetitors) {
-      for (const a of c.accounts) {
-        map[a.id] = a.is_active === false ? "inactive" : "active";
-      }
-    }
-    return map;
-  }, [allCompetitors]);
-
   // Merged accountPostStats (competitor stats + My Performance stats with negative IDs)
   const mergedAccountPostStats = useMemo(() => {
     const merged: Record<number, { postCount: number; totalViews: number }> = {
       ...dashboardStats?.accountPostStats,
     };
     if (myDashboardStats?.accountPostStats) {
-      for (const [idStr, stats] of Object.entries(myDashboardStats.accountPostStats)) {
+      for (const [idStr, stats] of Object.entries(
+        myDashboardStats.accountPostStats,
+      )) {
         merged[toMyPerfId(Number(idStr))] = stats;
       }
     }
     return merged;
   }, [dashboardStats, myDashboardStats]);
+
+  const accountRows = useMemo(() => {
+    const rows: import("@clipper/shared-ui").AccountRow[] = [];
+    for (const c of allCompetitors) {
+      for (const a of c.accounts) {
+        const stats = mergedAccountPostStats[a.id];
+        const views = stats?.totalViews || 0;
+        const postCount = stats?.postCount || 0;
+        rows.push({
+          id: a.id,
+          username: a.username,
+          displayName: a.display_name || "",
+          platform: a.platform,
+          accountType: a.account_type as "profile" | "hashtag" | "keyword",
+          competitorName: c.name,
+          competitorId: c.id,
+          views,
+          avgViews: postCount > 0 ? Math.round(views / postCount) : 0,
+          postCount,
+          isActive: a.is_active !== false,
+          alertEnabled: !!a.alert_enabled,
+        });
+      }
+    }
+    return rows;
+  }, [allCompetitors, mergedAccountPostStats]);
 
   // Date-filtered posts for viral/recent tabs
   const allPosts = useMemo(() => {
@@ -234,20 +284,37 @@ export default function ViralityPage() {
   const competitorCards = useMemo(() => {
     return allCompetitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
-      const followers = comp.accounts.reduce((s, a) => s + (a.follower_count || 0), 0);
-      const totalViews = posts.reduce((s, p) => s + (p.video_play_count || 0), 0);
+      const followers = comp.accounts.reduce(
+        (s, a) => s + (a.follower_count || 0),
+        0,
+      );
+      const totalViews = posts.reduce(
+        (s, p) => s + (p.video_play_count || 0),
+        0,
+      );
       const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
-      const totalComments = posts.reduce((s, p) => s + (p.comment_count || 0), 0);
-      const engRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
-      const avgViews = posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
+      const totalComments = posts.reduce(
+        (s, p) => s + (p.comment_count || 0),
+        0,
+      );
+      const engRate =
+        totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
+      const avgViews =
+        posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
 
       const postsPerWeek = computePostsPerWeek(posts);
 
       // Compute changes from metrics_history (last two entries)
-      let prevLikes = 0, prevComments = 0, prevViews = 0;
-      let latestLikes = 0, latestComments = 0, latestViews = 0;
-      let prevFollowers = 0, latestFollowers = 0;
-      let hasHistory = false, hasFollowerHistory = false;
+      let prevLikes = 0,
+        prevComments = 0,
+        prevViews = 0;
+      let latestLikes = 0,
+        latestComments = 0,
+        latestViews = 0;
+      let prevFollowers = 0,
+        latestFollowers = 0;
+      let hasHistory = false,
+        hasFollowerHistory = false;
 
       for (const post of posts) {
         const h = post.metrics_history;
@@ -271,19 +338,34 @@ export default function ViralityPage() {
         latestFollowers += fh[fh.length - 1].followers;
       }
 
-      const followersChange = hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null;
+      const followersChange = hasFollowerHistory
+        ? pct(latestFollowers, prevFollowers)
+        : null;
       const viewsChange = hasHistory ? pct(latestViews, prevViews) : null;
 
-      const prevEngRate = prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
-      const latestEngRate = latestViews > 0 ? ((latestLikes + latestComments) / latestViews) * 100 : 0;
+      const prevEngRate =
+        prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
+      const latestEngRate =
+        latestViews > 0
+          ? ((latestLikes + latestComments) / latestViews) * 100
+          : 0;
       const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
 
-      const platforms = Array.from(new Set(comp.accounts.map((a) => a.platform)));
+      const platforms = Array.from(
+        new Set(comp.accounts.map((a) => a.platform)),
+      );
 
       return {
         competitor: comp,
-        followers, totalViews, engRate, avgViews, postsPerWeek, platforms,
-        followersChange, viewsChange, engRateChange,
+        followers,
+        totalViews,
+        engRate,
+        avgViews,
+        postsPerWeek,
+        platforms,
+        followersChange,
+        viewsChange,
+        engRateChange,
         isMyPerformance: comp.id === MY_PERFORMANCE_COMPETITOR_ID,
       };
     });
@@ -311,38 +393,60 @@ export default function ViralityPage() {
     if (!selectedTeam?.id) return;
     try {
       if (isMyPerfId(accountId)) {
-        await userPerformanceAPI.deleteAccount(selectedTeam.id, fromMyPerfId(accountId));
+        await userPerformanceAPI.deleteAccount(
+          selectedTeam.id,
+          fromMyPerfId(accountId),
+        );
       } else {
         await viralityAPI.deleteAccount(selectedTeam.id, accountId);
       }
       toast({ title: "Account deleted", color: "success" });
       await fetchData();
     } catch (err: any) {
-      toast({ title: "Failed to delete account", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to delete account",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
-  const handleToggleAccountStatus = async (accountId: number, newStatus: "active" | "inactive") => {
+  const handleToggleAccountStatus = async (
+    accountId: number,
+    newStatus: "active" | "inactive",
+  ) => {
     if (!selectedTeam?.id) return;
     try {
       if (isMyPerfId(accountId)) {
-        await userPerformanceAPI.updateAccountStatus(selectedTeam.id, fromMyPerfId(accountId), newStatus === "active");
+        await userPerformanceAPI.updateAccountStatus(
+          selectedTeam.id,
+          fromMyPerfId(accountId),
+          newStatus === "active",
+        );
         // Update local state
         setMyAccounts((prev) =>
           prev.map((a) =>
-            a.id === fromMyPerfId(accountId) ? { ...a, is_active: newStatus === "active" } : a
-          )
+            a.id === fromMyPerfId(accountId)
+              ? { ...a, is_active: newStatus === "active" }
+              : a,
+          ),
         );
       } else {
-        await viralityAPI.updateAccountStatus(selectedTeam.id, accountId, newStatus === "active");
+        await viralityAPI.updateAccountStatus(
+          selectedTeam.id,
+          accountId,
+          newStatus === "active",
+        );
         // Update local state only — no need to refetch everything
         setCompetitors((prev) =>
           prev.map((c) => ({
             ...c,
             accounts: c.accounts.map((a) =>
-              a.id === accountId ? { ...a, is_active: newStatus === "active" } : a
+              a.id === accountId
+                ? { ...a, is_active: newStatus === "active" }
+                : a,
             ),
-          }))
+          })),
         );
       }
       toast({
@@ -350,24 +454,38 @@ export default function ViralityPage() {
         color: "success",
       });
     } catch (err: any) {
-      toast({ title: "Failed to update status", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to update status",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
   const handleSaveCompetitorName = async (competitorId: number) => {
     if (!selectedTeam?.id || !editingName.trim()) return;
     try {
-      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, { name: editingName.trim() });
+      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, {
+        name: editingName.trim(),
+      });
       setCompetitors((prev) =>
-        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+        prev.map((c) =>
+          c.id === competitorId ? { ...c, name: editingName.trim() } : c,
+        ),
       );
       setSimpleCompetitors((prev) =>
-        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+        prev.map((c) =>
+          c.id === competitorId ? { ...c, name: editingName.trim() } : c,
+        ),
       );
       setEditingCompetitorId(null);
       toast({ title: "Competitor renamed", color: "success" });
     } catch (err: any) {
-      toast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to rename competitor",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
@@ -380,7 +498,7 @@ export default function ViralityPage() {
       newCompetitorName?: string;
       accountType: "profile" | "hashtag" | "keyword";
       isMyPerformance?: boolean;
-    }
+    },
   ) => {
     if (!selectedTeam?.id) return;
 
@@ -390,7 +508,7 @@ export default function ViralityPage() {
         selectedTeam.id,
         platform,
         profileUrl,
-        options.accountType
+        options.accountType,
       );
       toast({ title: "Account added to My Performance", color: "success" });
       await fetchData();
@@ -402,7 +520,7 @@ export default function ViralityPage() {
     if (!competitorId && options.newCompetitorName) {
       const competitor = await viralityAPI.createCompetitor(
         selectedTeam.id,
-        options.newCompetitorName
+        options.newCompetitorName,
       );
       competitorId = competitor.id;
     }
@@ -416,7 +534,7 @@ export default function ViralityPage() {
       platform,
       profileUrl,
       competitorId,
-      options.accountType
+      options.accountType,
     );
 
     // Enable alerts on the newly created account if requested
@@ -436,13 +554,20 @@ export default function ViralityPage() {
         prev.map((c) => ({
           ...c,
           accounts: c.accounts.map((a) =>
-            a.id === accountId ? { ...a, alert_enabled: enabled } : a
+            a.id === accountId ? { ...a, alert_enabled: enabled } : a,
           ),
-        }))
+        })),
       );
-      toast({ title: `Alerts ${enabled ? "enabled" : "disabled"}`, color: "success" });
+      toast({
+        title: `Alerts ${enabled ? "enabled" : "disabled"}`,
+        color: "success",
+      });
     } catch (err: any) {
-      toast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to update alerts",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
@@ -453,7 +578,11 @@ export default function ViralityPage() {
       setViralSettings(settings);
       onSettingsOpen();
     } catch (err: any) {
-      toast({ title: "Failed to load settings", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to load settings",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
@@ -466,7 +595,11 @@ export default function ViralityPage() {
       await fetchData();
       toast({ title: "Alert settings saved", color: "success" });
     } catch (err: any) {
-      toast({ title: "Failed to save settings", description: err.message, color: "danger" });
+      toast({
+        title: "Failed to save settings",
+        description: err.message,
+        color: "danger",
+      });
     }
   };
 
@@ -498,10 +631,10 @@ export default function ViralityPage() {
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
- variant="outline"
- className="border-border-base text-text-secondary"
- onPress={handleOpenSettings}
- >
+              variant="outline"
+              className="border-border-base text-text-secondary"
+              onPress={handleOpenSettings}
+            >
               <Icon icon="solar:bell-bold" width={18} />
               Alert Settings
             </Button>
@@ -529,7 +662,10 @@ export default function ViralityPage() {
                 postsByAccount={postsByAccount}
                 editingCompetitorId={editingCompetitorId}
                 editingName={editingName}
-                onEditStart={(id, name) => { setEditingName(name); setEditingCompetitorId(id); }}
+                onEditStart={(id, name) => {
+                  setEditingName(name);
+                  setEditingCompetitorId(id);
+                }}
                 onEditNameChange={setEditingName}
                 onEditSave={handleSaveCompetitorName}
                 onEditCancel={() => setEditingCompetitorId(null)}
@@ -544,15 +680,28 @@ export default function ViralityPage() {
         {competitorCards.length > 1 && (
           <RecalcOverlay active={isRecalculating}>
             <HeadToHeadTable
-              competitors={competitorCards.map(({ competitor, followers, totalViews, engRate, avgViews, postsPerWeek }) => ({
-                name: competitor.name,
-                followers,
-                totalViews,
-                totalPosts: competitor.accounts.reduce((s, a) => s + (mergedAccountPostStats[a.id]?.postCount || 0), 0),
-                engRate,
-                postsPerWeek,
-                avgViews,
-              }))}
+              competitors={competitorCards.map(
+                ({
+                  competitor,
+                  followers,
+                  totalViews,
+                  engRate,
+                  avgViews,
+                  postsPerWeek,
+                }) => ({
+                  name: competitor.name,
+                  followers,
+                  totalViews,
+                  totalPosts: competitor.accounts.reduce(
+                    (s, a) =>
+                      s + (mergedAccountPostStats[a.id]?.postCount || 0),
+                    0,
+                  ),
+                  engRate,
+                  postsPerWeek,
+                  avgViews,
+                }),
+              )}
             />
           </RecalcOverlay>
         )}
@@ -567,7 +716,11 @@ export default function ViralityPage() {
                 onChange={setPlatformFilter}
               />
               <div className="relative w-60">
-                <Icon icon="solar:magnifer-linear" width={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <Icon
+                  icon="solar:magnifer-linear"
+                  width={18}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+                />
                 <Input
                   placeholder="Search accounts..."
                   value={searchQuery}
@@ -578,16 +731,13 @@ export default function ViralityPage() {
             </div>
             <RecalcOverlay active={isRecalculating}>
               <AccountsTable
-                competitors={allCompetitors}
+                accounts={accountRows}
                 platformFilter={platformFilter}
                 searchQuery={searchQuery}
-                accountPostStats={mergedAccountPostStats}
-                onViewCompetitor={handleViewCompetitor}
-                onViewAccount={handleViewAccount}
-                onDeleteAccount={handleDeleteAccount}
-                onToggleAccountStatus={handleToggleAccountStatus}
+                onRowClick={(row) => handleViewAccount(row.competitorId, row.id)}
+                onDelete={handleDeleteAccount}
+                onToggleStatus={handleToggleAccountStatus}
                 onToggleAlert={handleToggleAlert}
-                accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
           </div>

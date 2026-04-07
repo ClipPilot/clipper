@@ -24,12 +24,12 @@ const METRICS: {
   icon: string;
   format: (v: number) => string;
 }[] = [
-  { key: "followers", label: "Followers", icon: "solar:users-group-rounded-bold-duotone", format: formatNumber },
-  { key: "totalViews", label: "Views", icon: "solar:eye-bold-duotone", format: formatNumber },
-  { key: "totalPosts", label: "Posts", icon: "solar:document-bold-duotone", format: formatNumber },
-  { key: "engRate", label: "Eng. Rate", icon: "solar:chart-bold-duotone", format: (v) => v.toFixed(2) + "%" },
-  { key: "postsPerWeek", label: "Posts/Wk", icon: "solar:calendar-bold-duotone", format: (v) => String(v) },
-  { key: "avgViews", label: "Avg. Views", icon: "solar:play-bold-duotone", format: formatNumber },
+  { key: "followers", label: "Followers", icon: "solar:users-group-rounded-bold", format: formatNumber },
+  { key: "totalViews", label: "Views", icon: "solar:eye-bold", format: formatNumber },
+  { key: "totalPosts", label: "Posts", icon: "solar:document-bold", format: formatNumber },
+  { key: "engRate", label: "Eng. Rate", icon: "solar:chart-bold", format: (v) => v.toFixed(2) + "%" },
+  { key: "postsPerWeek", label: "Posts/Wk", icon: "solar:calendar-bold", format: (v) => String(v) },
+  { key: "avgViews", label: "Avg. Views", icon: "solar:play-bold", format: formatNumber },
 ];
 
 const ROW_COLORS = [
@@ -112,7 +112,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
                         </span>
                         {isWinner && (
                           <Icon
-                            icon="solar:crown-bold-duotone"
+                            icon="solar:crown-bold"
                             width={12}
                             className="text-amber-400 inline-block ml-1 -mt-0.5"
                           />

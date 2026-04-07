@@ -17,7 +17,7 @@ import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
 import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
 import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import { StatCards } from "@/components/virality/StatCards";
+import { StatCards } from "@clipper/shared-ui";
 import { PostsTable } from "@/components/virality/PostsTable";
 import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";

@@ -1,6 +1,6 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import type { StatCardItem } from "@/components/virality/StatCards";
+import type { StatCardItem } from "@clipper/shared-ui";
 import { formatNumber } from "@/lib/formatters";
 
 /** Percentage change helper — returns null when prev is 0 */

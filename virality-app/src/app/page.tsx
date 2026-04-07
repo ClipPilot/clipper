@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { StatCards } from "@clipper/shared-ui";
+import { StatCards, HeadToHeadTable, AccountsTable } from "@clipper/shared-ui";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { CompetitorCard } from "@/components/CompetitorCard";
-import { AccountsTable } from "@/components/AccountsTable";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { HeadToHeadTable } from "@/components/HeadToHeadTable";
 import { PlatformFilter, type PlatformOption } from "@/components/PlatformFilter";
 import { OverviewChart } from "@/components/OverviewChart";
 import {
@@ -37,7 +35,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-[1400px]">
+    <div className="p-6 lg:p-8 space-y-6">
       <DashboardHeader
         title="Dashboard"
         subtitle="Track competitor performance and viral content across platforms"
