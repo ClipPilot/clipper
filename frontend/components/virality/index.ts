@@ -2,7 +2,7 @@ export { AddAccountModal } from "./AddAccountModal";
 export { AccountsTable } from "@clipper/shared-ui";
 export type { AccountRow } from "@clipper/shared-ui";
 export { PlatformFilter } from "./PlatformFilter";
-export { DateRangeFilter } from "./DateRangeFilter";
+export { DateRangeFilter, type DateRangeValue, getMonthToDateRange } from "@clipper/shared-ui";
 export { ComparisonModeSelector } from "./ComparisonModeSelector";
 export { AnalyticsChart } from "./AnalyticsChart";
 export { StatCards } from "@clipper/shared-ui";

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { Button, Tooltip, Chip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
-import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
+import type { DateRangeValue } from "@/components/virality";
 import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
 import { getViewsInRange } from "@/app/dashboard/virality/[competitorId]/utils";
