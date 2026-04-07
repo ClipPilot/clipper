@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { StatCards, HeadToHeadTable, AccountsTable } from "@clipper/shared-ui";
+import { StatCards, HeadToHeadTable, AccountsTable, useViralityDateRange } from "@clipper/shared-ui";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { CompetitorCard } from "@/components/CompetitorCard";
 import { ActivityFeed } from "@/components/ActivityFeed";
@@ -20,6 +20,7 @@ import {
 
 export default function Dashboard() {
   const [platformFilter, setPlatformFilter] = useState<PlatformOption>("all");
+  const { dateRange, setDateRange } = useViralityDateRange();
   const [searchQuery, setSearchQuery] = useState("");
 
   const chartTotals = {
@@ -39,6 +40,8 @@ export default function Dashboard() {
       <DashboardHeader
         title="Dashboard"
         subtitle="Track competitor performance and viral content across platforms"
+        dateRange={dateRange}
+        setDateRange={setDateRange}
       />
 
       <StatCards items={MOCK_STATS} />
