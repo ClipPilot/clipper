@@ -15,19 +15,21 @@ import { useViralityDateRange } from "@/contexts/ViralityContext";
 import { userPerformanceAPI } from "@/api/userPerformance";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
-import { DateRangeFilter } from "@/components/virality";
-import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import { StatCards } from "@clipper/shared-ui";
-import { PostsTable } from "@/components/virality/PostsTable";
-import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
-import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
-import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
+import {
+  DateRangeFilter,
+  StatCards,
+  PostsTable,
+  AnalyticsChart,
+  PostFrequencyChart,
+  AccountBreakdownChart,
+  ActivityFeed,
+  RecalcOverlay,
+  AccountFilterPopover,
+  ViralityUpgradeWall,
+  type ComparisonMode,
+} from "@clipper/shared-ui";
 import { YourAccountsList } from "@/components/virality/YourAccountsList";
-import { ActivityFeed } from "@clipper/shared-ui";
-import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
-import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
 import { AddAccountModal } from "@/components/virality/AddAccountModal";
-import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import {
   findClosestEntry,
   getComparisonDate,

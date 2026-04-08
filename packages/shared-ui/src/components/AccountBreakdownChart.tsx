@@ -10,9 +10,9 @@ import {
   Tooltip,
   Label,
 } from "recharts";
-import type { ViralityAccount, ViralityPost } from "@/api/virality";
-import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformIconColor, CHART_COLORS } from "@/lib/platformUtils";
+import type { ViralityAccount, ViralityPost } from "../lib/viralityTypes";
+import { formatNumber } from "../lib/formatters";
+import { platformIcon, platformIconColor, CHART_COLORS } from "../lib/platformUtils";
 
 interface AccountEntry {
   name: string;
@@ -88,7 +88,6 @@ export function AccountBreakdownChart({
 
     const sorted = entries.filter((e) => e.value > 0).sort((a, b) => b.value - a.value);
 
-    // Cap at top 8, group rest as "Others"
     const MAX_DISPLAY = 8;
     if (sorted.length > MAX_DISPLAY) {
       const top = sorted.slice(0, MAX_DISPLAY);

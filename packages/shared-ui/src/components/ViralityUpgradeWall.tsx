@@ -4,10 +4,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-/**
- * Full-screen upgrade paywall shown to teams that don't have access
- * to the Virality Tracker feature.
- */
 export function ViralityUpgradeWall() {
   const router = useRouter();
 

@@ -12,8 +12,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ViralityPost } from "@/api/virality";
-import { buildPostFrequencyDataFromRange } from "@/app/dashboard/virality/[competitorId]/utils";
+import type { ViralityPost } from "../lib/viralityTypes";
+import { buildPostFrequencyDataFromRange } from "../lib/viralityUtils";
 
 const LINE_COLOR = "var(--accent)";
 

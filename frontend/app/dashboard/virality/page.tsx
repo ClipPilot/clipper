@@ -16,8 +16,7 @@ import {
   RecalcOverlay,
 } from "@/components/virality";
 import { ViralSettingsModal } from "@/components/virality/ViralSettingsModal";
-import { CompetitorCard } from "@clipper/shared-ui";
-import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import { CompetitorCard, ViralityUpgradeWall } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
 import { HeadToHeadTable } from "@clipper/shared-ui";
 import { useViralityDateRange } from "@/contexts/ViralityContext";

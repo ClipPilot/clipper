@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Button, Popover, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { ViralityAccount } from "@/api/virality";
+import type { ViralityAccount } from "../lib/viralityTypes";
 
 const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
   instagram: { icon: "ri:instagram-fill", color: "text-pink-500" },

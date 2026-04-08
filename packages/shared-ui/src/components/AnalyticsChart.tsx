@@ -16,10 +16,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ViralityAccount, ViralityPost } from "@/api/virality";
-import { formatChartValue } from "@/lib/formatters";
-import { CHART_COLORS } from "@/lib/platformUtils";
-import { buildChartDataByAccount } from "@/app/dashboard/virality/[competitorId]/utils";
+import type { ViralityAccount, ViralityPost } from "../lib/viralityTypes";
+import { formatChartValue } from "../lib/formatters";
+import { CHART_COLORS } from "../lib/platformUtils";
+import { buildChartDataByAccount } from "../lib/viralityUtils";
 
 type ChartMetricKey = "likes" | "comments" | "views";
 
@@ -69,18 +69,13 @@ function SyncTick({ x, y, payload, index, chartData }: any) {
 }
 
 interface AnalyticsChartProps {
-  /** Overlay accounts to show as individual lines alongside the total */
   accounts: ViralityAccount[];
   postsByAccount: Record<number, ViralityPost[]>;
-  /** All accounts (used for total line and stable axis domains) */
   allAccounts?: ViralityAccount[];
-  /** All accounts' posts (used for total line and stable axis domains) */
   allPostsByAccount?: Record<number, ViralityPost[]>;
-  /** Stable color map keyed by account ID. When provided, colors stay consistent across tab switches. */
   colorMap?: Record<number, string>;
   startDate?: string;
   endDate?: string;
-  /** Optional change % overrides for the metric cards (views, likes, comments). When provided, these are used instead of the internally computed daily change. */
   changeOverrides?: { views?: number | null; likes?: number | null; comments?: number | null };
 }
 
@@ -90,7 +85,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
   const getColor = (account: ViralityAccount, index: number) =>
     colorMap?.[account.id] ?? CHART_COLORS[index % CHART_COLORS.length];
 
-  // Build chart data from ALL accounts so X-axis stays stable and we can compute total
   const axisAccounts = allAccounts ?? accounts;
   const axisPostsByAccount = allPostsByAccount ?? postsByAccount;
 
@@ -106,7 +100,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     [axisPostsByAccount, axisAccounts, activeMetric, startDate, endDate]
   );
 
-  // Chart data: aggregated total line + individual overlay account lines
   const chartData = useMemo(() => {
     return fullChartData.map((point) => {
       let total = 0;
@@ -123,7 +116,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const showTotal = accounts.length === 0;
 
-  // Y-axis domain: from total when showing all, from overlay accounts when filtered
   const yDomain = useMemo(() => {
     let max = 0;
     for (const point of chartData) {
@@ -142,12 +134,10 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const hasData = fullChartData.length > 0;
 
-  // When accounts are selected, use those for totals/tooltip; otherwise use all accounts
   const hasSelection = accounts.length > 0;
   const totalsAccounts = hasSelection ? accounts : axisAccounts;
   const totalsPostsByAccount = hasSelection ? postsByAccount : axisPostsByAccount;
 
-  // Tooltip summary: all 3 metrics per hour so tooltip can show views/likes/comments regardless of active metric
   const tooltipByHour = useMemo(() => {
     const map: Record<string, { views: number; likes: number; comments: number }> = {};
     const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
@@ -163,7 +153,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
           const views = entry.views ?? 0;
           const existing = postHourMax.get(hour);
           if (!existing || views > existing.views) {
-            postHourMax.set(hour, { views, likes: entry.likes, comments: entry.comments });
+            postHourMax.set(hour, { views, likes: entry.likes ?? 0, comments: entry.comments ?? 0 });
           }
         }
         const sortedHours = Array.from(postHourMax.keys()).sort();
@@ -188,7 +178,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     return map;
   }, [totalsAccounts, totalsPostsByAccount, startDate, endDate]);
 
-  // Metric card totals — filtered to selected accounts when applicable
   const totals = useMemo(() => {
     let likes = 0,
       comments = 0,
@@ -226,7 +215,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     };
   }, [tooltipByHour]);
 
-  // Precompute % change between consecutive hours for tooltip
   const tooltipChangeByHour = useMemo(() => {
     const sorted = Object.keys(tooltipByHour).sort();
     const changeMap: Record<string, { views: number | null; likes: number | null; comments: number | null }> = {};
@@ -540,7 +528,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
  }}
  cursor={{ stroke: "var(--border-light)", strokeWidth: 1, strokeDasharray: "4 4" }}
  />
-                {/* Individual overlay account lines (rendered first = below) */}
                 {accounts.map((account, i) => {
                   const color = getColor(account, i);
                   return (
@@ -562,7 +549,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     />
                   );
                 })}
-                {/* Total aggregated line — only when no individual accounts selected */}
                 {accounts.length === 0 && (
                   <Area
                     key="total"

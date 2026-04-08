@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import { Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { ViralityAccount, ViralityPost } from "@/api/virality";
-import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformIconColor } from "@/lib/platformUtils";
+import type { ViralityAccount, ViralityPost } from "../lib/viralityTypes";
+import { formatNumber } from "../lib/formatters";
+import { platformIcon, platformIconColor } from "../lib/platformUtils";
 
 interface BestPerformingAccountsProps {
   accounts: ViralityAccount[];

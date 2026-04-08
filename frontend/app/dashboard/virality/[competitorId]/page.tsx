@@ -26,17 +26,19 @@ import {
   platformIcon,
   platformIconColor,
 } from "@/lib/platformUtils";
-import { DateRangeFilter } from "@/components/virality";
-import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import { StatCards } from "@clipper/shared-ui";
-import { PostsTable } from "@/components/virality/PostsTable";
-import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
-import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
-import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
-import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
-import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
-import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
-import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import {
+  DateRangeFilter,
+  StatCards,
+  PostsTable,
+  AnalyticsChart,
+  PostFrequencyChart,
+  AccountBreakdownChart,
+  BestPerformingAccounts,
+  RecalcOverlay,
+  AccountFilterPopover,
+  ViralityUpgradeWall,
+  type ComparisonMode,
+} from "@clipper/shared-ui";
 import {
   findClosestEntry,
   getComparisonDate,

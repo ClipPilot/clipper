@@ -8,13 +8,14 @@ import {
   Chip,
   Label,
   cn } from "@heroui/react";
-import { PaginationControl } from "@/components/ui/PaginationControl";
+import { PaginationControl } from "./PaginationControl";
 import { Icon } from "@iconify/react";
-import type { ViralityPost } from "@/api/virality";
-import { formatNumber, formatDate } from "@/lib/formatters";
-import { platformIcon, platformIconColor } from "@/lib/platformUtils";
-import { getPostMetricChange, getPostEngRateChange, getComparisonDate } from "@/app/dashboard/virality/[competitorId]/utils";
-import { ComparisonModeSelector, type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
+import type { ViralityPost } from "../lib/viralityTypes";
+import { formatNumber, formatDate } from "../lib/formatters";
+import { platformIcon, platformIconColor } from "../lib/platformUtils";
+import { getPostMetricChange, getPostEngRateChange, getComparisonDate } from "../lib/viralityUtils";
+import { ComparisonModeSelector } from "./ComparisonModeSelector";
+import type { ComparisonMode } from "../lib/viralityUtils";
 
 interface PostsTableProps {
   posts: ViralityPost[];
