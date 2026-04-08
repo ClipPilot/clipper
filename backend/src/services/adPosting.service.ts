@@ -3,7 +3,6 @@ import {
   clips,
   posts,
   campaigns,
-  userAccounts,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull } from "drizzle-orm";
 import { teamService } from "./team.service";
@@ -300,35 +299,10 @@ class AdPostingService {
     platform: "instagram" | "tiktok" | "x",
     username: string
   ): Promise<{ id: number; created: boolean }> {
-    const existing = await db
-      .select({ id: userAccounts.id })
-      .from(userAccounts)
-      .where(
-        and(
-          eq(userAccounts.team_id, teamId),
-          eq(userAccounts.platform, platform),
-          eq(userAccounts.username, username)
-        )
-      )
-      .limit(1);
-
-    if (existing.length > 0) return { id: existing[0].id, created: false };
-
     const buildUrl = AdPostingService.PROFILE_URL_MAP[platform];
-    const [inserted] = await db
-      .insert(userAccounts)
-      .values({
-        team_id: teamId,
-        platform,
-        username,
-        profile_url: buildUrl(username),
-        source: "mass_posting",
-        is_active: true,
-        syncs_remaining: 14,
-      })
-      .returning({ id: userAccounts.id });
-
-    return { id: inserted.id, created: true };
+    return userPerformanceService.findOrCreateMassPostingAccount(
+      teamId, platform, username, buildUrl
+    );
   }
 
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {

@@ -5,6 +5,14 @@ import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
 import { eq, and, or, lte, inArray, sql, isNull, not, gt, isNotNull } from "drizzle-orm";
 import { checkAndSendViralAlertsForTeam } from "./viralAlerts";
+import {
+  SYNCS_PER_WEEK,
+  SCRAPE_WINDOW_DAYS,
+  MAX_METRICS_HISTORY,
+  MAX_FOLLOWER_HISTORY,
+  STALE_SYNC_MINUTES,
+  USER_ACCOUNT_SOURCE_MASS_POSTING,
+} from "./constants";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -14,13 +22,6 @@ const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
 const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
 const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const SYNC_INTERVAL = 12 // every 12 hours
-const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
-const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
-const SCRAPE_WINDOW_DAYS = 31;
-const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
-const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
-const STALE_SYNC_MINUTES = 15;
 
 // ── Apify helpers ──
 
@@ -936,7 +937,7 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
           .where(and(
             inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
             eq(schema.userAccounts.is_active, true),
-            or(isNull(schema.userAccounts.source), not(eq(schema.userAccounts.source, "mass_posting"))),
+            or(isNull(schema.userAccounts.source), not(eq(schema.userAccounts.source, USER_ACCOUNT_SOURCE_MASS_POSTING))),
             gt(schema.userAccounts.id, lastId),
           ))
           .orderBy(schema.userAccounts.id)
