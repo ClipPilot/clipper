@@ -3,7 +3,7 @@ import { JetBrains_Mono, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ViralityProvider } from "@clipper/shared-ui";
-import { ViralitySyncListener } from "@clipper/shared-ui";
+import { ViralitySyncListener } from "@/components/ViralitySyncListener";
 
 const fontSans = JetBrains_Mono({
   subsets: ["latin"],

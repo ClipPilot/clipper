@@ -1,8 +1,6 @@
 import type { CompetitorCardData } from "@/components/CompetitorCard";
-import type { AccountRow } from "@/components/AccountsTable";
+import type { AccountRow, CompetitorMetrics, StatCardItem } from "@clipper/shared-ui";
 import type { FeedPost } from "@/components/ActivityFeed";
-import type { CompetitorMetrics } from "@/components/HeadToHeadTable";
-import type { StatCardItem } from "@clipper/shared-ui";
 import type { ChartDataPoint } from "@/components/OverviewChart";
 
 export const MOCK_STATS: StatCardItem[] = [
