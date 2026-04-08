@@ -26,7 +26,7 @@ import {
   platformIcon,
   platformIconColor,
 } from "@/lib/platformUtils";
-import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
+import { DateRangeFilter } from "@/components/virality";
 import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 import { StatCards } from "@clipper/shared-ui";
 import { PostsTable } from "@/components/virality/PostsTable";

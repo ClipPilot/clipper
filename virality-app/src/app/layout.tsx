@@ -3,6 +3,7 @@ import { JetBrains_Mono, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ViralityProvider } from "@clipper/shared-ui";
+import { ViralitySyncListener } from "@clipper/shared-ui";
 
 const fontSans = JetBrains_Mono({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export default function RootLayout({
         className={`${fontSans.variable} ${fontMono.variable} min-h-screen text-foreground bg-background font-sans antialiased flex`}
       >
         <ViralityProvider>
+          <ViralitySyncListener />
           <Sidebar />
           <main className="flex-1 ml-64 overflow-auto min-h-screen">
             {children}

@@ -1,5 +1,12 @@
 export { formatNumber, formatChartValue, formatDate, timeAgo } from "./formatters";
 export {
+  syncingAccountsAtom,
+  activeSyncingIdsAtom,
+  isSyncInProgressAtom,
+  type SyncAccountStatus,
+  type SyncAccountState,
+} from "./viralitySync";
+export {
   platformIcon,
   platformIconColor,
   platformDisplayName,
