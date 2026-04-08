@@ -23,7 +23,7 @@ import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { YourAccountsList } from "@/components/virality/YourAccountsList";
-import { ActivityFeed } from "@/components/virality/ActivityFeed";
+import { ActivityFeed } from "@clipper/shared-ui";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
 import { AddAccountModal } from "@/components/virality/AddAccountModal";
@@ -35,6 +35,7 @@ import {
   computePostsPerWeek,
   buildStatCards,
   getNextSyncCountdown,
+  toFeedPosts,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 import { useViralitySync } from "@/hooks/useViralitySyncSocket";
@@ -419,10 +420,9 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             </div>
             <div className="lg:col-span-1">
               <ActivityFeed
-                posts={derived.activePosts}
-                allPosts={Object.values(postsByAccount).flat()}
-                accountMap={derived.accountMap}
-                dateRange={dateRange}
+                posts={toFeedPosts(derived.activePosts, derived.accountMap, dateRange.startDate, dateRange.endDate)}
+                allPosts={toFeedPosts(Object.values(postsByAccount).flat(), derived.accountMap)}
+                hasDateRange={!!(dateRange.startDate || dateRange.endDate)}
               />
             </div>
           </div>

@@ -3,11 +3,8 @@
 import { useState } from "react";
 import { Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { StatCards, HeadToHeadTable, AccountsTable, useViralityDateRange } from "@clipper/shared-ui";
+import { StatCards, HeadToHeadTable, AccountsTable, useViralityDateRange, CompetitorCard, ActivityFeed, PlatformFilter, type PlatformOption } from "@clipper/shared-ui";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { CompetitorCard } from "@/components/CompetitorCard";
-import { ActivityFeed } from "@/components/ActivityFeed";
-import { PlatformFilter, type PlatformOption } from "@/components/PlatformFilter";
 import { OverviewChart } from "@/components/OverviewChart";
 import {
   MOCK_STATS,

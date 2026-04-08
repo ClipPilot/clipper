@@ -16,8 +16,7 @@ import {
   RecalcOverlay,
 } from "@/components/virality";
 import { ViralSettingsModal } from "@/components/virality/ViralSettingsModal";
-import type { Platform } from "@/lib/platformUtils";
-import { CompetitorCard } from "@/components/virality/CompetitorCard";
+import { CompetitorCard } from "@clipper/shared-ui";
 import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import { useTeams } from "@/hooks/useTeams";
 import { HeadToHeadTable } from "@clipper/shared-ui";
@@ -35,6 +34,7 @@ import { userPerformanceAPI } from "@/api/userPerformance";
 import {
   pct,
   computePostsPerWeek,
+  toFeedPosts,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 import {
@@ -49,7 +49,7 @@ export default function ViralityPage() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
   const { dateRange, setDateRange } = useViralityDateRange();
-  const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
+  const [platformFilter, setPlatformFilter] = useState<import("@clipper/shared-ui").PlatformOption>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
   const {
@@ -74,11 +74,6 @@ export default function ViralityPage() {
     useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [cardsExpanded, setCardsExpanded] = useState(false);
-  const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(
-    null,
-  );
-  const [editingName, setEditingName] = useState("");
   const initialLoadDone = useRef(false);
 
   // My Performance state
@@ -462,33 +457,6 @@ export default function ViralityPage() {
     }
   };
 
-  const handleSaveCompetitorName = async (competitorId: number) => {
-    if (!selectedTeam?.id || !editingName.trim()) return;
-    try {
-      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, {
-        name: editingName.trim(),
-      });
-      setCompetitors((prev) =>
-        prev.map((c) =>
-          c.id === competitorId ? { ...c, name: editingName.trim() } : c,
-        ),
-      );
-      setSimpleCompetitors((prev) =>
-        prev.map((c) =>
-          c.id === competitorId ? { ...c, name: editingName.trim() } : c,
-        ),
-      );
-      setEditingCompetitorId(null);
-      toast({ title: "Competitor renamed", color: "success" });
-    } catch (err: any) {
-      toast({
-        title: "Failed to rename competitor",
-        description: err.message,
-        color: "danger",
-      });
-    }
-  };
-
   const handleAddAccount = async (
     platform: "tiktok" | "instagram" | "x",
     profileUrl: string,
@@ -655,22 +623,22 @@ export default function ViralityPage() {
             {competitorCards.map((card, idx) => (
               <CompetitorCard
                 key={card.competitor.id}
-                {...card}
-                index={idx}
-                isExpanded={cardsExpanded}
-                onToggleExpand={() => setCardsExpanded((v) => !v)}
-                postsByAccount={postsByAccount}
-                editingCompetitorId={editingCompetitorId}
-                editingName={editingName}
-                onEditStart={(id, name) => {
-                  setEditingName(name);
-                  setEditingCompetitorId(id);
+                data={{
+                  id: card.competitor.id,
+                  name: card.competitor.name,
+                  accountCount: card.competitor.accounts.length,
+                  followers: card.followers,
+                  totalViews: card.totalViews,
+                  engRate: card.engRate,
+                  avgViews: card.avgViews,
+                  platforms: card.platforms,
+                  followersChange: card.followersChange,
+                  viewsChange: card.viewsChange,
+                  engRateChange: card.engRateChange,
+                  isMyPerformance: card.isMyPerformance,
                 }}
-                onEditNameChange={setEditingName}
-                onEditSave={handleSaveCompetitorName}
-                onEditCancel={() => setEditingCompetitorId(null)}
-                onViewCompetitor={handleViewCompetitor}
-                isMyPerformance={card.isMyPerformance}
+                index={idx}
+                onView={handleViewCompetitor}
               />
             ))}
           </div>
@@ -712,7 +680,7 @@ export default function ViralityPage() {
           <div className="xl:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <PlatformFilter
-                selected={platformFilter}
+                value={platformFilter}
                 onChange={setPlatformFilter}
               />
               <div className="relative w-60">
@@ -746,10 +714,9 @@ export default function ViralityPage() {
           <div className="xl:col-span-1">
             <RecalcOverlay active={isRecalculating}>
               <ActivityFeed
-                posts={allPosts}
-                allPosts={allPostsUnfiltered}
-                accountMap={accountMap}
-                dateRange={dateRange}
+                posts={toFeedPosts(allPosts, accountMap, dateRange.startDate, dateRange.endDate)}
+                allPosts={toFeedPosts(allPostsUnfiltered, accountMap)}
+                hasDateRange={!!(dateRange.startDate || dateRange.endDate)}
               />
             </RecalcOverlay>
           </div>
