@@ -5,17 +5,19 @@ import { eq, and, or, desc, count, gte, lte, inArray, sql, isNotNull, gt } from 
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
-  SYNCS_PER_DAY,
   SCRAPE_WINDOW_DAYS,
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
+import {
+  SYNCS_PER_WEEK,
+  MASS_POST_SYNC_BUDGET,
+} from "../../config/viralitySyncConstants";
 import { extractPostIdentifier } from "../../utils/postIdentifier";
 import { canAccessViralityTracker } from "../../utils/plans";
 import { teamService } from "../team.service";
 import { emitViralitySyncUpdate } from "../socket.service";
 
-const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7;
 const STALE_SYNC_MINUTES = 15;
 
 interface MetricsEntry {
@@ -195,10 +197,8 @@ export class AccountTrackingService {
 
     const account = inserted[0];
 
-    // Charge 1 credit immediately on account creation
-    const { success } = await teamService.consumeClip(teamId);
+    const { success } = await this.chargeForAccountCreation(teamId);
     if (!success) {
-      // Roll back: delete the just-created account
       await db.delete(this.accountsTable).where(eq(this.accountsTable.id, account.id));
       throw new Error("Insufficient credits to start tracking");
     }
@@ -234,21 +234,13 @@ export class AccountTrackingService {
     return updated[0];
   }
 
-  async syncAccount(accountId: number, teamId: number) {
-    // Clean up any stale syncs before starting
-    await this.cleanupStaleSyncs();
+  // ── Credit gating (override to change billing behavior) ──
 
-    // Verify ownership
-    const account = await this.getAccountById(accountId);
-    if (!account || account.team_id !== teamId) {
-      throw new Error("Account not found or access denied");
-    }
+  protected async chargeForAccountCreation(teamId: number): Promise<{ success: boolean }> {
+    return teamService.consumeClip(teamId);
+  }
 
-    if (!account.is_active) {
-      throw new Error("Account is inactive and cannot be synced");
-    }
-
-    // Syncs/credits gating — atomic decrement to avoid race conditions
+  protected async consumeSyncCredit(accountId: number, teamId: number): Promise<void> {
     const decremented = await db
       .update(this.accountsTable)
       .set({
@@ -264,7 +256,6 @@ export class AccountTrackingService {
       .returning() as any[];
 
     if (decremented.length === 0) {
-      // No syncs remaining — charge a credit and reset
       const { success: charged } = await teamService.consumeClip(teamId);
       if (charged) {
         await db
@@ -273,7 +264,6 @@ export class AccountTrackingService {
           .where(eq(this.accountsTable.id, accountId));
         console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
       } else {
-        // No credits — deactivate account
         await db
           .update(this.accountsTable)
           .set({ is_active: false, updated_at: new Date() })
@@ -281,6 +271,23 @@ export class AccountTrackingService {
         throw new Error("No credits available. Account has been deactivated.");
       }
     }
+  }
+
+  async syncAccount(accountId: number, teamId: number) {
+    // Clean up any stale syncs before starting
+    await this.cleanupStaleSyncs();
+
+    // Verify ownership
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    if (!account.is_active) {
+      throw new Error("Account is inactive and cannot be synced");
+    }
+
+    await this.consumeSyncCredit(accountId, teamId);
 
     // Update status to syncing
     await db
@@ -570,7 +577,7 @@ export class AccountTrackingService {
         like_count: 0,
         comment_count: 0,
         mass_post_id: postId,
-        syncs_remaining: 62,
+        syncs_remaining: MASS_POST_SYNC_BUDGET,
         metrics_history: [],
       })
       .returning({ id: this.postsTable.id }) as any[];
