@@ -20,6 +20,12 @@ export interface Team {
 
 const storageOptions = { getOnInit: false };
 
+export const userAtom = atomWithStorage<User | null>("user", null, undefined, storageOptions);
+
+export const isAuthenticatedAtom = atom<boolean>((get) => {
+  return get(userAtom) !== null;
+});
+
 export const userTeamsAtom = atomWithStorage<Team[]>("userTeams", [], undefined, storageOptions);
 export const selectedTeamAtom = atomWithStorage<Team | null>("selectedTeam", null, undefined, storageOptions);
 export const defaultTeamIdAtom = atomWithStorage<number | null>("defaultTeamId", null, undefined, storageOptions);
