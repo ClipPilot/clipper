@@ -14,6 +14,7 @@ import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
 import { MY_PERFORMANCE_NAME } from "@/lib/viralityConstants";
 import { detectPlatformFromUrl } from "@/lib/platformUtils";
+import { isAnalyticsPlan } from "@/lib/plans";
 
 type Platform = "tiktok" | "instagram" | "x";
 type AccountType = "profile" | "hashtag" | "keyword";
@@ -23,6 +24,9 @@ interface AddAccountModalProps {
   onClose: () => void;
   competitors?: ViralityCompetitor[];
   hideCompetitorSelect?: boolean;
+  accountCount?: number;
+  accountLimit?: number;
+  plan?: string | null;
   onSubmit: (platform: Platform, profileUrl: string, options: {
     enableAlerts: boolean;
     competitorId?: number;
@@ -43,6 +47,9 @@ export function AddAccountModal({
   onClose,
   competitors = [],
   hideCompetitorSelect = false,
+  accountCount,
+  accountLimit,
+  plan,
   onSubmit,
 }: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
@@ -270,17 +277,23 @@ export function AddAccountModal({
                 </div>
               )}
 
+              {accountLimit !== undefined && accountLimit !== -1 && accountCount !== undefined && accountCount >= accountLimit && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <Icon icon="solar:shield-warning-bold" className="text-yellow-500" width={18} />
+                  <p className="text-sm text-yellow-500">Account limit reached ({accountLimit}). Upgrade your plan to add more.</p>
+                </div>
+              )}
               <Button
                 className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
                 onPress={handleSubmit}
                 isPending={isSubmitting}
-                isDisabled={!profileUrl.trim()}
+                isDisabled={!profileUrl.trim() || (accountLimit !== undefined && accountLimit !== -1 && accountCount !== undefined && accountCount >= accountLimit)}
               >
                 {!isSubmitting && <Icon icon="solar:bolt-bold" width={20} />}
                 Start Tracking
               </Button>
               <p className="text-xs text-text-tertiary text-center underline">
-                1 credit/account/week
+                {isAnalyticsPlan(plan) ? "Free syncs included" : "1 credit/account/week"}
               </p>
             </Modal.Body>
           </Modal.Dialog>

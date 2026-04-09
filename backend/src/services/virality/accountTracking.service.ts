@@ -14,7 +14,7 @@ import {
   MASS_POST_SYNC_BUDGET,
 } from "../../config/viralitySyncConstants";
 import { extractPostIdentifier } from "../../utils/postIdentifier";
-import { canAccessViralityTracker } from "../../utils/plans";
+import { canAccessViralityTracker, isAnalyticsPlan, getViralityAccountLimit } from "../../utils/plans";
 import { teamService } from "../team.service";
 import { emitViralitySyncUpdate } from "../socket.service";
 
@@ -157,6 +157,15 @@ export class AccountTrackingService {
       throw new Error(`${label} is already being tracked`);
     }
 
+    const plan = await this.getTeamPlan(teamId);
+    const accountLimit = getViralityAccountLimit(plan);
+    if (accountLimit !== -1) {
+      const currentCount = await this.getAccountCount(teamId);
+      if (currentCount >= accountLimit) {
+        throw new Error(`Account limit of ${accountLimit} reached for your plan`);
+      }
+    }
+
     // Build profile_url based on account type
     let profile_url: string;
     if (accountType === "profile") {
@@ -234,13 +243,73 @@ export class AccountTrackingService {
     return updated[0];
   }
 
+  // ── Plan transition helpers ──
+
+  async deactivateExcessAccounts(teamId: number, newLimit: number): Promise<number> {
+    if (newLimit === -1) return 0;
+
+    const activeAccounts = await db
+      .select({ id: this.accountsTable.id })
+      .from(this.accountsTable)
+      .where(
+        and(
+          eq(this.accountsTable.team_id, teamId),
+          eq(this.accountsTable.is_active, true)
+        )
+      )
+      .orderBy(desc(this.accountsTable.created_at)) as any[];
+
+    const toDeactivate = activeAccounts.slice(newLimit);
+    if (toDeactivate.length === 0) return 0;
+
+    const ids = toDeactivate.map((a: any) => a.id);
+    await db
+      .update(this.accountsTable)
+      .set({ is_active: false, updated_at: new Date() })
+      .where(inArray(this.accountsTable.id, ids));
+
+    console.log(`[PlanTransition] Deactivated ${ids.length} excess accounts for team ${teamId} (limit=${newLimit})`);
+    return ids.length;
+  }
+
+  async reactivateAllAccounts(teamId: number): Promise<number> {
+    const result = await db
+      .update(this.accountsTable)
+      .set({ is_active: true, updated_at: new Date() })
+      .where(
+        and(
+          eq(this.accountsTable.team_id, teamId),
+          eq(this.accountsTable.is_active, false)
+        )
+      )
+      .returning({ id: this.accountsTable.id }) as any[];
+
+    if (result.length > 0) {
+      console.log(`[PlanTransition] Reactivated ${result.length} accounts for team ${teamId}`);
+    }
+    return result.length;
+  }
+
   // ── Credit gating (override to change billing behavior) ──
 
+  protected async getTeamPlan(teamId: number): Promise<string> {
+    const [team] = await db
+      .select({ plan: teams.plan })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1) as any[];
+    return team?.plan || "free";
+  }
+
   protected async chargeForAccountCreation(teamId: number): Promise<{ success: boolean }> {
+    const plan = await this.getTeamPlan(teamId);
+    if (isAnalyticsPlan(plan)) return { success: true };
     return teamService.consumeClip(teamId);
   }
 
   protected async consumeSyncCredit(accountId: number, teamId: number): Promise<void> {
+    const plan = await this.getTeamPlan(teamId);
+    if (isAnalyticsPlan(plan)) return;
     const decremented = await db
       .update(this.accountsTable)
       .set({
