@@ -134,6 +134,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       page,
       pageSize,
       campaignId,
+      groupByVideo,
     } = req.query;
 
     const result = await adPostingService.getPostsForTeam(teamId, {
@@ -146,6 +147,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       page: page ? parseInt(page as string) : undefined,
       pageSize: pageSize ? Math.min(parseInt(pageSize as string), 100) : undefined,
       campaignId: campaignId ? parseInt(campaignId as string) : undefined,
+      groupByVideo: groupByVideo === "true",
     });
 
     return res.status(200).json(result);

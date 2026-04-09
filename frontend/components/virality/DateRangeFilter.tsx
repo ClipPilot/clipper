@@ -77,17 +77,11 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
         <Dropdown.Popover>
           <Dropdown.Menu
             aria-label="Date presets"
-            onAction={(key) => {
-              const k = key as string;
-              if (k === "custom-apply") {
-                const n = parseInt(customAmount, 10);
-                if (n && n >= 1) {
-                  const totalMonths = customUnit === "years" ? n * 12 : n;
-                  onChange(subtractMonths(totalMonths));
-                }
-                return;
-              }
-              const months = parseInt(k, 10);
+            selectionMode="single"
+            onSelectionChange={(keys) => {
+              const key = Array.from(keys)[0] as string | undefined;
+              if (!key || key === "custom-apply") return;
+              const months = parseInt(key, 10);
               if (months) onChange(subtractMonths(months));
             }}
           >

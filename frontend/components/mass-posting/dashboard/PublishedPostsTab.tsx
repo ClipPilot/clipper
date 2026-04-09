@@ -214,12 +214,9 @@ export function PublishedPostsTab({
                             <p className="text-sm font-semibold text-text-primary truncate max-w-[320px]">
                               {post.clip_title || `Post #${post.id}`}
                             </p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                              <span className="text-xs text-text-tertiary">
-                                Published
-                              </span>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 text-xs font-medium rounded-lg border bg-emerald-500/10 border-emerald-500/20 text-emerald-400">
+                              Published
+                            </span>
                           </div>
                         </div>
                       </td>

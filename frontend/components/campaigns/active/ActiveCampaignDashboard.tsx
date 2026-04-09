@@ -50,15 +50,14 @@ interface ActiveCampaignDashboardProps {
 
 function getPostStatusStyle(status: string) {
   const styles: Record<string, { className: string; label: string }> = {
-    waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Waiting Assignment" },
-    in_drive: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
-    published: { className: "bg-green-500/10 border-success-500/20 text-green-500", label: "Published" },
-    // Legacy post-level statuses (used by published tab)
-    pending: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Awaiting Platforms" },
-    processing: { className: "bg-yellow-500/10 border-warning-500/20 text-yellow-500", label: "Processing" },
-    scheduled: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
-    posted: { className: "bg-green-500/10 border-success-500/20 text-green-500", label: "Published" },
-    failed: { className: "bg-red-500/10 border-danger-500/20 text-red-500", label: "Failed" },
+    waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-400", label: "Waiting Assignment" },
+    in_drive: { className: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400", label: "In Drive" },
+    published: { className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400", label: "Published" },
+    pending: { className: "bg-amber-500/10 border-amber-500/20 text-amber-400", label: "Awaiting Platforms" },
+    processing: { className: "bg-yellow-500/10 border-yellow-500/20 text-yellow-400", label: "Processing" },
+    scheduled: { className: "bg-violet-500/10 border-violet-500/20 text-violet-400", label: "Scheduled" },
+    posted: { className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400", label: "Published" },
+    failed: { className: "bg-red-500/10 border-red-500/20 text-red-400", label: "Failed" },
   };
   return styles[status] || styles.waiting_assignment;
 }
@@ -167,6 +166,7 @@ export function ActiveCampaignDashboard({
         sortBy: "posted_time",
         sortOrder: "desc",
         campaignId: campaign.id,
+        groupByVideo: true,
       });
       setPosts(result.posts);
       setTotalPosts(result.pagination.totalPosts);
