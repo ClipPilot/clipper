@@ -35,7 +35,7 @@ import {
   computePostsPerWeek,
   toFeedPosts,
 } from "@/app/dashboard/virality/[competitorId]/utils";
-import { canAccessViralityTracker } from "@/lib/plans";
+import { canAccessViralityTracker, getViralityAccountLimit, isAnalyticsPlan } from "@/lib/plans";
 import {
   MY_PERFORMANCE_NAME,
   MY_PERFORMANCE_COMPETITOR_ID,
@@ -587,13 +587,27 @@ export default function ViralityPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">
-              Tracked Competitors
-            </h1>
-            <p className="text-text-secondary text-sm mt-1">
-              Real-time performance metrics for your monitored competitors
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">
+                Tracked Competitors
+              </h1>
+              <p className="text-text-secondary text-sm mt-1">
+                Real-time performance metrics for your monitored competitors
+              </p>
+            </div>
+            {(() => {
+              const limit = getViralityAccountLimit(selectedTeam?.plan);
+              if (limit === -1) return null;
+              const count = accountRows.length;
+              const pctUsed = limit > 0 ? (count / limit) * 100 : 100;
+              const color = pctUsed >= 100 ? "text-red-400" : pctUsed >= 80 ? "text-yellow-400" : "text-text-secondary";
+              return (
+                <span className={`text-sm font-medium ${color} whitespace-nowrap`}>
+                  {count} / {limit} accounts
+                </span>
+              );
+            })()}
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
@@ -609,6 +623,10 @@ export default function ViralityPage() {
               size="sm"
               className="bg-blue-500 text-white hover:bg-blue-600"
               onPress={onOpen}
+              isDisabled={(() => {
+                const limit = getViralityAccountLimit(selectedTeam?.plan);
+                return limit !== -1 && accountRows.length >= limit;
+              })()}
             >
               <Icon icon="solar:add-circle-bold" width={16} />
               Add Account
@@ -727,6 +745,9 @@ export default function ViralityPage() {
         onClose={onClose}
         competitors={simpleCompetitors}
         onSubmit={handleAddAccount}
+        accountCount={accountRows.length}
+        accountLimit={getViralityAccountLimit(selectedTeam?.plan)}
+        plan={selectedTeam?.plan}
       />
 
       {viralSettings && (
