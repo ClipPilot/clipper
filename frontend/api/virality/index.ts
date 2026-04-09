@@ -28,6 +28,20 @@ export type FollowerEntry = NonNullable<ViralityAccount["follower_history"]>[num
 
 export type AccountPostStats = NonNullable<DashboardStats["accountPostStats"]>[string];
 
+export type AlertLog = {
+  id: number;
+  team_id: number;
+  user_id: number | null;
+  email: string;
+  subject: string;
+  email_body: string;
+  viral_post_ids: number[];
+  status: "sent" | "failed";
+  error_message: string | null;
+  sent_at: string;
+  created_at: string;
+};
+
 class ViralityAPI {
   async getAccounts(teamId: number): Promise<ViralityAccount[]> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
@@ -342,6 +356,34 @@ class ViralityAPI {
 
     const data = await response.json();
     return data.settings;
+  }
+
+  async getAlertLogs(
+    teamId: number,
+    limit: number = 5,
+    offset: number = 0
+  ): Promise<AlertLog[]> {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/alert-logs?${params}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch alert logs");
+    }
+
+    const data = await response.json();
+    return data.logs;
   }
 
   async saveSettings(teamId: number, settings: ViralSettings): Promise<ViralSettings> {

@@ -62,8 +62,15 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     title: "Intelligence",
     items: [
       {
+        key: "executive-dashboard",
+        title: "Executive Dashboard",
+        icon: "solar:chart-2-bold-duotone",
+        href: "/dashboard/executive-dashboard",
+        requiredPlans: ["studio", "scale", "enterprise"],
+      },
+      {
         key: "virality-tracker",
-        title: "Performance Tracker",
+        title: "Competitor Tracker",
         icon: "solar:chart-bold-duotone",
         href: "/dashboard/virality",
         requiredPlans: ["studio", "scale", "enterprise"],
