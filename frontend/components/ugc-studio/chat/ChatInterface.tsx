@@ -39,6 +39,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     videoAttachment,
     setVideoAttachment,
     adCloneProjectId,
+    scriptGenFailed,
     sendMessage,
     acceptStructure,
     retryStructure,
@@ -417,6 +418,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
               onGenerateImages={regenerateAllImages}
               onContinue={handleContinueToGenerate}
               isContinueLoading={isStartingGeneration}
+              scriptGenFailed={scriptGenFailed}
             />
           </motion.div>
         )}

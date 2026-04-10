@@ -295,6 +295,13 @@
       "when": 1774547766798,
       "tag": "0041_pink_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1775788856932,
+      "tag": "0042_lush_tyrannus",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ interface ArtifactPanelProps {
   onGenerateImages?: () => void;
   onContinue?: () => void;
   isContinueLoading?: boolean;
+  scriptGenFailed?: boolean;
 }
 
 export function ArtifactPanel({
@@ -35,6 +36,7 @@ export function ArtifactPanel({
   onGenerateImages,
   onContinue,
   isContinueLoading,
+  scriptGenFailed,
 }: ArtifactPanelProps) {
   const step = useAtomValue(currentStepAtom);
   const charIndex = useAtomValue(currentCharacterIndexAtom);
@@ -52,6 +54,7 @@ export function ArtifactPanel({
     step === "script" &&
     !isExistingScript &&
     !videoState.isGeneratingScript &&
+    !scriptGenFailed &&
     ((!hasGeneratedScript && videoState.structureBlueprint) ||
       (hasGeneratedScript && !videoState.scriptId));
 

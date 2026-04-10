@@ -188,8 +188,7 @@ async function generateShot(
 Camera angle and body position: ${angle}
 This character sits on the ${deskSide} side of the desk, using the ${deskSide} microphone. Place this character in the podcast studio background at the ${deskSide} microphone position.
 The character speaks toward the microphone, NOT the camera. No eye contact with camera.
-This exact pose, angle, and desk position will be reused for all subsequent shots of this character.Frame only one side of the podcast set — the speaking character's half. The other host's position must be completely out  
-  of frame.
+This establishes the character's desk position and general camera angle. Subsequent shots will use the same side and setting but with natural pose variation. Frame only one side of the podcast set — the speaking character's half. The other host's position must be completely out of frame.
 
 **REFERENCE IMAGES:**
 1. FIRST image = CHARACTER identity. Depict THIS exact person — match face, skin tone, features precisely.
@@ -197,11 +196,11 @@ ${sameCharGeneratedRef ? `2. NEXT image = this character's previous shot. Copy O
   } else {
     promptPrefix = `**PODCAST SHOT ${index + 1} — CONTINUITY CHARACTER ${shot.characterIndex}**
 Camera angle: ${angle}
-Replicate the EXACT same camera angle, pose, seating position, and framing from the previous shot reference. Only facial expression and subtle hand gestures change. Outfit, setting, angle, and background stay IDENTICAL.
+Keep the SAME desk side, outfit, background, and general camera angle as the previous shot. However, introduce NATURAL MICRO-VARIATION in pose — slightly different head tilt, shifted lean direction, different hand placement on desk or near microphone. Like real podcast footage where the speaker subtly shifts between cuts. The character should feel alive and animated, not frozen in the exact same position.
 
 **REFERENCE IMAGES:**
 1. FIRST image = CHARACTER identity — face reference.
-2. SECOND image = this character's PREVIOUS shot. Copy pose, angle, outfit, background, and setting EXACTLY. Only expression changes.\n\n`;
+2. SECOND image = this character's PREVIOUS shot. Keep outfit, background, and setting IDENTICAL but vary the pose and body language naturally.\n\n`;
   }
 
   const shotPrompt = promptPrefix + buildSceneImagePrompt(
