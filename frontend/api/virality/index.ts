@@ -1,24 +1,22 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
-import type {
-  ViralityAccount as SharedViralityAccount,
-  ViralityPost as SharedViralityPost,
-  ViralityCompetitor as SharedViralityCompetitor,
-  ViralSettings as SharedViralSettings,
-  ViralityDashboard,
+import { filterExcludedPostTypes } from "@/lib/viralityConstants";
+export type {
+  ViralityAccount,
+  ViralityPost,
+  ViralityCompetitor,
+  ViralSettings,
+  CompetitorWithAccounts,
+  ViralityPostsByAccount,
 } from "@clipper/shared-types";
-
-export type ViralityAccount = SharedViralityAccount;
-
-export type ViralityPost = SharedViralityPost;
-
-export type ViralityCompetitor = SharedViralityCompetitor;
-
-export type CompetitorWithAccounts = SharedViralityCompetitor & {
-  accounts: SharedViralityAccount[];
-};
-
-export type ViralSettings = SharedViralSettings;
+import type {
+  ViralityAccount,
+  ViralityPost,
+  ViralityCompetitor,
+  ViralSettings,
+  ViralityDashboard,
+  CompetitorWithAccounts,
+} from "@clipper/shared-types";
 
 export type DashboardStats = ViralityDashboard;
 
@@ -169,10 +167,7 @@ class ViralityAPI {
     }
 
     const data = await response.json();
-    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
-    return (data.posts as ViralityPost[]).filter(
-      (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
-    );
+    return filterExcludedPostTypes(data.posts as ViralityPost[]);
   }
 
   async deletePost(teamId: number, postId: number): Promise<void> {
@@ -384,6 +379,57 @@ class ViralityAPI {
 
     const data = await response.json();
     return data.logs;
+  }
+
+  async getCompetitorsWithAccounts(teamId: number): Promise<CompetitorWithAccounts[]> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors-with-accounts`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch competitors");
+    }
+
+    const data = await response.json();
+    return data.competitors;
+  }
+
+  async getAllPosts(
+    teamId: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Record<number, ViralityPost[]>> {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const qs = params.toString();
+
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/posts${qs ? `?${qs}` : ""}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch posts");
+    }
+
+    const data = await response.json();
+    const result: Record<number, ViralityPost[]> = {};
+    for (const [accountId, posts] of Object.entries(data.postsByAccount)) {
+      result[Number(accountId)] = filterExcludedPostTypes(posts as ViralityPost[]);
+    }
+    return result;
   }
 
   async saveSettings(teamId: number, settings: ViralSettings): Promise<ViralSettings> {

@@ -2519,6 +2519,44 @@
           }
         }
       },
+      "CompetitorWithAccounts": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ViralityCompetitor"
+          },
+          {
+            "type": "object",
+            "required": [
+              "accounts"
+            ],
+            "properties": {
+              "accounts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ViralityAccount"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ViralityPostsByAccount": {
+        "type": "object",
+        "required": [
+          "postsByAccount"
+        ],
+        "properties": {
+          "postsByAccount": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ViralityPost"
+              }
+            }
+          }
+        }
+      },
       "IntakeApplicationStatus": {
         "type": "object",
         "required": [
@@ -23475,6 +23513,111 @@
           },
           "400": {
             "description": "Invalid input (name is required)"
+          },
+          "403": {
+            "description": "Plan upgrade required"
+          }
+        }
+      }
+    },
+    "/virality/{teamId}/competitors-with-accounts": {
+      "get": {
+        "summary": "List all competitors with their accounts pre-loaded",
+        "description": "Returns all competitors for a team with nested accounts in a single request, avoiding N+1 queries.",
+        "tags": [
+          "Virality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of competitors with nested accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "competitors"
+                  ],
+                  "properties": {
+                    "competitors": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CompetitorWithAccounts"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan upgrade required"
+          }
+        }
+      }
+    },
+    "/virality/{teamId}/posts": {
+      "get": {
+        "summary": "Get all posts for a team grouped by account",
+        "description": "Batch-fetches all posts across all tracked accounts in a single request, avoiding per-account queries.",
+        "tags": [
+          "Virality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posts grouped by account ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViralityPostsByAccount"
+                }
+              }
+            }
           },
           "403": {
             "description": "Plan upgrade required"

@@ -56,6 +56,8 @@ import type {
   PlatformAutoRefillSettings as SharedPlatformAutoRefillSettings,
   TeamUsageStats as SharedTeamUsageStats,
   ViralityDashboard as SharedViralityDashboard,
+  CompetitorWithAccounts as SharedCompetitorWithAccounts,
+  ViralityPostsByAccount as SharedViralityPostsByAccount,
   IntakeApplicationStatus as SharedIntakeApplicationStatus,
   ClipPostsResponse as SharedClipPostsResponse,
   CpmBillingBreakdown as SharedCpmBillingBreakdown,
@@ -126,6 +128,8 @@ export type PlatformWallet = DbCompatible<SharedPlatformWallet>;
 export type PlatformAutoRefillSettings = DbCompatible<SharedPlatformAutoRefillSettings>;
 export type TeamUsageStats = DbCompatible<SharedTeamUsageStats>;
 export type ViralityDashboard = DbCompatible<SharedViralityDashboard>;
+export type CompetitorWithAccounts = DbCompatible<SharedCompetitorWithAccounts>;
+export type ViralityPostsByAccount = DbCompatible<SharedViralityPostsByAccount>;
 export type IntakeApplicationStatus = DbCompatible<SharedIntakeApplicationStatus>;
 export type ClipPostsResponse = DbCompatible<SharedClipPostsResponse>;
 export type CpmBillingBreakdown = DbCompatible<SharedCpmBillingBreakdown>;

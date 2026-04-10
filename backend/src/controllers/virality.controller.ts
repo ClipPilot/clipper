@@ -1,5 +1,5 @@
 import { Response } from "express";
-import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, ErrorResponse } from "../types/api.types";
+import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, CompetitorWithAccounts, ViralityPostsByAccount, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
 import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
@@ -199,6 +199,35 @@ class ViralityController {
       return res.json({ competitors });
     } catch (error) {
       return handleError(res, "List competitors error", error, "Failed to list competitors");
+    }
+  }
+
+  async listCompetitorsWithAccounts(req: AuthRequest, res: Response<{ competitors: CompetitorWithAccounts[] } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const competitors = await viralityService.getAllCompetitorsWithAccounts(teamId);
+      return res.json({ competitors });
+    } catch (error) {
+      return handleError(res, "List competitors with accounts error", error, "Failed to list competitors");
+    }
+  }
+
+  async getAllPosts(req: AuthRequest, res: Response<ViralityPostsByAccount | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const startDate = parseDateQuery(req.query.startDate);
+      const endDate = parseDateQuery(req.query.endDate);
+
+      const postsByAccount = await viralityService.getPostsForTeam(teamId, startDate, endDate);
+      return res.json({ postsByAccount });
+    } catch (error) {
+      return handleError(res, "Get all posts error", error, "Failed to get posts");
     }
   }
 

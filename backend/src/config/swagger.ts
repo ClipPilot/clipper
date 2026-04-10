@@ -1525,6 +1525,34 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        CompetitorWithAccounts: {
+          allOf: [
+            { $ref: "#/components/schemas/ViralityCompetitor" },
+            {
+              type: "object",
+              required: ["accounts"],
+              properties: {
+                accounts: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/ViralityAccount" },
+                },
+              },
+            },
+          ],
+        },
+        ViralityPostsByAccount: {
+          type: "object",
+          required: ["postsByAccount"],
+          properties: {
+            postsByAccount: {
+              type: "object",
+              additionalProperties: {
+                type: "array",
+                items: { $ref: "#/components/schemas/ViralityPost" },
+              },
+            },
+          },
+        },
         IntakeApplicationStatus: {
           type: "object",
           required: [
