@@ -8,7 +8,7 @@ import { selectedTeamAtom } from "@/store/auth";
 import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useRouter } from "next/navigation";
-import { getPlanName, getPlanColor, isPaidPlan } from "@/lib/plans";
+import { getPlanName, getPlanColor, isPaidPlan, isAnalyticsPlan } from "@/lib/plans";
 
 interface WorkspaceSelectorProps extends CardProps {
   onCreateTeam?: () => void;
@@ -245,7 +245,7 @@ export default function WorkspaceSelector({
       {isPaidPlan(currentPlan) && (
         <div className="px-4 py-3 border-t border-border-base">
           <button
-            onClick={() => router.push("/dashboard/pricing")}
+            onClick={() => router.push(isAnalyticsPlan(currentPlan) ? "/dashboard/pricing/analytics" : "/dashboard/pricing")}
             className={cn(
               "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
               currentPlan === "enterprise"

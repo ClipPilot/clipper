@@ -12,6 +12,7 @@ import { clipsAPI, Clip } from "@/api/clips";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import { ugcVideoAPI, UGCVideoJob } from "@/api/ugc/video";
 import type { FaceSwapJob } from "@/components/ugc-studio/types";
+import { getPlanName, isAnalyticsPlan } from "@/lib/plans";
 
 /* ── SVG arc gauge for credits ────────────────────────────────── */
 function CreditArc({
@@ -147,6 +148,10 @@ export function DashboardGrid() {
         return "from-purple-500/20 to-purple-500/5";
       case "studio":
         return "from-accent-400/20 to-accent-400/5";
+      case "analytics_starter":
+      case "analytics_pro":
+      case "analytics_business":
+        return "from-accent-400/20 to-accent-400/5";
       default:
         return "from-blue-500/20 to-blue-500/5";
     }
@@ -159,6 +164,9 @@ export function DashboardGrid() {
       case "scale":
         return "#a855f7";
       case "studio":
+      case "analytics_starter":
+      case "analytics_pro":
+      case "analytics_business":
         return "#4F47E6";
       default:
         return "#3b82f6";
@@ -272,7 +280,7 @@ export function DashboardGrid() {
                       color: getPlanAccent(plan),
                     }}
                   >
-                    {plan}
+                    {getPlanName(plan)}
                   </Chip>
                 </div>
 
@@ -333,6 +341,17 @@ export function DashboardGrid() {
                       >
                         <Icon icon="solar:arrow-up-bold" width={14} />
                         Upgrade Plan
+                      </Button>
+                    )}
+                    {isAnalyticsPlan(plan) && (
+                      <Button
+                        size="sm"
+                        variant="tertiary"
+                        className="w-full mt-4 bg-accent-400/10 text-accent-400 font-medium"
+                        onPress={() => router.push("/dashboard/pricing/analytics")}
+                      >
+                        <Icon icon="solar:settings-bold" width={14} />
+                        Manage Subscription
                       </Button>
                     )}
                   </>

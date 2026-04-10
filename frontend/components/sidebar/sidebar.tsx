@@ -14,7 +14,7 @@ import {
   type SidebarItem,
   type SidebarSection,
 } from "./constants";
-import { getPlanName, getPlanColor, isPaidPlan } from "@/lib/plans";
+import { getPlanName, getPlanColor, isPaidPlan, isAnalyticsPlan } from "@/lib/plans";
 
 export type SidebarProps = {
   isCollapsed?: boolean;
@@ -256,8 +256,8 @@ export default function Sidebar({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => router.push("/dashboard/pricing")}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                    onClick={() => router.push(isAnalyticsPlan(plan) ? "/dashboard/pricing/analytics" : "/dashboard/pricing")}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(isAnalyticsPlan(plan) ? "/dashboard/pricing/analytics" : "/dashboard/pricing"); }}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors cursor-pointer",
                       plan === "enterprise"
@@ -345,8 +345,8 @@ export default function Sidebar({
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push("/dashboard/pricing")}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/dashboard/pricing"); }}
+                  onClick={() => router.push(isAnalyticsPlan(plan) ? "/dashboard/pricing/analytics" : "/dashboard/pricing")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push(isAnalyticsPlan(plan) ? "/dashboard/pricing/analytics" : "/dashboard/pricing"); }}
                   className={cn(
                     "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors cursor-pointer",
                     plan === "enterprise"

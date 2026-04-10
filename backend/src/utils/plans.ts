@@ -44,6 +44,12 @@ export function isMainPlatformPlan(plan: string | undefined | null): boolean {
   return MAIN_PLATFORM_PLANS.includes(plan as PlanType);
 }
 
+const KEYWORD_TRACKING_PLANS: PlanType[] = ["analytics_business", "studio", "scale", "enterprise"];
+
+export function canTrackKeywords(plan: string | undefined | null): boolean {
+  return KEYWORD_TRACKING_PLANS.includes(plan as PlanType);
+}
+
 export function getViralityAccountLimit(plan: string | undefined | null): number {
   if (!plan) return 0;
   const limit = VIRALITY_ACCOUNT_LIMITS[plan as PlanType];

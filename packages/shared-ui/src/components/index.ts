@@ -18,3 +18,4 @@ export { PostFrequencyChart } from "./PostFrequencyChart";
 export { AnalyticsChart } from "./AnalyticsChart";
 export { PaginationControl } from "./PaginationControl";
 export { PostsTable } from "./PostsTable";
+export { AnalyticsPricing, type AnalyticsTier, type AnalyticsPricingProps } from "./AnalyticsPricing";

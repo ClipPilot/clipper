@@ -163,6 +163,43 @@
           }
         }
       },
+      "AnalyticsPriceEntry": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "interval"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "description": "Price in cents"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Three-letter ISO currency code"
+          },
+          "interval": {
+            "type": "string",
+            "nullable": true,
+            "description": "Billing interval (month, year) or null for one-time"
+          }
+        }
+      },
+      "AnalyticsPricesResponse": {
+        "type": "object",
+        "required": [
+          "prices"
+        ],
+        "properties": {
+          "prices": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnalyticsPriceEntry"
+            }
+          }
+        }
+      },
       "Subscription": {
         "type": "object",
         "required": [
@@ -18327,6 +18364,37 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stripe/analytics-prices": {
+      "get": {
+        "summary": "Get live analytics plan prices from Stripe",
+        "description": "Fetches current pricing for analytics subscription tiers directly from the Stripe API.\nReturns the unit amount in cents, currency, and billing interval for each analytics plan.\n",
+        "tags": [
+          "Stripe"
+        ],
+        "responses": {
+          "200": {
+            "description": "Analytics prices retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsPricesResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to fetch prices from Stripe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

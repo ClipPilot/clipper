@@ -73,7 +73,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         title: "Competitor Tracker",
         icon: "solar:chart-bold-duotone",
         href: "/dashboard/virality",
-        requiredPlans: ["studio", "scale", "enterprise"],
+        requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
       },
     ],
   },

@@ -410,49 +410,109 @@ export default function ViralityPage() {
     newStatus: "active" | "inactive",
   ) => {
     if (!selectedTeam?.id) return;
-    try {
-      if (isMyPerfId(accountId)) {
-        await userPerformanceAPI.updateAccountStatus(
-          selectedTeam.id,
-          fromMyPerfId(accountId),
-          newStatus === "active",
-        );
-        // Update local state
-        setMyAccounts((prev) =>
-          prev.map((a) =>
-            a.id === fromMyPerfId(accountId)
-              ? { ...a, is_active: newStatus === "active" }
-              : a,
-          ),
-        );
-      } else {
-        await viralityAPI.updateAccountStatus(
-          selectedTeam.id,
-          accountId,
-          newStatus === "active",
-        );
-        // Update local state only — no need to refetch everything
-        setCompetitors((prev) =>
-          prev.map((c) => ({
-            ...c,
-            accounts: c.accounts.map((a) =>
-              a.id === accountId
-                ? { ...a, is_active: newStatus === "active" }
-                : a,
-            ),
-          })),
-        );
+
+    if (newStatus === "active") {
+      const limit = getViralityAccountLimit(selectedTeam.plan);
+      const activeCount = accountRows.filter((a) => a.isActive).length;
+      if (limit !== -1 && activeCount >= limit) {
+        toast({
+          title: "Account limit reached",
+          description: `Your plan allows ${limit} active accounts.`,
+          color: "danger",
+        });
+        return;
       }
+    }
+
+    const isActive = newStatus === "active";
+    if (isMyPerfId(accountId)) {
+      setMyAccounts((prev) =>
+        prev.map((a) =>
+          a.id === fromMyPerfId(accountId) ? { ...a, is_active: isActive } : a,
+        ),
+      );
+      userPerformanceAPI
+        .updateAccountStatus(selectedTeam.id, fromMyPerfId(accountId), isActive)
+        .catch((err) => {
+          setMyAccounts((prev) =>
+            prev.map((a) =>
+              a.id === fromMyPerfId(accountId) ? { ...a, is_active: !isActive } : a,
+            ),
+          );
+          toast({ title: "Failed to update status", description: err.message, color: "danger" });
+        });
+    } else {
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, is_active: isActive } : a,
+          ),
+        })),
+      );
+      viralityAPI
+        .updateAccountStatus(selectedTeam.id, accountId, isActive)
+        .catch((err) => {
+          setCompetitors((prev) =>
+            prev.map((c) => ({
+              ...c,
+              accounts: c.accounts.map((a) =>
+                a.id === accountId ? { ...a, is_active: !isActive } : a,
+              ),
+            })),
+          );
+          toast({ title: "Failed to update status", description: err.message, color: "danger" });
+        });
+    }
+  };
+
+  const handleActivateAll = async () => {
+    if (!selectedTeam?.id) return;
+    const limit = getViralityAccountLimit(selectedTeam.plan);
+    const inactiveAccounts = accountRows.filter((a) => !a.isActive);
+    if (inactiveAccounts.length === 0) return;
+
+    const activeCount = accountRows.filter((a) => a.isActive).length;
+    const slots = limit === -1 ? inactiveAccounts.length : Math.max(0, limit - activeCount);
+    if (slots === 0) {
       toast({
-        title: `Account ${newStatus === "active" ? "activated" : "deactivated"}`,
-        color: "success",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Failed to update status",
-        description: err.message,
+        title: "Account limit reached",
+        description: `Your plan allows ${limit} active accounts.`,
         color: "danger",
       });
+      return;
+    }
+
+    const toActivate = inactiveAccounts.slice(0, slots);
+    const toActivateIds = new Set(toActivate.map((a) => a.id));
+    const skipped = inactiveAccounts.length - toActivate.length;
+
+    setMyAccounts((prev) =>
+      prev.map((a) => toActivateIds.has(toMyPerfId(a.id)) ? { ...a, is_active: true } : a),
+    );
+    setCompetitors((prev) =>
+      prev.map((c) => ({
+        ...c,
+        accounts: c.accounts.map((a) => toActivateIds.has(a.id) ? { ...a, is_active: true } : a),
+      })),
+    );
+
+    const description = skipped > 0
+      ? `${toActivate.length} activated, ${skipped} skipped (plan limit: ${limit})`
+      : `${toActivate.length} accounts activated`;
+    toast({ title: "Accounts activated", description, color: "success" });
+
+    try {
+      await Promise.all(
+        toActivate.map((a) =>
+          isMyPerfId(a.id)
+            ? userPerformanceAPI.updateAccountStatus(selectedTeam.id, fromMyPerfId(a.id), true)
+            : viralityAPI.updateAccountStatus(selectedTeam.id, a.id, true)
+        ),
+      );
+    } catch (err: any) {
+      toast({ title: "Some accounts failed to activate", description: err.message, color: "danger" });
+      await fetchData();
     }
   };
 
@@ -515,27 +575,25 @@ export default function ViralityPage() {
 
   const handleToggleAlert = async (accountId: number, enabled: boolean) => {
     if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.updateAlertEnabled(selectedTeam.id, accountId, enabled);
+    setCompetitors((prev) =>
+      prev.map((c) => ({
+        ...c,
+        accounts: c.accounts.map((a) =>
+          a.id === accountId ? { ...a, alert_enabled: enabled } : a,
+        ),
+      })),
+    );
+    viralityAPI.updateAlertEnabled(selectedTeam.id, accountId, enabled).catch((err) => {
       setCompetitors((prev) =>
         prev.map((c) => ({
           ...c,
           accounts: c.accounts.map((a) =>
-            a.id === accountId ? { ...a, alert_enabled: enabled } : a,
+            a.id === accountId ? { ...a, alert_enabled: !enabled } : a,
           ),
         })),
       );
-      toast({
-        title: `Alerts ${enabled ? "enabled" : "disabled"}`,
-        color: "success",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Failed to update alerts",
-        description: err.message,
-        color: "danger",
-      });
-    }
+      toast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+    });
   };
 
   const handleOpenSettings = async () => {
@@ -719,10 +777,12 @@ export default function ViralityPage() {
                 accounts={accountRows}
                 platformFilter={platformFilter}
                 searchQuery={searchQuery}
+                accountLimit={getViralityAccountLimit(selectedTeam?.plan)}
                 onRowClick={(row) => handleViewAccount(row.competitorId, row.id)}
                 onDelete={handleDeleteAccount}
                 onToggleStatus={handleToggleAccountStatus}
                 onToggleAlert={handleToggleAlert}
+                onActivateAll={handleActivateAll}
               />
             </RecalcOverlay>
           </div>
@@ -734,6 +794,7 @@ export default function ViralityPage() {
                 posts={toFeedPosts(allPosts, accountMap, dateRange.startDate, dateRange.endDate)}
                 allPosts={toFeedPosts(allPostsUnfiltered, accountMap)}
                 hasDateRange={!!(dateRange.startDate || dateRange.endDate)}
+                maxItems={10}
               />
             </RecalcOverlay>
           </div>

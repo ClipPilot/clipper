@@ -7,6 +7,8 @@ import type {
   ClipSuggestions as SharedClipSuggestions,
   ClipResponse as SharedClipResponse,
   ErrorResponse as SharedErrorResponse,
+  AnalyticsPriceEntry as SharedAnalyticsPriceEntry,
+  AnalyticsPricesResponse as SharedAnalyticsPricesResponse,
   Subscription as SharedSubscription,
   UsageInfo as SharedUsageInfo,
   Team as SharedTeam,
@@ -75,6 +77,8 @@ export type ClipSegment = DbCompatible<SharedClipSegment>;
 export type ClipSuggestions = DbCompatible<SharedClipSuggestions>;
 export type ClipResponse = DbCompatible<SharedClipResponse>;
 export type ErrorResponse = SharedErrorResponse;
+export type AnalyticsPriceEntry = DbCompatible<SharedAnalyticsPriceEntry>;
+export type AnalyticsPricesResponse = DbCompatible<SharedAnalyticsPricesResponse>;
 export type Subscription = DbCompatible<SharedSubscription>;
 export type UsageInfo = DbCompatible<SharedUsageInfo>;
 export type Team = DbCompatible<SharedTeam>;

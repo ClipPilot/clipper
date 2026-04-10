@@ -33,7 +33,7 @@ function CustomTooltip({ active, payload, total }: CustomTooltipProps) {
   const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : "0";
 
   return (
-    <div className="rounded-md bg-foreground text-xs shadow-small min-w-[140px] p-2.5">
+    <div className="rounded-lg border border-border-base bg-surface-base text-xs shadow-lg min-w-[140px] p-2.5">
       <div className="flex items-center gap-2 mb-1">
         <span
           className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
@@ -46,13 +46,13 @@ function CustomTooltip({ active, payload, total }: CustomTooltipProps) {
             className={platformIconColor(entry.platform)}
           />
         )}
-        <span className="text-sm text-background font-medium">
+        <span className="text-sm text-text-primary font-medium">
           {entry.name}
         </span>
       </div>
-      <div className="text-sm text-background flex justify-between gap-4">
+      <div className="text-sm text-text-secondary flex justify-between gap-4">
         <span>{formatNumber(entry.value)} views</span>
-        <span className="text-muted">{pct}%</span>
+        <span className="text-text-tertiary">{pct}%</span>
       </div>
     </div>
   );
@@ -161,14 +161,16 @@ export function AccountBreakdownChart({
                       <tspan
                         x="50%"
                         dy="-0.4em"
-                        className="fill-text-primary text-xl font-bold"
+                        fill="var(--color-text-primary, #fff)"
+                        style={{ fontSize: "1.25rem", fontWeight: 700 }}
                       >
                         {formatNumber(total)}
                       </tspan>
                       <tspan
                         x="50%"
                         dy="1.4em"
-                        className="fill-text-tertiary text-xs"
+                        fill="var(--color-text-tertiary, #9ca3af)"
+                        style={{ fontSize: "0.75rem" }}
                       >
                         Views
                       </tspan>
