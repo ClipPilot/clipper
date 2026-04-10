@@ -450,16 +450,7 @@ router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController
  *                 competitors:
  *                   type: array
  *                   items:
- *                     allOf:
- *                       - $ref: '#/components/schemas/ViralityCompetitor'
- *                       - type: object
- *                         required:
- *                           - accounts
- *                         properties:
- *                           accounts:
- *                             type: array
- *                             items:
- *                               $ref: '#/components/schemas/ViralityAccount'
+ *                     $ref: '#/components/schemas/CompetitorWithAccounts'
  *       403:
  *         description: Plan upgrade required
  */
@@ -497,16 +488,7 @@ router.get("/:teamId/competitors-with-accounts", requireAuth, (req, res) => vira
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               required:
- *                 - postsByAccount
- *               properties:
- *                 postsByAccount:
- *                   type: object
- *                   additionalProperties:
- *                     type: array
- *                     items:
- *                       $ref: '#/components/schemas/ViralityPost'
+ *               $ref: '#/components/schemas/ViralityPostsByAccount'
  *       403:
  *         description: Plan upgrade required
  */

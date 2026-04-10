@@ -1,5 +1,5 @@
 import { Response } from "express";
-import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, ErrorResponse } from "../types/api.types";
+import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, CompetitorWithAccounts, ViralityPostsByAccount, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
 import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
@@ -202,7 +202,7 @@ class ViralityController {
     }
   }
 
-  async listCompetitorsWithAccounts(req: AuthRequest, res: Response<{ competitors: any[] } | ErrorResponse>) {
+  async listCompetitorsWithAccounts(req: AuthRequest, res: Response<{ competitors: CompetitorWithAccounts[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -215,7 +215,7 @@ class ViralityController {
     }
   }
 
-  async getAllPosts(req: AuthRequest, res: Response<{ postsByAccount: any } | ErrorResponse>) {
+  async getAllPosts(req: AuthRequest, res: Response<ViralityPostsByAccount | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });

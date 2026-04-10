@@ -17439,9 +17439,7 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            competitors: (components["schemas"]["ViralityCompetitor"] & {
-                                accounts: components["schemas"]["ViralityAccount"][];
-                            })[];
+                            competitors: components["schemas"]["CompetitorWithAccounts"][];
                         };
                     };
                 };
@@ -17493,11 +17491,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            postsByAccount: {
-                                [key: string]: components["schemas"]["ViralityPost"][];
-                            };
-                        };
+                        "application/json": components["schemas"]["ViralityPostsByAccount"];
                     };
                 };
                 /** @description Plan upgrade required */
@@ -18755,6 +18749,14 @@ export interface components {
                 };
             };
             accounts: components["schemas"]["ViralityAccount"][];
+        };
+        CompetitorWithAccounts: components["schemas"]["ViralityCompetitor"] & {
+            accounts: components["schemas"]["ViralityAccount"][];
+        };
+        ViralityPostsByAccount: {
+            postsByAccount: {
+                [key: string]: components["schemas"]["ViralityPost"][];
+            };
         };
         IntakeApplicationStatus: {
             hasIntakeForm: boolean;

@@ -2519,6 +2519,44 @@
           }
         }
       },
+      "CompetitorWithAccounts": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ViralityCompetitor"
+          },
+          {
+            "type": "object",
+            "required": [
+              "accounts"
+            ],
+            "properties": {
+              "accounts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ViralityAccount"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ViralityPostsByAccount": {
+        "type": "object",
+        "required": [
+          "postsByAccount"
+        ],
+        "properties": {
+          "postsByAccount": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ViralityPost"
+              }
+            }
+          }
+        }
+      },
       "IntakeApplicationStatus": {
         "type": "object",
         "required": [
@@ -23518,25 +23556,7 @@
                     "competitors": {
                       "type": "array",
                       "items": {
-                        "allOf": [
-                          {
-                            "$ref": "#/components/schemas/ViralityCompetitor"
-                          },
-                          {
-                            "type": "object",
-                            "required": [
-                              "accounts"
-                            ],
-                            "properties": {
-                              "accounts": {
-                                "type": "array",
-                                "items": {
-                                  "$ref": "#/components/schemas/ViralityAccount"
-                                }
-                              }
-                            }
-                          }
-                        ]
+                        "$ref": "#/components/schemas/CompetitorWithAccounts"
                       }
                     }
                   }
@@ -23594,21 +23614,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "postsByAccount"
-                  ],
-                  "properties": {
-                    "postsByAccount": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                          "$ref": "#/components/schemas/ViralityPost"
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/ViralityPostsByAccount"
                 }
               }
             }

@@ -1,25 +1,22 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import { filterExcludedPostTypes } from "@/lib/viralityConstants";
-import type {
-  ViralityAccount as SharedViralityAccount,
-  ViralityPost as SharedViralityPost,
-  ViralityCompetitor as SharedViralityCompetitor,
-  ViralSettings as SharedViralSettings,
-  ViralityDashboard,
+export type {
+  ViralityAccount,
+  ViralityPost,
+  ViralityCompetitor,
+  ViralSettings,
+  CompetitorWithAccounts,
+  ViralityPostsByAccount,
 } from "@clipper/shared-types";
-
-export type ViralityAccount = SharedViralityAccount;
-
-export type ViralityPost = SharedViralityPost;
-
-export type ViralityCompetitor = SharedViralityCompetitor;
-
-export type CompetitorWithAccounts = SharedViralityCompetitor & {
-  accounts: SharedViralityAccount[];
-};
-
-export type ViralSettings = SharedViralSettings;
+import type {
+  ViralityAccount,
+  ViralityPost,
+  ViralityCompetitor,
+  ViralSettings,
+  ViralityDashboard,
+  CompetitorWithAccounts,
+} from "@clipper/shared-types";
 
 export type DashboardStats = ViralityDashboard;
 
