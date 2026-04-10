@@ -12,7 +12,6 @@ import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
-  type CompetitorWithAccounts,
   type DashboardStats,
   type ViralityPost,
   type ViralityAccount,
@@ -167,8 +166,8 @@ export default function ExecutiveDashboardPage() {
     try {
       const { startDate, endDate } = dateRange;
 
-      const [competitorsList, stats, myStats, myAccts, alerts] = await Promise.all([
-        viralityAPI.getCompetitors(selectedTeam.id),
+      const [withAccounts, stats, myStats, myAccts, alerts] = await Promise.all([
+        viralityAPI.getCompetitorsWithAccounts(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getAccounts(selectedTeam.id),
@@ -178,10 +177,6 @@ export default function ExecutiveDashboardPage() {
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
       setAlertLogs(alerts);
-
-      const withAccounts: CompetitorWithAccounts[] = await Promise.all(
-        competitorsList.map((c) => viralityAPI.getCompetitor(selectedTeam.id, c.id))
-      );
 
       const accountMap: Record<number, ViralityAccount> = {};
       for (const c of withAccounts) {
@@ -193,24 +188,25 @@ export default function ExecutiveDashboardPage() {
         accountMap[a.id] = a;
       }
 
-      const allCompAccounts = withAccounts.flatMap((c) => c.accounts);
-      const posts: PostWithMeta[] = [];
-
-      const postArrays = await Promise.all([
-        ...allCompAccounts.map((a) =>
-          viralityAPI
-            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
-            .then((p) => p.map((post) => ({ ...post, accountUsername: a.username, accountPlatform: a.platform })))
-        ),
-        ...myAccts.map((a) =>
-          userPerformanceAPI
-            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
-            .then((p) => p.map((post) => ({ ...post, accountUsername: a.username, accountPlatform: a.platform })))
-        ),
+      const [compPostsByAccount, myPostsByAccount] = await Promise.all([
+        viralityAPI.getAllPosts(selectedTeam.id, startDate, endDate),
+        userPerformanceAPI.getAllPosts(selectedTeam.id, startDate, endDate),
       ]);
 
-      for (const arr of postArrays) {
-        posts.push(...arr);
+      const posts: PostWithMeta[] = [];
+      for (const [accountIdStr, accountPosts] of Object.entries(compPostsByAccount)) {
+        const account = accountMap[Number(accountIdStr)];
+        if (!account) continue;
+        for (const post of accountPosts) {
+          posts.push({ ...post, accountUsername: account.username, accountPlatform: account.platform });
+        }
+      }
+      for (const [accountIdStr, accountPosts] of Object.entries(myPostsByAccount)) {
+        const account = accountMap[Number(accountIdStr)];
+        if (!account) continue;
+        for (const post of accountPosts) {
+          posts.push({ ...post, accountUsername: account.username, accountPlatform: account.platform });
+        }
       }
 
       setAllPosts(posts);

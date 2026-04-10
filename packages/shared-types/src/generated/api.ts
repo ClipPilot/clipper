@@ -17410,6 +17410,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/virality/{teamId}/competitors-with-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all competitors with their accounts pre-loaded
+         * @description Returns all competitors for a team with nested accounts in a single request, avoiding N+1 queries.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of competitors with nested accounts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            competitors: (components["schemas"]["ViralityCompetitor"] & {
+                                accounts: components["schemas"]["ViralityAccount"][];
+                            })[];
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/virality/{teamId}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get all posts for a team grouped by account
+         * @description Batch-fetches all posts across all tracked accounts in a single request, avoiding per-account queries.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    startDate?: string;
+                    endDate?: string;
+                };
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Posts grouped by account ID */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            postsByAccount: {
+                                [key: string]: components["schemas"]["ViralityPost"][];
+                            };
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/virality/{teamId}/competitors/{competitorId}": {
         parameters: {
             query?: never;

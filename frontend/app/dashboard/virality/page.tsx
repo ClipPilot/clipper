@@ -24,7 +24,6 @@ import {
   viralityAPI,
   type CompetitorWithAccounts,
   type DashboardStats,
-  type ViralityCompetitor,
   type ViralityPost,
   type ViralityAccount,
   type ViralSettings,
@@ -60,9 +59,6 @@ export default function ViralityPage() {
     null,
   );
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
-  const [simpleCompetitors, setSimpleCompetitors] = useState<
-    ViralityCompetitor[]
-  >([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
     null,
   );
@@ -77,9 +73,6 @@ export default function ViralityPage() {
 
   // My Performance state
   const [myAccounts, setMyAccounts] = useState<ViralityAccount[]>([]);
-  const [myPostsByAccount, setMyPostsByAccount] = useState<
-    Record<number, ViralityPost[]>
-  >({});
   const [myDashboardStats, setMyDashboardStats] =
     useState<DashboardStats | null>(null);
 
@@ -89,90 +82,47 @@ export default function ViralityPage() {
     if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const { startDate, endDate } = dateRange;
+      const hasDateFilter = !!(startDate || endDate);
 
-      // Fetch competitor data + My Performance data in parallel
-      const [competitorsList, stats, myAccts, myStats] = await Promise.all([
-        viralityAPI.getCompetitors(selectedTeam.id),
+      const [withAccounts, stats, myAccts, myStats] = await Promise.all([
+        viralityAPI.getCompetitorsWithAccounts(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getAccounts(selectedTeam.id),
-        userPerformanceAPI.getDashboardStats(
-          selectedTeam.id,
-          startDate,
-          endDate,
-        ),
+        userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
       ]);
 
-      setSimpleCompetitors(competitorsList);
+      setCompetitors(withAccounts);
       setDashboardStats(stats);
       setMyAccounts(myAccts);
       setMyDashboardStats(myStats);
 
-      const withAccounts: CompetitorWithAccounts[] = await Promise.all(
-        competitorsList.map((c) =>
-          viralityAPI.getCompetitor(selectedTeam.id, c.id),
-        ),
-      );
-      setCompetitors(withAccounts);
-
-      // Fetch posts for all competitor accounts (filtered + unfiltered for top content)
-      const allCompAccounts = withAccounts.flatMap((c) => c.accounts);
-      const postsMap: Record<number, ViralityPost[]> = {};
-      const unfilteredMap: Record<number, ViralityPost[]> = {};
-      const hasDateFilter = !!(startDate || endDate);
-
-      await Promise.all([
-        // Competitor account posts
-        ...allCompAccounts.flatMap((a) => {
-          const filtered = viralityAPI
-            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
-            .then((posts) => {
-              postsMap[a.id] = posts;
-            });
-
-          if (hasDateFilter) {
-            const unfiltered = viralityAPI
-              .getAccountPosts(selectedTeam.id, a.id, 100, 0)
-              .then((posts) => {
-                unfilteredMap[a.id] = posts;
-              });
-            return [filtered, unfiltered];
-          }
-          return [filtered];
-        }),
-        // My Performance account posts (stored with negative IDs)
-        ...myAccts.flatMap((a) => {
-          const negId = toMyPerfId(a.id);
-          const filtered = userPerformanceAPI
-            .getAccountPosts(selectedTeam.id, a.id, 50, 0, startDate, endDate)
-            .then((posts) => {
-              postsMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
-            });
-
-          if (hasDateFilter) {
-            const unfiltered = userPerformanceAPI
-              .getAccountPosts(selectedTeam.id, a.id, 100, 0)
-              .then((posts) => {
-                unfilteredMap[negId] = posts.map((p) => ({
-                  ...p,
-                  account_id: negId,
-                }));
-              });
-            return [filtered, unfiltered];
-          }
-          return [filtered];
-        }),
+      const [compPosts, myPosts] = await Promise.all([
+        viralityAPI.getAllPosts(selectedTeam.id, startDate, endDate),
+        userPerformanceAPI.getAllPosts(selectedTeam.id, startDate, endDate),
       ]);
 
-      // Also store My Performance posts under their negative IDs separately
-      const myPostsMap: Record<number, ViralityPost[]> = {};
+      let compPostsUnfiltered = compPosts;
+      let myPostsUnfiltered = myPosts;
+      if (hasDateFilter) {
+        [compPostsUnfiltered, myPostsUnfiltered] = await Promise.all([
+          viralityAPI.getAllPosts(selectedTeam.id),
+          userPerformanceAPI.getAllPosts(selectedTeam.id),
+        ]);
+      }
+
+      const postsMap: Record<number, ViralityPost[]> = { ...compPosts };
+      const unfilteredMap: Record<number, ViralityPost[]> = { ...compPostsUnfiltered };
+
       for (const a of myAccts) {
         const negId = toMyPerfId(a.id);
-        myPostsMap[negId] = postsMap[negId] || [];
+        postsMap[negId] = (myPosts[a.id] || []).map((p) => ({ ...p, account_id: negId }));
+        unfilteredMap[negId] = (myPostsUnfiltered[a.id] || []).map(
+          (p) => ({ ...p, account_id: negId }),
+        );
       }
-      setMyPostsByAccount(myPostsMap);
 
       setPostsByAccount(postsMap);
-      setAllPostsByAccountUnfiltered(hasDateFilter ? unfilteredMap : postsMap);
+      setAllPostsByAccountUnfiltered(unfilteredMap);
     } catch (err: any) {
       toast({
         title: "Failed to load data",
@@ -804,7 +754,7 @@ export default function ViralityPage() {
       <AddAccountModal
         isOpen={isOpen}
         onClose={onClose}
-        competitors={simpleCompetitors}
+        competitors={competitors}
         onSubmit={handleAddAccount}
         accountCount={accountRows.length}
         accountLimit={getViralityAccountLimit(selectedTeam?.plan)}

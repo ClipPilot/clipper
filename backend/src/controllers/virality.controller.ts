@@ -202,6 +202,35 @@ class ViralityController {
     }
   }
 
+  async listCompetitorsWithAccounts(req: AuthRequest, res: Response<{ competitors: any[] } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const competitors = await viralityService.getAllCompetitorsWithAccounts(teamId);
+      return res.json({ competitors });
+    } catch (error) {
+      return handleError(res, "List competitors with accounts error", error, "Failed to list competitors");
+    }
+  }
+
+  async getAllPosts(req: AuthRequest, res: Response<{ postsByAccount: any } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const startDate = parseDateQuery(req.query.startDate);
+      const endDate = parseDateQuery(req.query.endDate);
+
+      const postsByAccount = await viralityService.getPostsForTeam(teamId, startDate, endDate);
+      return res.json({ postsByAccount });
+    } catch (error) {
+      return handleError(res, "Get all posts error", error, "Failed to get posts");
+    }
+  }
+
   async createCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);

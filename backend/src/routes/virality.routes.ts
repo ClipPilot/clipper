@@ -423,6 +423,97 @@ router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController
 
 /**
  * @openapi
+ * /virality/{teamId}/competitors-with-accounts:
+ *   get:
+ *     summary: List all competitors with their accounts pre-loaded
+ *     description: Returns all competitors for a team with nested accounts in a single request, avoiding N+1 queries.
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of competitors with nested accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitors
+ *               properties:
+ *                 competitors:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/ViralityCompetitor'
+ *                       - type: object
+ *                         required:
+ *                           - accounts
+ *                         properties:
+ *                           accounts:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/ViralityAccount'
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.get("/:teamId/competitors-with-accounts", requireAuth, (req, res) => viralityController.listCompetitorsWithAccounts(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/posts:
+ *   get:
+ *     summary: Get all posts for a team grouped by account
+ *     description: Batch-fetches all posts across all tracked accounts in a single request, avoiding per-account queries.
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Posts grouped by account ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - postsByAccount
+ *               properties:
+ *                 postsByAccount:
+ *                   type: object
+ *                   additionalProperties:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/ViralityPost'
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.get("/:teamId/posts", requireAuth, (req, res) => viralityController.getAllPosts(req, res));
+
+/**
+ * @openapi
  * /virality/{teamId}/competitors:
  *   post:
  *     summary: Create a new competitor

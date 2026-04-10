@@ -125,6 +125,35 @@ class ViralityService extends AccountTrackingService {
       .orderBy(desc(viralityCompetitors.created_at));
   }
 
+  async getAllCompetitorsWithAccounts(teamId: number) {
+    const [competitors, accounts] = await Promise.all([
+      db
+        .select()
+        .from(viralityCompetitors)
+        .where(eq(viralityCompetitors.team_id, teamId))
+        .orderBy(desc(viralityCompetitors.created_at)),
+      db
+        .select()
+        .from(viralityAccounts)
+        .where(eq(viralityAccounts.team_id, teamId))
+        .orderBy(desc(viralityAccounts.created_at)),
+    ]);
+
+    const accountsByCompetitor: Record<number, typeof accounts> = {};
+    for (const account of accounts) {
+      const cid = account.competitor_id;
+      if (cid) {
+        if (!accountsByCompetitor[cid]) accountsByCompetitor[cid] = [];
+        accountsByCompetitor[cid].push(account);
+      }
+    }
+
+    return competitors.map((c) => ({
+      ...c,
+      accounts: accountsByCompetitor[c.id] || [],
+    }));
+  }
+
   async createCompetitor(teamId: number, name: string, description?: string) {
     const [competitor] = await db
       .insert(viralityCompetitors)
