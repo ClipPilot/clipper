@@ -34,7 +34,7 @@ export function PostFrequencyChart({ posts, startDate, endDate }: PostFrequencyC
   return (
     <Card className="bg-surface-base border border-border-base">
       <section className="flex flex-col flex-nowrap">
-        <div className="flex flex-col gap-y-2 p-3 sm:p-6">
+        <div className="flex flex-col gap-y-2 p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <dt className="text-base text-text-primary font-medium">
               Post Frequency
@@ -47,8 +47,8 @@ export function PostFrequencyChart({ posts, startDate, endDate }: PostFrequencyC
 
         {hasData ? (
           <ResponsiveContainer
-            className="min-h-[250px] [&_.recharts-surface]:outline-hidden"
-            height="100%"
+            className="[&_.recharts-surface]:outline-hidden"
+            height={250}
             width="100%"
           >
             <LineChart

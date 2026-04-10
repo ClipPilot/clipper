@@ -336,31 +336,37 @@ class StripeService {
       .where(eq(teams.id, teamId))
       .limit(1);
 
-    const clipsLimit =
-      plan === "enterprise" && team?.enterprise_clip_limit
-        ? team.enterprise_clip_limit
-        : getClipsLimitForPlan(plan);
-
     await db
       .update(teams)
       .set({ plan, updated_at: new Date() })
       .where(eq(teams.id, teamId));
 
-    await db
-      .update(usageStats)
-      .set({
-        limit: clipsLimit,
-        clips_created: 0,
-        resets_date: periodEnd,
-        updated_at: new Date(),
-      })
-      .where(eq(usageStats.team_id, teamId));
+    if (!isAnalyticsPlan(plan)) {
+      const clipsLimit =
+        plan === "enterprise" && team?.enterprise_clip_limit
+          ? team.enterprise_clip_limit
+          : getClipsLimitForPlan(plan);
+
+      await db
+        .update(usageStats)
+        .set({
+          limit: clipsLimit,
+          clips_created: 0,
+          resets_date: periodEnd,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.team_id, teamId));
+
+      console.log(
+        `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`,
+      );
+    } else {
+      console.log(
+        `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan} (analytics — usage stats unchanged)`,
+      );
+    }
 
     await this.enforceSubscriptionExclusivity(teamId, plan, subscription.id);
-
-    console.log(
-      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`,
-    );
 
     try {
       await referralService.activateReferral(teamId, plan);
@@ -369,25 +375,32 @@ class StripeService {
       Sentry.captureException(refError);
     }
 
-    const [teamForEmail] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.id, teamId))
-      .limit(1);
+    if (!isAnalyticsPlan(plan)) {
+      const clipsLimit =
+        plan === "enterprise" && team?.enterprise_clip_limit
+          ? team.enterprise_clip_limit
+          : getClipsLimitForPlan(plan);
 
-    if (teamForEmail) {
-      await this.notifyTeamOwner(
-        teamId,
-        (owner) =>
-          emailNotiService.sendSubscriptionWelcome(owner.email, {
-            userName: owner.firstName,
-            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-            teamName: teamForEmail.name,
-            clipsLimit: clipsLimit,
-            dashboardUrl: `${FRONTEND_URL}/dashboard`,
-          }),
-        "send subscription welcome email",
-      );
+      const [teamForEmail] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (teamForEmail) {
+        await this.notifyTeamOwner(
+          teamId,
+          (owner) =>
+            emailNotiService.sendSubscriptionWelcome(owner.email, {
+              userName: owner.firstName,
+              planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+              teamName: teamForEmail.name,
+              clipsLimit: clipsLimit,
+              dashboardUrl: `${FRONTEND_URL}/dashboard`,
+            }),
+          "send subscription welcome email",
+        );
+      }
     }
   }
 
@@ -559,15 +572,21 @@ class StripeService {
 
     for (const sub of conflictingSubs) {
       const subPlan = getPlanFromPriceId(sub.price_id);
-      const shouldCancel =
+      const isConflictingCrossPlan =
         (isNewAnalytics && isMainPlatformPlan(subPlan)) ||
         (isNewMain && isAnalyticsPlan(subPlan));
+      const isAnalyticsSwitch = isNewAnalytics && isAnalyticsPlan(subPlan);
 
-      if (!shouldCancel) continue;
+      if (!isConflictingCrossPlan && !isAnalyticsSwitch) continue;
 
       try {
-        console.log(`[Exclusivity] Cancelling ${subPlan} subscription ${sub.stripe_subscription_id} (conflicts with ${newPlan})`);
-        await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+        if (isAnalyticsSwitch) {
+          console.log(`[Exclusivity] Prorating analytics switch: ${subPlan} → ${newPlan} (cancelling old sub ${sub.stripe_subscription_id}, new sub ${newSubscriptionId} already created by Stripe)`);
+          await stripe.subscriptions.cancel(sub.stripe_subscription_id, { prorate: true });
+        } else {
+          console.log(`[Exclusivity] Cancelling ${subPlan} subscription ${sub.stripe_subscription_id} (conflicts with ${newPlan})`);
+          await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+        }
         await db
           .update(subscriptions)
           .set({ status: "canceled", updated_at: new Date() })
@@ -628,17 +647,17 @@ class StripeService {
       .set({ plan: "free", updated_at: new Date() })
       .where(eq(teams.id, existingSub.team_id));
 
-    await db
-      .update(usageStats)
-      .set({
-        limit: 0,
-        clips_created: 0,
-        updated_at: new Date(),
-      })
-      .where(eq(usageStats.team_id, existingSub.team_id));
-
     if (isAnalyticsPlan(existingSub.plan)) {
       await viralityService.deactivateExcessAccounts(existingSub.team_id, 0);
+    } else {
+      await db
+        .update(usageStats)
+        .set({
+          limit: 0,
+          clips_created: 0,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.team_id, existingSub.team_id));
     }
 
     const [teamForEmail] = await db

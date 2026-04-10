@@ -60,13 +60,13 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border-base">
-                <th className="text-left text-[11px] text-text-tertiary font-medium tracking-wider uppercase px-5 py-3.5 bg-surface-elevated">
+                <th className="text-left text-[11px] text-text-tertiary font-medium tracking-wider uppercase px-6 py-4 bg-surface-elevated">
                   Competitor
                 </th>
                 {METRICS.map((metric) => (
                   <th
                     key={metric.key}
-                    className="text-center text-[11px] text-text-tertiary font-medium tracking-wider uppercase px-4 py-3.5 bg-surface-elevated"
+                    className="text-center text-[11px] text-text-tertiary font-medium tracking-wider uppercase px-5 py-4 bg-surface-elevated"
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       <Icon icon={metric.icon} width={13} className="text-text-tertiary opacity-60" />
@@ -82,7 +82,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
                   key={comp.name}
                   className="border-b border-border-base last:border-b-0 hover:bg-surface-hover/50 transition-colors"
                 >
-                  <td className="px-5 py-3.5">
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-2.5">
                       <div
                         className={cn(
@@ -101,7 +101,7 @@ export function HeadToHeadTable({ competitors }: HeadToHeadTableProps) {
                     const val = comp[metric.key];
                     const isWinner = winners[metric.key] === idx;
                     return (
-                      <td key={metric.key} className="px-4 py-3.5 text-center">
+                      <td key={metric.key} className="px-5 py-4 text-center">
                         <span
                           className={cn(
                             "text-sm font-semibold",

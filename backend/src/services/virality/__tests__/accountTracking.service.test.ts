@@ -3,7 +3,7 @@ import { createDrizzleChain } from "../../../../test/helpers/db.helper";
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const { mockDb, mockEmit, mockSentry, mockCanAccess, mockIsAnalyticsPlan, mockGetViralityAccountLimit, mockTeamService, mockGetApifyService } = vi.hoisted(() => ({
+const { mockDb, mockEmit, mockSentry, mockCanAccess, mockIsAnalyticsPlan, mockGetViralityAccountLimit, mockCanTrackKeywords, mockTeamService, mockGetApifyService } = vi.hoisted(() => ({
   mockDb: {
     select: vi.fn(),
     insert: vi.fn(),
@@ -15,6 +15,7 @@ const { mockDb, mockEmit, mockSentry, mockCanAccess, mockIsAnalyticsPlan, mockGe
   mockCanAccess: vi.fn().mockReturnValue(true),
   mockIsAnalyticsPlan: vi.fn().mockReturnValue(false),
   mockGetViralityAccountLimit: vi.fn().mockReturnValue(-1),
+  mockCanTrackKeywords: vi.fn().mockReturnValue(true),
   mockTeamService: { consumeClip: vi.fn().mockResolvedValue({ success: true }) },
   mockGetApifyService: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock("../../../utils/plans", () => ({
   canAccessViralityTracker: mockCanAccess,
   isAnalyticsPlan: mockIsAnalyticsPlan,
   getViralityAccountLimit: mockGetViralityAccountLimit,
+  canTrackKeywords: mockCanTrackKeywords,
 }));
 vi.mock("../../team.service", () => ({ teamService: mockTeamService }));
 vi.mock("../apify.service", () => ({ getApifyService: mockGetApifyService }));
@@ -1036,5 +1038,93 @@ describe("AccountTrackingService.reactivateAllAccounts", () => {
 
     const count = await service.reactivateAllAccounts(1);
     expect(count).toBe(0);
+  });
+});
+
+// ── Keyword/hashtag tracking gate ─────────────────────────────────────────
+
+describe("AccountTrackingService.addAccount — keyword tracking gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsAnalyticsPlan.mockReturnValue(false);
+    mockGetViralityAccountLimit.mockReturnValue(-1);
+    mockCanTrackKeywords.mockReturnValue(true);
+    service = new AccountTrackingService(fakeAccountsTable, fakePostsTable);
+  });
+
+  it("blocks hashtag tracking when plan does not support keywords", async () => {
+    mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
+      .mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_starter" }]));
+    mockGetViralityAccountLimit.mockReturnValueOnce(50);
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 5 }]));
+    mockCanTrackKeywords.mockReturnValueOnce(false);
+
+    await expect(service.addAccount(1, "instagram", "cuttr", "hashtag"))
+      .rejects.toThrow("Hashtag and keyword tracking requires an Analytics Business plan or higher");
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  it("blocks keyword tracking when plan does not support keywords", async () => {
+    mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
+      .mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_pro" }]));
+    mockGetViralityAccountLimit.mockReturnValueOnce(100);
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 5 }]));
+    mockCanTrackKeywords.mockReturnValueOnce(false);
+
+    await expect(service.addAccount(1, "x", "video editing", "keyword"))
+      .rejects.toThrow("Hashtag and keyword tracking requires an Analytics Business plan or higher");
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+
+  it("allows hashtag tracking on analytics_business", async () => {
+    mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
+      .mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_business" }]));
+    mockGetViralityAccountLimit.mockReturnValueOnce(250);
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 10 }]));
+    mockCanTrackKeywords.mockReturnValueOnce(true);
+
+    const insertedAccount = { id: 55, team_id: 1, username: "cuttr", platform: "instagram" };
+    mockDb.insert.mockReturnValue(createDrizzleChain([insertedAccount]));
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_business" }]));
+    mockIsAnalyticsPlan.mockReturnValue(true);
+
+    const result = await service.addAccount(1, "instagram", "cuttr", "hashtag");
+    expect(result).toEqual(insertedAccount);
+  });
+
+  it("allows hashtag tracking on studio/scale (always has keyword access)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
+      .mockReturnValueOnce(createDrizzleChain([{ plan: "studio" }]));
+
+    const insertedAccount = { id: 56, team_id: 1, username: "cuttr", platform: "tiktok" };
+    mockDb.insert.mockReturnValue(createDrizzleChain([insertedAccount]));
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ plan: "studio" }]));
+    mockTeamService.consumeClip.mockResolvedValueOnce({ success: true });
+
+    const result = await service.addAccount(1, "tiktok", "cuttr", "hashtag");
+    expect(result).toEqual(insertedAccount);
+  });
+
+  it("allows profile tracking on starter/pro (only keywords blocked)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
+      .mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_starter" }]));
+    mockGetViralityAccountLimit.mockReturnValueOnce(50);
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 5 }]));
+
+    const insertedAccount = { id: 57, team_id: 1, username: "testuser", platform: "instagram" };
+    mockDb.insert.mockReturnValue(createDrizzleChain([insertedAccount]));
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ plan: "analytics_starter" }]));
+    mockIsAnalyticsPlan.mockReturnValue(true);
+
+    const result = await service.addAccount(1, "instagram", "https://www.instagram.com/testuser/");
+    expect(result).toEqual(insertedAccount);
+    expect(mockTeamService.consumeClip).not.toHaveBeenCalled();
   });
 });

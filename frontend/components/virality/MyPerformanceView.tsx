@@ -425,6 +425,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
                 posts={toFeedPosts(derived.activePosts, derived.accountMap, dateRange.startDate, dateRange.endDate)}
                 allPosts={toFeedPosts(Object.values(postsByAccount).flat(), derived.accountMap)}
                 hasDateRange={!!(dateRange.startDate || dateRange.endDate)}
+                maxItems={10}
               />
             </div>
           </div>
@@ -468,6 +469,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         onClose={onClose}
         hideCompetitorSelect
         onSubmit={handleAddAccount}
+        plan={selectedTeam?.plan}
       />
     </motion.div>
   );

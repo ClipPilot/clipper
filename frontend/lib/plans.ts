@@ -8,9 +8,9 @@ export function getPlanName(plan: string | undefined | null): string {
     case "scale": return "Scale";
     case "studio": return "Studio";
     case "creator": return "Creator";
-    case "analytics_starter": return "Analytics Starter";
+    case "analytics_starter": return "Analytics Pulse";
     case "analytics_pro": return "Analytics Pro";
-    case "analytics_business": return "Analytics Business";
+    case "analytics_business": return "Analytics Max";
     default: return "Free";
   }
 }
@@ -68,6 +68,12 @@ export function isAnalyticsPlan(plan: string | undefined | null): boolean {
 
 export function isMainPlatformPlan(plan: string | undefined | null): boolean {
   return MAIN_PLATFORM_PLANS.includes(plan as PlanType);
+}
+
+const KEYWORD_TRACKING_PLANS: PlanType[] = ["analytics_business", "studio", "scale", "enterprise"];
+
+export function canTrackKeywords(plan: string | undefined | null): boolean {
+  return KEYWORD_TRACKING_PLANS.includes(plan as PlanType);
 }
 
 export function getViralityAccountLimit(plan: string | undefined | null): number {

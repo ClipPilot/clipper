@@ -14,7 +14,7 @@ import {
   MASS_POST_SYNC_BUDGET,
 } from "../../config/viralitySyncConstants";
 import { extractPostIdentifier } from "../../utils/postIdentifier";
-import { canAccessViralityTracker, isAnalyticsPlan, getViralityAccountLimit } from "../../utils/plans";
+import { canAccessViralityTracker, isAnalyticsPlan, getViralityAccountLimit, canTrackKeywords } from "../../utils/plans";
 import { teamService } from "../team.service";
 import { emitViralitySyncUpdate } from "../socket.service";
 
@@ -164,6 +164,10 @@ export class AccountTrackingService {
       if (currentCount >= accountLimit) {
         throw new Error(`Account limit of ${accountLimit} reached for your plan`);
       }
+    }
+
+    if (accountType !== "profile" && !canTrackKeywords(plan)) {
+      throw new Error("Hashtag and keyword tracking requires an Analytics Business plan or higher");
     }
 
     // Build profile_url based on account type

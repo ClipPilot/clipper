@@ -13153,6 +13153,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stripe/analytics-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get live analytics plan prices from Stripe
+         * @description Fetches current pricing for analytics subscription tiers directly from the Stripe API.
+         *     Returns the unit amount in cents, currency, and billing interval for each analytics plan.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Analytics prices retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalyticsPricesResponse"];
+                    };
+                };
+                /** @description Failed to fetch prices from Stripe */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stripe/checkout": {
         parameters: {
             query?: never;
@@ -17911,6 +17960,19 @@ export interface components {
         ErrorResponse: {
             error: string;
             message?: string;
+        };
+        AnalyticsPriceEntry: {
+            /** @description Price in cents */
+            amount: number;
+            /** @description Three-letter ISO currency code */
+            currency: string;
+            /** @description Billing interval (month, year) or null for one-time */
+            interval: string | null;
+        };
+        AnalyticsPricesResponse: {
+            prices: {
+                [key: string]: components["schemas"]["AnalyticsPriceEntry"];
+            };
         };
         Subscription: {
             /** @description Subscription ID */

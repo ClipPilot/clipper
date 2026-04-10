@@ -152,6 +152,37 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        AnalyticsPriceEntry: {
+          type: "object",
+          required: ["amount", "currency", "interval"],
+          properties: {
+            amount: {
+              type: "integer",
+              description: "Price in cents",
+            },
+            currency: {
+              type: "string",
+              description: "Three-letter ISO currency code",
+            },
+            interval: {
+              type: "string",
+              nullable: true,
+              description: "Billing interval (month, year) or null for one-time",
+            },
+          },
+        },
+        AnalyticsPricesResponse: {
+          type: "object",
+          required: ["prices"],
+          properties: {
+            prices: {
+              type: "object",
+              additionalProperties: {
+                $ref: "#/components/schemas/AnalyticsPriceEntry",
+              },
+            },
+          },
+        },
         Subscription: {
           type: "object",
           required: [

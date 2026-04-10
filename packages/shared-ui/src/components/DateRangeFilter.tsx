@@ -92,11 +92,11 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
             }}
           >
             {CUSTOM_PRESETS.map((preset) => (
-              <Dropdown.Item key={preset.months.toString()}>
+              <Dropdown.Item id={preset.months.toString()} key={preset.months.toString()}>
                 {preset.label}
               </Dropdown.Item>
             ))}
-            <Dropdown.Item key="custom-apply" textValue="Custom range">
+            <Dropdown.Item id="custom-apply" key="custom-apply" textValue="Custom range">
               <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="number"

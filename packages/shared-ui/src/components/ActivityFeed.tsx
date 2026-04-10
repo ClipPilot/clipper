@@ -33,9 +33,10 @@ interface ActivityFeedProps {
   posts: FeedPost[];
   allPosts?: FeedPost[];
   hasDateRange?: boolean;
+  maxItems?: number;
 }
 
-export function ActivityFeed({ posts, allPosts, hasDateRange = false }: ActivityFeedProps) {
+export function ActivityFeed({ posts, allPosts, hasDateRange = false, maxItems }: ActivityFeedProps) {
   const [filter, setFilter] = useState<ContentFilter>("viral");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,7 +83,8 @@ export function ActivityFeed({ posts, allPosts, hasDateRange = false }: Activity
     [filteredPosts.length]
   );
 
-  const visiblePosts = filteredPosts.slice(0, visibleCount);
+  const capped = maxItems ? filteredPosts.slice(0, maxItems) : filteredPosts;
+  const visiblePosts = capped.slice(0, visibleCount);
 
   const filters: { key: ContentFilter; label: string }[] = [
     { key: "viral", label: "Viral" },
@@ -104,7 +106,7 @@ export function ActivityFeed({ posts, allPosts, hasDateRange = false }: Activity
   return (
     <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
       <div className="p-0">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
+        <div className="flex items-center justify-between px-5 py-5 border-b border-border-base">
           <div className="flex items-center gap-1.5">
             <h3 className="text-sm font-medium text-text-primary">Top Performing Content</h3>
             {filter === "viral" && (
@@ -162,7 +164,7 @@ export function ActivityFeed({ posts, allPosts, hasDateRange = false }: Activity
               return (
                 <div
                   key={post.id}
-                  className="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-hover transition-colors cursor-pointer"
+                  className="flex items-start gap-3 px-5 py-4 hover:bg-surface-hover transition-colors cursor-pointer"
                   onClick={() => window.open(post.postUrl, "_blank")}
                 >
                   <div className="w-10 h-10 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
