@@ -185,7 +185,7 @@ export default function ExecutiveDashboardPage() {
 
       const [withAccounts, stats, myStats, myAccts, alerts] = await Promise.all(
         [
-          viralityAPI.getCompetitorsWithAccounts(selectedTeam.id),
+          viralityAPI.getGroupsWithAccounts(selectedTeam.id),
           viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
           userPerformanceAPI.getDashboardStats(
             selectedTeam.id,
@@ -302,7 +302,7 @@ export default function ExecutiveDashboardPage() {
     let competitorId = options.competitorId;
 
     if (!competitorId && options.newCompetitorName) {
-      const competitor = await viralityAPI.createCompetitor(
+      const competitor = await viralityAPI.createGroup(
         selectedTeam.id,
         options.newCompetitorName,
       );

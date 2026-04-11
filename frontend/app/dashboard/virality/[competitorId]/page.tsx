@@ -89,7 +89,7 @@ export default function CompetitorDetailPage() {
         return;
       if (initialLoadDone.current && !silent) setIsRecalculating(true);
       try {
-        const comp = await viralityAPI.getCompetitor(
+        const comp = await viralityAPI.getGroupWithAccounts(
           selectedTeam.id,
           competitorId,
         );
@@ -197,7 +197,7 @@ export default function CompetitorDetailPage() {
   const handleSaveName = async () => {
     if (!selectedTeam?.id || !editName.trim()) return;
     try {
-      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, {
+      await viralityAPI.updateGroup(selectedTeam.id, competitorId, {
         name: editName.trim(),
       });
       setIsEditingName(false);

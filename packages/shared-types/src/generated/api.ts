@@ -16865,7 +16865,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all tracked accounts for a team */
+        /** List all tracked competitor accounts for a team */
         get: {
             parameters: {
                 query?: never;
@@ -16898,7 +16898,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add a new account to track */
+        /** Add a new competitor account to track (optionally assign to a group) */
         post: {
             parameters: {
                 query?: never;
@@ -16971,7 +16971,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a specific account */
+        /** Get a specific competitor account */
         get: {
             parameters: {
                 query?: never;
@@ -17006,7 +17006,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Remove a tracked account */
+        /** Remove a tracked competitor account */
         delete: {
             parameters: {
                 query?: never;
@@ -17057,7 +17057,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update account active status */
+        /** Update competitor account active status */
         patch: {
             parameters: {
                 query?: never;
@@ -17115,8 +17115,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Trigger a sync for an account
-         * @description Fetches latest posts and metrics from Instagram, TikTok, or X
+         * Trigger a sync for a competitor account
+         * @description Fetches latest posts and metrics from Instagram, TikTok, or X for a competitor account
          */
         post: {
             parameters: {
@@ -17178,7 +17178,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get posts for an account */
+        /** Get posts for a competitor account */
         get: {
             parameters: {
                 query?: {
@@ -17232,7 +17232,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a tracked post */
+        /** Remove a tracked competitor post */
         delete: {
             parameters: {
                 query?: never;
@@ -17277,7 +17277,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get dashboard statistics */
+        /** Get competitor dashboard statistics */
         get: {
             parameters: {
                 query?: {
@@ -17325,7 +17325,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all competitors for a team */
+        /** List all competitor groups for a team */
         get: {
             parameters: {
                 query?: never;
@@ -17337,7 +17337,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description List of competitors */
+                /** @description List of competitor groups */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17358,7 +17358,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a new competitor */
+        /** Create a new competitor group */
         post: {
             parameters: {
                 query?: never;
@@ -17377,7 +17377,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Competitor created */
+                /** @description Competitor group created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -17418,8 +17418,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all competitors with their accounts pre-loaded
-         * @description Returns all competitors for a team with nested accounts in a single request, avoiding N+1 queries.
+         * List all competitor groups with their accounts pre-loaded
+         * @description Returns all competitor groups for a team with nested accounts in a single request, avoiding N+1 queries.
          */
         get: {
             parameters: {
@@ -17432,7 +17432,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description List of competitors with nested accounts */
+                /** @description List of competitor groups with nested accounts */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17468,8 +17468,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get all posts for a team grouped by account
-         * @description Batch-fetches all posts across all tracked accounts in a single request, avoiding per-account queries.
+         * Get all competitor posts for a team grouped by account
+         * @description Batch-fetches all posts across all tracked competitor accounts in a single request, avoiding per-account queries.
          */
         get: {
             parameters: {
@@ -17518,7 +17518,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a competitor with its accounts */
+        /** Get a competitor group with its accounts */
         get: {
             parameters: {
                 query?: never;
@@ -17531,7 +17531,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Competitor details with nested accounts */
+                /** @description Competitor group details with nested accounts */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17544,7 +17544,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17555,7 +17555,10 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete a competitor */
+        /**
+         * Delete a competitor group
+         * @description Deletes the group and all its associated accounts via cascade.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -17568,7 +17571,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Competitor deleted */
+                /** @description Competitor group deleted */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17579,7 +17582,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17590,7 +17593,7 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Update a competitor */
+        /** Update a competitor group */
         patch: {
             parameters: {
                 query?: never;
@@ -17610,7 +17613,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Competitor updated */
+                /** @description Competitor group updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17635,7 +17638,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17659,7 +17662,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Toggle alert_enabled for an account */
+        /** Toggle alert_enabled for a competitor account */
         patch: {
             parameters: {
                 query?: never;

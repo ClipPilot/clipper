@@ -85,7 +85,7 @@ export default function ViralityPage() {
       const hasDateFilter = !!(startDate || endDate);
 
       const [withAccounts, stats, myAccts, myStats] = await Promise.all([
-        viralityAPI.getCompetitorsWithAccounts(selectedTeam.id),
+        viralityAPI.getGroupsWithAccounts(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getAccounts(selectedTeam.id),
         userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
@@ -495,7 +495,7 @@ export default function ViralityPage() {
     let competitorId = options.competitorId;
 
     if (!competitorId && options.newCompetitorName) {
-      const competitor = await viralityAPI.createCompetitor(
+      const competitor = await viralityAPI.createGroup(
         selectedTeam.id,
         options.newCompetitorName,
       );

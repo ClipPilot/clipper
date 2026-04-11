@@ -1036,9 +1036,9 @@ export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
   "failed",
 ]);
 
-// Competitor groups (e.g., "Nike", "Competitor A")
-export const viralityCompetitors = pgTable(
-  "virality_competitors",
+// Virality groups (e.g., "Nike", "Competitor A", "UGC")
+export const viralityGroups = pgTable(
+  "virality_groups",
   {
     id: serial("id").primaryKey(),
     team_id: integer("team_id")
@@ -1048,22 +1048,23 @@ export const viralityCompetitors = pgTable(
     description: text("description"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
+    competitor: boolean("competitor").notNull().default(false),
   },
   (table) => ({
-    teamIdx: index("virality_competitors_team_id_idx").on(table.team_id),
+    teamIdx: index("virality_groups_team_id_idx").on(table.team_id),
   }),
 ).enableRLS();
 
 // Platform accounts (instagram, tiktok, x) - up to 3 per competitor
-export const viralityAccounts = pgTable(
-  "virality_accounts",
+export const competitorAccounts = pgTable(
+  "competitor_accounts",
   {
     id: serial("id").primaryKey(),
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    competitor_id: integer("competitor_id").references(
-      () => viralityCompetitors.id,
+    group_id: integer("group_id").references(
+      () => viralityGroups.id,
       { onDelete: "cascade" },
     ),
     platform: viralityPlatformEnum("platform").notNull(),
@@ -1091,8 +1092,8 @@ export const viralityAccounts = pgTable(
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    teamIdx: index("virality_accounts_team_id_idx").on(table.team_id),
-    uniqueTeamPlatformUsername: unique("virality_accounts_unique").on(
+    teamIdx: index("competitor_accounts_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("competitor_accounts_unique").on(
       table.team_id,
       table.platform,
       table.username,
@@ -1100,13 +1101,13 @@ export const viralityAccounts = pgTable(
   }),
 ).enableRLS();
 
-export const viralityPosts = pgTable(
-  "virality_posts",
+export const competitorPosts = pgTable(
+  "competitor_posts",
   {
     id: serial("id").primaryKey(),
     account_id: integer("account_id")
       .notNull()
-      .references(() => viralityAccounts.id, { onDelete: "cascade" }),
+      .references(() => competitorAccounts.id, { onDelete: "cascade" }),
     platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
     post_url: text("post_url").notNull(),
     thumbnail_url: text("thumbnail_url"),
@@ -1123,12 +1124,12 @@ export const viralityPosts = pgTable(
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    accountIdx: index("virality_posts_account_id_idx").on(table.account_id),
-    uniqueAccountPost: unique("virality_posts_unique").on(
+    accountIdx: index("competitor_posts_account_id_idx").on(table.account_id),
+    uniqueAccountPost: unique("competitor_posts_unique").on(
       table.account_id,
       table.platform_post_id,
     ),
-    postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),
+    postedAtIdx: index("competitor_posts_posted_at_idx").on(table.posted_at),
   }),
 ).enableRLS();
 
@@ -1141,6 +1142,10 @@ export const userAccounts = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    group_id: integer("group_id").references(
+      () => viralityGroups.id,
+      { onDelete: "cascade" },
+    ),
     platform: viralityPlatformEnum("platform").notNull(),
     account_type: varchar("account_type", { length: 20 }).notNull().default("profile"),
     username: varchar("username", { length: 255 }).notNull(),

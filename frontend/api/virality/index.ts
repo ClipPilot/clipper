@@ -213,7 +213,7 @@ class ViralityAPI {
     return response.json();
   }
 
-  async getCompetitors(teamId: number): Promise<ViralityCompetitor[]> {
+  async getGroups(teamId: number): Promise<ViralityCompetitor[]> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/competitors`,
       {
@@ -225,14 +225,14 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to fetch competitors");
+      throw new Error(error.error || "Failed to fetch groups");
     }
 
     const data = await response.json();
     return data.competitors;
   }
 
-  async createCompetitor(
+  async createGroup(
     teamId: number,
     name: string,
     description?: string
@@ -249,20 +249,20 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to create competitor");
+      throw new Error(error.error || "Failed to create group");
     }
 
     const data = await response.json();
     return data.competitor;
   }
 
-  async updateCompetitor(
+  async updateGroup(
     teamId: number,
-    competitorId: number,
+    groupId: number,
     data: { name?: string; description?: string }
   ): Promise<ViralityCompetitor> {
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      `${API_URL}/virality/${teamId}/competitors/${groupId}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -273,19 +273,19 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to update competitor");
+      throw new Error(error.error || "Failed to update group");
     }
 
     const result = await response.json();
     return result.competitor;
   }
 
-  async getCompetitor(
+  async getGroupWithAccounts(
     teamId: number,
-    competitorId: number
+    groupId: number
   ): Promise<CompetitorWithAccounts> {
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      `${API_URL}/virality/${teamId}/competitors/${groupId}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -295,16 +295,16 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to fetch competitor");
+      throw new Error(error.error || "Failed to fetch group");
     }
 
     const data = await response.json();
     return data.competitor;
   }
 
-  async deleteCompetitor(teamId: number, competitorId: number): Promise<void> {
+  async deleteGroup(teamId: number, groupId: number): Promise<void> {
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      `${API_URL}/virality/${teamId}/competitors/${groupId}`,
       {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -314,7 +314,7 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to delete competitor");
+      throw new Error(error.error || "Failed to delete group");
     }
   }
 
@@ -381,7 +381,7 @@ class ViralityAPI {
     return data.logs;
   }
 
-  async getCompetitorsWithAccounts(teamId: number): Promise<CompetitorWithAccounts[]> {
+  async getGroupsWithAccounts(teamId: number): Promise<CompetitorWithAccounts[]> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/competitors-with-accounts`,
       {
@@ -393,7 +393,7 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to fetch competitors");
+      throw new Error(error.error || "Failed to fetch groups");
     }
 
     const data = await response.json();

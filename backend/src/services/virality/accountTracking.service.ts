@@ -124,7 +124,7 @@ export class AccountTrackingService {
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
-    accountType: "profile" | "hashtag" | "keyword" = "profile"
+    accountType: "profile" | "hashtag" | "keyword" = "profile",
   ) {
     // Parse username based on account type
     let username: string;
