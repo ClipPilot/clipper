@@ -25,8 +25,6 @@ import {
 import { userPerformanceAPI } from "@/api/userPerformance";
 import { canAccessViralityTracker, getViralityAccountLimit } from "@/lib/plans";
 import {
-  MY_PERFORMANCE_NAME,
-  MY_PERFORMANCE_COMPETITOR_ID,
   toMyPerfId,
 } from "@/lib/viralityConstants";
 import { pct } from "@/app/dashboard/virality/[competitorId]/utils";
@@ -172,7 +170,6 @@ export default function ExecutiveDashboardPage() {
   const [allPosts, setAllPosts] = useState<PostWithMeta[]>([]);
   const [alertLogs, setAlertLogs] = useState<AlertLog[]>([]);
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
-  const [myAccounts, setMyAccounts] = useState<ViralityAccount[]>([]);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [totalAccountCount, setTotalAccountCount] = useState(0);
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
@@ -200,8 +197,10 @@ export default function ExecutiveDashboardPage() {
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
       setAlertLogs(alerts);
-      setCompetitors(withAccounts);
-      setMyAccounts(myAccts);
+      setCompetitors(
+        withAccounts.filter((g: any) => g.competitor === false),
+      );
+
 
       const compAccountCount = withAccounts.reduce(
         (sum: number, c: CompetitorWithAccounts) => sum + c.accounts.length,
@@ -287,38 +286,29 @@ export default function ExecutiveDashboardPage() {
   ) => {
     if (!selectedTeam?.id) return;
 
-    if (options.isMyPerformance) {
-      await userPerformanceAPI.addAccount(
-        selectedTeam.id,
-        platform,
-        profileUrl,
-        options.accountType,
-      );
-      toast({ title: "Account added to My Performance", color: "success" });
-      await fetchData();
-      return;
-    }
+    let groupId = options.competitorId;
 
-    let competitorId = options.competitorId;
-
-    if (!competitorId && options.newCompetitorName) {
-      const competitor = await viralityAPI.createGroup(
+    if (!groupId && options.newCompetitorName) {
+      const group = await viralityAPI.createGroup(
         selectedTeam.id,
         options.newCompetitorName,
+        undefined,
+        false,
       );
-      competitorId = competitor.id;
+      groupId = group.id;
     }
 
-    if (!competitorId) {
-      throw new Error("Please select or create a competitor group");
+    if (!groupId) {
+      throw new Error("Please select or create a group");
     }
 
     const account = await viralityAPI.addAccount(
       selectedTeam.id,
       platform,
       profileUrl,
-      competitorId,
+      groupId,
       options.accountType,
+      false,
     );
 
     if (options.enableAlerts) {
@@ -329,25 +319,8 @@ export default function ExecutiveDashboardPage() {
     await fetchData();
   };
 
-  const myPerformanceCompetitor = useMemo<CompetitorWithAccounts>(() => {
-    const now = new Date().toISOString();
-    return {
-      id: MY_PERFORMANCE_COMPETITOR_ID,
-      name: MY_PERFORMANCE_NAME,
-      description: null,
-      team_id: selectedTeam?.id ?? 0,
-      created_at: now,
-      updated_at: now,
-      accounts: myAccounts.map((a) => ({ ...a, id: toMyPerfId(a.id) })),
-    };
-  }, [myAccounts, selectedTeam?.id]);
-
-  const allCompetitors = useMemo(() => {
-    return [myPerformanceCompetitor, ...competitors];
-  }, [myPerformanceCompetitor, competitors]);
-
   const competitorCards = useMemo(() => {
-    return allCompetitors.map((comp) => {
+    return competitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
       const followers = comp.accounts.reduce(
         (s, a) => s + (a.follower_count || 0),
@@ -421,10 +394,10 @@ export default function ExecutiveDashboardPage() {
         followersChange,
         viewsChange,
         engRateChange,
-        isMyPerformance: comp.id === MY_PERFORMANCE_COMPETITOR_ID,
+        isMyPerformance: false,
       };
     });
-  }, [allCompetitors, postsByAccount]);
+  }, [competitors, postsByAccount]);
 
   const filteredPosts = useMemo(() => {
     if (platformFilter === "all") return allPosts;
@@ -638,6 +611,8 @@ export default function ExecutiveDashboardPage() {
         isOpen={isOpen}
         onClose={onClose}
         competitors={competitors}
+        hideMyPerformanceOption
+        groupLabel="Group"
         onSubmit={handleAddAccount}
         accountCount={totalAccountCount}
         accountLimit={getViralityAccountLimit(selectedTeam?.plan)}

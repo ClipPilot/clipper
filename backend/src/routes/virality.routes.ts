@@ -42,7 +42,7 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  * @openapi
  * /virality/{teamId}/accounts:
  *   post:
- *     summary: Add a new competitor account to track (optionally assign to a group)
+ *     summary: Add a new account to track (competitor or user) within a group
  *     tags:
  *       - Virality
  *     security:
@@ -62,6 +62,8 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  *             required:
  *               - platform
  *               - profileUrl
+ *               - groupId
+ *               - competitor
  *             properties:
  *               platform:
  *                 type: string
@@ -72,8 +74,12 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  *                 type: string
  *                 enum: [profile, hashtag, keyword]
  *                 default: profile
- *               competitorId:
+ *               groupId:
  *                 type: integer
+ *                 description: ID of the group to assign this account to
+ *               competitor:
+ *                 type: boolean
+ *                 description: If true, writes to competitor_accounts; if false, writes to user_accounts
  *     responses:
  *       201:
  *         description: Account created
@@ -522,9 +528,13 @@ router.get("/:teamId/posts", requireAuth, (req, res) => viralityController.getAl
  *                 type: string
  *               description:
  *                 type: string
+ *               competitor:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether this is a competitor group (true) or a user performance group (false)
  *     responses:
  *       201:
- *         description: Competitor group created
+ *         description: Group created
  *         content:
  *           application/json:
  *             schema:

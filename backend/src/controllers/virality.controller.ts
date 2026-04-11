@@ -2,6 +2,7 @@ import { Response } from "express";
 import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, CompetitorWithAccounts, ViralityPostsByAccount, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
+import { userPerformanceService } from "../services/virality/userPerformance.service";
 import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
@@ -32,13 +33,19 @@ class ViralityController {
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { platform, profileUrl, competitorId, accountType } = req.body;
+      const { platform, profileUrl, groupId, accountType, competitor } = req.body;
 
       if (!platform || !profileUrl) {
         return res.status(400).json({ error: "Platform and profile URL are required" });
       }
       if (!["instagram", "tiktok", "x"].includes(platform)) {
         return res.status(400).json({ error: "Only Instagram, TikTok, and X are supported" });
+      }
+      if (!groupId || isNaN(parseInt(groupId))) {
+        return res.status(400).json({ error: "groupId is required" });
+      }
+      if (typeof competitor !== "boolean") {
+        return res.status(400).json({ error: "competitor must be a boolean" });
       }
 
       const validAccountTypes = ["profile", "hashtag", "keyword"];
@@ -51,16 +58,18 @@ class ViralityController {
         platform,
         profileUrl,
         accountType || "profile",
-        competitorId ? parseInt(competitorId) : undefined
+        parseInt(groupId),
+        competitor
       );
 
-      viralityService.syncAccount(account.id, teamId).catch((err) => {
-        console.error(`Initial sync failed for competitor account ${account.id}:`, err);
+      const syncService = competitor ? viralityService : userPerformanceService;
+      syncService.syncAccount(account.id, teamId).catch((err) => {
+        console.error(`Initial sync failed for account ${account.id}:`, err);
       });
 
       return res.status(201).json({ account });
     } catch (error) {
-      return handleError(res, "Add competitor account error", error, "Failed to add competitor account");
+      return handleError(res, "Add account error", error, "Failed to add account");
     }
   }
 
@@ -238,12 +247,17 @@ class ViralityController {
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { name, description } = req.body;
+      const { name, description, competitor: isCompetitor } = req.body;
       if (!name || !name.trim()) {
-        return res.status(400).json({ error: "Competitor name is required" });
+        return res.status(400).json({ error: "Group name is required" });
       }
 
-      const competitor = await viralityService.createGroup(teamId, name.trim(), description?.trim());
+      const competitor = await viralityService.createGroup(
+        teamId,
+        name.trim(),
+        description?.trim(),
+        isCompetitor !== undefined ? isCompetitor : true,
+      );
       return res.status(201).json({ competitor });
     } catch (error) {
       return handleError(res, "Create group error", error, "Failed to create group");

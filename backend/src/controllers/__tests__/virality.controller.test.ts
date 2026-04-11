@@ -4,7 +4,7 @@ import type { Request } from "express";
 
 const { mockViralityService } = vi.hoisted(() => ({
   mockViralityService: {
-    getAllCompetitorsWithAccounts: vi.fn(),
+    getAllGroupsWithAccounts: vi.fn(),
     getPostsForTeam: vi.fn(),
     getCompetitorsByTeam: vi.fn(),
     getDashboardStats: vi.fn(),
@@ -38,13 +38,13 @@ function createReq(overrides: Partial<Request> = {}): Request {
   return { headers: {}, params: {}, body: {}, query: {}, ...overrides } as Request;
 }
 
-describe("ViralityController.listCompetitorsWithAccounts", () => {
+describe("ViralityController.listGroupsWithAccounts", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 400 for invalid teamId", async () => {
     const req = createReq({ params: { teamId: "abc" } });
     const res = createMockResponse();
-    await viralityController.listCompetitorsWithAccounts(req, res);
+    await viralityController.listGroupsWithAccounts(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
@@ -52,7 +52,7 @@ describe("ViralityController.listCompetitorsWithAccounts", () => {
     mockViralityService.checkTeamPlanAccess.mockResolvedValueOnce(false);
     const req = createReq({ params: { teamId: "5" } });
     const res = createMockResponse();
-    await viralityController.listCompetitorsWithAccounts(req, res);
+    await viralityController.listGroupsWithAccounts(req, res);
     expect(res.status).toHaveBeenCalledWith(403);
   });
 
@@ -61,21 +61,21 @@ describe("ViralityController.listCompetitorsWithAccounts", () => {
       { id: 1, name: "Comp A", accounts: [{ id: 10, username: "user10" }] },
       { id: 2, name: "Comp B", accounts: [] },
     ];
-    mockViralityService.getAllCompetitorsWithAccounts.mockResolvedValue(competitors);
+    mockViralityService.getAllGroupsWithAccounts.mockResolvedValue(competitors);
     const req = createReq({ params: { teamId: "5" } });
     const res = createMockResponse();
 
-    await viralityController.listCompetitorsWithAccounts(req, res);
+    await viralityController.listGroupsWithAccounts(req, res);
 
-    expect(mockViralityService.getAllCompetitorsWithAccounts).toHaveBeenCalledWith(5);
+    expect(mockViralityService.getAllGroupsWithAccounts).toHaveBeenCalledWith(5);
     expect(res.json).toHaveBeenCalledWith({ competitors });
   });
 
   it("returns 500 on service error", async () => {
-    mockViralityService.getAllCompetitorsWithAccounts.mockRejectedValue(new Error("DB error"));
+    mockViralityService.getAllGroupsWithAccounts.mockRejectedValue(new Error("DB error"));
     const req = createReq({ params: { teamId: "5" } });
     const res = createMockResponse();
-    await viralityController.listCompetitorsWithAccounts(req, res);
+    await viralityController.listGroupsWithAccounts(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

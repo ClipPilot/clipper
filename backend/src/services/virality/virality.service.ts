@@ -2,12 +2,14 @@ import { db } from "../../db";
 import {
   competitorAccounts,
   competitorPosts,
+  userAccounts,
   viralityGroups,
   viralitySettings,
   viralityAlertLogs,
 } from "@clipper/shared-db/src/schema";
 import { eq, desc, count, and, inArray, gte, lte } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
+import { userPerformanceService } from "./userPerformance.service";
 
 // ── Virality-specific service (adds competitor methods + overrides) ──────────
 
@@ -16,56 +18,47 @@ class ViralityService extends AccountTrackingService {
     super(competitorAccounts, competitorPosts);
   }
 
-  // Override addAccount to support competitor grouping
   async addAccount(
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
     accountType: "profile" | "hashtag" | "keyword" = "profile",
-    groupId?: number
+    groupId: number,
+    isCompetitor: boolean = true
   ) {
-    // Verify competitor ownership if provided
-    if (groupId) {
-      const competitor = await this.getGroupById(groupId);
-      if (!competitor || competitor.team_id !== teamId) {
-        throw new Error("Competitor not found or access denied");
-      }
+    const group = await this.getGroupById(groupId);
+    if (!group || group.team_id !== teamId) {
+      throw new Error("Group not found or access denied");
     }
 
-    const account = await super.addAccount(teamId, platform, profileUrl, accountType);
-
-    // Set group_id on the created account
-    if (groupId) {
-      const [updated] = await db
-        .update(competitorAccounts)
-        .set({ group_id: groupId })
-        .where(eq(competitorAccounts.id, account.id))
-        .returning();
-      return updated;
+    if (isCompetitor) {
+      return super.addAccount(teamId, platform, profileUrl, accountType, groupId);
     }
 
-    return account;
+    return userPerformanceService.addAccount(teamId, platform, profileUrl, accountType, groupId);
   }
 
-  // Override deleteAccount to handle competitor cleanup
-  async deleteAccount(accountId: number, teamId: number) {
-    const account = await this.getAccountById(accountId);
-    if (!account || account.team_id !== teamId) {
-      throw new Error("Account not found or access denied");
-    }
-
-    await db.delete(competitorAccounts).where(eq(competitorAccounts.id, accountId));
-
-    // If the competitor has no remaining accounts, delete it too
-    if (account.group_id) {
-      const [remaining] = await db
-        .select({ count: count() })
-        .from(competitorAccounts)
-        .where(eq(competitorAccounts.group_id, account.group_id));
-
-      if (remaining.count === 0) {
-        await db.delete(viralityGroups).where(eq(viralityGroups.id, account.group_id));
+  async deleteAccount(accountId: number, teamId: number, isCompetitor: boolean = true) {
+    if (isCompetitor) {
+      const account = await this.getAccountById(accountId);
+      if (!account || account.team_id !== teamId) {
+        throw new Error("Account not found or access denied");
       }
+
+      await db.delete(competitorAccounts).where(eq(competitorAccounts.id, accountId));
+
+      if (account.group_id) {
+        const [remaining] = await db
+          .select({ count: count() })
+          .from(competitorAccounts)
+          .where(eq(competitorAccounts.group_id, account.group_id));
+
+        if (remaining.count === 0) {
+          await db.delete(viralityGroups).where(eq(viralityGroups.id, account.group_id));
+        }
+      }
+    } else {
+      await userPerformanceService.deleteAccount(accountId, teamId);
     }
   }
 
@@ -126,7 +119,7 @@ class ViralityService extends AccountTrackingService {
   }
 
   async getAllGroupsWithAccounts(teamId: number) {
-    const [groups, accounts] = await Promise.all([
+    const [groups, compAccounts, userAccts] = await Promise.all([
       db
         .select()
         .from(viralityGroups)
@@ -137,10 +130,15 @@ class ViralityService extends AccountTrackingService {
         .from(competitorAccounts)
         .where(eq(competitorAccounts.team_id, teamId))
         .orderBy(desc(competitorAccounts.created_at)),
+      db
+        .select()
+        .from(userAccounts)
+        .where(eq(userAccounts.team_id, teamId))
+        .orderBy(desc(userAccounts.created_at)),
     ]);
 
-    const accountsByGroup: Record<number, typeof accounts> = {};
-    for (const account of accounts) {
+    const accountsByGroup: Record<number, any[]> = {};
+    for (const account of [...compAccounts, ...userAccts]) {
       const gid = account.group_id;
       if (gid) {
         if (!accountsByGroup[gid]) accountsByGroup[gid] = [];
@@ -154,16 +152,17 @@ class ViralityService extends AccountTrackingService {
     }));
   }
 
-  async createGroup(teamId: number, name: string, description?: string) {
-    const [competitor] = await db
+  async createGroup(teamId: number, name: string, description?: string, isCompetitor: boolean = true) {
+    const [group] = await db
       .insert(viralityGroups)
       .values({
         team_id: teamId,
         name,
         description: description || null,
+        competitor: isCompetitor,
       })
       .returning();
-    return competitor;
+    return group;
   }
 
   async updateGroup(groupId: number, teamId: number, data: { name?: string; description?: string }) {

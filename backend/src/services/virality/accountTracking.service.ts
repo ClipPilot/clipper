@@ -125,6 +125,7 @@ export class AccountTrackingService {
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
     accountType: "profile" | "hashtag" | "keyword" = "profile",
+    groupId?: number,
   ) {
     // Parse username based on account type
     let username: string;
@@ -205,6 +206,7 @@ export class AccountTrackingService {
         username,
         profile_url,
         sync_status: "pending",
+        ...(groupId != null && { group_id: groupId }),
       })
       .returning() as any[];
 

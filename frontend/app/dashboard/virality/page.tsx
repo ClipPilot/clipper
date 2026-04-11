@@ -479,42 +479,45 @@ export default function ViralityPage() {
   ) => {
     if (!selectedTeam?.id) return;
 
-    // Route to userPerformance API if My Performance is selected
+    const isCompetitor = !options.isMyPerformance;
+    let groupId = options.competitorId;
+
     if (options.isMyPerformance) {
-      await userPerformanceAPI.addAccount(
-        selectedTeam.id,
-        platform,
-        profileUrl,
-        options.accountType,
-      );
-      toast({ title: "Account added to My Performance", color: "success" });
-      await fetchData();
-      return;
-    }
-
-    let competitorId = options.competitorId;
-
-    if (!competitorId && options.newCompetitorName) {
-      const competitor = await viralityAPI.createGroup(
+      const existingGroup = competitors.find((c) => c.name === MY_PERFORMANCE_NAME);
+      if (existingGroup) {
+        groupId = existingGroup.id;
+      } else {
+        const group = await viralityAPI.createGroup(
+          selectedTeam.id,
+          MY_PERFORMANCE_NAME,
+          undefined,
+          false,
+        );
+        groupId = group.id;
+      }
+    } else if (!groupId && options.newCompetitorName) {
+      const group = await viralityAPI.createGroup(
         selectedTeam.id,
         options.newCompetitorName,
+        undefined,
+        true,
       );
-      competitorId = competitor.id;
+      groupId = group.id;
     }
 
-    if (!competitorId) {
-      throw new Error("Please select or create a competitor group");
+    if (!groupId) {
+      throw new Error("Please select or create a group");
     }
 
     const account = await viralityAPI.addAccount(
       selectedTeam.id,
       platform,
       profileUrl,
-      competitorId,
+      groupId,
       options.accountType,
+      isCompetitor,
     );
 
-    // Enable alerts on the newly created account if requested
     if (options.enableAlerts) {
       await viralityAPI.updateAlertEnabled(selectedTeam.id, account.id, true);
     }

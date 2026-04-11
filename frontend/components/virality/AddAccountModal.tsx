@@ -24,6 +24,8 @@ interface AddAccountModalProps {
   onClose: () => void;
   competitors?: ViralityCompetitor[];
   hideCompetitorSelect?: boolean;
+  hideMyPerformanceOption?: boolean;
+  groupLabel?: string;
   accountCount?: number;
   accountLimit?: number;
   plan?: string | null;
@@ -47,6 +49,8 @@ export function AddAccountModal({
   onClose,
   competitors = [],
   hideCompetitorSelect = false,
+  hideMyPerformanceOption = false,
+  groupLabel,
   accountCount,
   accountLimit,
   plan,
@@ -208,7 +212,7 @@ export function AddAccountModal({
 
               {!hideCompetitorSelect && (
                 <div className="space-y-2">
-                  <label className="text-sm text-gray-400">Competitor Group</label>
+                  <label className="text-sm text-gray-400">{groupLabel || "Competitor Group"}</label>
                   <Select
                     value={competitorSelection}
                     onChange={(val: Key | null) => {
@@ -221,12 +225,14 @@ export function AddAccountModal({
                     </Select.Trigger>
                     <Select.Popover>
                       <ListBox>
-                        <ListBox.Item id="my-performance" textValue={MY_PERFORMANCE_NAME}>
-                          {MY_PERFORMANCE_NAME}
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                        <ListBox.Item id="new" textValue="Create New Competitor">
-                          Create New Competitor
+                        {!hideMyPerformanceOption && (
+                          <ListBox.Item id="my-performance" textValue={MY_PERFORMANCE_NAME}>
+                            {MY_PERFORMANCE_NAME}
+                            <ListBox.ItemIndicator />
+                          </ListBox.Item>
+                        )}
+                        <ListBox.Item id="new" textValue={groupLabel ? `Create New ${groupLabel}` : "Create New Competitor"}>
+                          {groupLabel ? `Create New ${groupLabel}` : "Create New Competitor"}
                           <ListBox.ItemIndicator />
                         </ListBox.Item>
                         {competitors.map((c) => (

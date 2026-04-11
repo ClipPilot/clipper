@@ -61,14 +61,15 @@ class ViralityAPI {
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
-    competitorId?: number,
-    accountType: "profile" | "hashtag" | "keyword" = "profile"
+    groupId: number,
+    accountType: "profile" | "hashtag" | "keyword" = "profile",
+    competitor: boolean = true
   ): Promise<ViralityAccount> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ platform, profileUrl, competitorId, accountType }),
+      body: JSON.stringify({ platform, profileUrl, groupId, accountType, competitor }),
     });
 
     if (!response.ok) {
@@ -235,7 +236,8 @@ class ViralityAPI {
   async createGroup(
     teamId: number,
     name: string,
-    description?: string
+    description?: string,
+    competitor: boolean = true
   ): Promise<ViralityCompetitor> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/competitors`,
@@ -243,7 +245,7 @@ class ViralityAPI {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, competitor }),
       }
     );
 

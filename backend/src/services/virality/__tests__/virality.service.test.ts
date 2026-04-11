@@ -33,10 +33,10 @@ const makeCompetitor = (id: number, teamId: number) => ({
   updated_at: new Date(),
 });
 
-const makeAccount = (id: number, teamId: number, competitorId: number | null) => ({
+const makeAccount = (id: number, teamId: number, groupId: number | null) => ({
   id,
   team_id: teamId,
-  competitor_id: competitorId,
+  group_id: groupId,
   platform: "tiktok",
   username: `user${id}`,
   profile_url: `https://tiktok.com/@user${id}`,
@@ -48,7 +48,7 @@ const makeAccount = (id: number, teamId: number, competitorId: number | null) =>
   updated_at: new Date(),
 });
 
-describe("ViralityService.getAllCompetitorsWithAccounts", () => {
+describe("ViralityService.getAllGroupsWithAccounts", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns competitors with grouped accounts in 2 parallel queries", async () => {
@@ -62,7 +62,7 @@ describe("ViralityService.getAllCompetitorsWithAccounts", () => {
       .mockReturnValueOnce(createDrizzleChain([comp1, comp2]))
       .mockReturnValueOnce(createDrizzleChain([acc1, acc2, acc3]));
 
-    const result = await viralityService.getAllCompetitorsWithAccounts(10);
+    const result = await viralityService.getAllGroupsWithAccounts(10);
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe(1);
@@ -81,7 +81,7 @@ describe("ViralityService.getAllCompetitorsWithAccounts", () => {
       .mockReturnValueOnce(createDrizzleChain([comp1]))
       .mockReturnValueOnce(createDrizzleChain([]));
 
-    const result = await viralityService.getAllCompetitorsWithAccounts(10);
+    const result = await viralityService.getAllGroupsWithAccounts(10);
 
     expect(result).toHaveLength(1);
     expect(result[0].accounts).toEqual([]);
@@ -92,7 +92,7 @@ describe("ViralityService.getAllCompetitorsWithAccounts", () => {
       .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]));
 
-    const result = await viralityService.getAllCompetitorsWithAccounts(10);
+    const result = await viralityService.getAllGroupsWithAccounts(10);
 
     expect(result).toEqual([]);
   });
@@ -106,7 +106,7 @@ describe("ViralityService.getAllCompetitorsWithAccounts", () => {
       .mockReturnValueOnce(createDrizzleChain([comp1]))
       .mockReturnValueOnce(createDrizzleChain([accLinked, accOrphan]));
 
-    const result = await viralityService.getAllCompetitorsWithAccounts(10);
+    const result = await viralityService.getAllGroupsWithAccounts(10);
 
     expect(result[0].accounts).toHaveLength(1);
     expect(result[0].accounts[0].id).toBe(100);
@@ -118,7 +118,7 @@ describe("ViralityService.getAllCompetitorsWithAccounts", () => {
       .mockReturnValueOnce(createDrizzleChain([]));
     mockDb.update.mockReturnValueOnce(createDrizzleChain([]));
 
-    await viralityService.getAllCompetitorsWithAccounts(10);
+    await viralityService.getAllGroupsWithAccounts(10);
 
     expect(mockDb.update).not.toHaveBeenCalled();
   });
