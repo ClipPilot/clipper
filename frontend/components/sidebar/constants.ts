@@ -62,10 +62,10 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     title: "Intelligence",
     items: [
       {
-        key: "executive-dashboard",
-        title: "Executive Dashboard",
+        key: "your-performance",
+        title: "Your Performance",
         icon: "solar:chart-2-bold-duotone",
-        href: "/dashboard/executive-dashboard",
+        href: "/dashboard/your-performance",
         requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
       },
       {
