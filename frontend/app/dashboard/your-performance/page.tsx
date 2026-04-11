@@ -464,10 +464,10 @@ export default function ExecutiveDashboardPage() {
       <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-text-primary">
-              Executive Dashboard
+              Your Performance
             </h1>
             <p className="text-text-secondary text-sm mt-1">
-              High-level performance overview across all tracked accounts
+              High-level performance overview across all your tracked accounts
             </p>
           </div>
           <div className="flex items-center gap-3">
