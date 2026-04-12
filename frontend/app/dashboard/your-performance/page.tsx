@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { Button, Chip, useOverlayState } from "@heroui/react";
@@ -91,6 +92,7 @@ function AlertRow({ alert }: { alert: AlertLog }) {
 }
 
 export default function ExecutiveDashboardPage() {
+  const router = useRouter();
   const { selectedTeam } = useTeams();
   const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<PlatformOption>("all");
@@ -113,19 +115,18 @@ export default function ExecutiveDashboardPage() {
     try {
       const { startDate, endDate } = dateRange;
 
-      const [withAccounts, stats, myStats, myAccts, alerts] = await Promise.all(
-        [
-          viralityAPI.getGroupsWithAccounts(selectedTeam.id),
-          viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
-          userPerformanceAPI.getDashboardStats(
-            selectedTeam.id,
-            startDate,
-            endDate,
-          ),
-          userPerformanceAPI.getAccounts(selectedTeam.id),
-          viralityAPI.getAlertLogs(selectedTeam.id, 5),
-        ],
-      );
+      const myAccts = await userPerformanceAPI.getAccounts(selectedTeam.id);
+
+      const [withAccounts, stats, myStats, alerts] = await Promise.all([
+        viralityAPI.getGroupsWithAccounts(selectedTeam.id),
+        viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
+        userPerformanceAPI.getDashboardStats(
+          selectedTeam.id,
+          startDate,
+          endDate,
+        ),
+        viralityAPI.getAlertLogs(selectedTeam.id, 5),
+      ]);
 
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
@@ -480,6 +481,7 @@ export default function ExecutiveDashboardPage() {
                 isMyPerformance: card.isMyPerformance,
               }}
               index={idx}
+              onView={(id) => router.push(`/dashboard/virality/${id}`)}
             />
           ))}
         </div>

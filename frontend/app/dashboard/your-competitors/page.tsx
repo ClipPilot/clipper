@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { Button, Chip, useOverlayState } from "@heroui/react";
@@ -61,6 +62,7 @@ function AlertRow({ alert }: { alert: AlertLog }) {
 }
 
 export default function YourCompetitorsPage() {
+  const router = useRouter();
   const { selectedTeam } = useTeams();
   const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<PlatformOption>("all");
@@ -80,9 +82,10 @@ export default function YourCompetitorsPage() {
     try {
       const { startDate, endDate } = dateRange;
 
-      const [withAccounts, myAccts, alerts] = await Promise.all([
+      const myAccts = await userPerformanceAPI.getAccounts(selectedTeam.id);
+
+      const [withAccounts, alerts] = await Promise.all([
         viralityAPI.getGroupsWithAccounts(selectedTeam.id),
-        userPerformanceAPI.getAccounts(selectedTeam.id),
         viralityAPI.getAlertLogs(selectedTeam.id, 5),
       ]);
 
@@ -408,6 +411,7 @@ export default function YourCompetitorsPage() {
                 engRateChange: card.engRateChange,
               }}
               index={idx}
+              onView={(id) => router.push(`/dashboard/virality/${id}`)}
             />
           ))}
         </div>

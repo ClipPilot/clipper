@@ -20,6 +20,7 @@ import {
   type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
+import { userPerformanceAPI } from "@/api/userPerformance";
 import {
   CHART_COLORS,
   timeAgo,
@@ -96,11 +97,14 @@ export default function CompetitorDetailPage() {
         setCompetitor(comp);
         reconcileSync(comp.accounts);
 
+        const isCompetitorGroup = (comp as any).competitor !== false;
+        const api = isCompetitorGroup ? viralityAPI : userPerformanceAPI;
+
         const { startDate, endDate } = dateRange;
         const postsMap: Record<number, ViralityPost[]> = {};
         await Promise.all(
           comp.accounts.map(async (a) => {
-            const posts = await viralityAPI.getAccountPosts(
+            const posts = await api.getAccountPosts(
               selectedTeam.id,
               a.id,
               100,
@@ -162,31 +166,32 @@ export default function CompetitorDetailPage() {
     return () => clearTimeout(timeout);
   }, [hasSyncing, fetchData]);
 
+  const isCompetitorGroup = (competitor as any)?.competitor !== false;
+  const groupAPI = isCompetitorGroup ? viralityAPI : userPerformanceAPI;
+
   const handleDeletePost = useCallback(
     async (postId: number) => {
       if (!selectedTeam?.id) return;
       try {
-        await viralityAPI.deletePost(selectedTeam.id, postId);
+        await groupAPI.deletePost(selectedTeam.id, postId);
         toast.success("Post removed from tracking");
         await fetchData(true);
       } catch (err: any) {
         toast.danger("Failed to delete post", { description: err.message });
       }
     },
-    [selectedTeam?.id, fetchData],
+    [selectedTeam?.id, fetchData, groupAPI],
   );
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
     const accountIds = competitor.accounts.map((a) => a.id);
 
-    // Mark as syncing in global state immediately
     startSync(accountIds);
 
     try {
-      // Fire-and-forget: all POST requests return 202 instantly
       await Promise.all(
-        accountIds.map((id) => viralityAPI.syncAccount(selectedTeam.id, id)),
+        accountIds.map((id) => groupAPI.syncAccount(selectedTeam.id, id)),
       );
       toast("Sync started for all accounts");
     } catch (err: any) {

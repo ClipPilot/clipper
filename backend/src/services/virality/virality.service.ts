@@ -62,7 +62,6 @@ class ViralityService extends AccountTrackingService {
     }
   }
 
-  // Override getPostsByAccount — viralityPosts has no mass_post_id / campaign join
   async getPostsByAccount(
     accountId: number,
     teamId: number,
@@ -137,6 +136,22 @@ class ViralityService extends AccountTrackingService {
         .orderBy(desc(userAccounts.created_at)),
     ]);
 
+    const compGroupIds = new Set(compAccounts.map((a) => a.group_id).filter(Boolean));
+    const userGroupIds = new Set(userAccts.map((a) => a.group_id).filter(Boolean));
+
+    const groupsToFix: number[] = [];
+    for (const g of groups) {
+      if (!g.competitor && compGroupIds.has(g.id)) {
+        groupsToFix.push(g.id);
+      }
+    }
+    if (groupsToFix.length > 0) {
+      await db
+        .update(viralityGroups)
+        .set({ competitor: true })
+        .where(inArray(viralityGroups.id, groupsToFix));
+    }
+
     const accountsByGroup: Record<number, any[]> = {};
     for (const account of [...compAccounts, ...userAccts]) {
       const gid = account.group_id;
@@ -148,6 +163,7 @@ class ViralityService extends AccountTrackingService {
 
     return groups.map((c) => ({
       ...c,
+      competitor: c.competitor || compGroupIds.has(c.id),
       accounts: accountsByGroup[c.id] || [],
     }));
   }
@@ -194,20 +210,21 @@ class ViralityService extends AccountTrackingService {
   }
 
   async getGroupWithAccounts(groupId: number, teamId: number) {
-    const competitor = await this.getGroupById(groupId);
-    if (!competitor || competitor.team_id !== teamId) {
+    const group = await this.getGroupById(groupId);
+    if (!group || group.team_id !== teamId) {
       throw new Error("Group not found or access denied");
     }
 
     await this.cleanupStaleSyncs();
 
+    const table = group.competitor ? competitorAccounts : userAccounts;
     const accounts = await db
       .select()
-      .from(competitorAccounts)
-      .where(eq(competitorAccounts.group_id, groupId))
-      .orderBy(desc(competitorAccounts.created_at));
+      .from(table)
+      .where(eq(table.group_id, groupId))
+      .orderBy(desc(table.created_at));
 
-    return { ...competitor, accounts };
+    return { ...group, accounts };
   }
 
   async deleteGroup(groupId: number, teamId: number) {
