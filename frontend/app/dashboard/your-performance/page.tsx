@@ -7,11 +7,13 @@ import { Button, Chip, useOverlayState } from "@heroui/react";
 import { toast } from "@/lib/toast";
 import { PageLoader } from "@/components/ui/PageLoader";
 import {
+  AccountsTable,
+  ActivityFeed,
   AddAccountModal,
   DateRangeFilter,
   PlatformFilter,
 } from "@/components/virality";
-import { CompetitorCard, ViralityUpgradeWall } from "@clipper/shared-ui";
+import { CompetitorCard, ViralityUpgradeWall, type FeedPost } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
@@ -24,9 +26,6 @@ import {
 } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
 import { canAccessViralityTracker, getViralityAccountLimit } from "@/lib/plans";
-import {
-  toMyPerfId,
-} from "@/lib/viralityConstants";
 import { pct } from "@/app/dashboard/virality/[competitorId]/utils";
 import type { PlatformOption } from "@clipper/shared-ui";
 
@@ -65,72 +64,6 @@ function KpiCard({
   );
 }
 
-const PLATFORM_ICONS: Record<string, string> = {
-  tiktok: "ri:tiktok-fill",
-  instagram: "ri:instagram-fill",
-  x: "ri:twitter-x-fill",
-};
-
-const PLATFORM_COLORS: Record<string, string> = {
-  tiktok: "bg-black",
-  instagram: "bg-gradient-to-br from-purple-500 to-pink-500",
-  x: "bg-zinc-800",
-};
-
-function PostRow({ post, rank }: { post: PostWithMeta; rank: number }) {
-  const views = post.video_play_count || 0;
-  const likes = post.like_count || 0;
-  const comments = post.comment_count || 0;
-  const engRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
-  const showThumbnail =
-    post.thumbnail_url &&
-    post.accountPlatform !== "instagram" &&
-    post.accountPlatform !== "tiktok";
-
-  return (
-    <a
-      href={post.post_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-3 py-3 border-b border-border-base last:border-b-0 hover:bg-surface-hover/50 -mx-2 px-2 rounded-lg transition-colors"
-    >
-      <span className="text-sm font-medium text-text-tertiary w-6 text-center">
-        {rank}
-      </span>
-      {showThumbnail ? (
-        <img
-          src={post.thumbnail_url!}
-          alt=""
-          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-        />
-      ) : (
-        <div
-          className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center ${PLATFORM_COLORS[post.accountPlatform] || "bg-surface-dark"}`}
-        >
-          <Icon
-            icon={
-              PLATFORM_ICONS[post.accountPlatform] ||
-              "solar:video-frame-bold-duotone"
-            }
-            width={18}
-            className="text-white"
-          />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-text-primary truncate">
-          @{post.accountUsername}
-        </p>
-        <p className="text-xs text-text-tertiary">
-          {formatNumber(views)} views &middot; {engRate.toFixed(1)}% eng
-        </p>
-      </div>
-      <Chip size="sm" className="capitalize text-xs">
-        {post.accountPlatform}
-      </Chip>
-    </a>
-  );
-}
 
 function AlertRow({ alert }: { alert: AlertLog }) {
   const isFailed = alert.status === "failed";
@@ -209,40 +142,23 @@ export default function ExecutiveDashboardPage() {
       setTotalAccountCount(compAccountCount + myAccts.length);
 
       const accountMap: Record<number, ViralityAccount> = {};
-      for (const c of withAccounts) {
-        for (const a of c.accounts) {
-          accountMap[a.id] = a;
-        }
-      }
       for (const a of myAccts) {
         accountMap[a.id] = a;
       }
 
-      const [compPostsByAccount, myPostsByAccount] = await Promise.all([
-        viralityAPI.getAllPosts(selectedTeam.id, startDate, endDate),
-        userPerformanceAPI.getAllPosts(selectedTeam.id, startDate, endDate),
-      ]);
+      const myPostsByAccount = await userPerformanceAPI.getAllPosts(
+        selectedTeam.id,
+        startDate,
+        endDate,
+      );
 
-      const mergedPostsByAccount: Record<number, ViralityPost[]> = { ...compPostsByAccount };
+      const postsByAcct: Record<number, ViralityPost[]> = {};
       for (const [idStr, acctPosts] of Object.entries(myPostsByAccount)) {
-        mergedPostsByAccount[toMyPerfId(Number(idStr))] = acctPosts;
+        postsByAcct[Number(idStr)] = acctPosts;
       }
-      setPostsByAccount(mergedPostsByAccount);
+      setPostsByAccount(postsByAcct);
 
       const posts: PostWithMeta[] = [];
-      for (const [accountIdStr, accountPosts] of Object.entries(
-        compPostsByAccount,
-      )) {
-        const account = accountMap[Number(accountIdStr)];
-        if (!account) continue;
-        for (const post of accountPosts) {
-          posts.push({
-            ...post,
-            accountUsername: account.username,
-            accountPlatform: account.platform,
-          });
-        }
-      }
       for (const [accountIdStr, accountPosts] of Object.entries(
         myPostsByAccount,
       )) {
@@ -399,6 +315,32 @@ export default function ExecutiveDashboardPage() {
     });
   }, [competitors, postsByAccount]);
 
+  const accountRows = useMemo(() => {
+    const rows: import("@clipper/shared-ui").AccountRow[] = [];
+    for (const group of competitors) {
+      for (const a of group.accounts) {
+        const acctPosts = postsByAccount[a.id] || [];
+        const views = acctPosts.reduce((s, p) => s + (p.video_play_count || 0), 0);
+        const postCount = acctPosts.length;
+        rows.push({
+          id: a.id,
+          username: a.username,
+          displayName: a.display_name || "",
+          platform: a.platform,
+          accountType: (a.account_type as "profile" | "hashtag" | "keyword") || "profile",
+          competitorName: group.name,
+          competitorId: group.id,
+          views,
+          avgViews: postCount > 0 ? Math.round(views / postCount) : 0,
+          postCount,
+          isActive: a.is_active !== false,
+          alertEnabled: !!a.alert_enabled,
+        });
+      }
+    }
+    return rows;
+  }, [competitors, postsByAccount]);
+
   const filteredPosts = useMemo(() => {
     if (platformFilter === "all") return allPosts;
     return allPosts.filter((p) => p.accountPlatform === platformFilter);
@@ -432,18 +374,22 @@ export default function ExecutiveDashboardPage() {
       : 0;
   }, [filteredPosts]);
 
-  const sortedByViews = useMemo(() => {
-    return [...filteredPosts].sort(
-      (a, b) => (b.video_play_count || 0) - (a.video_play_count || 0),
-    );
-  }, [filteredPosts]);
-
-  const bestPosts = sortedByViews.slice(0, 5);
-  const worstPosts = useMemo(() => {
-    return [...filteredPosts]
-      .filter((p) => (p.video_play_count || 0) > 0)
-      .sort((a, b) => (a.video_play_count || 0) - (b.video_play_count || 0))
-      .slice(0, 5);
+  const feedPosts: FeedPost[] = useMemo(() => {
+    return filteredPosts.map((p) => ({
+      id: p.id,
+      accountId: p.account_id,
+      accountUsername: p.accountUsername,
+      platform: p.accountPlatform,
+      caption: p.caption,
+      thumbnailUrl: p.thumbnail_url,
+      postUrl: p.post_url,
+      postedAt: p.posted_at,
+      likeCount: p.like_count || 0,
+      commentCount: p.comment_count || 0,
+      viewCount: p.video_play_count ?? 0,
+      massPostId: p.mass_post_id,
+      campaignName: p.campaign_name,
+    }));
   }, [filteredPosts]);
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
@@ -538,72 +484,28 @@ export default function ExecutiveDashboardPage() {
           ))}
         </div>
 
-        {/* Best / Worst Performing Posts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="rounded-xl border border-border-base bg-surface-base p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Icon
-                icon="solar:arrow-up-bold-duotone"
-                width={20}
-                className="text-green-400"
-              />
-              <h2 className="text-lg font-semibold text-text-primary">
-                Best Performing Posts
-              </h2>
-            </div>
-            {bestPosts.length === 0 ? (
-              <p className="text-sm text-text-tertiary py-4 text-center">
-                No posts found
-              </p>
-            ) : (
-              bestPosts.map((post, i) => (
-                <PostRow key={post.id} post={post} rank={i + 1} />
-              ))
-            )}
-          </div>
-
-          <div className="rounded-xl border border-border-base bg-surface-base p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Icon
-                icon="solar:arrow-down-bold-duotone"
-                width={20}
-                className="text-red-400"
-              />
-              <h2 className="text-lg font-semibold text-text-primary">
-                Worst Performing Posts
-              </h2>
-            </div>
-            {worstPosts.length === 0 ? (
-              <p className="text-sm text-text-tertiary py-4 text-center">
-                No posts found
-              </p>
-            ) : (
-              worstPosts.map((post, i) => (
-                <PostRow key={post.id} post={post} rank={i + 1} />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Recent Virality Alerts */}
-        <div className="rounded-xl border border-border-base bg-surface-base p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Icon
-              icon="solar:bell-bold-duotone"
-              width={20}
-              className="text-amber-400"
+        {/* Accounts & Content */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2">
+            <AccountsTable
+              accounts={accountRows}
+              platformFilter={platformFilter}
+              accountLimit={getViralityAccountLimit(selectedTeam?.plan)}
             />
-            <h2 className="text-lg font-semibold text-text-primary">
-              Recent Virality Alerts
-            </h2>
           </div>
-          {alertLogs.length === 0 ? (
-            <p className="text-sm text-text-tertiary py-4 text-center">
-              No alerts yet — configure alert settings in the Competitor Tracker
-            </p>
-          ) : (
-            alertLogs.map((alert) => <AlertRow key={alert.id} alert={alert} />)
-          )}
+          <div className="xl:col-span-1">
+            <ActivityFeed
+              posts={feedPosts}
+              title="Your Content"
+              tabs={[
+                { key: "best", label: "Best" },
+                { key: "worst", label: "Worst" },
+                { key: "recent", label: "Recent" },
+              ]}
+              defaultTab="best"
+              maxHeight="720px"
+            />
+          </div>
         </div>
       </div>
 

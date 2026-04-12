@@ -89,7 +89,7 @@ export function AccountsTable({
             <tr>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">ACCOUNT</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">PLATFORM</th>
-              <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">COMPETITOR</th>
+              <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">GROUP</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">VIEWS</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">AVG VIEWS</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">POSTS</th>
@@ -131,17 +131,6 @@ export function AccountsTable({
               >
                 <td className="py-2 px-3 border-t border-border-base text-xs">
                   <div className="flex items-center gap-3">
-                    {a.accountType === "hashtag" ? (
-                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
-                        <Icon icon="solar:hashtag-bold" width={16} className="text-text-secondary" />
-                      </div>
-                    ) : a.accountType === "keyword" ? (
-                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
-                        <Icon icon="solar:magnifer-bold" width={16} className="text-text-secondary" />
-                      </div>
-                    ) : (
-                      <Avatar size="sm" />
-                    )}
                     <div>
                       <p className="font-medium text-text-primary">
                         {a.accountType === "hashtag"
