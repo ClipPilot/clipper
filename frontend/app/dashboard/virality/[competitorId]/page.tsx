@@ -453,7 +453,7 @@ export default function CompetitorDetailPage() {
               variant="tertiary"
               isIconOnly
               className="!bg-transparent text-text-secondary hover:text-text-primary"
-              onPress={() => router.push("/dashboard/virality")}
+              onPress={() => router.back()}
             >
               <Icon icon="solar:arrow-left-linear" width={20} />
             </Button>
