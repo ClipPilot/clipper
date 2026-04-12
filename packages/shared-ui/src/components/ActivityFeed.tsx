@@ -118,7 +118,7 @@ export function ActivityFeed({ posts, allPosts, hasDateRange = false, maxItems, 
   }
 
   return (
-    <div className="rounded-2xl border border-border-base bg-surface-base overflow-hidden">
+    <div className="rounded-2xl border border-border-base bg-surface-base overflow-hidden flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border-base">
         <h3 className="text-base font-semibold text-text-primary">{title ?? "Top Performing Content"}</h3>
         <div className="flex items-center">
@@ -172,7 +172,7 @@ export function ActivityFeed({ posts, allPosts, hasDateRange = false, maxItems, 
       ) : (
         <div
           ref={scrollRef}
-          className="divide-y divide-border-base overflow-y-auto overflow-x-hidden"
+          className="divide-y divide-border-base overflow-y-auto overflow-x-hidden flex-1"
           style={{ maxHeight: maxHeight ?? "480px" }}
           onScroll={handleScroll}
         >

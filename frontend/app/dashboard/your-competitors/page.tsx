@@ -420,9 +420,9 @@ export default function YourCompetitorsPage() {
         <HeadToHeadTable competitors={headToHeadData} />
 
         {/* Share of Views & Competitor Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-1">
-            <div className="rounded-2xl border border-border-base bg-surface-base p-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+          <div className="xl:col-span-1 [&>*]:h-full">
+            <div className="rounded-2xl border border-border-base bg-surface-base p-6 flex flex-col">
               <h3 className="text-base font-semibold text-text-primary mb-4">Share of Views</h3>
               {shareOfViewsData.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -466,7 +466,7 @@ export default function YourCompetitorsPage() {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="space-y-2 mt-2">
+                  <div className="space-y-2 mt-auto pt-4 border-t border-border-base">
                     {shareOfViewsData.map((d, i) => {
                       const pctValue = totalShareViews > 0 ? ((d.value / totalShareViews) * 100).toFixed(1) : "0";
                       return (
@@ -487,7 +487,7 @@ export default function YourCompetitorsPage() {
               )}
             </div>
           </div>
-          <div className="xl:col-span-2">
+          <div className="xl:col-span-2 [&>*]:h-full">
             <ActivityFeed
               posts={feedPosts}
               title="Competitor Content"
@@ -497,7 +497,7 @@ export default function YourCompetitorsPage() {
                 { key: "recent", label: "Recent" },
               ]}
               defaultTab="best"
-              maxHeight="720px"
+              maxHeight="500px"
             />
           </div>
         </div>

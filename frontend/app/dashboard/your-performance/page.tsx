@@ -487,15 +487,15 @@ export default function ExecutiveDashboardPage() {
         </div>
 
         {/* Accounts & Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+          <div className="xl:col-span-2 [&>*]:h-full">
             <AccountsTable
               accounts={accountRows}
               platformFilter={platformFilter}
               accountLimit={getViralityAccountLimit(selectedTeam?.plan)}
             />
           </div>
-          <div className="xl:col-span-1">
+          <div className="xl:col-span-1 [&>*]:h-full">
             <ActivityFeed
               posts={feedPosts}
               title="Your Content"

@@ -82,8 +82,8 @@ export function AccountsTable({
   }
 
   return (
-    <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden flex flex-col">
+      <div className="overflow-x-auto flex-1">
         <table className="w-full min-w-[700px]">
           <thead>
             <tr>
