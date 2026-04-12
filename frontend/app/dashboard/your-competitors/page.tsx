@@ -25,7 +25,9 @@ import {
 } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
 import { canAccessViralityTracker, getViralityAccountLimit } from "@/lib/plans";
+import { formatNumber } from "@/lib/formatters";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import type { PlatformOption } from "@clipper/shared-ui";
 
 type PostWithMeta = ViralityPost & {
@@ -305,6 +307,19 @@ export default function YourCompetitorsPage() {
     return [myRow, ...competitorRows];
   }, [myAccounts, myPostsByAccount, competitorCards, compPostsByAccount]);
 
+  const PIE_COLORS = ["#a78bfa", "#3b82f6", "#f97316", "#10b981", "#ef4444", "#eab308", "#ec4899"];
+
+  const shareOfViewsData = useMemo(() => {
+    return headToHeadData
+      .filter((d) => d.totalViews > 0)
+      .map((d) => ({ name: d.name, value: d.totalViews }));
+  }, [headToHeadData]);
+
+  const totalShareViews = useMemo(
+    () => shareOfViewsData.reduce((s, d) => s + d.value, 0),
+    [shareOfViewsData],
+  );
+
   const filteredPosts = useMemo(() => {
     if (platformFilter === "all") return allPosts;
     return allPosts.filter((p) => p.accountPlatform === platformFilter);
@@ -400,18 +415,88 @@ export default function YourCompetitorsPage() {
         {/* Head-to-Head Comparison */}
         <HeadToHeadTable competitors={headToHeadData} />
 
-        {/* Competitor Content */}
-        <ActivityFeed
-          posts={feedPosts}
-          title="Competitor Content"
-          tabs={[
-            { key: "best", label: "Best" },
-            { key: "worst", label: "Worst" },
-            { key: "recent", label: "Recent" },
-          ]}
-          defaultTab="best"
-          maxHeight="720px"
-        />
+        {/* Share of Views & Competitor Content */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-1">
+            <div className="rounded-2xl border border-border-base bg-surface-base p-6">
+              <h3 className="text-base font-semibold text-text-primary mb-4">Share of Views</h3>
+              {shareOfViewsData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-surface-elevated flex items-center justify-center">
+                    <Icon icon="solar:pie-chart-2-bold" width={24} className="text-text-tertiary" />
+                  </div>
+                  <p className="text-text-secondary text-sm">No view data yet</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-full aspect-square max-w-[280px] mx-auto">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={shareOfViewsData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius="55%"
+                          outerRadius="85%"
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {shareOfViewsData.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          content={({ payload }) => {
+                            if (!payload?.[0]) return null;
+                            const d = payload[0].payload as { name: string; value: number };
+                            const pctValue = totalShareViews > 0 ? ((d.value / totalShareViews) * 100).toFixed(1) : "0";
+                            return (
+                              <div className="bg-surface-elevated border border-border-base rounded-lg px-3 py-2 shadow-lg">
+                                <p className="text-xs font-medium text-text-primary">{d.name}</p>
+                                <p className="text-xs text-text-secondary">{formatNumber(d.value)} views ({pctValue}%)</p>
+                              </div>
+                            );
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2 mt-2">
+                    {shareOfViewsData.map((d, i) => {
+                      const pctValue = totalShareViews > 0 ? ((d.value / totalShareViews) * 100).toFixed(1) : "0";
+                      return (
+                        <div key={d.name} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                            />
+                            <span className="text-sm text-text-secondary truncate">{d.name}</span>
+                          </div>
+                          <span className="text-sm font-medium text-text-primary flex-shrink-0">{pctValue}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="xl:col-span-2">
+            <ActivityFeed
+              posts={feedPosts}
+              title="Competitor Content"
+              tabs={[
+                { key: "best", label: "Best" },
+                { key: "worst", label: "Worst" },
+                { key: "recent", label: "Recent" },
+              ]}
+              defaultTab="best"
+              maxHeight="720px"
+            />
+          </div>
+        </div>
       </div>
 
       <AddAccountModal
