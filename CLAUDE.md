@@ -234,7 +234,9 @@ Schema is centralized in `packages/shared-db/src/schema.ts` and shared across ba
 - `folders`, `tags` - Organization
 - `jobs`, `jobsProgress` - Background job tracking
 - `usageStats` - Usage metering per team
-- `viralityAccounts`, `viralityPosts` - Social media tracking
+- `viralityGroups` - Groups for organizing tracked accounts (competitor=true for competitors, false for user's own)
+- `competitorAccounts`, `competitorPosts` - Competitor social media tracking
+- `userAccounts`, `userPosts` - User's own account performance tracking (includes mass posting accounts with source='mass_posting')
 - `APIKeys`, `apiBillingAccounts` - Public API billing
 - `announcements`, `userAnnouncementDismissals` - In-app notifications
 
@@ -447,6 +449,37 @@ pnpm build          # TypeScript compile
 - Environment variables: never commit `.env` files (use dotenv-vault)
 - Secrets in production: AWS Secrets Manager
 - CORS: explicitly allowlisted origins in `backend/src/app.ts`
+
+## Virality Tracker Architecture
+
+### Account Hierarchy
+- **viralityGroups** - Shared grouping table for both competitor and user accounts
+  - `competitor: true` → groups shown on `/dashboard/your-competitors`
+  - `competitor: false` → groups shown on `/dashboard/your-performance`
+- **competitorAccounts/competitorPosts** - Competitor tracking (synced via Apify)
+- **userAccounts/userPosts** - User's own accounts (synced via Apify)
+  - `source: 'mass_posting'` → auto-created from ad posting, shown on `/dashboard/your-performance/managed`
+
+### Sync Pipeline
+| Trigger | What happens | Where |
+|---------|-------------|-------|
+| Manual "Sync All" button | `accountTracking.service.syncAccount()` → Apify scrape in-process | Backend ECS |
+| Every 12h cron | Step Function `clipster-virality-sync-{env}` → 3 phases: competitor_accounts → user_accounts → mass_post user_posts | Lambda |
+| Mass posting webhook | `adPosting.service.resolveAndBridge()` → creates user_account + user_post + initial Apify scrape | Backend ECS |
+
+### Frontend Pages
+| Page | Data Source | Groups shown |
+|------|-----------|-------------|
+| `/dashboard/your-performance` | `userPerformanceAPI` + `viralityAPI.getGroupsWithAccounts` | `competitor=false` groups + Cuttr Managed card |
+| `/dashboard/your-performance/managed` | `userPerformanceAPI.getAccounts(teamId, "mass_posting")` | Mass posting accounts only |
+| `/dashboard/your-competitors` | `viralityAPI` | `competitor=true` groups |
+| `/dashboard/virality/[competitorId]` | `viralityAPI` or `userPerformanceAPI` (based on group.competitor flag) | Single group detail |
+
+### Shared UI Components (packages/shared-ui)
+All virality chart/table components live in `packages/shared-ui/src/components/` and are shared across pages:
+`AnalyticsChart`, `PostFrequencyChart`, `BestPerformingAccounts`, `AccountBreakdownChart`, `PostsTable`, `StatCards`, `CompetitorCard`, `AccountFilterPopover`, `ActivityFeed`
+
+After modifying shared-ui components, always rebuild: `cd packages/shared-ui && pnpm build`
 
 ## Important Patterns
 

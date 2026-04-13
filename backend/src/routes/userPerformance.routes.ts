@@ -131,41 +131,6 @@ router.post("/:teamId/accounts", requireAuth, (req, res) => userPerformanceContr
 /**
  * @openapi
  * /user-performance/{teamId}/accounts/{accountId}:
- *   get:
- *     summary: Get a specific user performance account
- *     tags:
- *       - User Performance
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Account details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 account:
- *                   type: object
- *       404:
- *         description: Account not found
- */
-router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPerformanceController.getAccount(req, res));
-
-/**
- * @openapi
- * /user-performance/{teamId}/accounts/{accountId}:
  *   delete:
  *     summary: Remove a user performance account
  *     tags:
@@ -197,6 +162,46 @@ router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPerfor
  *         description: Account not found
  */
 router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPerformanceController.deleteAccount(req, res));
+
+/**
+ * @openapi
+ * /user-performance/{teamId}/accounts/{accountId}/group:
+ *   patch:
+ *     summary: Move a user account to a different group
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MoveAccountToGroupRequest'
+ *     responses:
+ *       200:
+ *         description: Account moved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MoveAccountToGroupResponse'
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.patch("/:teamId/accounts/:accountId/group", requireAuth, (req, res) => userPerformanceController.moveAccountToGroup(req, res));
 
 /**
  * @openapi
@@ -245,6 +250,51 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => userPer
  *         description: Account not found
  */
 router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => userPerformanceController.updateAccountStatus(req, res));
+
+/**
+ * @openapi
+ * /user-performance/{teamId}/accounts/{accountId}/alerts:
+ *   patch:
+ *     summary: Toggle alert enabled for a user account
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - alert_enabled
+ *             properties:
+ *               alert_enabled:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Alert setting updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ViralityAccountResponse'
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Account not found
+ */
+router.patch("/:teamId/accounts/:accountId/alerts", requireAuth, (req, res) => userPerformanceController.updateAlertEnabled(req, res));
 
 /**
  * @openapi

@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import {
   ActivityFeed,
   AddAccountModal,
+  DeleteGroupModal,
   DateRangeFilter,
   HeadToHeadTable,
   PlatformFilter,
@@ -74,6 +75,7 @@ export default function YourCompetitorsPage() {
   const [compPostsByAccount, setCompPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [myPostsByAccount, setMyPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [totalAccountCount, setTotalAccountCount] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string; accountCount: number } | null>(null);
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const fetchData = useCallback(async () => {
@@ -194,6 +196,33 @@ export default function YourCompetitorsPage() {
 
     toast({ title: "Competitor added", color: "success" });
     await fetchData();
+  };
+
+  const handleDeleteGroup = async (groupId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.deleteGroup(selectedTeam.id, groupId);
+      toast({ title: "Group deleted", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Failed to delete group", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleMoveAndDelete = async (sourceGroupId: number, targetGroupId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.bulkMoveAccounts(selectedTeam.id, { sourceGroupId, targetGroupId });
+      await viralityAPI.deleteGroup(selectedTeam.id, sourceGroupId);
+      toast({ title: "Accounts moved and group deleted", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      toast({ title: "Failed to move accounts", description: err.message, color: "danger" });
+    }
+  };
+
+  const openDeleteModal = (card: { id: number; name: string; accountCount: number }) => {
+    setDeleteTarget(card);
   };
 
   const competitorCards = useMemo(() => {
@@ -339,6 +368,27 @@ export default function YourCompetitorsPage() {
               }}
               index={idx}
               onView={(id) => router.push(`/dashboard/virality/${id}`)}
+              actions={
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="tertiary"
+                    className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
+                    onPress={() => router.push(`/dashboard/virality/${card.competitor.id}`)}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="tertiary"
+                    className="text-red-400 hover:bg-red-400/10 h-7 w-7 min-w-0"
+                    onPress={() => openDeleteModal({ id: card.competitor.id, name: card.competitor.name, accountCount: card.accountCount })}
+                  >
+                    <Icon icon="solar:trash-bin-minimalistic-linear" width={14} />
+                  </Button>
+                </div>
+              }
             />
           ))}
         </div>
@@ -440,6 +490,15 @@ export default function YourCompetitorsPage() {
         accountCount={totalAccountCount}
         accountLimit={getViralityAccountLimit(selectedTeam?.plan)}
         plan={selectedTeam?.plan}
+      />
+
+      <DeleteGroupModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        group={deleteTarget}
+        availableGroups={competitorGroups}
+        onDelete={handleDeleteGroup}
+        onMoveAndDelete={handleMoveAndDelete}
       />
     </motion.div>
   );

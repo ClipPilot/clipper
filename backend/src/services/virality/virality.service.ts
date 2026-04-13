@@ -238,6 +238,39 @@ class ViralityService extends AccountTrackingService {
       .where(eq(viralityGroups.id, groupId));
   }
 
+  async moveAccountToGroup(accountId: number, teamId: number, targetGroupId: number, isCompetitor: boolean = true) {
+    const group = await this.getGroupById(targetGroupId);
+    if (!group || group.team_id !== teamId) {
+      throw new Error("Target group not found or access denied");
+    }
+
+    const table = isCompetitor ? competitorAccounts : userAccounts;
+    await db
+      .update(table)
+      .set({ group_id: targetGroupId, updated_at: new Date() })
+      .where(and(eq(table.id, accountId), eq(table.team_id, teamId)));
+  }
+
+  async bulkMoveAccounts(teamId: number, sourceGroupId: number, targetGroupId: number): Promise<number> {
+    const [source, target] = await Promise.all([
+      this.getGroupById(sourceGroupId),
+      this.getGroupById(targetGroupId),
+    ]);
+    if (!source || source.team_id !== teamId) throw new Error("Source group not found");
+    if (!target || target.team_id !== teamId) throw new Error("Target group not found");
+
+    const isComp = source.competitor;
+    const table = isComp ? competitorAccounts : userAccounts;
+
+    const moved = await db
+      .update(table)
+      .set({ group_id: targetGroupId, updated_at: new Date() })
+      .where(and(eq(table.group_id, sourceGroupId), eq(table.team_id, teamId)))
+      .returning({ id: table.id });
+
+    return moved.length;
+  }
+
   // ── Viral Alert Settings ──
 
   async getSettings(teamId: number) {

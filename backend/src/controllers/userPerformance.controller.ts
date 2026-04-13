@@ -1,7 +1,8 @@
 import { Response } from "express";
-import type { ViralityAccount, ViralityPost, ViralityDashboard, ErrorResponse } from "../types/api.types";
+import type { ViralityAccount, ViralityPost, ViralityDashboard, ErrorResponse, MoveAccountToGroupRequest, MoveAccountToGroupResponse, ViralityAccountListResponse, ViralityAccountResponse, ViralityPostListResponse, SuccessResponse, SyncAcceptedResponse, SyncAllAcceptedResponse, BackfillManagedResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
+import { viralityService } from "../services/virality/virality.service";
 import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
@@ -11,7 +12,7 @@ async function requirePlanAccess(teamId: number, res: Response): Promise<boolean
 // ── Controller ───────────────────────────────────────────────────────────────
 
 class UserPerformanceController {
-  async listAccounts(req: AuthRequest, res: Response<{ accounts: ViralityAccount[] } | ErrorResponse>) {
+  async listAccounts(req: AuthRequest, res: Response<ViralityAccountListResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -26,7 +27,7 @@ class UserPerformanceController {
     }
   }
 
-  async backfillManaged(req: AuthRequest, res: Response<{ created: number; skipped: number } | ErrorResponse>) {
+  async backfillManaged(req: AuthRequest, res: Response<BackfillManagedResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -40,7 +41,7 @@ class UserPerformanceController {
     }
   }
 
-  async addAccount(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
+  async addAccount(req: AuthRequest, res: Response<ViralityAccountResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -79,7 +80,7 @@ class UserPerformanceController {
     }
   }
 
-  async getAccount(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
+  async getAccount(req: AuthRequest, res: Response<ViralityAccountResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -98,7 +99,7 @@ class UserPerformanceController {
     }
   }
 
-  async deleteAccount(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async deleteAccount(req: AuthRequest, res: Response<SuccessResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -113,7 +114,45 @@ class UserPerformanceController {
     }
   }
 
-  async updateAccountStatus(req: AuthRequest, res: Response<{ account: ViralityAccount } | ErrorResponse>) {
+  async moveAccountToGroup(req: AuthRequest, res: Response<MoveAccountToGroupResponse | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const { groupId } = req.body as MoveAccountToGroupRequest;
+      if (!groupId || typeof groupId !== "number") {
+        return res.status(400).json({ error: "groupId is required" });
+      }
+
+      await viralityService.moveAccountToGroup(accountId, teamId, groupId, false);
+      return res.json({ success: true });
+    } catch (error) {
+      return handleControllerError(res, "Move user account error", error, "Failed to move account");
+    }
+  }
+
+  async updateAlertEnabled(req: AuthRequest, res: Response<ViralityAccountResponse | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+
+      const { alert_enabled } = req.body;
+      if (typeof alert_enabled !== "boolean") {
+        return res.status(400).json({ error: "alert_enabled must be a boolean" });
+      }
+
+      const account = await userPerformanceService.updateAlertEnabled(accountId, teamId, alert_enabled);
+      return res.json({ account });
+    } catch (error) {
+      return handleControllerError(res, "Update user alert enabled error", error, "Failed to update alert setting");
+    }
+  }
+
+  async updateAccountStatus(req: AuthRequest, res: Response<ViralityAccountResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -131,7 +170,7 @@ class UserPerformanceController {
     }
   }
 
-  async syncAccount(req: AuthRequest, res: Response<{ accepted: boolean; accountId: number } | ErrorResponse>) {
+  async syncAccount(req: AuthRequest, res: Response<SyncAcceptedResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -151,7 +190,7 @@ class UserPerformanceController {
     }
   }
 
-  async getPosts(req: AuthRequest, res: Response<{ posts: ViralityPost[] } | ErrorResponse>) {
+  async getPosts(req: AuthRequest, res: Response<ViralityPostListResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
@@ -178,7 +217,7 @@ class UserPerformanceController {
     }
   }
 
-  async deletePost(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async deletePost(req: AuthRequest, res: Response<SuccessResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       const postId = parseId(req.params.postId);
@@ -193,7 +232,7 @@ class UserPerformanceController {
     }
   }
 
-  async syncAll(req: AuthRequest, res: Response<{ accepted: boolean; accountIds: number[] } | ErrorResponse>) {
+  async syncAll(req: AuthRequest, res: Response<SyncAllAcceptedResponse | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -250,7 +289,7 @@ class UserPerformanceController {
     }
   }
 
-  async getAllPosts(req: AuthRequest, res: Response<{ postsByAccount: any } | ErrorResponse>) {
+  async getAllPosts(req: AuthRequest, res: Response<{ postsByAccount: Record<number, ViralityPost[]> } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });

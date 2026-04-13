@@ -26,6 +26,21 @@ import type {
   ViralityAccount as SharedViralityAccount,
   ViralityPost as SharedViralityPost,
   ViralityCompetitor as SharedViralityCompetitor,
+  MoveAccountToGroupRequest as SharedMoveAccountToGroupRequest,
+  MoveAccountToGroupResponse as SharedMoveAccountToGroupResponse,
+  DeleteGroupResponse as SharedDeleteGroupResponse,
+  ViralityAccountListResponse as SharedViralityAccountListResponse,
+  ViralityAccountResponse as SharedViralityAccountResponse,
+  ViralityPostListResponse as SharedViralityPostListResponse,
+  ViralityCompetitorListResponse as SharedViralityCompetitorListResponse,
+  ViralityCompetitorResponse as SharedViralityCompetitorResponse,
+  SuccessResponse as SharedSuccessResponse,
+  SyncAcceptedResponse as SharedSyncAcceptedResponse,
+  SyncAllAcceptedResponse as SharedSyncAllAcceptedResponse,
+  ViralSettingsResponse as SharedViralSettingsResponse,
+  BackfillManagedResponse as SharedBackfillManagedResponse,
+  BulkMoveAccountsRequest as SharedBulkMoveAccountsRequest,
+  BulkMoveAccountsResponse as SharedBulkMoveAccountsResponse,
   ViralSettings as SharedViralSettings,
   Campaign as SharedCampaign,
   CampaignVideo as SharedCampaignVideo,
@@ -98,6 +113,21 @@ export type EnterpriseSetupResponse = DbCompatible<SharedEnterpriseSetupResponse
 export type ViralityAccount = DbCompatible<SharedViralityAccount>;
 export type ViralityPost = DbCompatible<SharedViralityPost>;
 export type ViralityCompetitor = DbCompatible<SharedViralityCompetitor>;
+export type MoveAccountToGroupRequest = DbCompatible<SharedMoveAccountToGroupRequest>;
+export type MoveAccountToGroupResponse = DbCompatible<SharedMoveAccountToGroupResponse>;
+export type DeleteGroupResponse = DbCompatible<SharedDeleteGroupResponse>;
+export type ViralityAccountListResponse = DbCompatible<SharedViralityAccountListResponse>;
+export type ViralityAccountResponse = DbCompatible<SharedViralityAccountResponse>;
+export type ViralityPostListResponse = DbCompatible<SharedViralityPostListResponse>;
+export type ViralityCompetitorListResponse = DbCompatible<SharedViralityCompetitorListResponse>;
+export type ViralityCompetitorResponse = DbCompatible<SharedViralityCompetitorResponse>;
+export type SuccessResponse = DbCompatible<SharedSuccessResponse>;
+export type SyncAcceptedResponse = DbCompatible<SharedSyncAcceptedResponse>;
+export type SyncAllAcceptedResponse = DbCompatible<SharedSyncAllAcceptedResponse>;
+export type ViralSettingsResponse = DbCompatible<SharedViralSettingsResponse>;
+export type BackfillManagedResponse = DbCompatible<SharedBackfillManagedResponse>;
+export type BulkMoveAccountsRequest = DbCompatible<SharedBulkMoveAccountsRequest>;
+export type BulkMoveAccountsResponse = DbCompatible<SharedBulkMoveAccountsResponse>;
 export type ViralSettings = DbCompatible<SharedViralSettings>;
 export type Campaign = DbCompatible<SharedCampaign>;
 export type CampaignVideo = DbCompatible<SharedCampaignVideo>;

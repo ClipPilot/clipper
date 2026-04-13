@@ -16200,7 +16200,10 @@ export interface paths {
         /** List all user performance accounts for a team */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Filter accounts by source */
+                    source?: "mass_posting";
+                };
                 header?: never;
                 path: {
                     teamId: number;
@@ -16295,6 +16298,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/user-performance/{teamId}/backfill-managed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Backfill managed accounts from mass posting history
+         * @description Creates user_accounts and user_posts entries for existing mass posting posts that were never bridged
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Backfill results */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            created?: number;
+                            skipped?: number;
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/user-performance/{teamId}/accounts/{accountId}": {
         parameters: {
             query?: never;
@@ -16375,6 +16429,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/user-performance/{teamId}/accounts/{accountId}/group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Move a user account to a different group */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                    accountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MoveAccountToGroupRequest"];
+                };
+            };
+            responses: {
+                /** @description Account moved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MoveAccountToGroupResponse"];
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/user-performance/{teamId}/accounts/{accountId}/status": {
         parameters: {
             query?: never;
@@ -16416,6 +16527,65 @@ export interface paths {
                         "application/json": {
                             account?: Record<string, never>;
                         };
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Account not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/user-performance/{teamId}/accounts/{accountId}/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle alert enabled for a user account */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                    accountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        alert_enabled: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Alert setting updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ViralityAccountResponse"];
                     };
                 };
                 /** @description Invalid input */
@@ -17042,6 +17212,126 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/virality/{teamId}/accounts/{accountId}/group": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Move an account to a different group */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                    accountId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MoveAccountToGroupRequest"];
+                };
+            };
+            responses: {
+                /** @description Account moved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MoveAccountToGroupResponse"];
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Account or group not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/virality/{teamId}/bulk-move-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move all accounts from one group to another */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BulkMoveAccountsRequest"];
+                };
+            };
+            responses: {
+                /** @description Accounts moved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BulkMoveAccountsResponse"];
+                    };
+                };
+                /** @description Invalid input */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -18433,6 +18723,61 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        MoveAccountToGroupRequest: {
+            /** @description Target group ID to move the account to */
+            groupId: number;
+            /**
+             * @description Whether this is a competitor account (true) or user account (false)
+             * @default true
+             */
+            isCompetitor: boolean;
+        };
+        MoveAccountToGroupResponse: {
+            success: boolean;
+        };
+        DeleteGroupResponse: {
+            success: boolean;
+        };
+        ViralityAccountListResponse: {
+            accounts: components["schemas"]["ViralityAccount"][];
+        };
+        ViralityAccountResponse: {
+            account: components["schemas"]["ViralityAccount"];
+        };
+        ViralityPostListResponse: {
+            posts: components["schemas"]["ViralityPost"][];
+        };
+        ViralityCompetitorListResponse: {
+            competitors: components["schemas"]["ViralityCompetitor"][];
+        };
+        ViralityCompetitorResponse: {
+            competitor: components["schemas"]["ViralityCompetitor"];
+        };
+        SuccessResponse: {
+            success: boolean;
+        };
+        SyncAcceptedResponse: {
+            accepted: boolean;
+            accountId: number;
+        };
+        SyncAllAcceptedResponse: {
+            accepted: boolean;
+            accountIds: number[];
+        };
+        ViralSettingsResponse: {
+            settings: components["schemas"]["ViralSettings"];
+        };
+        BackfillManagedResponse: {
+            created: number;
+            skipped: number;
+        };
+        BulkMoveAccountsRequest: {
+            sourceGroupId: number;
+            targetGroupId: number;
+        };
+        BulkMoveAccountsResponse: {
+            moved: number;
         };
         ViralSettings: {
             percentThreshold: number | null;
