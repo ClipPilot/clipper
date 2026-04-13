@@ -810,6 +810,116 @@ const options: swaggerJsdoc.Options = {
             updated_at: { type: "string", format: "date-time" },
           },
         },
+        MoveAccountToGroupRequest: {
+          type: "object",
+          required: ["groupId"],
+          properties: {
+            groupId: { type: "integer", description: "Target group ID to move the account to" },
+            isCompetitor: { type: "boolean", description: "Whether this is a competitor account (true) or user account (false)", default: true },
+          },
+        },
+        MoveAccountToGroupResponse: {
+          type: "object",
+          required: ["success"],
+          properties: {
+            success: { type: "boolean" },
+          },
+        },
+        DeleteGroupResponse: {
+          type: "object",
+          required: ["success"],
+          properties: {
+            success: { type: "boolean" },
+          },
+        },
+        ViralityAccountListResponse: {
+          type: "object",
+          required: ["accounts"],
+          properties: {
+            accounts: { type: "array", items: { $ref: "#/components/schemas/ViralityAccount" } },
+          },
+        },
+        ViralityAccountResponse: {
+          type: "object",
+          required: ["account"],
+          properties: {
+            account: { $ref: "#/components/schemas/ViralityAccount" },
+          },
+        },
+        ViralityPostListResponse: {
+          type: "object",
+          required: ["posts"],
+          properties: {
+            posts: { type: "array", items: { $ref: "#/components/schemas/ViralityPost" } },
+          },
+        },
+        ViralityCompetitorListResponse: {
+          type: "object",
+          required: ["competitors"],
+          properties: {
+            competitors: { type: "array", items: { $ref: "#/components/schemas/ViralityCompetitor" } },
+          },
+        },
+        ViralityCompetitorResponse: {
+          type: "object",
+          required: ["competitor"],
+          properties: {
+            competitor: { $ref: "#/components/schemas/ViralityCompetitor" },
+          },
+        },
+        SuccessResponse: {
+          type: "object",
+          required: ["success"],
+          properties: {
+            success: { type: "boolean" },
+          },
+        },
+        SyncAcceptedResponse: {
+          type: "object",
+          required: ["accepted", "accountId"],
+          properties: {
+            accepted: { type: "boolean" },
+            accountId: { type: "integer" },
+          },
+        },
+        SyncAllAcceptedResponse: {
+          type: "object",
+          required: ["accepted", "accountIds"],
+          properties: {
+            accepted: { type: "boolean" },
+            accountIds: { type: "array", items: { type: "integer" } },
+          },
+        },
+        ViralSettingsResponse: {
+          type: "object",
+          required: ["settings"],
+          properties: {
+            settings: { $ref: "#/components/schemas/ViralSettings" },
+          },
+        },
+        BackfillManagedResponse: {
+          type: "object",
+          required: ["created", "skipped"],
+          properties: {
+            created: { type: "integer" },
+            skipped: { type: "integer" },
+          },
+        },
+        BulkMoveAccountsRequest: {
+          type: "object",
+          required: ["sourceGroupId", "targetGroupId"],
+          properties: {
+            sourceGroupId: { type: "integer" },
+            targetGroupId: { type: "integer" },
+          },
+        },
+        BulkMoveAccountsResponse: {
+          type: "object",
+          required: ["moved"],
+          properties: {
+            moved: { type: "integer" },
+          },
+        },
         ViralSettings: {
           type: "object",
           required: [

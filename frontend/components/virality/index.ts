@@ -18,3 +18,4 @@ export { CompetitorCard } from "@clipper/shared-ui";
 export type { CompetitorCardData } from "@clipper/shared-ui";
 export { ViralityUpgradeWall } from "@clipper/shared-ui";
 export { MyPerformanceView } from "./MyPerformanceView";
+export { DeleteGroupModal } from "./DeleteGroupModal";

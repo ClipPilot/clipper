@@ -6,6 +6,7 @@ import type {
   ViralityPost,
   DashboardStats,
 } from "@/api/virality";
+import type { MoveAccountToGroupRequest } from "@clipper/shared-types";
 
 export type { ViralityAccount as UserAccount, ViralityPost as UserPost };
 
@@ -86,6 +87,23 @@ class UserPerformanceAPI {
     return data.account;
   }
 
+  async updateAlertEnabled(teamId: number, accountId: number, alertEnabled: boolean): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/user-performance/${teamId}/accounts/${accountId}/alerts`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ alert_enabled: alertEnabled }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update alert setting");
+    }
+  }
+
   async deleteAccount(teamId: number, accountId: number): Promise<void> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/accounts/${accountId}`,
@@ -99,6 +117,23 @@ class UserPerformanceAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to delete account");
+    }
+  }
+
+  async moveAccountToGroup(teamId: number, accountId: number, body: MoveAccountToGroupRequest): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/user-performance/${teamId}/accounts/${accountId}/group`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to move account");
     }
   }
 

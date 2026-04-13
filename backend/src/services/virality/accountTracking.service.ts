@@ -249,6 +249,21 @@ export class AccountTrackingService {
     return updated[0];
   }
 
+  async updateAlertEnabled(accountId: number, teamId: number, alertEnabled: boolean) {
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    const [updated] = await db
+      .update(this.accountsTable)
+      .set({ alert_enabled: alertEnabled, updated_at: new Date() })
+      .where(eq(this.accountsTable.id, accountId))
+      .returning() as any[];
+
+    return updated;
+  }
+
   // ── Plan transition helpers ──
 
   async deactivateExcessAccounts(teamId: number, newLimit: number): Promise<number> {

@@ -3,11 +3,9 @@ import * as Sentry from "@sentry/node";
 import { requireAuth } from "../middleware/auth.middleware";
 import {
   generateCodeController,
-  getCodeController,
   applyCodeController,
   getReferralsController,
   getStatsController,
-  validateCodeController,
 } from "../controllers/referral.controller";
 import { codeValidationService } from "../services/codeValidation.service";
 
@@ -54,44 +52,6 @@ const router = Router();
  *         description: Unauthorized
  */
 router.post("/:teamId/code", requireAuth, generateCodeController);
-
-/**
- * @openapi
- * /referrals/{teamId}/code:
- *   get:
- *     summary: Get referral code for a team
- *     description: Returns the team's referral code if one exists
- *     tags:
- *       - Referrals
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *         description: Team ID
- *     responses:
- *       200:
- *         description: Referral code retrieved
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 code:
- *                   type: object
- *                   nullable: true
- *                   properties:
- *                     id:
- *                       type: integer
- *                     code:
- *                       type: string
- *       401:
- *         description: Unauthorized
- */
-router.get("/:teamId/code", requireAuth, getCodeController);
 
 /**
  * @openapi
@@ -238,36 +198,6 @@ router.get("/:teamId", requireAuth, getReferralsController);
  *         description: Unauthorized
  */
 router.get("/:teamId/stats", requireAuth, getStatsController);
-
-/**
- * @openapi
- * /referrals/validate/{code}:
- *   get:
- *     summary: Validate a referral code
- *     description: Checks if a referral code exists and is valid
- *     tags:
- *       - Referrals
- *     parameters:
- *       - in: path
- *         name: code
- *         required: true
- *         schema:
- *           type: string
- *         description: Referral code to validate
- *     responses:
- *       200:
- *         description: Validation result
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 valid:
- *                   type: boolean
- *                 code:
- *                   type: string
- */
-router.get("/validate/:code", validateCodeController);
 
 /**
  * @openapi

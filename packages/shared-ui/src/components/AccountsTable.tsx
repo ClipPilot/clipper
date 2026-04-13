@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Avatar, Button, Chip, Spinner, Dropdown, Tooltip } from "@heroui/react";
+import { Avatar, Button, Chip, Spinner, Dropdown, Tooltip, Label, Separator, Header } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { formatNumber } from "../lib/formatters";
 import { platformIcon, platformIconColor } from "../lib/platformUtils";
@@ -21,16 +21,23 @@ export interface AccountRow {
   alertEnabled: boolean;
 }
 
+export interface GroupOption {
+  id: number;
+  name: string;
+}
+
 interface AccountsTableProps {
   accounts: AccountRow[];
   platformFilter?: string;
   searchQuery?: string;
   isLoading?: boolean;
   accountLimit?: number;
+  availableGroups?: GroupOption[];
   onToggleAlert?: (accountId: number, enabled: boolean) => void;
   onToggleStatus?: (accountId: number, newStatus: "active" | "inactive") => void;
   onActivateAll?: () => void;
   onDelete?: (accountId: number) => void;
+  onMoveAccount?: (accountId: number, targetGroupId: number) => void;
   onRowClick?: (account: AccountRow) => void;
 }
 
@@ -44,6 +51,8 @@ export function AccountsTable({
   onToggleStatus,
   onActivateAll,
   onDelete,
+  onMoveAccount,
+  availableGroups,
   onRowClick,
 }: AccountsTableProps) {
   const [page, setPage] = useState(1);
@@ -189,32 +198,50 @@ export function AccountsTable({
                     <span className="text-xs">{a.alertEnabled ? "On" : "Off"}</span>
                   </Chip>
                 </td>
-                <td className="py-2 px-3 border-t border-border-base text-xs" onClick={(e) => e.stopPropagation()}>
+                <td className="py-2 px-3 border-t border-border-base text-xs">
                   <Dropdown>
-                    <Button isIconOnly size="sm" variant="ghost" className="!bg-transparent text-text-tertiary hover:text-text-primary">
+                    <Button isIconOnly aria-label="Account actions" size="sm" variant="ghost" className="!bg-transparent text-text-tertiary hover:text-text-primary">
                       <Icon icon="solar:menu-dots-bold" width={18} className="rotate-90" />
                     </Button>
                     <Dropdown.Popover>
                       <Dropdown.Menu
                         aria-label="Account actions"
                         onAction={(key) => {
-                          console.log("[AccountsTable] onAction fired:", key, "accountId:", a.id, "isActive:", a.isActive, "alertEnabled:", a.alertEnabled);
-                          if (key === "delete") onDelete?.(a.id);
-                          else if (key === "toggle-status") onToggleStatus?.(a.id, a.isActive ? "inactive" : "active");
-                          else if (key === "toggle-alerts") onToggleAlert?.(a.id, !a.alertEnabled);
+                          const k = String(key);
+                          if (k === "toggle-alerts") onToggleAlert?.(a.id, !a.alertEnabled);
+                          else if (k === "toggle-status") onToggleStatus?.(a.id, a.isActive ? "inactive" : "active");
+                          else if (k === "delete") onDelete?.(a.id);
+                          else if (k.startsWith("move-")) onMoveAccount?.(a.id, Number(k.replace("move-", "")));
                         }}
                       >
-                        <Dropdown.Item id="toggle-alerts">
+                        <Dropdown.Item id="toggle-alerts" textValue={a.alertEnabled ? "Disable Alerts" : "Enable Alerts"}>
                           <Icon icon={a.alertEnabled ? "solar:bell-off-linear" : "solar:bell-bold"} width={16} />
-                          {a.alertEnabled ? "Disable Alerts" : "Enable Alerts"}
+                          <Label>{a.alertEnabled ? "Disable Alerts" : "Enable Alerts"}</Label>
                         </Dropdown.Item>
-                        <Dropdown.Item id="toggle-status">
+                        <Dropdown.Item id="toggle-status" textValue={a.isActive ? "Set Inactive" : "Set Active"}>
                           <Icon icon={a.isActive ? "solar:pause-circle-linear" : "solar:play-circle-linear"} width={16} />
-                          {a.isActive ? "Set Inactive" : "Set Active"}
+                          <Label>{a.isActive ? "Set Inactive" : "Set Active"}</Label>
                         </Dropdown.Item>
-                        <Dropdown.Item id="delete" className="text-danger">
+                        {availableGroups && availableGroups.filter((g) => g.id !== a.competitorId).length > 0 && (
+                          <>
+                            <Separator />
+                            <Dropdown.Section>
+                              <Header>Move to</Header>
+                              {availableGroups
+                                .filter((g) => g.id !== a.competitorId)
+                                .map((g) => (
+                                  <Dropdown.Item key={`move-${g.id}`} id={`move-${g.id}`} textValue={`Move to ${g.name}`}>
+                                    <Icon icon="solar:transfer-horizontal-linear" width={16} />
+                                    <Label>{g.name}</Label>
+                                  </Dropdown.Item>
+                                ))}
+                            </Dropdown.Section>
+                          </>
+                        )}
+                        <Separator />
+                        <Dropdown.Item id="delete" textValue="Delete" variant="danger">
                           <Icon icon="solar:trash-bin-trash-linear" width={16} />
-                          Delete
+                          <Label>Delete</Label>
                         </Dropdown.Item>
                       </Dropdown.Menu>
                     </Dropdown.Popover>

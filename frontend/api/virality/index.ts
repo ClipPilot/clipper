@@ -16,6 +16,8 @@ import type {
   ViralSettings,
   ViralityDashboard,
   CompetitorWithAccounts,
+  MoveAccountToGroupRequest,
+  BulkMoveAccountsRequest,
 } from "@clipper/shared-types";
 
 export type DashboardStats = ViralityDashboard;
@@ -317,6 +319,42 @@ class ViralityAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to delete group");
+    }
+  }
+
+  async bulkMoveAccounts(teamId: number, body: BulkMoveAccountsRequest): Promise<{ moved: number }> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/bulk-move-accounts`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to move accounts");
+    }
+
+    return response.json();
+  }
+
+  async moveAccountToGroup(teamId: number, accountId: number, body: MoveAccountToGroupRequest): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/group`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to move account");
     }
   }
 

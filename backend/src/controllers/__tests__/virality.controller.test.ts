@@ -21,6 +21,8 @@ const { mockViralityService } = vi.hoisted(() => ({
     createCompetitor: vi.fn(),
     updateCompetitor: vi.fn(),
     deleteCompetitor: vi.fn(),
+    moveAccountToGroup: vi.fn(),
+    bulkMoveAccounts: vi.fn(),
     updateAlertEnabled: vi.fn(),
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
@@ -146,6 +148,88 @@ describe("ViralityController.getAllPosts", () => {
     const req = createReq({ params: { teamId: "5" } });
     const res = createMockResponse();
     await viralityController.getAllPosts(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe("ViralityController.moveAccountToGroup", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 for invalid teamId", async () => {
+    const req = createReq({ params: { teamId: "abc", accountId: "1" } });
+    const res = createMockResponse();
+    await viralityController.moveAccountToGroup(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when groupId is missing", async () => {
+    const req = createReq({ params: { teamId: "5", accountId: "10" }, body: {} });
+    const res = createMockResponse();
+    await viralityController.moveAccountToGroup(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("calls service and returns success", async () => {
+    mockViralityService.moveAccountToGroup.mockResolvedValue(undefined);
+    const req = createReq({
+      params: { teamId: "5", accountId: "10" },
+      body: { groupId: 3, isCompetitor: true },
+    });
+    const res = createMockResponse();
+    await viralityController.moveAccountToGroup(req, res);
+    expect(mockViralityService.moveAccountToGroup).toHaveBeenCalledWith(10, 5, 3, true);
+    expect(res.json).toHaveBeenCalledWith({ success: true });
+  });
+
+  it("returns 500 on service error", async () => {
+    mockViralityService.moveAccountToGroup.mockRejectedValue(new Error("DB error"));
+    const req = createReq({
+      params: { teamId: "5", accountId: "10" },
+      body: { groupId: 3 },
+    });
+    const res = createMockResponse();
+    await viralityController.moveAccountToGroup(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe("ViralityController.bulkMoveAccounts", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 for invalid teamId", async () => {
+    const req = createReq({ params: { teamId: "abc" } });
+    const res = createMockResponse();
+    await viralityController.bulkMoveAccounts(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when sourceGroupId or targetGroupId missing", async () => {
+    const req = createReq({ params: { teamId: "5" }, body: { sourceGroupId: 1 } });
+    const res = createMockResponse();
+    await viralityController.bulkMoveAccounts(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("calls service and returns moved count", async () => {
+    mockViralityService.bulkMoveAccounts.mockResolvedValue(3);
+    const req = createReq({
+      params: { teamId: "5" },
+      body: { sourceGroupId: 1, targetGroupId: 2 },
+    });
+    const res = createMockResponse();
+    await viralityController.bulkMoveAccounts(req, res);
+    expect(mockViralityService.bulkMoveAccounts).toHaveBeenCalledWith(5, 1, 2);
+    expect(res.json).toHaveBeenCalledWith({ moved: 3 });
+  });
+
+  it("returns 500 on service error", async () => {
+    mockViralityService.bulkMoveAccounts.mockRejectedValue(new Error("DB error"));
+    const req = createReq({
+      params: { teamId: "5" },
+      body: { sourceGroupId: 1, targetGroupId: 2 },
+    });
+    const res = createMockResponse();
+    await viralityController.bulkMoveAccounts(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

@@ -104,43 +104,6 @@ router.post("/:teamId/accounts", requireAuth, (req, res) => viralityController.a
 /**
  * @openapi
  * /virality/{teamId}/accounts/{accountId}:
- *   get:
- *     summary: Get a specific competitor account
- *     tags:
- *       - Virality
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Account details
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               required:
- *                 - account
- *               properties:
- *                 account:
- *                   $ref: '#/components/schemas/ViralityAccount'
- *       404:
- *         description: Account not found
- */
-router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityController.getAccount(req, res));
-
-/**
- * @openapi
- * /virality/{teamId}/accounts/{accountId}:
  *   delete:
  *     summary: Remove a tracked competitor account
  *     tags:
@@ -174,6 +137,83 @@ router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityCo
  *         description: Account not found
  */
 router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityController.deleteAccount(req, res));
+
+/**
+ * @openapi
+ * /api/virality/{teamId}/accounts/{accountId}/group:
+ *   patch:
+ *     summary: Move an account to a different group
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MoveAccountToGroupRequest'
+ *     responses:
+ *       200:
+ *         description: Account moved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MoveAccountToGroupResponse'
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Plan upgrade required
+ *       404:
+ *         description: Account or group not found
+ */
+router.patch("/:teamId/accounts/:accountId/group", requireAuth, (req, res) => viralityController.moveAccountToGroup(req, res));
+
+/**
+ * @openapi
+ * /api/virality/{teamId}/bulk-move-accounts:
+ *   post:
+ *     summary: Move all accounts from one group to another
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BulkMoveAccountsRequest'
+ *     responses:
+ *       200:
+ *         description: Accounts moved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BulkMoveAccountsResponse'
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.post("/:teamId/bulk-move-accounts", requireAuth, (req, res) => viralityController.bulkMoveAccounts(req, res));
 
 /**
  * @openapi
