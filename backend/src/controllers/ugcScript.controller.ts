@@ -5,7 +5,11 @@ import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { ugcScripts, characters, ugcVideoGenerationJobs } from "@clipper/shared-db/src/schema";
+import {
+  ugcScripts,
+  characters,
+  ugcVideoGenerationJobs,
+} from "@clipper/shared-db/src/schema";
 import { eq, desc, and, isNotNull } from "drizzle-orm";
 import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -43,7 +47,7 @@ export class UGCScriptController {
         // Strip cinematic prompts from client response
         const scripts = script.scripts_data as any[];
         response.scripts = scripts.map((s) =>
-          ugcScriptService.stripCinematicPrompts(s)
+          ugcScriptService.stripCinematicPrompts(s),
         );
         response.selectedVariantIndex = script.selected_variant_index;
       }
@@ -54,17 +58,34 @@ export class UGCScriptController {
 
       return res.status(200).json(response);
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Get script status error", error, "Failed to get script status");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Get script status error",
+        error,
+        "Failed to get script status",
+      );
     }
   }
 
-  async regenerateScene(req: AuthRequest, res: Response<{ success: boolean; scene: any } | ErrorResponse>) {
+  async regenerateScene(
+    req: AuthRequest,
+    res: Response<{ success: boolean; scene: any } | ErrorResponse>,
+  ) {
     try {
-      const { teamId, scriptId, sceneId, currentDialogue, currentEmotion, regenerationType, customPrompt } =
-        req.body;
+      const {
+        teamId,
+        scriptId,
+        sceneId,
+        currentDialogue,
+        currentEmotion,
+        regenerationType,
+        customPrompt,
+      } = req.body;
 
       if (!scriptId || !sceneId) {
-        return res.status(400).json({ error: "scriptId and sceneId are required" });
+        return res
+          .status(400)
+          .json({ error: "scriptId and sceneId are required" });
       }
 
       const updatedScene = await ugcScriptService.regenerateScene({
@@ -83,17 +104,26 @@ export class UGCScriptController {
         scene: clientScene,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Regenerate scene error", error, "Failed to regenerate scene");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Regenerate scene error",
+        error,
+        "Failed to regenerate scene",
+      );
     }
   }
 
-  async regenerateBRollPrompt(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async regenerateBRollPrompt(
+    req: AuthRequest,
+    res: Response<{ success: boolean } | ErrorResponse>,
+  ) {
     try {
       const { scriptId, sceneId, bRollShotIndex, newAction } = req.body;
 
       if (!scriptId || !sceneId || bRollShotIndex === undefined || !newAction) {
         return res.status(400).json({
-          error: "scriptId, sceneId, bRollShotIndex, and newAction are required"
+          error:
+            "scriptId, sceneId, bRollShotIndex, and newAction are required",
         });
       }
 
@@ -106,17 +136,33 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Regenerate B-roll prompt error", error, "Failed to regenerate B-roll prompt");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Regenerate B-roll prompt error",
+        error,
+        "Failed to regenerate B-roll prompt",
+      );
     }
   }
 
-  async regenerateAllBRollShots(req: AuthRequest, res: Response<{ success: boolean; bRollShots: any[] } | ErrorResponse>) {
+  async regenerateAllBRollShots(
+    req: AuthRequest,
+    res: Response<{ success: boolean; bRollShots: any[] } | ErrorResponse>,
+  ) {
     try {
-      const { scriptId, sceneId, newSceneAction, shotCount, shotDurations } = req.body;
+      const { scriptId, sceneId, newSceneAction, shotCount, shotDurations } =
+        req.body;
 
-      if (!scriptId || !sceneId || !newSceneAction || !shotCount || !shotDurations) {
+      if (
+        !scriptId ||
+        !sceneId ||
+        !newSceneAction ||
+        !shotCount ||
+        !shotDurations
+      ) {
         return res.status(400).json({
-          error: "scriptId, sceneId, newSceneAction, shotCount, and shotDurations are required",
+          error:
+            "scriptId, sceneId, newSceneAction, shotCount, and shotDurations are required",
         });
       }
 
@@ -130,11 +176,19 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true, bRollShots: newShots });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Regenerate all B-roll shots error", error, "Failed to regenerate B-roll shots");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Regenerate all B-roll shots error",
+        error,
+        "Failed to regenerate B-roll shots",
+      );
     }
   }
 
-  async generateAutoStructure(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async generateAutoStructure(
+    req: AuthRequest,
+    res: Response<{ success: boolean } | ErrorResponse>,
+  ) {
     try {
       const { scriptDirection, productName, hasProductImages } = req.body;
 
@@ -155,11 +209,21 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Auto structure error", error, "Failed to generate auto structure");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Auto structure error",
+        error,
+        "Failed to generate auto structure",
+      );
     }
   }
 
-  async generateScriptAgent(req: AuthRequest, res: Response<{ success: boolean; scriptId: string; script: any } | ErrorResponse>) {
+  async generateScriptAgent(
+    req: AuthRequest,
+    res: Response<
+      { success: boolean; scriptId: string; script: any } | ErrorResponse
+    >,
+  ) {
     try {
       const {
         teamId,
@@ -176,7 +240,9 @@ export class UGCScriptController {
       } = req.body;
 
       if (!teamId || !structure) {
-        return res.status(400).json({ error: "teamId and structure are required" });
+        return res
+          .status(400)
+          .json({ error: "teamId and structure are required" });
       }
 
       if (!req.user?.dbUserId) {
@@ -208,16 +274,33 @@ export class UGCScriptController {
         script: result.script,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Generate script agent error", error, "Failed to generate script via agent");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Generate script agent error",
+        error,
+        "Failed to generate script via agent",
+      );
     }
   }
 
-  async saveScript(req: AuthRequest, res: Response<{ success: boolean; scriptId: string } | ErrorResponse>) {
+  async saveScript(
+    req: AuthRequest,
+    res: Response<{ success: boolean; scriptId: string } | ErrorResponse>,
+  ) {
     try {
-      const { teamId, script, characterId, productImageKeys, isSilent, videoType } = req.body;
+      const {
+        teamId,
+        script,
+        characterId,
+        productImageKeys,
+        isSilent,
+        videoType,
+      } = req.body;
 
       if (!teamId || !script) {
-        return res.status(400).json({ error: "teamId and script are required" });
+        return res
+          .status(400)
+          .json({ error: "teamId and script are required" });
       }
 
       if (!req.user?.dbUserId) {
@@ -253,20 +336,31 @@ export class UGCScriptController {
         scriptId: inserted.id,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Save script error", error, "Failed to save script");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Save script error",
+        error,
+        "Failed to save script",
+      );
     }
   }
 
-  async initStructure(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async initStructure(
+    req: AuthRequest,
+    res: Response<{ success: boolean } | ErrorResponse>,
+  ) {
     try {
-      const { message, productImageKeys, threadId, conversationHistory } = req.body;
+      const { message, productImageKeys, threadId, conversationHistory } =
+        req.body;
 
       if (!message || !message.trim()) {
         return res.status(400).json({ error: "message is required" });
       }
 
       if (productImageKeys && productImageKeys.length > 5) {
-        return res.status(400).json({ error: "Maximum 5 product images allowed" });
+        return res
+          .status(400)
+          .json({ error: "Maximum 5 product images allowed" });
       }
 
       const result = await ugcScriptService.initStructure({
@@ -281,16 +375,28 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Init structure error", error, "Failed to generate init structure");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Init structure error",
+        error,
+        "Failed to generate init structure",
+      );
     }
   }
 
-  async getUploadUrl(req: AuthRequest, res: Response<{ success: boolean; uploadUrl: string; s3Key: string } | ErrorResponse>) {
+  async getUploadUrl(
+    req: AuthRequest,
+    res: Response<
+      { success: boolean; uploadUrl: string; s3Key: string } | ErrorResponse
+    >,
+  ) {
     try {
       const { teamId, fileName, contentType } = req.body;
 
       if (!teamId || !fileName) {
-        return res.status(400).json({ error: "teamId and fileName are required" });
+        return res
+          .status(400)
+          .json({ error: "teamId and fileName are required" });
       }
 
       const team = await teamService.getTeamById(teamId);
@@ -298,11 +404,12 @@ export class UGCScriptController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
-      const { uploadUrl, s3Key } = await s3Service.getProductImagePresignedUpload(
-        teamId,
-        fileName,
-        contentType || "image/jpeg"
-      );
+      const { uploadUrl, s3Key } =
+        await s3Service.getProductImagePresignedUpload(
+          teamId,
+          fileName,
+          contentType || "image/jpeg",
+        );
 
       return res.status(200).json({
         success: true,
@@ -310,11 +417,22 @@ export class UGCScriptController {
         s3Key,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Upload URL error", error, "Failed to get upload URL");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Upload URL error",
+        error,
+        "Failed to get upload URL",
+      );
     }
   }
 
-  async updateScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number } | ErrorResponse>) {
+  async updateScript(
+    req: AuthRequest,
+    res: Response<
+      | { success: boolean; scripts: any[]; selectedVariantIndex: number }
+      | ErrorResponse
+    >,
+  ) {
     try {
       const { scriptId } = req.params;
       const { scenes, selectedVariantIndex } = req.body;
@@ -329,7 +447,7 @@ export class UGCScriptController {
       }
 
       const clientScripts = updated.scripts.map((script) =>
-        ugcScriptService.stripCinematicPrompts(script)
+        ugcScriptService.stripCinematicPrompts(script),
       );
 
       return res.status(200).json({
@@ -338,11 +456,35 @@ export class UGCScriptController {
         selectedVariantIndex: updated.selectedVariantIndex,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Update script error", error, "Failed to update script");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Update script error",
+        error,
+        "Failed to update script",
+      );
     }
   }
 
-  async getFullScript(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; selectedVariantIndex: number; characterId: any; isSilent: boolean; hasCharacter: boolean; videoType: string; charactersConfig: Array<{ characterId: number; voiceId: string | null }> | null; characterCount: number } | ErrorResponse>) {
+  async getFullScript(
+    req: AuthRequest,
+    res: Response<
+      | {
+          success: boolean;
+          scripts: any[];
+          selectedVariantIndex: number;
+          characterId: any;
+          isSilent: boolean;
+          hasCharacter: boolean;
+          charactersConfig: Array<{
+            characterId: number;
+            voiceId: string | null;
+          }> | null;
+          characterCount: number;
+          videoType: string;
+        }
+      | ErrorResponse
+    >,
+  ) {
     try {
       const { scriptId } = req.params;
 
@@ -367,11 +509,21 @@ export class UGCScriptController {
         characterCount: fullScript.characterCount,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Get full script error", error, "Failed to get script");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Get full script error",
+        error,
+        "Failed to get script",
+      );
     }
   }
 
-  async listScripts(req: AuthRequest, res: Response<{ success: boolean; scripts: any[]; hasMore: boolean } | ErrorResponse>) {
+  async listScripts(
+    req: AuthRequest,
+    res: Response<
+      { success: boolean; scripts: any[]; hasMore: boolean } | ErrorResponse
+    >,
+  ) {
     try {
       const { teamId } = req.params;
       const limit = parseInt(req.query.limit as string) || 20;
@@ -402,12 +554,15 @@ export class UGCScriptController {
         })
         .from(ugcScripts)
         .leftJoin(characters, eq(ugcScripts.character_id, characters.id))
-        .leftJoin(ugcVideoGenerationJobs, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
+        .leftJoin(
+          ugcVideoGenerationJobs,
+          eq(ugcVideoGenerationJobs.script_id, ugcScripts.id),
+        )
         .where(
           and(
             eq(ugcScripts.team_id, parseInt(teamId)),
-            eq(ugcScripts.status, "completed")
-          )
+            eq(ugcScripts.status, "completed"),
+          ),
         )
         .orderBy(desc(ugcScripts.created_at))
         .limit(limit)
@@ -418,10 +573,11 @@ export class UGCScriptController {
         const scriptsData = script.scriptsData as any[] | null;
         const selectedScript = scriptsData?.[script.selectedVariantIndex || 0];
         const sceneCount = selectedScript?.scenes?.length || 0;
-        const totalDuration = selectedScript?.scenes?.reduce(
-          (sum: number, s: any) => sum + (s.estimatedDurationSeconds || 0),
-          0
-        ) || 0;
+        const totalDuration =
+          selectedScript?.scenes?.reduce(
+            (sum: number, s: any) => sum + (s.estimatedDurationSeconds || 0),
+            0,
+          ) || 0;
 
         return {
           id: script.id,
@@ -446,10 +602,18 @@ export class UGCScriptController {
         hasMore: formattedScripts.length === limit,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] List scripts error", error, "Failed to list scripts");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] List scripts error",
+        error,
+        "Failed to list scripts",
+      );
     }
   }
-  async deleteScript(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async deleteScript(
+    req: AuthRequest,
+    res: Response<{ success: boolean } | ErrorResponse>,
+  ) {
     try {
       const { scriptId } = req.params;
       const { teamId } = req.body;
@@ -472,11 +636,19 @@ export class UGCScriptController {
 
       return res.status(200).json({ success: true });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Delete script error", error, "Failed to delete script");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Delete script error",
+        error,
+        "Failed to delete script",
+      );
     }
   }
 
-  async storyboardChat(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async storyboardChat(
+    req: AuthRequest,
+    res: Response<{ success: boolean } | ErrorResponse>,
+  ) {
     try {
       const { scriptId, message, threadId, teamId, characterId } = req.body;
 
@@ -499,7 +671,12 @@ export class UGCScriptController {
         ...result,
       });
     } catch (error) {
-      return handleControllerError(res, "[UGC_SCRIPT] Storyboard chat error", error, "Failed to process storyboard edit");
+      return handleControllerError(
+        res,
+        "[UGC_SCRIPT] Storyboard chat error",
+        error,
+        "Failed to process storyboard edit",
+      );
     }
   }
 }

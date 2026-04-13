@@ -419,6 +419,16 @@ pnpm build          # TypeScript compile
   - Don't use useEffect to sync with parent state — lift state up or pass callbacks
   - Don't use useEffect to fetch data triggered by user actions — fetch in the event handler
   - Only use useEffect for things that genuinely need to synchronize with an external system (subscriptions, timers, DOM APIs, third-party widgets)
+- **UI Design Style — Liquid Glass**:
+  - Cards and panels: `bg-white/[0.04] backdrop-blur-2xl` with `border border-white/[0.08]` and `shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)]`
+  - Dividers: `bg-white/[0.06]` (not HeroUI Separator)
+  - Inner containers (pills, stats): `bg-white/[0.04] border border-white/[0.06] rounded-xl`
+  - Highlighted/active cards: `border-accent-400/40 shadow-lg shadow-accent-400/10`
+  - Use `rounded-2xl` for cards, `rounded-xl` for inner elements
+  - Accent color: `accent-400` (purple) for buttons, badges, check icons, links
+  - Use framer-motion for: staggered entrance animations (`opacity/y`), hover effects (`scale(1.015)` + glow `boxShadow`), accordion open/close (`AnimatePresence` + height animation)
+  - Badges/chips: use plain `<span>` with Tailwind classes, not HeroUI `Chip` (it fights custom styles)
+  - Background: gradient blob with `from-accent-400/30 to-purple-500/20 opacity-30 blur-3xl` behind content
 
 ### Database
 - All schema changes go through `packages/shared-db/src/schema.ts`
@@ -441,12 +451,16 @@ pnpm build          # TypeScript compile
 ## Important Patterns
 
 ### Adding a New API Endpoint
-1. Create/update route in `backend/src/routes/<feature>.routes.ts`
-2. Create/update controller in `backend/src/controllers/<feature>.controller.ts`
-3. Create/update service in `backend/src/services/<feature>.service.ts`
-4. Add route mounting in `backend/src/app.ts` if new route file
-5. Apply `requireAuth` or `validateAPIKey` middleware as appropriate
-6. **Always add `@openapi` JSDoc comments** above every route definition. Include summary, description, tags, security, parameters, requestBody (if applicable), and responses. See `backend/src/routes/intake.routes.ts` or `campaign.routes.ts` for reference patterns. This powers the Swagger UI at `/api-docs`.
+1. Define a **named schema** in `backend/src/config/swagger.ts` under `components.schemas` for both request and response types
+2. Create/update route in `backend/src/routes/<feature>.routes.ts` with `@openapi` JSDoc referencing the schema via `$ref: '#/components/schemas/MyResponse'`
+3. Create/update controller in `backend/src/controllers/<feature>.controller.ts` — import the generated type: `import type { MyResponse } from "../types/api.types"`
+4. Create/update service in `backend/src/services/<feature>.service.ts`
+5. Add route mounting in `backend/src/app.ts` if new route file
+6. Apply `requireAuth` or `validateAPIKey` middleware as appropriate
+7. Run `pnpm build:shared` from the repo root — this exports the OpenAPI spec, generates `openapi.json`, and builds typed models into `packages/shared-types/`
+8. Import types in frontend: `import type { MyResponse } from "@clipper/shared-types"`
+
+The type pipeline: `swagger.ts` schemas + `@openapi` JSDoc → `pnpm build:shared` → `openapi.json` → `generated/api.ts` → `models.ts` → `api.types.ts`. Only `swagger.ts` and route JSDoc are manual. Never edit generated files. All response/request types MUST be named schemas in `swagger.ts`.
 
 ### Adding a New Database Table
 1. Define table in `packages/shared-db/src/schema.ts`

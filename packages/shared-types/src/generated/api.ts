@@ -13153,6 +13153,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stripe/analytics-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get live analytics plan prices from Stripe
+         * @description Fetches current pricing for analytics subscription tiers directly from the Stripe API.
+         *     Returns the unit amount in cents, currency, and billing interval for each analytics plan.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Analytics prices retrieved successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalyticsPricesResponse"];
+                    };
+                };
+                /** @description Failed to fetch prices from Stripe */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stripe/checkout": {
         parameters: {
             query?: never;
@@ -16816,7 +16865,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all tracked accounts for a team */
+        /** List all tracked competitor accounts for a team */
         get: {
             parameters: {
                 query?: never;
@@ -16849,7 +16898,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add a new account to track */
+        /** Add a new account to track (competitor or user) within a group */
         post: {
             parameters: {
                 query?: never;
@@ -16870,7 +16919,10 @@ export interface paths {
                          * @enum {string}
                          */
                         accountType?: "profile" | "hashtag" | "keyword";
-                        competitorId?: number;
+                        /** @description ID of the group to assign this account to */
+                        groupId: number;
+                        /** @description If true, writes to competitor_accounts; if false, writes to user_accounts */
+                        competitor: boolean;
                     };
                 };
             };
@@ -16922,7 +16974,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a specific account */
+        /** Get a specific competitor account */
         get: {
             parameters: {
                 query?: never;
@@ -16957,7 +17009,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Remove a tracked account */
+        /** Remove a tracked competitor account */
         delete: {
             parameters: {
                 query?: never;
@@ -17008,7 +17060,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update account active status */
+        /** Update competitor account active status */
         patch: {
             parameters: {
                 query?: never;
@@ -17056,6 +17108,56 @@ export interface paths {
         };
         trace?: never;
     };
+    "/virality/{teamId}/accounts/unpause-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unpause all virality accounts for a team
+         * @description Reactivates all paused virality accounts. Requires Studio plan or higher.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All accounts unpaused */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/virality/{teamId}/accounts/{accountId}/sync": {
         parameters: {
             query?: never;
@@ -17066,8 +17168,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Trigger a sync for an account
-         * @description Fetches latest posts and metrics from Instagram, TikTok, or X
+         * Trigger a sync for a competitor account
+         * @description Fetches latest posts and metrics from Instagram, TikTok, or X for a competitor account
          */
         post: {
             parameters: {
@@ -17129,7 +17231,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get posts for an account */
+        /** Get posts for a competitor account */
         get: {
             parameters: {
                 query?: {
@@ -17183,7 +17285,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a tracked post */
+        /** Remove a tracked competitor post */
         delete: {
             parameters: {
                 query?: never;
@@ -17228,7 +17330,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get dashboard statistics */
+        /** Get competitor dashboard statistics */
         get: {
             parameters: {
                 query?: {
@@ -17276,7 +17378,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all competitors for a team */
+        /** List all competitor groups for a team */
         get: {
             parameters: {
                 query?: never;
@@ -17288,7 +17390,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description List of competitors */
+                /** @description List of competitor groups */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17309,7 +17411,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a new competitor */
+        /** Create a new competitor group */
         post: {
             parameters: {
                 query?: never;
@@ -17324,11 +17426,16 @@ export interface paths {
                     "application/json": {
                         name: string;
                         description?: string;
+                        /**
+                         * @description Whether this is a competitor group (true) or a user performance group (false)
+                         * @default true
+                         */
+                        competitor?: boolean;
                     };
                 };
             };
             responses: {
-                /** @description Competitor created */
+                /** @description Group created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -17361,6 +17468,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/virality/{teamId}/competitors-with-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all competitor groups with their accounts pre-loaded
+         * @description Returns all competitor groups for a team with nested accounts in a single request, avoiding N+1 queries.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description List of competitor groups with nested accounts */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            competitors: components["schemas"]["CompetitorWithAccounts"][];
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/virality/{teamId}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get all competitor posts for a team grouped by account
+         * @description Batch-fetches all posts across all tracked competitor accounts in a single request, avoiding per-account queries.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    startDate?: string;
+                    endDate?: string;
+                };
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Posts grouped by account ID */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ViralityPostsByAccount"];
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/virality/{teamId}/competitors/{competitorId}": {
         parameters: {
             query?: never;
@@ -17368,7 +17576,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a competitor with its accounts */
+        /** Get a competitor group with its accounts */
         get: {
             parameters: {
                 query?: never;
@@ -17381,7 +17589,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Competitor details with nested accounts */
+                /** @description Competitor group details with nested accounts */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17394,7 +17602,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17405,7 +17613,10 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /** Delete a competitor */
+        /**
+         * Delete a competitor group
+         * @description Deletes the group and all its associated accounts via cascade.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -17418,7 +17629,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Competitor deleted */
+                /** @description Competitor group deleted */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17429,7 +17640,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17440,7 +17651,7 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        /** Update a competitor */
+        /** Update a competitor group */
         patch: {
             parameters: {
                 query?: never;
@@ -17460,7 +17671,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Competitor updated */
+                /** @description Competitor group updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -17485,7 +17696,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Competitor not found */
+                /** @description Competitor group not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -17509,7 +17720,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Toggle alert_enabled for an account */
+        /** Toggle alert_enabled for a competitor account */
         patch: {
             parameters: {
                 query?: never;
@@ -17911,6 +18122,19 @@ export interface components {
         ErrorResponse: {
             error: string;
             message?: string;
+        };
+        AnalyticsPriceEntry: {
+            /** @description Price in cents */
+            amount: number;
+            /** @description Three-letter ISO currency code */
+            currency: string;
+            /** @description Billing interval (month, year) or null for one-time */
+            interval: string | null;
+        };
+        AnalyticsPricesResponse: {
+            prices: {
+                [key: string]: components["schemas"]["AnalyticsPriceEntry"];
+            };
         };
         Subscription: {
             /** @description Subscription ID */
@@ -18586,6 +18810,14 @@ export interface components {
                 };
             };
             accounts: components["schemas"]["ViralityAccount"][];
+        };
+        CompetitorWithAccounts: components["schemas"]["ViralityCompetitor"] & {
+            accounts: components["schemas"]["ViralityAccount"][];
+        };
+        ViralityPostsByAccount: {
+            postsByAccount: {
+                [key: string]: components["schemas"]["ViralityPost"][];
+            };
         };
         IntakeApplicationStatus: {
             hasIntakeForm: boolean;

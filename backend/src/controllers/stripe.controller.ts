@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import type { Subscription, ErrorResponse } from "../types/api.types";
+import type { Subscription, ErrorResponse, AnalyticsPricesResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
 import { stripe, STRIPE_PRICES } from "../config/stripe.config";
@@ -146,6 +146,32 @@ export const getPrices = async (_req: Request, res: Response<{ prices: typeof ST
   return res.json({
     prices: STRIPE_PRICES,
   });
+};
+
+export const getAnalyticsPrices = async (_req: Request, res: Response<AnalyticsPricesResponse | ErrorResponse>) => {
+  try {
+    const priceIds = [
+      STRIPE_PRICES.ANALYTICS_STARTER,
+      STRIPE_PRICES.ANALYTICS_BUSINESS,
+    ];
+
+    const results: Record<string, { amount: number; currency: string; interval: string | null }> = {};
+
+    await Promise.all(
+      priceIds.map(async (id) => {
+        const price = await stripe.prices.retrieve(id);
+        results[id] = {
+          amount: price.unit_amount ?? 0,
+          currency: price.currency,
+          interval: price.recurring?.interval ?? null,
+        };
+      })
+    );
+
+    return res.json({ prices: results });
+  } catch (err) {
+    return handleControllerError(res, "Get analytics prices error", err, "Failed to fetch prices");
+  }
 };
 
 export const changePlan = async (req: AuthRequest, res: Response<{ success: boolean; effectiveDate: string | Date; newPlan: string; message: string } | ErrorResponse>) => {

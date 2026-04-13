@@ -1,14 +1,16 @@
 "use client";
 
+import { ViralitySyncListener as SharedViralitySyncListener, type SocketConnector } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
-import { useViralitySyncSocketGlobal } from "@/hooks/useViralitySyncSocket";
+import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 
-/**
- * Invisible component that keeps the Socket.IO listener alive
- * for virality sync updates across all virality pages.
- */
+const socketConnector: SocketConnector = {
+  connect: connectSocket,
+  joinTeam,
+  leaveTeam,
+};
+
 export function ViralitySyncListener() {
   const { selectedTeam } = useTeams();
-  useViralitySyncSocketGlobal(selectedTeam?.id);
-  return null;
+  return <SharedViralitySyncListener teamId={selectedTeam?.id} socketConnector={socketConnector} />;
 }

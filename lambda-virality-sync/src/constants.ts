@@ -1,0 +1,10 @@
+export const SYNC_INTERVAL_HOURS = 12;
+export const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL_HOURS);
+export const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7;
+export const SCRAPE_WINDOW_DAYS = 31;
+export const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
+export const MAX_FOLLOWER_HISTORY = 180;
+export const MASS_POST_SYNC_BUDGET = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
+export const STALE_SYNC_MINUTES = 15;
+export const USER_ACCOUNT_SOURCE_MASS_POSTING = "mass_posting" as const;
+export type UserAccountSource = typeof USER_ACCOUNT_SOURCE_MASS_POSTING | null;

@@ -1,6 +1,6 @@
-import type { ViralityPost } from "@/api/virality";
+import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import type { StatCardItem } from "@/components/virality/StatCards";
+import type { StatCardItem, FeedPost } from "@clipper/shared-ui";
 import { formatNumber } from "@/lib/formatters";
 
 /** Percentage change helper — returns null when prev is 0 */
@@ -387,4 +387,31 @@ export function getNextSyncCountdown(): string {
   const hrs = Math.floor(diff / (1000 * 60 * 60));
   const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+}
+
+export function toFeedPosts(
+  posts: ViralityPost[],
+  accountMap: Record<number, ViralityAccount>,
+  startDate?: string,
+  endDate?: string,
+): FeedPost[] {
+  return posts.map((p) => {
+    const account = accountMap[p.account_id];
+    return {
+      id: p.id,
+      accountId: p.account_id,
+      accountUsername: account?.username ?? "",
+      platform: account?.platform ?? "instagram",
+      caption: p.caption,
+      thumbnailUrl: p.thumbnail_url,
+      postUrl: p.post_url,
+      postedAt: p.posted_at,
+      likeCount: p.like_count,
+      commentCount: p.comment_count,
+      viewCount: p.video_play_count ?? 0,
+      viewsGained: getViewsInRange(p, startDate, endDate),
+      massPostId: p.mass_post_id,
+      campaignName: p.campaign_name,
+    };
+  });
 }

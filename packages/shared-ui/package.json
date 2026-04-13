@@ -21,14 +21,25 @@
   "peerDependencies": {
     "@clipper/shared-types": "^1.0.0",
     "@heroui/react": "^3.0.0",
+    "@iconify/react": "^5.0.0 || ^6.0.0",
+    "@internationalized/date": "^3.0.0",
+    "framer-motion": "^11.0.0 || ^12.0.0",
+    "jotai": "^2.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "recharts": "^2.0.0"
   },
   "devDependencies": {
     "@clipper/shared-types": "file:../shared-types",
     "@heroui/react": "^3.0.1",
+    "@iconify/react": "^5.2.1",
+    "@internationalized/date": "^3.12.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "framer-motion": "^12.38.0",
+    "jotai": "^2.19.1",
+    "next": "15.3.6",
+    "recharts": "^2.15.4",
     "typescript": "^5.3.3"
   }
 }

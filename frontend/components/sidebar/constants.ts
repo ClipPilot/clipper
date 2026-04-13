@@ -62,11 +62,18 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     title: "Intelligence",
     items: [
       {
-        key: "virality-tracker",
-        title: "Performance Tracker",
-        icon: "solar:chart-bold-duotone",
-        href: "/dashboard/virality",
-        requiredPlans: ["studio", "scale", "enterprise"],
+        key: "your-performance",
+        title: "Your Performance",
+        icon: "solar:graph-up-bold-duotone",
+        href: "/dashboard/your-performance",
+        requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
+      },
+      {
+        key: "your-competitors",
+        title: "Your Competitors",
+        icon: "solar:users-group-two-rounded-bold-duotone",
+        href: "/dashboard/your-competitors",
+        requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
       },
     ],
   },

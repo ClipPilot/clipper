@@ -18,10 +18,25 @@ class UserPerformanceController {
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const accounts = await userPerformanceService.getAccountsByTeam(teamId);
+      const source = req.query.source as string | undefined;
+      const accounts = await userPerformanceService.getAccountsByTeamFiltered(teamId, source);
       return res.json({ accounts });
     } catch (error) {
       return handleControllerError(res, "List user accounts error", error, "Failed to list accounts");
+    }
+  }
+
+  async backfillManaged(req: AuthRequest, res: Response<{ created: number; skipped: number } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const result = await userPerformanceService.backfillManagedAccounts(teamId);
+      return res.json(result);
+    } catch (error) {
+      return handleControllerError(res, "Backfill managed accounts error", error, "Failed to backfill managed accounts");
     }
   }
 

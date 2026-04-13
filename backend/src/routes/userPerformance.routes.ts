@@ -19,6 +19,12 @@ const router = Router();
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: source
+ *         schema:
+ *           type: string
+ *           enum: [mass_posting]
+ *         description: Filter accounts by source
  *     responses:
  *       200:
  *         description: List of accounts
@@ -35,6 +41,39 @@ const router = Router();
  *         description: Plan upgrade required
  */
 router.get("/:teamId/accounts", requireAuth, (req, res) => userPerformanceController.listAccounts(req, res));
+
+/**
+ * @openapi
+ * /user-performance/{teamId}/backfill-managed:
+ *   post:
+ *     summary: Backfill managed accounts from mass posting history
+ *     description: Creates user_accounts and user_posts entries for existing mass posting posts that were never bridged
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Backfill results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 created:
+ *                   type: integer
+ *                 skipped:
+ *                   type: integer
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.post("/:teamId/backfill-managed", requireAuth, (req, res) => userPerformanceController.backfillManaged(req, res));
 
 /**
  * @openapi

@@ -2,6 +2,7 @@
 
 import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { getPlanName } from "@/lib/plans";
 
 interface ScalePlanRequiredProps {
   currentPlan: string;
@@ -29,7 +30,7 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
               </Button>
             </a>
             <p className="text-xs text-text-muted">
-              Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan
+              Currently on: <span className="font-medium">{getPlanName(currentPlan)}</span> plan
             </p>
           </Card.Content>
         </Card>

@@ -5,6 +5,14 @@ import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
 import { eq, and, or, lte, inArray, sql, isNull, not, gt, isNotNull } from "drizzle-orm";
 import { checkAndSendViralAlertsForTeam } from "./viralAlerts";
+import {
+  SYNCS_PER_WEEK,
+  SCRAPE_WINDOW_DAYS,
+  MAX_METRICS_HISTORY,
+  MAX_FOLLOWER_HISTORY,
+  STALE_SYNC_MINUTES,
+  USER_ACCOUNT_SOURCE_MASS_POSTING,
+} from "./constants";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -14,13 +22,6 @@ const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
 const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
 const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const SYNC_INTERVAL = 12 // every 12 hours
-const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
-const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
-const SCRAPE_WINDOW_DAYS = 31;
-const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
-const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
-const STALE_SYNC_MINUTES = 15;
 
 // ── Apify helpers ──
 
@@ -493,7 +494,7 @@ async function upsertPost(
   accountId: number,
   postData: InstagramPost,
   platform: string,
-  postsTable: any = schema.viralityPosts
+  postsTable: any = schema.competitorPosts
 ): Promise<boolean> {
   if (!postData.id) return false;
 
@@ -636,7 +637,7 @@ async function updateAccountProfile(
   db: ReturnType<typeof drizzle>,
   accountId: number,
   profile: Partial<InstagramProfile>,
-  accountsTable: any = schema.viralityAccounts
+  accountsTable: any = schema.competitorAccounts
 ) {
   // Fetch existing follower_history
   const [existing] = await db
@@ -864,7 +865,7 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
 
       const staleVirality = await db
-        .update(schema.viralityAccounts)
+        .update(schema.competitorAccounts)
         .set({
           sync_status: "failed",
           sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
@@ -873,13 +874,13 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
         .where(
           and(
             or(
-              eq(schema.viralityAccounts.sync_status, "pending"),
-              eq(schema.viralityAccounts.sync_status, "syncing")
+              eq(schema.competitorAccounts.sync_status, "pending"),
+              eq(schema.competitorAccounts.sync_status, "syncing")
             ),
-            lte(schema.viralityAccounts.updated_at, cutoff)
+            lte(schema.competitorAccounts.updated_at, cutoff)
           )
         )
-        .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+        .returning({ id: schema.competitorAccounts.id, username: schema.competitorAccounts.username });
 
       if (staleVirality.length > 0) {
         console.log(`[Cleanup] Reset ${staleVirality.length} stale virality syncs: ${staleVirality.map((s) => `@${s.username}`).join(", ")}`);
@@ -918,14 +919,14 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
 
       if (phase === "virality") {
         const rows = await db
-          .select({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username })
-          .from(schema.viralityAccounts)
+          .select({ id: schema.competitorAccounts.id, username: schema.competitorAccounts.username })
+          .from(schema.competitorAccounts)
           .where(and(
-            inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
-            eq(schema.viralityAccounts.is_active, true),
-            gt(schema.viralityAccounts.id, lastId),
+            inArray(schema.competitorAccounts.platform, ["instagram", "tiktok", "x"]),
+            eq(schema.competitorAccounts.is_active, true),
+            gt(schema.competitorAccounts.id, lastId),
           ))
-          .orderBy(schema.viralityAccounts.id)
+          .orderBy(schema.competitorAccounts.id)
           .limit(PAGE_SIZE);
 
         accounts = rows.map((a) => ({ id: a.id, source: "virality" as const, username: a.username }));
@@ -936,7 +937,7 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
           .where(and(
             inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
             eq(schema.userAccounts.is_active, true),
-            or(isNull(schema.userAccounts.source), not(eq(schema.userAccounts.source, "mass_posting"))),
+            or(isNull(schema.userAccounts.source), not(eq(schema.userAccounts.source, USER_ACCOUNT_SOURCE_MASS_POSTING))),
             gt(schema.userAccounts.id, lastId),
           ))
           .orderBy(schema.userAccounts.id)
@@ -1184,8 +1185,8 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
   const { username } = event;
   const accountId = itemId;
   const isUserAccount = source === "user";
-  const accountsTable = isUserAccount ? schema.userAccounts : schema.viralityAccounts;
-  const postsTable = isUserAccount ? schema.userPosts : schema.viralityPosts;
+  const accountsTable = isUserAccount ? schema.userAccounts : schema.competitorAccounts;
+  const postsTable = isUserAccount ? schema.userPosts : schema.competitorPosts;
   const sourceLabel = isUserAccount ? "user" : "virality";
 
   console.log(`\n========================================`);
@@ -1355,11 +1356,11 @@ export const teamExtractorHandler: Handler = async () => {
 
   try {
     const results = await db
-      .selectDistinct({ team_id: schema.viralityAccounts.team_id })
-      .from(schema.viralityAccounts)
+      .selectDistinct({ team_id: schema.competitorAccounts.team_id })
+      .from(schema.competitorAccounts)
       .where(and(
-        eq(schema.viralityAccounts.is_active, true),
-        isNotNull(schema.viralityAccounts.team_id)
+        eq(schema.competitorAccounts.is_active, true),
+        isNotNull(schema.competitorAccounts.team_id)
       ));
 
     const teams = results

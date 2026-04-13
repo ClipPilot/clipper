@@ -1,0 +1,11 @@
+import type { NextConfig } from "next";
+import path from "path";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@clipper/shared-ui", "@clipper/shared-types"],
+  turbopack: {
+    root: path.resolve(__dirname, ".."),
+  },
+};
+
+export default nextConfig;

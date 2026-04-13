@@ -8,7 +8,7 @@ const router = Router();
  * @openapi
  * /virality/{teamId}/accounts:
  *   get:
- *     summary: List all tracked accounts for a team
+ *     summary: List all tracked competitor accounts for a team
  *     tags:
  *       - Virality
  *     security:
@@ -42,7 +42,7 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  * @openapi
  * /virality/{teamId}/accounts:
  *   post:
- *     summary: Add a new account to track
+ *     summary: Add a new account to track (competitor or user) within a group
  *     tags:
  *       - Virality
  *     security:
@@ -62,6 +62,8 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  *             required:
  *               - platform
  *               - profileUrl
+ *               - groupId
+ *               - competitor
  *             properties:
  *               platform:
  *                 type: string
@@ -72,8 +74,12 @@ router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.li
  *                 type: string
  *                 enum: [profile, hashtag, keyword]
  *                 default: profile
- *               competitorId:
+ *               groupId:
  *                 type: integer
+ *                 description: ID of the group to assign this account to
+ *               competitor:
+ *                 type: boolean
+ *                 description: If true, writes to competitor_accounts; if false, writes to user_accounts
  *     responses:
  *       201:
  *         description: Account created
@@ -99,7 +105,7 @@ router.post("/:teamId/accounts", requireAuth, (req, res) => viralityController.a
  * @openapi
  * /virality/{teamId}/accounts/{accountId}:
  *   get:
- *     summary: Get a specific account
+ *     summary: Get a specific competitor account
  *     tags:
  *       - Virality
  *     security:
@@ -136,7 +142,7 @@ router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityCo
  * @openapi
  * /virality/{teamId}/accounts/{accountId}:
  *   delete:
- *     summary: Remove a tracked account
+ *     summary: Remove a tracked competitor account
  *     tags:
  *       - Virality
  *     security:
@@ -173,7 +179,7 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralit
  * @openapi
  * /virality/{teamId}/accounts/{accountId}/status:
  *   patch:
- *     summary: Update account active status
+ *     summary: Update competitor account active status
  *     tags:
  *       - Virality
  *     security:
@@ -256,8 +262,8 @@ router.post("/:teamId/accounts/unpause-all", requireAuth, (req, res) => virality
  * @openapi
  * /virality/{teamId}/accounts/{accountId}/sync:
  *   post:
- *     summary: Trigger a sync for an account
- *     description: Fetches latest posts and metrics from Instagram, TikTok, or X
+ *     summary: Trigger a sync for a competitor account
+ *     description: Fetches latest posts and metrics from Instagram, TikTok, or X for a competitor account
  *     tags:
  *       - Virality
  *     security:
@@ -301,7 +307,7 @@ router.post("/:teamId/accounts/:accountId/sync", requireAuth, (req, res) => vira
  * @openapi
  * /virality/{teamId}/accounts/{accountId}/posts:
  *   get:
- *     summary: Get posts for an account
+ *     summary: Get posts for a competitor account
  *     tags:
  *       - Virality
  *     security:
@@ -350,7 +356,7 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => vira
  * @openapi
  * /virality/{teamId}/posts/{postId}:
  *   delete:
- *     summary: Remove a tracked post
+ *     summary: Remove a tracked competitor post
  *     tags:
  *       - Virality
  *     security:
@@ -387,7 +393,7 @@ router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => viralityContr
  * @openapi
  * /virality/{teamId}/dashboard:
  *   get:
- *     summary: Get dashboard statistics
+ *     summary: Get competitor dashboard statistics
  *     tags:
  *       - Virality
  *     security:
@@ -424,7 +430,7 @@ router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.g
  * @openapi
  * /virality/{teamId}/competitors:
  *   get:
- *     summary: List all competitors for a team
+ *     summary: List all competitor groups for a team
  *     tags:
  *       - Virality
  *     security:
@@ -437,7 +443,7 @@ router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.g
  *           type: integer
  *     responses:
  *       200:
- *         description: List of competitors
+ *         description: List of competitor groups
  *         content:
  *           application/json:
  *             schema:
@@ -452,13 +458,86 @@ router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.g
  *       403:
  *         description: Plan upgrade required
  */
-router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController.listCompetitors(req, res));
+router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController.listGroups(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/competitors-with-accounts:
+ *   get:
+ *     summary: List all competitor groups with their accounts pre-loaded
+ *     description: Returns all competitor groups for a team with nested accounts in a single request, avoiding N+1 queries.
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of competitor groups with nested accounts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - competitors
+ *               properties:
+ *                 competitors:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CompetitorWithAccounts'
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.get("/:teamId/competitors-with-accounts", requireAuth, (req, res) => viralityController.listGroupsWithAccounts(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/posts:
+ *   get:
+ *     summary: Get all competitor posts for a team grouped by account
+ *     description: Batch-fetches all posts across all tracked competitor accounts in a single request, avoiding per-account queries.
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Posts grouped by account ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ViralityPostsByAccount'
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.get("/:teamId/posts", requireAuth, (req, res) => viralityController.getAllPosts(req, res));
 
 /**
  * @openapi
  * /virality/{teamId}/competitors:
  *   post:
- *     summary: Create a new competitor
+ *     summary: Create a new competitor group
  *     tags:
  *       - Virality
  *     security:
@@ -482,9 +561,13 @@ router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController
  *                 type: string
  *               description:
  *                 type: string
+ *               competitor:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Whether this is a competitor group (true) or a user performance group (false)
  *     responses:
  *       201:
- *         description: Competitor created
+ *         description: Group created
  *         content:
  *           application/json:
  *             schema:
@@ -499,13 +582,13 @@ router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController
  *       403:
  *         description: Plan upgrade required
  */
-router.post("/:teamId/competitors", requireAuth, (req, res) => viralityController.createCompetitor(req, res));
+router.post("/:teamId/competitors", requireAuth, (req, res) => viralityController.createGroup(req, res));
 
 /**
  * @openapi
  * /virality/{teamId}/competitors/{competitorId}:
  *   patch:
- *     summary: Update a competitor
+ *     summary: Update a competitor group
  *     tags:
  *       - Virality
  *     security:
@@ -534,7 +617,7 @@ router.post("/:teamId/competitors", requireAuth, (req, res) => viralityControlle
  *                 type: string
  *     responses:
  *       200:
- *         description: Competitor updated
+ *         description: Competitor group updated
  *         content:
  *           application/json:
  *             schema:
@@ -549,15 +632,15 @@ router.post("/:teamId/competitors", requireAuth, (req, res) => viralityControlle
  *       403:
  *         description: Plan upgrade required
  *       404:
- *         description: Competitor not found
+ *         description: Competitor group not found
  */
-router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.updateCompetitor(req, res));
+router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.updateGroup(req, res));
 
 /**
  * @openapi
  * /virality/{teamId}/competitors/{competitorId}:
  *   get:
- *     summary: Get a competitor with its accounts
+ *     summary: Get a competitor group with its accounts
  *     tags:
  *       - Virality
  *     security:
@@ -575,7 +658,7 @@ router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vi
  *           type: integer
  *     responses:
  *       200:
- *         description: Competitor details with nested accounts
+ *         description: Competitor group details with nested accounts
  *         content:
  *           application/json:
  *             schema:
@@ -595,15 +678,16 @@ router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vi
  *                           items:
  *                             $ref: '#/components/schemas/ViralityAccount'
  *       404:
- *         description: Competitor not found
+ *         description: Competitor group not found
  */
-router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.getCompetitor(req, res));
+router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.getGroupWithAccounts(req, res));
 
 /**
  * @openapi
  * /virality/{teamId}/competitors/{competitorId}:
  *   delete:
- *     summary: Delete a competitor
+ *     summary: Delete a competitor group
+ *     description: Deletes the group and all its associated accounts via cascade.
  *     tags:
  *       - Virality
  *     security:
@@ -621,7 +705,7 @@ router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vira
  *           type: integer
  *     responses:
  *       200:
- *         description: Competitor deleted
+ *         description: Competitor group deleted
  *         content:
  *           application/json:
  *             schema:
@@ -632,15 +716,15 @@ router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vira
  *                 success:
  *                   type: boolean
  *       404:
- *         description: Competitor not found
+ *         description: Competitor group not found
  */
-router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteCompetitor(req, res));
+router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteGroup(req, res));
 
 /**
  * @openapi
  * /virality/{teamId}/accounts/{accountId}/alerts:
  *   patch:
- *     summary: Toggle alert_enabled for an account
+ *     summary: Toggle alert_enabled for a competitor account
  *     tags:
  *       - Virality
  *     security:

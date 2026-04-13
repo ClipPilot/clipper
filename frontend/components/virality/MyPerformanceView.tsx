@@ -15,19 +15,21 @@ import { useViralityDateRange } from "@/contexts/ViralityContext";
 import { userPerformanceAPI } from "@/api/userPerformance";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
-import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
-import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import { StatCards } from "@/components/virality/StatCards";
-import { PostsTable } from "@/components/virality/PostsTable";
-import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
-import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
-import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
+import {
+  DateRangeFilter,
+  StatCards,
+  PostsTable,
+  AnalyticsChart,
+  PostFrequencyChart,
+  AccountBreakdownChart,
+  ActivityFeed,
+  RecalcOverlay,
+  AccountFilterPopover,
+  ViralityUpgradeWall,
+  type ComparisonMode,
+} from "@clipper/shared-ui";
 import { YourAccountsList } from "@/components/virality/YourAccountsList";
-import { ActivityFeed } from "@/components/virality/ActivityFeed";
-import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
-import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
 import { AddAccountModal } from "@/components/virality/AddAccountModal";
-import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import {
   findClosestEntry,
   getComparisonDate,
@@ -35,6 +37,7 @@ import {
   computePostsPerWeek,
   buildStatCards,
   getNextSyncCountdown,
+  toFeedPosts,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 import { useViralitySync } from "@/hooks/useViralitySyncSocket";
@@ -419,10 +422,10 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             </div>
             <div className="lg:col-span-1">
               <ActivityFeed
-                posts={derived.activePosts}
-                allPosts={Object.values(postsByAccount).flat()}
-                accountMap={derived.accountMap}
-                dateRange={dateRange}
+                posts={toFeedPosts(derived.activePosts, derived.accountMap, dateRange.startDate, dateRange.endDate)}
+                allPosts={toFeedPosts(Object.values(postsByAccount).flat(), derived.accountMap)}
+                hasDateRange={!!(dateRange.startDate || dateRange.endDate)}
+                maxItems={10}
               />
             </div>
           </div>
@@ -466,6 +469,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         onClose={onClose}
         hideCompetitorSelect
         onSubmit={handleAddAccount}
+        plan={selectedTeam?.plan}
       />
     </motion.div>
   );

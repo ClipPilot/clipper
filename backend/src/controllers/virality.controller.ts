@@ -1,7 +1,8 @@
 import { Response } from "express";
-import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, ErrorResponse } from "../types/api.types";
+import type { ViralityAccount, ViralityPost, ViralityCompetitor, ViralityDashboard, ViralSettings, CompetitorWithAccounts, ViralityPostsByAccount, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
+import { userPerformanceService } from "../services/virality/userPerformance.service";
 import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
@@ -11,7 +12,7 @@ async function requirePlanAccess(teamId: number, res: Response): Promise<boolean
 // ── Controller ───────────────────────────────────────────────────────────────
 
 class ViralityController {
-  // ── Account Controllers ──
+  // ── Competitor Account Controllers ──
 
   async listAccounts(req: AuthRequest, res: Response<{ accounts: ViralityAccount[] } | ErrorResponse>) {
     try {
@@ -23,7 +24,7 @@ class ViralityController {
       const accounts = await viralityService.getAccountsByTeam(teamId);
       return res.json({ accounts });
     } catch (error) {
-      return handleError(res, "List virality accounts error", error, "Failed to list accounts");
+      return handleError(res, "List competitor accounts error", error, "Failed to list competitor accounts");
     }
   }
 
@@ -34,13 +35,19 @@ class ViralityController {
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { platform, profileUrl, competitorId, accountType } = req.body;
+      const { platform, profileUrl, groupId, accountType, competitor } = req.body;
 
       if (!platform || !profileUrl) {
         return res.status(400).json({ error: "Platform and profile URL are required" });
       }
       if (!["instagram", "tiktok", "x"].includes(platform)) {
         return res.status(400).json({ error: "Only Instagram, TikTok, and X are supported" });
+      }
+      if (!groupId || isNaN(parseInt(groupId))) {
+        return res.status(400).json({ error: "groupId is required" });
+      }
+      if (typeof competitor !== "boolean") {
+        return res.status(400).json({ error: "competitor must be a boolean" });
       }
 
       const validAccountTypes = ["profile", "hashtag", "keyword"];
@@ -53,17 +60,18 @@ class ViralityController {
         platform,
         profileUrl,
         accountType || "profile",
-        competitorId ? parseInt(competitorId) : undefined
+        parseInt(groupId),
+        competitor
       );
 
-      // Trigger first sync in the background
-      viralityService.syncAccount(account.id, teamId).catch((err) => {
+      const syncService = competitor ? viralityService : userPerformanceService;
+      syncService.syncAccount(account.id, teamId).catch((err) => {
         console.error(`Initial sync failed for account ${account.id}:`, err);
       });
 
       return res.status(201).json({ account });
     } catch (error) {
-      return handleError(res, "Add virality account error", error, "Failed to add account");
+      return handleError(res, "Add account error", error, "Failed to add account");
     }
   }
 
@@ -75,12 +83,12 @@ class ViralityController {
 
       const account = await viralityService.getAccountById(accountId);
       if (!account || account.team_id !== teamId) {
-        return res.status(404).json({ error: "Account not found" });
+        return res.status(404).json({ error: "Competitor account not found" });
       }
 
       return res.json({ account });
     } catch (error) {
-      return handleError(res, "Get virality account error", error, "Failed to get account");
+      return handleError(res, "Get competitor account error", error, "Failed to get competitor account");
     }
   }
 
@@ -93,7 +101,7 @@ class ViralityController {
       await viralityService.deleteAccount(accountId, teamId);
       return res.json({ success: true });
     } catch (error) {
-      return handleError(res, "Delete virality account error", error, "Failed to delete account");
+      return handleError(res, "Delete competitor account error", error, "Failed to delete competitor account");
     }
   }
 
@@ -111,7 +119,7 @@ class ViralityController {
       const account = await viralityService.updateAccountStatus(accountId, teamId, is_active);
       return res.json({ account });
     } catch (error) {
-      return handleError(res, "Update account status error", error, "Failed to update account status");
+      return handleError(res, "Update competitor account status error", error, "Failed to update competitor account status");
     }
   }
 
@@ -123,17 +131,17 @@ class ViralityController {
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      // Fire-and-forget: respond immediately, sync runs in background.
-      // Progress is pushed to the client via Socket.IO "virality-sync-update" events.
       viralityService.syncAccount(accountId, teamId).catch((err) => {
-        console.error(`Background sync failed for account ${accountId}:`, err);
+        console.error(`Background sync failed for competitor account ${accountId}:`, err);
       });
 
       return res.status(202).json({ accepted: true, accountId });
     } catch (error: any) {
-      return handleError(res, "Sync virality account error", error, "Sync failed: " + error.message);
+      return handleError(res, "Sync competitor account error", error, "Sync failed: " + error.message);
     }
   }
+
+  // ── Competitor Post Controllers ──
 
   async getPosts(req: AuthRequest, res: Response<{ posts: ViralityPost[] } | ErrorResponse>) {
     try {
@@ -156,7 +164,7 @@ class ViralityController {
       );
       return res.json({ posts });
     } catch (error) {
-      return handleError(res, "Get virality posts error", error, "Failed to get posts");
+      return handleError(res, "Get competitor posts error", error, "Failed to get competitor posts");
     }
   }
 
@@ -171,9 +179,11 @@ class ViralityController {
       await viralityService.deletePost(postId, teamId);
       return res.json({ success: true });
     } catch (error) {
-      return handleError(res, "Delete virality post error", error, "Failed to delete post");
+      return handleError(res, "Delete competitor post error", error, "Failed to delete competitor post");
     }
   }
+
+  // ── Competitor Dashboard Controller ──
 
   async getDashboard(req: AuthRequest, res: Response<ViralityDashboard | ErrorResponse>) {
     try {
@@ -188,91 +198,127 @@ class ViralityController {
       const stats = await viralityService.getDashboardStats(teamId, startDate, endDate);
       return res.json(stats);
     } catch (error) {
-      return handleError(res, "Get virality dashboard error", error, "Failed to get dashboard stats");
+      return handleError(res, "Get competitor dashboard error", error, "Failed to get competitor dashboard stats");
     }
   }
 
-  // ── Competitor Controllers ──
+  // ── Group Controllers ──
 
-  async listCompetitors(req: AuthRequest, res: Response<{ competitors: ViralityCompetitor[] } | ErrorResponse>) {
+  async listGroups(req: AuthRequest, res: Response<{ competitors: ViralityCompetitor[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const competitors = await viralityService.getCompetitorsByTeam(teamId);
+      const competitors = await viralityService.getGroupsByTeam(teamId);
       return res.json({ competitors });
     } catch (error) {
-      return handleError(res, "List competitors error", error, "Failed to list competitors");
+      return handleError(res, "List groups error", error, "Failed to list groups");
     }
   }
 
-  async createCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
+  async listGroupsWithAccounts(req: AuthRequest, res: Response<{ competitors: CompetitorWithAccounts[] } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { name, description } = req.body;
-      if (!name || !name.trim()) {
-        return res.status(400).json({ error: "Competitor name is required" });
-      }
-
-      const competitor = await viralityService.createCompetitor(teamId, name.trim(), description?.trim());
-      return res.status(201).json({ competitor });
+      const competitors = await viralityService.getAllGroupsWithAccounts(teamId);
+      return res.json({ competitors });
     } catch (error) {
-      return handleError(res, "Create competitor error", error, "Failed to create competitor");
+      return handleError(res, "List groups with accounts error", error, "Failed to list groups");
     }
   }
 
-  async updateCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
+  async getAllPosts(req: AuthRequest, res: Response<ViralityPostsByAccount | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
-      const competitorId = parseId(req.params.competitorId);
-      if (!teamId || !competitorId) return res.status(400).json({ error: "Invalid team or competitor ID" });
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const startDate = parseDateQuery(req.query.startDate);
+      const endDate = parseDateQuery(req.query.endDate);
+
+      const postsByAccount = await viralityService.getPostsForTeam(teamId, startDate, endDate);
+      return res.json({ postsByAccount });
+    } catch (error) {
+      return handleError(res, "Get all competitor posts error", error, "Failed to get competitor posts");
+    }
+  }
+
+  async createGroup(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const { name, description, competitor: isCompetitor } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Group name is required" });
+      }
+
+      const competitor = await viralityService.createGroup(
+        teamId,
+        name.trim(),
+        description?.trim(),
+        isCompetitor !== undefined ? isCompetitor : true,
+      );
+      return res.status(201).json({ competitor });
+    } catch (error) {
+      return handleError(res, "Create group error", error, "Failed to create group");
+    }
+  }
+
+  async updateGroup(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const groupId = parseId(req.params.competitorId);
+      if (!teamId || !groupId) return res.status(400).json({ error: "Invalid team or group ID" });
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { name, description } = req.body;
       if (name !== undefined && (!name || !name.trim())) {
-        return res.status(400).json({ error: "Competitor name cannot be empty" });
+        return res.status(400).json({ error: "Group name cannot be empty" });
       }
 
-      const competitor = await viralityService.updateCompetitor(competitorId, teamId, {
+      const competitor = await viralityService.updateGroup(groupId, teamId, {
         name: name?.trim(),
         description: description?.trim(),
       });
       return res.json({ competitor });
     } catch (error) {
-      return handleError(res, "Update competitor error", error, "Failed to update competitor");
+      return handleError(res, "Update group error", error, "Failed to update group");
     }
   }
 
-  async getCompetitor(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
+  async getGroupWithAccounts(req: AuthRequest, res: Response<{ competitor: ViralityCompetitor } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
-      const competitorId = parseId(req.params.competitorId);
-      if (!teamId || !competitorId) return res.status(400).json({ error: "Invalid team or competitor ID" });
+      const groupId = parseId(req.params.competitorId);
+      if (!teamId || !groupId) return res.status(400).json({ error: "Invalid team or group ID" });
 
-      const competitor = await viralityService.getCompetitorWithAccounts(competitorId, teamId);
+      const competitor = await viralityService.getGroupWithAccounts(groupId, teamId);
       return res.json({ competitor });
     } catch (error) {
-      return handleError(res, "Get competitor error", error, "Failed to get competitor");
+      return handleError(res, "Get group error", error, "Failed to get group");
     }
   }
 
-  async deleteCompetitor(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
+  async deleteGroup(req: AuthRequest, res: Response<{ success: boolean } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
-      const competitorId = parseId(req.params.competitorId);
-      if (!teamId || !competitorId) return res.status(400).json({ error: "Invalid team or competitor ID" });
+      const groupId = parseId(req.params.competitorId);
+      if (!teamId || !groupId) return res.status(400).json({ error: "Invalid team or group ID" });
 
-      await viralityService.deleteCompetitor(competitorId, teamId);
+      await viralityService.deleteGroup(groupId, teamId);
       return res.json({ success: true });
     } catch (error) {
-      return handleError(res, "Delete competitor error", error, "Failed to delete competitor");
+      return handleError(res, "Delete group error", error, "Failed to delete group");
     }
   }
 

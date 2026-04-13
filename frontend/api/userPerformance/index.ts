@@ -1,5 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import { filterExcludedPostTypes } from "@/lib/viralityConstants";
 import type {
   ViralityAccount,
   ViralityPost,
@@ -11,8 +12,9 @@ export type { ViralityAccount as UserAccount, ViralityPost as UserPost };
 class UserPerformanceAPI {
   // ── Accounts ──
 
-  async getAccounts(teamId: number): Promise<ViralityAccount[]> {
-    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/accounts`, {
+  async getAccounts(teamId: number, source?: string): Promise<ViralityAccount[]> {
+    const qs = source ? `?source=${source}` : "";
+    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/accounts${qs}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -25,6 +27,21 @@ class UserPerformanceAPI {
 
     const data = await response.json();
     return data.accounts;
+  }
+
+  async backfillManaged(teamId: number): Promise<{ created: number; skipped: number }> {
+    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/backfill-managed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to backfill managed accounts");
+    }
+
+    return response.json();
   }
 
   async addAccount(
@@ -156,10 +173,7 @@ class UserPerformanceAPI {
     }
 
     const data = await response.json();
-    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
-    return (data.posts as ViralityPost[]).filter(
-      (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
-    );
+    return filterExcludedPostTypes(data.posts as ViralityPost[]);
   }
 
   async getAllPosts(
@@ -187,12 +201,9 @@ class UserPerformanceAPI {
     }
 
     const data = await response.json();
-    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
     const result: Record<number, ViralityPost[]> = {};
     for (const [accountId, posts] of Object.entries(data.postsByAccount)) {
-      result[Number(accountId)] = (posts as ViralityPost[]).filter(
-        (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
-      );
+      result[Number(accountId)] = filterExcludedPostTypes(posts as ViralityPost[]);
     }
     return result;
   }

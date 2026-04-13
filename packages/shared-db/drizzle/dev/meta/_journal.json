@@ -386,6 +386,20 @@
       "when": 1774599974272,
       "tag": "0054_regular_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1775886034115,
+      "tag": "0055_fantastic_prima",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1775887122443,
+      "tag": "0056_tearful_selene",
+      "breakpoints": true
     }
   ]
 }

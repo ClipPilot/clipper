@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Link, Input, Button, TextField } from "@heroui/react";
 import { toast } from "@/lib/toast";
 import { Icon } from "@iconify/react";
@@ -21,6 +21,7 @@ import API_URL from "@/config/constants";
 import { isPaidPlan } from "@/lib/plans";
 
 function PricingContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedTeam, fetchTeams } = useTeams();
   const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
@@ -192,7 +193,7 @@ function PricingContent() {
   if (isPaidPlan(currentPlan)) {
     return (
       <PaidPlanView
-        currentPlan={currentPlan as "creator" | "studio" | "scale" | "enterprise"}
+        currentPlan={currentPlan as "creator" | "studio" | "scale" | "enterprise" | "analytics_starter" | "analytics_pro" | "analytics_business"}
         teamName={selectedTeam?.name}
         teamId={selectedTeam?.id}
         isOwner={isOwner}
@@ -421,8 +422,14 @@ function PricingContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.5 }}
-        className="relative z-10 flex py-2"
+        className="relative z-10 flex flex-col items-center gap-3 py-2"
       >
+        <button
+          className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+          onClick={() => router.push("/dashboard/pricing/analytics")}
+        >
+          Just need virality tracking? View Analytics plans &rarr;
+        </button>
         <p className="text-text-tertiary">
           Questions about pricing?{" "}
           <Link

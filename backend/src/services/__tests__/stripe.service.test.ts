@@ -59,6 +59,27 @@ vi.mock("@clipper/shared-db/src/schema", () => ({
   usageStats: "usageStats",
   teamMembers: "teamMembers",
   users: "users",
+  competitorAccounts: "competitorAccounts",
+  competitorPosts: "competitorPosts",
+  viralityGroups: "viralityGroups",
+  viralitySettings: "viralitySettings",
+  viralityAlertLogs: "viralityAlertLogs",
+  userAccounts: "userAccounts",
+  userPosts: "userPosts",
+  posts: "posts",
+  campaigns: "campaigns",
+  apiWalletTopUps: "apiWalletTopUps",
+}));
+vi.mock("../virality/virality.service", () => ({
+  viralityService: {
+    deactivateExcessAccounts: vi.fn().mockResolvedValue(0),
+    reactivateAllAccounts: vi.fn().mockResolvedValue(0),
+  },
+}));
+vi.mock("../../utils/plans", () => ({
+  isAnalyticsPlan: vi.fn().mockReturnValue(false),
+  isMainPlatformPlan: vi.fn().mockReturnValue(false),
+  getViralityAccountLimit: vi.fn().mockReturnValue(-1),
 }));
 vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: any[]) => args),
