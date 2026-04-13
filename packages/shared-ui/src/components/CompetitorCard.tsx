@@ -34,6 +34,7 @@ export interface CompetitorCardData {
 interface CompetitorCardProps {
   data: CompetitorCardData;
   index: number;
+  isExpanded?: boolean;
   onView?: (id: number) => void;
   nameOverride?: ReactNode;
   actions?: ReactNode;

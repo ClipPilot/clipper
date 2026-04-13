@@ -1,6 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
-import type { Subscription as SharedSubscription, paths } from "@clipper/shared-types";
+import type { Subscription as SharedSubscription, AnalyticsPricesResponse, paths } from "@clipper/shared-types";
 
 export { STRIPE_PRICES, PLAN_DETAILS } from "@/config/stripe.constants";
 
@@ -79,6 +79,16 @@ class StripeAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to change plan");
+    }
+
+    return response.json();
+  }
+  async getAnalyticsPrices(): Promise<AnalyticsPricesResponse> {
+    const response = await apiFetch(`${API_URL}/stripe/analytics-prices`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch analytics prices");
     }
 
     return response.json();

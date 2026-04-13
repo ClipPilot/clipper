@@ -5,17 +5,19 @@ import { eq, and, or, desc, count, gte, lte, inArray, sql, isNotNull, gt } from 
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
-  SYNCS_PER_DAY,
   SCRAPE_WINDOW_DAYS,
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
+import {
+  SYNCS_PER_WEEK,
+  MASS_POST_SYNC_BUDGET,
+} from "../../config/viralitySyncConstants";
 import { extractPostIdentifier } from "../../utils/postIdentifier";
-import { canAccessViralityTracker } from "../../utils/plans";
+import { canAccessViralityTracker, isAnalyticsPlan, getViralityAccountLimit, canTrackKeywords } from "../../utils/plans";
 import { teamService } from "../team.service";
 import { emitViralitySyncUpdate } from "../socket.service";
 
-const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7;
 const STALE_SYNC_MINUTES = 15;
 
 interface MetricsEntry {
@@ -122,7 +124,8 @@ export class AccountTrackingService {
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
-    accountType: "profile" | "hashtag" | "keyword" = "profile"
+    accountType: "profile" | "hashtag" | "keyword" = "profile",
+    groupId?: number,
   ) {
     // Parse username based on account type
     let username: string;
@@ -153,6 +156,19 @@ export class AccountTrackingService {
     if (existingRows[0]) {
       const label = accountType === "hashtag" ? `#${username}` : accountType === "keyword" ? `"${username}"` : `@${username}`;
       throw new Error(`${label} is already being tracked`);
+    }
+
+    const plan = await this.getTeamPlan(teamId);
+    const accountLimit = getViralityAccountLimit(plan);
+    if (accountLimit !== -1) {
+      const currentCount = await this.getAccountCount(teamId);
+      if (currentCount >= accountLimit) {
+        throw new Error(`Account limit of ${accountLimit} reached for your plan`);
+      }
+    }
+
+    if (accountType !== "profile" && !canTrackKeywords(plan)) {
+      throw new Error("Hashtag and keyword tracking requires an Analytics Business plan or higher");
     }
 
     // Build profile_url based on account type
@@ -190,15 +206,14 @@ export class AccountTrackingService {
         username,
         profile_url,
         sync_status: "pending",
+        ...(groupId != null && { group_id: groupId }),
       })
       .returning() as any[];
 
     const account = inserted[0];
 
-    // Charge 1 credit immediately on account creation
-    const { success } = await teamService.consumeClip(teamId);
+    const { success } = await this.chargeForAccountCreation(teamId);
     if (!success) {
-      // Roll back: delete the just-created account
       await db.delete(this.accountsTable).where(eq(this.accountsTable.id, account.id));
       throw new Error("Insufficient credits to start tracking");
     }
@@ -234,21 +249,73 @@ export class AccountTrackingService {
     return updated[0];
   }
 
-  async syncAccount(accountId: number, teamId: number) {
-    // Clean up any stale syncs before starting
-    await this.cleanupStaleSyncs();
+  // ── Plan transition helpers ──
 
-    // Verify ownership
-    const account = await this.getAccountById(accountId);
-    if (!account || account.team_id !== teamId) {
-      throw new Error("Account not found or access denied");
+  async deactivateExcessAccounts(teamId: number, newLimit: number): Promise<number> {
+    if (newLimit === -1) return 0;
+
+    const activeAccounts = await db
+      .select({ id: this.accountsTable.id })
+      .from(this.accountsTable)
+      .where(
+        and(
+          eq(this.accountsTable.team_id, teamId),
+          eq(this.accountsTable.is_active, true)
+        )
+      )
+      .orderBy(desc(this.accountsTable.created_at)) as any[];
+
+    const toDeactivate = activeAccounts.slice(newLimit);
+    if (toDeactivate.length === 0) return 0;
+
+    const ids = toDeactivate.map((a: any) => a.id);
+    await db
+      .update(this.accountsTable)
+      .set({ is_active: false, updated_at: new Date() })
+      .where(inArray(this.accountsTable.id, ids));
+
+    console.log(`[PlanTransition] Deactivated ${ids.length} excess accounts for team ${teamId} (limit=${newLimit})`);
+    return ids.length;
+  }
+
+  async reactivateAllAccounts(teamId: number): Promise<number> {
+    const result = await db
+      .update(this.accountsTable)
+      .set({ is_active: true, updated_at: new Date() })
+      .where(
+        and(
+          eq(this.accountsTable.team_id, teamId),
+          eq(this.accountsTable.is_active, false)
+        )
+      )
+      .returning({ id: this.accountsTable.id }) as any[];
+
+    if (result.length > 0) {
+      console.log(`[PlanTransition] Reactivated ${result.length} accounts for team ${teamId}`);
     }
+    return result.length;
+  }
 
-    if (!account.is_active) {
-      throw new Error("Account is inactive and cannot be synced");
-    }
+  // ── Credit gating (override to change billing behavior) ──
 
-    // Syncs/credits gating — atomic decrement to avoid race conditions
+  protected async getTeamPlan(teamId: number): Promise<string> {
+    const [team] = await db
+      .select({ plan: teams.plan })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1) as any[];
+    return team?.plan || "free";
+  }
+
+  protected async chargeForAccountCreation(teamId: number): Promise<{ success: boolean }> {
+    const plan = await this.getTeamPlan(teamId);
+    if (isAnalyticsPlan(plan)) return { success: true };
+    return teamService.consumeClip(teamId);
+  }
+
+  protected async consumeSyncCredit(accountId: number, teamId: number): Promise<void> {
+    const plan = await this.getTeamPlan(teamId);
+    if (isAnalyticsPlan(plan)) return;
     const decremented = await db
       .update(this.accountsTable)
       .set({
@@ -264,7 +331,6 @@ export class AccountTrackingService {
       .returning() as any[];
 
     if (decremented.length === 0) {
-      // No syncs remaining — charge a credit and reset
       const { success: charged } = await teamService.consumeClip(teamId);
       if (charged) {
         await db
@@ -273,7 +339,6 @@ export class AccountTrackingService {
           .where(eq(this.accountsTable.id, accountId));
         console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
       } else {
-        // No credits — deactivate account
         await db
           .update(this.accountsTable)
           .set({ is_active: false, updated_at: new Date() })
@@ -281,6 +346,23 @@ export class AccountTrackingService {
         throw new Error("No credits available. Account has been deactivated.");
       }
     }
+  }
+
+  async syncAccount(accountId: number, teamId: number) {
+    // Clean up any stale syncs before starting
+    await this.cleanupStaleSyncs();
+
+    // Verify ownership
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    if (!account.is_active) {
+      throw new Error("Account is inactive and cannot be synced");
+    }
+
+    await this.consumeSyncCredit(accountId, teamId);
 
     // Update status to syncing
     await db
@@ -570,7 +652,7 @@ export class AccountTrackingService {
         like_count: 0,
         comment_count: 0,
         mass_post_id: postId,
-        syncs_remaining: 62,
+        syncs_remaining: MASS_POST_SYNC_BUDGET,
         metrics_history: [],
       })
       .returning({ id: this.postsTable.id }) as any[];

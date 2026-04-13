@@ -163,6 +163,43 @@
           }
         }
       },
+      "AnalyticsPriceEntry": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "interval"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "description": "Price in cents"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Three-letter ISO currency code"
+          },
+          "interval": {
+            "type": "string",
+            "nullable": true,
+            "description": "Billing interval (month, year) or null for one-time"
+          }
+        }
+      },
+      "AnalyticsPricesResponse": {
+        "type": "object",
+        "required": [
+          "prices"
+        ],
+        "properties": {
+          "prices": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnalyticsPriceEntry"
+            }
+          }
+        }
+      },
       "Subscription": {
         "type": "object",
         "required": [
@@ -2478,6 +2515,44 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ViralityAccount"
+            }
+          }
+        }
+      },
+      "CompetitorWithAccounts": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ViralityCompetitor"
+          },
+          {
+            "type": "object",
+            "required": [
+              "accounts"
+            ],
+            "properties": {
+              "accounts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ViralityAccount"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ViralityPostsByAccount": {
+        "type": "object",
+        "required": [
+          "postsByAccount"
+        ],
+        "properties": {
+          "postsByAccount": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/ViralityPost"
+              }
             }
           }
         }
@@ -18334,6 +18409,37 @@
         }
       }
     },
+    "/stripe/analytics-prices": {
+      "get": {
+        "summary": "Get live analytics plan prices from Stripe",
+        "description": "Fetches current pricing for analytics subscription tiers directly from the Stripe API.\nReturns the unit amount in cents, currency, and billing interval for each analytics plan.\n",
+        "tags": [
+          "Stripe"
+        ],
+        "responses": {
+          "200": {
+            "description": "Analytics prices retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsPricesResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to fetch prices from Stripe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stripe/checkout": {
       "post": {
         "summary": "Create a Stripe checkout session",
@@ -22734,7 +22840,7 @@
     },
     "/virality/{teamId}/accounts": {
       "get": {
-        "summary": "List all tracked accounts for a team",
+        "summary": "List all tracked competitor accounts for a team",
         "tags": [
           "Virality"
         ],
@@ -22781,7 +22887,7 @@
         }
       },
       "post": {
-        "summary": "Add a new account to track",
+        "summary": "Add a new competitor account to track (optionally assign to a group)",
         "tags": [
           "Virality"
         ],
@@ -22872,7 +22978,7 @@
     },
     "/virality/{teamId}/accounts/{accountId}": {
       "get": {
-        "summary": "Get a specific account",
+        "summary": "Get a specific competitor account",
         "tags": [
           "Virality"
         ],
@@ -22924,7 +23030,7 @@
         }
       },
       "delete": {
-        "summary": "Remove a tracked account",
+        "summary": "Remove a tracked competitor account",
         "tags": [
           "Virality"
         ],
@@ -22978,7 +23084,7 @@
     },
     "/virality/{teamId}/accounts/{accountId}/status": {
       "patch": {
-        "summary": "Update account active status",
+        "summary": "Update competitor account active status",
         "tags": [
           "Virality"
         ],
@@ -23053,8 +23159,8 @@
     },
     "/virality/{teamId}/accounts/{accountId}/sync": {
       "post": {
-        "summary": "Trigger a sync for an account",
-        "description": "Fetches latest posts and metrics from Instagram, TikTok, or X",
+        "summary": "Trigger a sync for a competitor account",
+        "description": "Fetches latest posts and metrics from Instagram, TikTok, or X for a competitor account",
         "tags": [
           "Virality"
         ],
@@ -23118,7 +23224,7 @@
     },
     "/virality/{teamId}/accounts/{accountId}/posts": {
       "get": {
-        "summary": "Get posts for an account",
+        "summary": "Get posts for a competitor account",
         "tags": [
           "Virality"
         ],
@@ -23191,7 +23297,7 @@
     },
     "/virality/{teamId}/posts/{postId}": {
       "delete": {
-        "summary": "Remove a tracked post",
+        "summary": "Remove a tracked competitor post",
         "tags": [
           "Virality"
         ],
@@ -23245,7 +23351,7 @@
     },
     "/virality/{teamId}/dashboard": {
       "get": {
-        "summary": "Get dashboard statistics",
+        "summary": "Get competitor dashboard statistics",
         "tags": [
           "Virality"
         ],
@@ -23299,7 +23405,7 @@
     },
     "/virality/{teamId}/competitors": {
       "get": {
-        "summary": "List all competitors for a team",
+        "summary": "List all competitor groups for a team",
         "tags": [
           "Virality"
         ],
@@ -23320,7 +23426,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of competitors",
+            "description": "List of competitor groups",
             "content": {
               "application/json": {
                 "schema": {
@@ -23346,7 +23452,7 @@
         }
       },
       "post": {
-        "summary": "Create a new competitor",
+        "summary": "Create a new competitor group",
         "tags": [
           "Virality"
         ],
@@ -23388,7 +23494,7 @@
         },
         "responses": {
           "201": {
-            "description": "Competitor created",
+            "description": "Competitor group created",
             "content": {
               "application/json": {
                 "schema": {
@@ -23414,9 +23520,114 @@
         }
       }
     },
+    "/virality/{teamId}/competitors-with-accounts": {
+      "get": {
+        "summary": "List all competitor groups with their accounts pre-loaded",
+        "description": "Returns all competitor groups for a team with nested accounts in a single request, avoiding N+1 queries.",
+        "tags": [
+          "Virality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of competitor groups with nested accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "competitors"
+                  ],
+                  "properties": {
+                    "competitors": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CompetitorWithAccounts"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan upgrade required"
+          }
+        }
+      }
+    },
+    "/virality/{teamId}/posts": {
+      "get": {
+        "summary": "Get all competitor posts for a team grouped by account",
+        "description": "Batch-fetches all posts across all tracked competitor accounts in a single request, avoiding per-account queries.",
+        "tags": [
+          "Virality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posts grouped by account ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViralityPostsByAccount"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan upgrade required"
+          }
+        }
+      }
+    },
     "/virality/{teamId}/competitors/{competitorId}": {
       "patch": {
-        "summary": "Update a competitor",
+        "summary": "Update a competitor group",
         "tags": [
           "Virality"
         ],
@@ -23463,7 +23674,7 @@
         },
         "responses": {
           "200": {
-            "description": "Competitor updated",
+            "description": "Competitor group updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -23487,12 +23698,12 @@
             "description": "Plan upgrade required"
           },
           "404": {
-            "description": "Competitor not found"
+            "description": "Competitor group not found"
           }
         }
       },
       "get": {
-        "summary": "Get a competitor with its accounts",
+        "summary": "Get a competitor group with its accounts",
         "tags": [
           "Virality"
         ],
@@ -23521,7 +23732,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Competitor details with nested accounts",
+            "description": "Competitor group details with nested accounts",
             "content": {
               "application/json": {
                 "schema": {
@@ -23557,12 +23768,13 @@
             }
           },
           "404": {
-            "description": "Competitor not found"
+            "description": "Competitor group not found"
           }
         }
       },
       "delete": {
-        "summary": "Delete a competitor",
+        "summary": "Delete a competitor group",
+        "description": "Deletes the group and all its associated accounts via cascade.",
         "tags": [
           "Virality"
         ],
@@ -23591,7 +23803,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Competitor deleted",
+            "description": "Competitor group deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -23609,14 +23821,14 @@
             }
           },
           "404": {
-            "description": "Competitor not found"
+            "description": "Competitor group not found"
           }
         }
       }
     },
     "/virality/{teamId}/accounts/{accountId}/alerts": {
       "patch": {
-        "summary": "Toggle alert_enabled for an account",
+        "summary": "Toggle alert_enabled for a competitor account",
         "tags": [
           "Virality"
         ],

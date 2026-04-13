@@ -7,6 +7,8 @@ import type {
   ClipSuggestions as SharedClipSuggestions,
   ClipResponse as SharedClipResponse,
   ErrorResponse as SharedErrorResponse,
+  AnalyticsPriceEntry as SharedAnalyticsPriceEntry,
+  AnalyticsPricesResponse as SharedAnalyticsPricesResponse,
   Subscription as SharedSubscription,
   UsageInfo as SharedUsageInfo,
   Team as SharedTeam,
@@ -54,6 +56,8 @@ import type {
   PlatformAutoRefillSettings as SharedPlatformAutoRefillSettings,
   TeamUsageStats as SharedTeamUsageStats,
   ViralityDashboard as SharedViralityDashboard,
+  CompetitorWithAccounts as SharedCompetitorWithAccounts,
+  ViralityPostsByAccount as SharedViralityPostsByAccount,
   IntakeApplicationStatus as SharedIntakeApplicationStatus,
   ClipPostsResponse as SharedClipPostsResponse,
   CpmBillingBreakdown as SharedCpmBillingBreakdown,
@@ -75,6 +79,8 @@ export type ClipSegment = DbCompatible<SharedClipSegment>;
 export type ClipSuggestions = DbCompatible<SharedClipSuggestions>;
 export type ClipResponse = DbCompatible<SharedClipResponse>;
 export type ErrorResponse = SharedErrorResponse;
+export type AnalyticsPriceEntry = DbCompatible<SharedAnalyticsPriceEntry>;
+export type AnalyticsPricesResponse = DbCompatible<SharedAnalyticsPricesResponse>;
 export type Subscription = DbCompatible<SharedSubscription>;
 export type UsageInfo = DbCompatible<SharedUsageInfo>;
 export type Team = DbCompatible<SharedTeam>;
@@ -122,6 +128,8 @@ export type PlatformWallet = DbCompatible<SharedPlatformWallet>;
 export type PlatformAutoRefillSettings = DbCompatible<SharedPlatformAutoRefillSettings>;
 export type TeamUsageStats = DbCompatible<SharedTeamUsageStats>;
 export type ViralityDashboard = DbCompatible<SharedViralityDashboard>;
+export type CompetitorWithAccounts = DbCompatible<SharedCompetitorWithAccounts>;
+export type ViralityPostsByAccount = DbCompatible<SharedViralityPostsByAccount>;
 export type IntakeApplicationStatus = DbCompatible<SharedIntakeApplicationStatus>;
 export type ClipPostsResponse = DbCompatible<SharedClipPostsResponse>;
 export type CpmBillingBreakdown = DbCompatible<SharedCpmBillingBreakdown>;

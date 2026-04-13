@@ -26,8 +26,10 @@ interface AccountsTableProps {
   platformFilter?: string;
   searchQuery?: string;
   isLoading?: boolean;
+  accountLimit?: number;
   onToggleAlert?: (accountId: number, enabled: boolean) => void;
   onToggleStatus?: (accountId: number, newStatus: "active" | "inactive") => void;
+  onActivateAll?: () => void;
   onDelete?: (accountId: number) => void;
   onRowClick?: (account: AccountRow) => void;
 }
@@ -37,8 +39,10 @@ export function AccountsTable({
   platformFilter = "all",
   searchQuery,
   isLoading,
+  accountLimit,
   onToggleAlert,
   onToggleStatus,
+  onActivateAll,
   onDelete,
   onRowClick,
 }: AccountsTableProps) {
@@ -78,14 +82,14 @@ export function AccountsTable({
   }
 
   return (
-    <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden flex flex-col">
+      <div className="overflow-x-auto flex-1">
         <table className="w-full min-w-[700px]">
           <thead>
             <tr>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">ACCOUNT</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">PLATFORM</th>
-              <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">COMPETITOR</th>
+              <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">GROUP</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">VIEWS</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">AVG VIEWS</th>
               <th className="bg-surface-elevated text-text-tertiary text-[10px] font-medium uppercase tracking-wider py-2.5 px-3 whitespace-nowrap text-left">POSTS</th>
@@ -127,17 +131,6 @@ export function AccountsTable({
               >
                 <td className="py-2 px-3 border-t border-border-base text-xs">
                   <div className="flex items-center gap-3">
-                    {a.accountType === "hashtag" ? (
-                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
-                        <Icon icon="solar:hashtag-bold" width={16} className="text-text-secondary" />
-                      </div>
-                    ) : a.accountType === "keyword" ? (
-                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
-                        <Icon icon="solar:magnifer-bold" width={16} className="text-text-secondary" />
-                      </div>
-                    ) : (
-                      <Avatar size="sm" />
-                    )}
                     <div>
                       <p className="font-medium text-text-primary">
                         {a.accountType === "hashtag"
@@ -171,9 +164,19 @@ export function AccountsTable({
                 <td className="py-2 px-3 border-t border-border-base text-xs">
                   <span className="font-medium text-text-primary">{formatNumber(a.postCount)}</span>
                 </td>
-                <td className="py-2 px-3 border-t border-border-base text-xs">
-                  <Chip size="sm" variant="tertiary">
-                    <span className="text-xs">{a.isActive ? "Active" : "Inactive"}</span>
+                <td className="py-2 px-3 border-t border-border-base text-xs" onClick={(e) => e.stopPropagation()}>
+                  <Chip
+                    size="sm"
+                    variant="tertiary"
+                    className="cursor-pointer"
+                    onClick={() => {
+                      console.log("[AccountsTable] status chip clicked:", a.id, "current:", a.isActive);
+                      onToggleStatus?.(a.id, a.isActive ? "inactive" : "active");
+                    }}
+                  >
+                    <span className={`text-xs ${a.isActive ? "text-green-500" : "text-text-tertiary"}`}>
+                      {a.isActive ? "Active" : "Inactive"}
+                    </span>
                   </Chip>
                 </td>
                 <td className="py-2 px-3 border-t border-border-base text-xs" onClick={(e) => e.stopPropagation()}>
@@ -195,20 +198,21 @@ export function AccountsTable({
                       <Dropdown.Menu
                         aria-label="Account actions"
                         onAction={(key) => {
+                          console.log("[AccountsTable] onAction fired:", key, "accountId:", a.id, "isActive:", a.isActive, "alertEnabled:", a.alertEnabled);
                           if (key === "delete") onDelete?.(a.id);
                           else if (key === "toggle-status") onToggleStatus?.(a.id, a.isActive ? "inactive" : "active");
                           else if (key === "toggle-alerts") onToggleAlert?.(a.id, !a.alertEnabled);
                         }}
                       >
-                        <Dropdown.Item key="toggle-alerts">
+                        <Dropdown.Item id="toggle-alerts">
                           <Icon icon={a.alertEnabled ? "solar:bell-off-linear" : "solar:bell-bold"} width={16} />
                           {a.alertEnabled ? "Disable Alerts" : "Enable Alerts"}
                         </Dropdown.Item>
-                        <Dropdown.Item key="toggle-status">
+                        <Dropdown.Item id="toggle-status">
                           <Icon icon={a.isActive ? "solar:pause-circle-linear" : "solar:play-circle-linear"} width={16} />
                           {a.isActive ? "Set Inactive" : "Set Active"}
                         </Dropdown.Item>
-                        <Dropdown.Item key="delete" className="text-danger">
+                        <Dropdown.Item id="delete" className="text-danger">
                           <Icon icon="solar:trash-bin-trash-linear" width={16} />
                           Delete
                         </Dropdown.Item>
@@ -223,9 +227,22 @@ export function AccountsTable({
       </div>
 
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
-        <p className="text-sm text-text-tertiary">
-          Showing {paginated.length} of {filtered.length} Accounts
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-text-tertiary">
+            Showing {paginated.length} of {filtered.length} Accounts
+          </p>
+          {onActivateAll && accounts.some((a) => !a.isActive) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-accent-400"
+              onPress={onActivateAll}
+            >
+              <Icon icon="solar:play-circle-bold" width={14} />
+              Activate All
+            </Button>
+          )}
+        </div>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button

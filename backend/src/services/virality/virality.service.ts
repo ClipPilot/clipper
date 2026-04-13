@@ -1,75 +1,67 @@
 import { db } from "../../db";
 import {
-  viralityAccounts,
-  viralityPosts,
-  viralityCompetitors,
+  competitorAccounts,
+  competitorPosts,
+  userAccounts,
+  viralityGroups,
   viralitySettings,
   viralityAlertLogs,
 } from "@clipper/shared-db/src/schema";
 import { eq, desc, count, and, inArray, gte, lte } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
+import { userPerformanceService } from "./userPerformance.service";
 
 // ── Virality-specific service (adds competitor methods + overrides) ──────────
 
 class ViralityService extends AccountTrackingService {
   constructor() {
-    super(viralityAccounts, viralityPosts);
+    super(competitorAccounts, competitorPosts);
   }
 
-  // Override addAccount to support competitor grouping
   async addAccount(
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
     accountType: "profile" | "hashtag" | "keyword" = "profile",
-    competitorId?: number
+    groupId: number,
+    isCompetitor: boolean = true
   ) {
-    // Verify competitor ownership if provided
-    if (competitorId) {
-      const competitor = await this.getCompetitorById(competitorId);
-      if (!competitor || competitor.team_id !== teamId) {
-        throw new Error("Competitor not found or access denied");
-      }
+    const group = await this.getGroupById(groupId);
+    if (!group || group.team_id !== teamId) {
+      throw new Error("Group not found or access denied");
     }
 
-    const account = await super.addAccount(teamId, platform, profileUrl, accountType);
-
-    // Set competitor_id on the created account
-    if (competitorId) {
-      const [updated] = await db
-        .update(viralityAccounts)
-        .set({ competitor_id: competitorId })
-        .where(eq(viralityAccounts.id, account.id))
-        .returning();
-      return updated;
+    if (isCompetitor) {
+      return super.addAccount(teamId, platform, profileUrl, accountType, groupId);
     }
 
-    return account;
+    return userPerformanceService.addAccount(teamId, platform, profileUrl, accountType, groupId);
   }
 
-  // Override deleteAccount to handle competitor cleanup
-  async deleteAccount(accountId: number, teamId: number) {
-    const account = await this.getAccountById(accountId);
-    if (!account || account.team_id !== teamId) {
-      throw new Error("Account not found or access denied");
-    }
-
-    await db.delete(viralityAccounts).where(eq(viralityAccounts.id, accountId));
-
-    // If the competitor has no remaining accounts, delete it too
-    if (account.competitor_id) {
-      const [remaining] = await db
-        .select({ count: count() })
-        .from(viralityAccounts)
-        .where(eq(viralityAccounts.competitor_id, account.competitor_id));
-
-      if (remaining.count === 0) {
-        await db.delete(viralityCompetitors).where(eq(viralityCompetitors.id, account.competitor_id));
+  async deleteAccount(accountId: number, teamId: number, isCompetitor: boolean = true) {
+    if (isCompetitor) {
+      const account = await this.getAccountById(accountId);
+      if (!account || account.team_id !== teamId) {
+        throw new Error("Account not found or access denied");
       }
+
+      await db.delete(competitorAccounts).where(eq(competitorAccounts.id, accountId));
+
+      if (account.group_id) {
+        const [remaining] = await db
+          .select({ count: count() })
+          .from(competitorAccounts)
+          .where(eq(competitorAccounts.group_id, account.group_id));
+
+        if (remaining.count === 0) {
+          await db.delete(viralityGroups).where(eq(viralityGroups.id, account.group_id));
+        }
+      }
+    } else {
+      await userPerformanceService.deleteAccount(accountId, teamId);
     }
   }
 
-  // Override getPostsByAccount — viralityPosts has no mass_post_id / campaign join
   async getPostsByAccount(
     accountId: number,
     teamId: number,
@@ -83,32 +75,32 @@ class ViralityService extends AccountTrackingService {
       throw new Error("Account not found or access denied");
     }
 
-    const conditions = [eq(viralityPosts.account_id, accountId)];
-    if (startDate) conditions.push(gte(viralityPosts.posted_at, startDate));
-    if (endDate) conditions.push(lte(viralityPosts.posted_at, endDate));
+    const conditions = [eq(competitorPosts.account_id, accountId)];
+    if (startDate) conditions.push(gte(competitorPosts.posted_at, startDate));
+    if (endDate) conditions.push(lte(competitorPosts.posted_at, endDate));
 
     const rows = await db
       .select({
-        id: viralityPosts.id,
-        account_id: viralityPosts.account_id,
-        platform_post_id: viralityPosts.platform_post_id,
-        post_url: viralityPosts.post_url,
-        thumbnail_url: viralityPosts.thumbnail_url,
-        caption: viralityPosts.caption,
-        hashtags: viralityPosts.hashtags,
-        post_type: viralityPosts.post_type,
-        posted_at: viralityPosts.posted_at,
-        like_count: viralityPosts.like_count,
-        comment_count: viralityPosts.comment_count,
-        video_view_count: viralityPosts.video_view_count,
-        video_play_count: viralityPosts.video_play_count,
-        metrics_history: viralityPosts.metrics_history,
-        created_at: viralityPosts.created_at,
-        updated_at: viralityPosts.updated_at,
+        id: competitorPosts.id,
+        account_id: competitorPosts.account_id,
+        platform_post_id: competitorPosts.platform_post_id,
+        post_url: competitorPosts.post_url,
+        thumbnail_url: competitorPosts.thumbnail_url,
+        caption: competitorPosts.caption,
+        hashtags: competitorPosts.hashtags,
+        post_type: competitorPosts.post_type,
+        posted_at: competitorPosts.posted_at,
+        like_count: competitorPosts.like_count,
+        comment_count: competitorPosts.comment_count,
+        video_view_count: competitorPosts.video_view_count,
+        video_play_count: competitorPosts.video_play_count,
+        metrics_history: competitorPosts.metrics_history,
+        created_at: competitorPosts.created_at,
+        updated_at: competitorPosts.updated_at,
       })
-      .from(viralityPosts)
+      .from(competitorPosts)
       .where(and(...conditions))
-      .orderBy(desc(viralityPosts.posted_at))
+      .orderBy(desc(competitorPosts.posted_at))
       .limit(limit)
       .offset(offset);
 
@@ -117,80 +109,133 @@ class ViralityService extends AccountTrackingService {
 
   // ── Competitor CRUD ──
 
-  async getCompetitorsByTeam(teamId: number) {
+  async getGroupsByTeam(teamId: number) {
     return db
       .select()
-      .from(viralityCompetitors)
-      .where(eq(viralityCompetitors.team_id, teamId))
-      .orderBy(desc(viralityCompetitors.created_at));
+      .from(viralityGroups)
+      .where(eq(viralityGroups.team_id, teamId))
+      .orderBy(desc(viralityGroups.created_at));
   }
 
-  async createCompetitor(teamId: number, name: string, description?: string) {
-    const [competitor] = await db
-      .insert(viralityCompetitors)
+  async getAllGroupsWithAccounts(teamId: number) {
+    const [groups, compAccounts, userAccts] = await Promise.all([
+      db
+        .select()
+        .from(viralityGroups)
+        .where(eq(viralityGroups.team_id, teamId))
+        .orderBy(desc(viralityGroups.created_at)),
+      db
+        .select()
+        .from(competitorAccounts)
+        .where(eq(competitorAccounts.team_id, teamId))
+        .orderBy(desc(competitorAccounts.created_at)),
+      db
+        .select()
+        .from(userAccounts)
+        .where(eq(userAccounts.team_id, teamId))
+        .orderBy(desc(userAccounts.created_at)),
+    ]);
+
+    const compGroupIds = new Set(compAccounts.map((a) => a.group_id).filter(Boolean));
+    const userGroupIds = new Set(userAccts.map((a) => a.group_id).filter(Boolean));
+
+    const groupsToFix: number[] = [];
+    for (const g of groups) {
+      if (!g.competitor && compGroupIds.has(g.id)) {
+        groupsToFix.push(g.id);
+      }
+    }
+    if (groupsToFix.length > 0) {
+      await db
+        .update(viralityGroups)
+        .set({ competitor: true })
+        .where(inArray(viralityGroups.id, groupsToFix));
+    }
+
+    const accountsByGroup: Record<number, any[]> = {};
+    for (const account of [...compAccounts, ...userAccts]) {
+      const gid = account.group_id;
+      if (gid) {
+        if (!accountsByGroup[gid]) accountsByGroup[gid] = [];
+        accountsByGroup[gid].push(account);
+      }
+    }
+
+    return groups.map((c) => ({
+      ...c,
+      competitor: c.competitor || compGroupIds.has(c.id),
+      accounts: accountsByGroup[c.id] || [],
+    }));
+  }
+
+  async createGroup(teamId: number, name: string, description?: string, isCompetitor: boolean = true) {
+    const [group] = await db
+      .insert(viralityGroups)
       .values({
         team_id: teamId,
         name,
         description: description || null,
+        competitor: isCompetitor,
       })
       .returning();
-    return competitor;
+    return group;
   }
 
-  async updateCompetitor(competitorId: number, teamId: number, data: { name?: string; description?: string }) {
-    const competitor = await this.getCompetitorById(competitorId);
+  async updateGroup(groupId: number, teamId: number, data: { name?: string; description?: string }) {
+    const competitor = await this.getGroupById(groupId);
     if (!competitor || competitor.team_id !== teamId) {
       throw new Error("Competitor not found or access denied");
     }
 
     const [updated] = await db
-      .update(viralityCompetitors)
+      .update(viralityGroups)
       .set({
         ...(data.name !== undefined && { name: data.name }),
         ...(data.description !== undefined && { description: data.description }),
         updated_at: new Date(),
       })
-      .where(eq(viralityCompetitors.id, competitorId))
+      .where(eq(viralityGroups.id, groupId))
       .returning();
 
     return updated;
   }
 
-  async getCompetitorById(competitorId: number) {
+  async getGroupById(groupId: number) {
     const [competitor] = await db
       .select()
-      .from(viralityCompetitors)
-      .where(eq(viralityCompetitors.id, competitorId))
+      .from(viralityGroups)
+      .where(eq(viralityGroups.id, groupId))
       .limit(1);
     return competitor || null;
   }
 
-  async getCompetitorWithAccounts(competitorId: number, teamId: number) {
-    const competitor = await this.getCompetitorById(competitorId);
-    if (!competitor || competitor.team_id !== teamId) {
-      throw new Error("Competitor not found or access denied");
+  async getGroupWithAccounts(groupId: number, teamId: number) {
+    const group = await this.getGroupById(groupId);
+    if (!group || group.team_id !== teamId) {
+      throw new Error("Group not found or access denied");
     }
 
     await this.cleanupStaleSyncs();
 
+    const table = group.competitor ? competitorAccounts : userAccounts;
     const accounts = await db
       .select()
-      .from(viralityAccounts)
-      .where(eq(viralityAccounts.competitor_id, competitorId))
-      .orderBy(desc(viralityAccounts.created_at));
+      .from(table)
+      .where(eq(table.group_id, groupId))
+      .orderBy(desc(table.created_at));
 
-    return { ...competitor, accounts };
+    return { ...group, accounts };
   }
 
-  async deleteCompetitor(competitorId: number, teamId: number) {
-    const competitor = await this.getCompetitorById(competitorId);
+  async deleteGroup(groupId: number, teamId: number) {
+    const competitor = await this.getGroupById(groupId);
     if (!competitor || competitor.team_id !== teamId) {
-      throw new Error("Competitor not found or access denied");
+      throw new Error("Group not found or access denied");
     }
 
     await db
-      .delete(viralityCompetitors)
-      .where(eq(viralityCompetitors.id, competitorId));
+      .delete(viralityGroups)
+      .where(eq(viralityGroups.id, groupId));
   }
 
   // ── Viral Alert Settings ──
@@ -203,12 +248,12 @@ class ViralityService extends AccountTrackingService {
         .where(eq(viralitySettings.team_id, teamId))
         .limit(1),
       db
-        .select({ id: viralityAccounts.id })
-        .from(viralityAccounts)
+        .select({ id: competitorAccounts.id })
+        .from(competitorAccounts)
         .where(
           and(
-            eq(viralityAccounts.team_id, teamId),
-            eq(viralityAccounts.alert_enabled, true)
+            eq(competitorAccounts.team_id, teamId),
+            eq(competitorAccounts.alert_enabled, true)
           )
         ),
     ]);
@@ -271,18 +316,18 @@ class ViralityService extends AccountTrackingService {
 
     // Bulk-update alert_enabled on all team accounts
     await db
-      .update(viralityAccounts)
+      .update(competitorAccounts)
       .set({ alert_enabled: false })
-      .where(eq(viralityAccounts.team_id, teamId));
+      .where(eq(competitorAccounts.team_id, teamId));
 
     if (data.enabledAccountIds.length > 0) {
       await db
-        .update(viralityAccounts)
+        .update(competitorAccounts)
         .set({ alert_enabled: true })
         .where(
           and(
-            eq(viralityAccounts.team_id, teamId),
-            inArray(viralityAccounts.id, data.enabledAccountIds)
+            eq(competitorAccounts.team_id, teamId),
+            inArray(competitorAccounts.id, data.enabledAccountIds)
           )
         );
     }
@@ -297,9 +342,9 @@ class ViralityService extends AccountTrackingService {
     }
 
     const [updated] = await db
-      .update(viralityAccounts)
+      .update(competitorAccounts)
       .set({ alert_enabled: alertEnabled, updated_at: new Date() })
-      .where(eq(viralityAccounts.id, accountId))
+      .where(eq(competitorAccounts.id, accountId))
       .returning();
 
     return updated;

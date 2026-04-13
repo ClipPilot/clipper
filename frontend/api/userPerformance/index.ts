@@ -1,5 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import { filterExcludedPostTypes } from "@/lib/viralityConstants";
 import type {
   ViralityAccount,
   ViralityPost,
@@ -156,10 +157,7 @@ class UserPerformanceAPI {
     }
 
     const data = await response.json();
-    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
-    return (data.posts as ViralityPost[]).filter(
-      (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
-    );
+    return filterExcludedPostTypes(data.posts as ViralityPost[]);
   }
 
   async getAllPosts(
@@ -187,12 +185,9 @@ class UserPerformanceAPI {
     }
 
     const data = await response.json();
-    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
     const result: Record<number, ViralityPost[]> = {};
     for (const [accountId, posts] of Object.entries(data.postsByAccount)) {
-      result[Number(accountId)] = (posts as ViralityPost[]).filter(
-        (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
-      );
+      result[Number(accountId)] = filterExcludedPostTypes(posts as ViralityPost[]);
     }
     return result;
   }

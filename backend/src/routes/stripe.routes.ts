@@ -6,6 +6,7 @@ import {
   getSubscription,
   handleWebhook,
   getPrices,
+  getAnalyticsPrices,
   changePlan,
 } from "../controllers/stripe.controller";
 
@@ -106,6 +107,32 @@ router.post("/webhook", handleWebhook);
  *                       type: string
  */
 router.get("/prices", getPrices);
+
+/**
+ * @openapi
+ * /stripe/analytics-prices:
+ *   get:
+ *     summary: Get live analytics plan prices from Stripe
+ *     description: |
+ *       Fetches current pricing for analytics subscription tiers directly from the Stripe API.
+ *       Returns the unit amount in cents, currency, and billing interval for each analytics plan.
+ *     tags:
+ *       - Stripe
+ *     responses:
+ *       200:
+ *         description: Analytics prices retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AnalyticsPricesResponse'
+ *       500:
+ *         description: Failed to fetch prices from Stripe
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get("/analytics-prices", getAnalyticsPrices);
 
 /**
  * @openapi

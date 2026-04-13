@@ -9,6 +9,9 @@ import { Button,
   Modal,
   Link,
   cn } from "@heroui/react";
+import { getPlanName, isAnalyticsPlan, getViralityAccountLimit } from "@/lib/plans";
+import { useRouter } from "next/navigation";
+import { STRIPE_PRICES } from "@/config/stripe.constants";
 
 interface UsageStats {
   clipsCreated: number;
@@ -21,7 +24,7 @@ interface UsageStats {
 }
 
 interface PaidPlanViewProps {
-  currentPlan: "creator" | "studio" | "scale" | "enterprise";
+  currentPlan: "creator" | "studio" | "scale" | "enterprise" | "analytics_starter" | "analytics_pro" | "analytics_business";
   teamName?: string;
   teamId?: number;
   isOwner?: boolean;
@@ -151,6 +154,153 @@ export function PaidPlanView({
     }
   };
 
+  const router = useRouter();
+
+  if (isAnalyticsPlan(currentPlan)) {
+    const accountLimit = getViralityAccountLimit(currentPlan);
+    return (
+      <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-12 lg:py-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 top-0 z-0 h-full w-full transform-gpu overflow-hidden blur-3xl"
+        >
+          <div
+            className="mx-auto aspect-[1155/678] w-[72rem] bg-gradient-to-tr from-accent-400/30 to-purple-500/20 opacity-30"
+            style={{
+              clipPath:
+                "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 w-full space-y-8">
+          <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
+            <div className="flex flex-col gap-1 p-6 pb-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", "bg-accent-400/20")}>
+                    <Icon icon="solar:chart-bold-duotone" className="text-accent-400" width={28} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary">
+                      {getPlanName(currentPlan)}
+                    </h2>
+                    <p className="text-sm text-text-secondary">{teamName}</p>
+                  </div>
+                </div>
+                <Chip
+                  variant="tertiary"
+                  size="lg"
+                  className="bg-accent-400/10 text-accent-400"
+                >
+                  Active
+                </Chip>
+              </div>
+            </div>
+            <Separator className="my-4" />
+            <div className="p-6 pt-0 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
+                  <span className="text-xs text-text-tertiary uppercase tracking-wider">
+                    Plan
+                  </span>
+                  <span className="text-lg font-semibold text-text-primary">
+                    {getPlanName(currentPlan)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
+                  <span className="text-xs text-text-tertiary uppercase tracking-wider">
+                    Account Limit
+                  </span>
+                  <span className="text-lg font-semibold text-text-primary">
+                    {accountLimit === -1 ? "Unlimited" : `${accountLimit} profiles`}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <Separator />
+            <div className="p-6 flex flex-col gap-3">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="tertiary"
+                  onPress={onManageSubscription}
+                  isPending={loadingPortal}
+                  className="text-text-secondary"
+                >
+                  <Icon icon="solar:settings-bold-duotone" width={20} />
+                  Manage Subscription
+                </Button>
+                <Button
+                  variant="tertiary"
+                  onPress={() => router.push("/dashboard/pricing/analytics")}
+                  className="text-text-secondary"
+                >
+                  <Icon icon="solar:arrow-up-bold-duotone" width={20} />
+                  Change Analytics Plan
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-text-primary">
+              Need clips & editing tools?
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  name: "Studio",
+                  price: "$1,500/mo",
+                  credits: "400 credits",
+                  features: ["Unlimited virality tracking", "Advanced editing suite", "Priority support"],
+                  priceId: STRIPE_PRICES.STUDIO,
+                },
+                {
+                  name: "Scale",
+                  price: "$2,990/mo",
+                  credits: "1,000 credits",
+                  features: ["Unlimited virality tracking", "Mass Posting", "Team seats", "API access"],
+                  priceId: STRIPE_PRICES.SCALE,
+                },
+              ].map((plan) => (
+                <div
+                  key={plan.name}
+                  className="rounded-xl border border-border-base bg-surface-base p-5 space-y-4"
+                >
+                  <div>
+                    <h4 className="text-lg font-semibold text-text-primary">{plan.name}</h4>
+                    <p className="text-sm text-text-secondary">{plan.credits} &middot; {plan.price}</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2">
+                        <Icon icon="solar:check-circle-bold" className="text-accent-400 flex-shrink-0" width={16} />
+                        <span className="text-sm text-text-secondary">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    fullWidth
+                    variant="outline"
+                    className="text-text-secondary"
+                    onPress={async () => {
+                      if (!teamId) return;
+                      const { stripeAPI } = await import("@/api/stripe");
+                      const { url } = await stripeAPI.createCheckoutSession(teamId, plan.priceId);
+                      window.open(url, "_blank");
+                    }}
+                  >
+                    Upgrade to {plan.name}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-12 lg:py-16">
       <div
@@ -220,8 +370,8 @@ export function PaidPlanView({
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
                   Plan
                 </span>
-                <span className="text-lg font-semibold text-text-primary capitalize">
-                  {currentPlan}
+                <span className="text-lg font-semibold text-text-primary">
+                  {getPlanName(currentPlan)}
                 </span>
               </div>
               <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">

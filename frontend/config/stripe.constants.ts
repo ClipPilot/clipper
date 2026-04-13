@@ -7,6 +7,9 @@ export const STRIPE_PRICES = isProduction
       SCALE: "price_1T1tUYKIbKD6ydHMN5VtdtMi",
       STUDIO_ADDON: "price_1SfSwXKIbKD6ydHMrRGsHTdk",
       SCALE_ADDON: "price_1SfSwXKIbKD6ydHMF5piBhSZ",
+      ANALYTICS_STARTER: "PLACEHOLDER_ANALYTICS_STARTER_PROD",
+      ANALYTICS_PRO: "PLACEHOLDER_ANALYTICS_PRO_PROD",
+      ANALYTICS_BUSINESS: "PLACEHOLDER_ANALYTICS_BUSINESS_PROD",
     }
   : {
       CREATOR: "price_1T1szJGu9cYiGgY3EAmDP1Xw",
@@ -14,6 +17,9 @@ export const STRIPE_PRICES = isProduction
       SCALE: "price_1T1reJGu9cYiGgY3ngYj1VUi",
       STUDIO_ADDON: "price_1SfTC1Gu9cYiGgY3O1P2rGc1",
       SCALE_ADDON: "price_1SfTAzGu9cYiGgY3SHUjgUf0",
+      ANALYTICS_STARTER: "price_1TKNvyGu9cYiGgY36UMt9cqz",
+      ANALYTICS_PRO: "PLACEHOLDER_ANALYTICS_PRO_DEV",
+      ANALYTICS_BUSINESS: "price_1TKNw9Gu9cYiGgY3LhW5MEbp",
     };
 
 // Keep in sync with backend PLAN_LIMITS in backend/src/config/stripe.config.ts

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  Fragment,
+} from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button,
-  Input,
-  toast,
-  Spinner,
-  Dropdown } from "@heroui/react";
+import { Button, Input, toast, Spinner, Dropdown } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useTeams } from "@/hooks/useTeams";
@@ -17,18 +20,26 @@ import {
   type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
-import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
-import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
-import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
-import { StatCards } from "@clipper/shared-ui";
-import { PostsTable } from "@/components/virality/PostsTable";
-import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
-import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
-import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
-import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
-import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
-import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
-import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import { userPerformanceAPI } from "@/api/userPerformance";
+import {
+  CHART_COLORS,
+  timeAgo,
+  platformIcon,
+  platformIconColor,
+} from "@/lib/platformUtils";
+import {
+  DateRangeFilter,
+  StatCards,
+  PostsTable,
+  AnalyticsChart,
+  PostFrequencyChart,
+  AccountBreakdownChart,
+  BestPerformingAccounts,
+  RecalcOverlay,
+  AccountFilterPopover,
+  ViralityUpgradeWall,
+  type ComparisonMode,
+} from "@clipper/shared-ui";
 import {
   findClosestEntry,
   getComparisonDate,
@@ -50,8 +61,12 @@ export default function CompetitorDetailPage() {
   const { dateRange, setDateRange } = useViralityDateRange();
   const competitorId = Number(params.competitorId);
 
-  const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(null);
-  const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
+  const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(
+    null,
+  );
+  const [postsByAccount, setPostsByAccount] = useState<
+    Record<number, ViralityPost[]>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
@@ -61,43 +76,67 @@ export default function CompetitorDetailPage() {
     const accountId = searchParams.get("accountId");
     return accountId ? [Number(accountId)] : [];
   });
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({
+    type: "last-sync",
+  });
 
-  const fetchData = useCallback(async (silent = false) => {
-    if (!selectedTeam?.id || isNaN(competitorId) || !canAccessViralityTracker(selectedTeam.plan)) return;
-    if (initialLoadDone.current && !silent) setIsRecalculating(true);
-    try {
-      const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
-      setCompetitor(comp);
-      reconcileSync(comp.accounts);
+  const fetchData = useCallback(
+    async (silent = false) => {
+      if (
+        !selectedTeam?.id ||
+        isNaN(competitorId) ||
+        !canAccessViralityTracker(selectedTeam.plan)
+      )
+        return;
+      if (initialLoadDone.current && !silent) setIsRecalculating(true);
+      try {
+        const comp = await viralityAPI.getGroupWithAccounts(
+          selectedTeam.id,
+          competitorId,
+        );
+        setCompetitor(comp);
+        reconcileSync(comp.accounts);
 
-      const { startDate, endDate } = dateRange;
-      const postsMap: Record<number, ViralityPost[]> = {};
-      await Promise.all(
-        comp.accounts.map(async (a) => {
-          const posts = await viralityAPI.getAccountPosts(
-            selectedTeam.id, a.id, 100, 0, startDate, endDate
-          );
-          postsMap[a.id] = posts;
-        })
-      );
-      setPostsByAccount(postsMap);
-    } catch (err: any) {
-      toast.danger("Failed to load competitor", { description: err.message });
-    } finally {
-      setIsLoading(false);
-      setIsRecalculating(false);
-      initialLoadDone.current = true;
-    }
-  }, [selectedTeam?.id, competitorId, dateRange]);
+        const isCompetitorGroup = (comp as any).competitor !== false;
+        const api = isCompetitorGroup ? viralityAPI : userPerformanceAPI;
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+        const { startDate, endDate } = dateRange;
+        const postsMap: Record<number, ViralityPost[]> = {};
+        await Promise.all(
+          comp.accounts.map(async (a) => {
+            const posts = await api.getAccountPosts(
+              selectedTeam.id,
+              a.id,
+              100,
+              0,
+              startDate,
+              endDate,
+            );
+            postsMap[a.id] = posts;
+          }),
+        );
+        setPostsByAccount(postsMap);
+      } catch (err: any) {
+        toast.danger("Failed to load competitor", { description: err.message });
+      } finally {
+        setIsLoading(false);
+        setIsRecalculating(false);
+        initialLoadDone.current = true;
+      }
+    },
+    [selectedTeam?.id, competitorId, dateRange],
+  );
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // No auto-select: chart shows aggregated total by default.
   // User can toggle individual accounts via the filter popover.
 
   // Global sync state — persists across page navigation
-  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
+  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } =
+    useViralitySync();
 
   const allAccountIds = useMemo(() => {
     if (!competitor) return [];
@@ -127,28 +166,32 @@ export default function CompetitorDetailPage() {
     return () => clearTimeout(timeout);
   }, [hasSyncing, fetchData]);
 
-  const handleDeletePost = useCallback(async (postId: number) => {
-    if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.deletePost(selectedTeam.id, postId);
-      toast.success("Post removed from tracking");
-      await fetchData(true);
-    } catch (err: any) {
-      toast.danger("Failed to delete post", { description: err.message });
-    }
-  }, [selectedTeam?.id, fetchData]);
+  const isCompetitorGroup = (competitor as any)?.competitor !== false;
+  const groupAPI = isCompetitorGroup ? viralityAPI : userPerformanceAPI;
+
+  const handleDeletePost = useCallback(
+    async (postId: number) => {
+      if (!selectedTeam?.id) return;
+      try {
+        await groupAPI.deletePost(selectedTeam.id, postId);
+        toast.success("Post removed from tracking");
+        await fetchData(true);
+      } catch (err: any) {
+        toast.danger("Failed to delete post", { description: err.message });
+      }
+    },
+    [selectedTeam?.id, fetchData, groupAPI],
+  );
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
     const accountIds = competitor.accounts.map((a) => a.id);
 
-    // Mark as syncing in global state immediately
     startSync(accountIds);
 
     try {
-      // Fire-and-forget: all POST requests return 202 instantly
       await Promise.all(
-        accountIds.map((id) => viralityAPI.syncAccount(selectedTeam.id, id))
+        accountIds.map((id) => groupAPI.syncAccount(selectedTeam.id, id)),
       );
       toast("Sync started for all accounts");
     } catch (err: any) {
@@ -159,7 +202,9 @@ export default function CompetitorDetailPage() {
   const handleSaveName = async () => {
     if (!selectedTeam?.id || !editName.trim()) return;
     try {
-      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, { name: editName.trim() });
+      await viralityAPI.updateGroup(selectedTeam.id, competitorId, {
+        name: editName.trim(),
+      });
       setIsEditingName(false);
       toast.success("Name updated");
       await fetchData();
@@ -197,7 +242,9 @@ export default function CompetitorDetailPage() {
       posts.push(...accountPosts);
     }
     return posts.sort(
-      (a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime()
+      (a, b) =>
+        new Date(b.posted_at || 0).getTime() -
+        new Date(a.posted_at || 0).getTime(),
     );
   }, [activeAccounts, postsByAccount]);
 
@@ -227,7 +274,8 @@ export default function CompetitorDetailPage() {
 
   const accountSyncMap = useMemo(() => {
     const map: Record<number, string | null> = {};
-    if (competitor) for (const a of competitor.accounts) map[a.id] = a.last_synced_at;
+    if (competitor)
+      for (const a of competitor.accounts) map[a.id] = a.last_synced_at;
     return map;
   }, [competitor]);
 
@@ -242,22 +290,41 @@ export default function CompetitorDetailPage() {
   }, [competitor]);
 
   const stats = useMemo(() => {
-    const followers = activeAccounts.reduce((sum, a) => sum + (a.follower_count || 0), 0);
-    const totalLikes = activePosts.reduce((sum, p) => sum + (p.like_count || 0), 0);
-    const totalComments = activePosts.reduce((sum, p) => sum + (p.comment_count || 0), 0);
-    const totalViews = activePosts.reduce((sum, p) => sum + (p.video_play_count || 0), 0);
+    const followers = activeAccounts.reduce(
+      (sum, a) => sum + (a.follower_count || 0),
+      0,
+    );
+    const totalLikes = activePosts.reduce(
+      (sum, p) => sum + (p.like_count || 0),
+      0,
+    );
+    const totalComments = activePosts.reduce(
+      (sum, p) => sum + (p.comment_count || 0),
+      0,
+    );
+    const totalViews = activePosts.reduce(
+      (sum, p) => sum + (p.video_play_count || 0),
+      0,
+    );
 
     const comparisonDate = getComparisonDate(comparisonMode);
 
-    let prevLikes = 0, prevComments = 0, prevViews = 0;
-    let latestLikes = 0, latestComments = 0, latestViews = 0;
+    let prevLikes = 0,
+      prevComments = 0,
+      prevViews = 0;
+    let latestLikes = 0,
+      latestComments = 0,
+      latestViews = 0;
     let hasHistory = false;
 
     for (const post of activePosts) {
       const h = post.metrics_history;
       if (!h || h.length < 2) continue;
       const latest = h[h.length - 1];
-      const prev = comparisonDate === null ? h[h.length - 2] : findClosestEntry(h, comparisonDate);
+      const prev =
+        comparisonDate === null
+          ? h[h.length - 2]
+          : findClosestEntry(h, comparisonDate);
       if (!prev) continue;
 
       hasHistory = true;
@@ -269,13 +336,17 @@ export default function CompetitorDetailPage() {
       latestViews += latest.views ?? 0;
     }
 
-    let prevFollowers = 0, latestFollowers = 0;
+    let prevFollowers = 0,
+      latestFollowers = 0;
     let hasFollowerHistory = false;
     for (const a of activeAccounts) {
       const fh = a.follower_history;
       if (!fh || fh.length < 2) continue;
       const latestF = fh[fh.length - 1];
-      const prevF = comparisonDate === null ? fh[fh.length - 2] : findClosestEntry(fh, comparisonDate);
+      const prevF =
+        comparisonDate === null
+          ? fh[fh.length - 2]
+          : findClosestEntry(fh, comparisonDate);
       if (!prevF) continue;
       hasFollowerHistory = true;
       prevFollowers += prevF.followers;
@@ -283,27 +354,42 @@ export default function CompetitorDetailPage() {
     }
 
     const totalEngagements = totalLikes + totalComments;
-    const engagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
+    const engagementRate =
+      totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
 
     const prevEngagements = prevLikes + prevComments;
     const latestEngagements = latestLikes + latestComments;
-    const engagementsChange = hasHistory ? pct(latestEngagements, prevEngagements) : null;
+    const engagementsChange = hasHistory
+      ? pct(latestEngagements, prevEngagements)
+      : null;
 
     const prevEngRate = prevViews > 0 ? (prevEngagements / prevViews) * 100 : 0;
-    const latestEngRate = latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
+    const latestEngRate =
+      latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
     const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
 
     return {
-      followers, totalLikes, totalComments, totalViews,
-      totalEngagements, engagementsChange, engagementRate, engRateChange,
-      followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
+      followers,
+      totalLikes,
+      totalComments,
+      totalViews,
+      totalEngagements,
+      engagementsChange,
+      engagementRate,
+      engRateChange,
+      followersChange: hasFollowerHistory
+        ? pct(latestFollowers, prevFollowers)
+        : null,
       likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
       viewsChange: hasHistory ? pct(latestViews, prevViews) : null,
     };
   }, [activeAccounts, activePosts, comparisonMode]);
 
-  const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
+  const postsPerWeek = useMemo(
+    () => computePostsPerWeek(activePosts),
+    [activePosts],
+  );
 
   /** Most recent sync timestamp across this competitor's accounts */
   const lastSyncedAt = useMemo(() => {
@@ -331,9 +417,16 @@ export default function CompetitorDetailPage() {
   if (!competitor) {
     return (
       <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center gap-3">
-        <Icon icon="solar:danger-triangle-linear" width={48} className="text-text-tertiary" />
+        <Icon
+          icon="solar:danger-triangle-linear"
+          width={48}
+          className="text-text-tertiary"
+        />
         <p className="text-text-secondary">Competitor not found</p>
-        <Button variant="tertiary" onPress={() => router.push("/dashboard/virality")}>
+        <Button
+          variant="tertiary"
+          onPress={() => router.push("/dashboard/virality")}
+        >
           Back to Competitors
         </Button>
       </div>
@@ -357,84 +450,134 @@ export default function CompetitorDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
- variant="tertiary"
- isIconOnly
- className="!bg-transparent text-text-secondary hover:text-text-primary"
- onPress={() => router.push("/dashboard/virality")}
- >
+              variant="tertiary"
+              isIconOnly
+              className="!bg-transparent text-text-secondary hover:text-text-primary"
+              onPress={() => router.back()}
+            >
               <Icon icon="solar:arrow-left-linear" width={20} />
             </Button>
             <div>
               {isEditingName ? (
                 <div className="flex items-center gap-2">
-                  <Input onChange={(e) => (setEditName)(e.target.value)}
- value={editName}
- autoFocus
- onKeyDown={(e) => {
- if (e.key === "Enter") handleSaveName();
- if (e.key === "Escape") setIsEditingName(false);
- }}
- />
-                  <Button size="sm" isIconOnly variant="tertiary" className="bg-accent-400 text-white" onPress={handleSaveName}>
+                  <Input
+                    onChange={(e) => setEditName(e.target.value)}
+                    value={editName}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveName();
+                      if (e.key === "Escape") setIsEditingName(false);
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="tertiary"
+                    className="bg-accent-400 text-white"
+                    onPress={handleSaveName}
+                  >
                     <Icon icon="solar:check-read-linear" width={16} />
                   </Button>
-                  <Button size="sm" isIconOnly variant="tertiary" className="bg-surface-elevated" onPress={() => setIsEditingName(false)}>
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="tertiary"
+                    className="bg-surface-elevated"
+                    onPress={() => setIsEditingName(false)}
+                  >
                     <Icon icon="solar:close-circle-linear" width={16} />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-text-primary">{competitor.name}</h1>
+                  <h1 className="text-2xl font-bold text-text-primary">
+                    {competitor.name}
+                  </h1>
                   <Button
- size="sm"
- isIconOnly
- variant="tertiary"
- className="bg-surface-elevated hover:bg-surface-hover"
- onPress={() => { setEditName(competitor.name); setIsEditingName(true); }}
- >
-                    <Icon icon="solar:pen-2-linear" width={16} className="text-text-secondary" />
+                    size="sm"
+                    isIconOnly
+                    variant="tertiary"
+                    className="bg-surface-elevated hover:bg-surface-hover"
+                    onPress={() => {
+                      setEditName(competitor.name);
+                      setIsEditingName(true);
+                    }}
+                  >
+                    <Icon
+                      icon="solar:pen-2-linear"
+                      width={16}
+                      className="text-text-secondary"
+                    />
                   </Button>
                   {competitor.accounts.length === 1 ? (
-                    <a href={competitor.accounts[0].profile_url} target="_blank" rel="noopener noreferrer">
-                      <Button size="sm" isIconOnly variant="tertiary" className="bg-surface-elevated hover:bg-surface-hover">
-                        <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-secondary" />
+                    <a
+                      href={competitor.accounts[0].profile_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button
+                        size="sm"
+                        isIconOnly
+                        variant="tertiary"
+                        className="bg-surface-elevated hover:bg-surface-hover"
+                      >
+                        <Icon
+                          icon="solar:arrow-right-up-linear"
+                          width={16}
+                          className="text-text-secondary"
+                        />
                       </Button>
                     </a>
                   ) : competitor.accounts.length > 1 ? (
                     <Dropdown>
                       <Button size="sm" isIconOnly variant="tertiary">
-                          <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                        <Icon
+                          icon="solar:arrow-right-up-linear"
+                          width={16}
+                          className="text-text-tertiary"
+                        />
                       </Button>
                       <Dropdown.Popover>
-
-<Dropdown.Menu aria-label="Open profile">
-                        {competitor.accounts.map((a) => (
-                          <Dropdown.Item
-                            key={a.id}
-                            onPress={() => window.open(a.profile_url, "_blank", "noopener,noreferrer")}
-                          >
-                            <Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />
-                            {a.account_type === "hashtag"
-                              ? `#${a.username}`
-                              : a.account_type === "keyword"
-                                ? a.username
-                                : `@${a.username}`}
-                          </Dropdown.Item>
-                        ))}
-                      </Dropdown.Menu>
-</Dropdown.Popover>
+                        <Dropdown.Menu aria-label="Open profile">
+                          {competitor.accounts.map((a) => (
+                            <Dropdown.Item
+                              key={a.id}
+                              onPress={() =>
+                                window.open(
+                                  a.profile_url,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                )
+                              }
+                            >
+                              <Icon
+                                icon={platformIcon(a.platform)}
+                                width={14}
+                                className={platformIconColor(a.platform)}
+                              />
+                              {a.account_type === "hashtag"
+                                ? `#${a.username}`
+                                : a.account_type === "keyword"
+                                  ? a.username
+                                  : `@${a.username}`}
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
                     </Dropdown>
                   ) : null}
                 </div>
               )}
               {competitor.description && (
-                <p className="text-text-secondary text-sm">{competitor.description}</p>
+                <p className="text-text-secondary text-sm">
+                  {competitor.description}
+                </p>
               )}
               <p className="text-text-tertiary text-xs mt-0.5">
                 {lastSyncedAt ? (
                   <>
-                    Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
-                    {getNextSyncCountdown()}
+                    Last synced {timeAgo(lastSyncedAt.toISOString())} · Next
+                    sync in {getNextSyncCountdown()}
                   </>
                 ) : (
                   "No syncs yet"
@@ -445,11 +588,15 @@ export default function CompetitorDetailPage() {
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
- className="bg-accent-400 text-white"
- isDisabled={isSyncing || competitor.accounts.length === 0}
- onPress={handleSyncAll}
- >
-              {isSyncing ? <Spinner size="sm" color="current" /> : <Icon icon="solar:refresh-bold" width={18} />}
+              className="bg-accent-400 text-white"
+              isDisabled={isSyncing || competitor.accounts.length === 0}
+              onPress={handleSyncAll}
+            >
+              {isSyncing ? (
+                <Spinner size="sm" color="current" />
+              ) : (
+                <Icon icon="solar:refresh-bold" width={18} />
+              )}
               {isSyncing ? "Syncing..." : "Sync All"}
             </Button>
           </div>
@@ -464,8 +611,14 @@ export default function CompetitorDetailPage() {
           />
         ) : (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
-            <Icon icon="solar:users-group-rounded-linear" width={40} className="text-text-tertiary" />
-            <p className="text-text-secondary text-sm">No accounts in this competitor group yet</p>
+            <Icon
+              icon="solar:users-group-rounded-linear"
+              width={40}
+              className="text-text-tertiary"
+            />
+            <p className="text-text-secondary text-sm">
+              No accounts in this competitor group yet
+            </p>
           </div>
         )}
 
@@ -480,7 +633,8 @@ export default function CompetitorDetailPage() {
                 .map((a, i, arr) => (
                   <Fragment key={a.id}>
                     <span className="font-medium text-text-primary">
-                      {a.account_type === "hashtag" ? "#" : "@"}{a.username}
+                      {a.account_type === "hashtag" ? "#" : "@"}
+                      {a.username}
                     </span>
                     {i < arr.length - 1 && ", "}
                   </Fragment>
@@ -520,7 +674,9 @@ export default function CompetitorDetailPage() {
 
         {/* Post Frequency + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          {!selectedAccountIds || selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
+          {!selectedAccountIds ||
+          selectedAccountIds.length === 0 ||
+          selectedAccountIds.length > 1 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PostFrequencyChart
                 posts={activePosts}
@@ -546,7 +702,11 @@ export default function CompetitorDetailPage() {
         {/* Top Performing Content Table */}
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
-            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            key={
+              selectedAccountIds.join(",") +
+              (dateRange.startDate || "") +
+              (dateRange.endDate || "")
+            }
             posts={activePosts}
             accountPlatformMap={accountPlatformMap}
             accountSyncMap={accountSyncMap}

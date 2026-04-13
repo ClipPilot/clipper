@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button, Avatar, Dropdown, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useAuth } from "@/hooks/useAuth";
 
 type SidebarItem = {
   key: string;
@@ -63,6 +64,7 @@ const ALL_ITEMS = SIDEBAR_SECTIONS.flatMap((s) => s.items);
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   const currentKey =
     [...ALL_ITEMS]
@@ -152,14 +154,16 @@ export function Sidebar() {
           <Button variant="tertiary" className="w-full h-auto p-2 justify-start rounded-lg bg-surface-elevated hover:bg-surface-hover transition-all">
             <div className="flex items-center gap-2.5 w-full">
               <Avatar size="sm" className="bg-accent-400 text-white">
-                <Avatar.Fallback className="text-sm font-semibold">MN</Avatar.Fallback>
+                <Avatar.Fallback className="text-sm font-semibold">
+                  {user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() : "?"}
+                </Avatar.Fallback>
               </Avatar>
               <div className="flex flex-col items-start flex-1 min-w-0">
                 <span className="text-sm font-semibold text-text-primary truncate w-full">
-                  User
+                  {user ? `${user.firstName} ${user.lastName}` : "User"}
                 </span>
                 <span className="text-xs text-text-tertiary truncate w-full">
-                  user@cuttr.com
+                  {user?.email ?? ""}
                 </span>
               </div>
               <Icon
@@ -170,12 +174,17 @@ export function Sidebar() {
             </div>
           </Button>
           <Dropdown.Popover placement="top start">
-            <Dropdown.Menu aria-label="Account actions">
-              <Dropdown.Item key="settings">
+            <Dropdown.Menu
+              aria-label="Account actions"
+              onAction={(key) => {
+                if (key === "logout") signOut();
+              }}
+            >
+              <Dropdown.Item id="settings" textValue="Settings">
                 <Icon icon="solar:settings-bold-duotone" width={18} className="text-text-secondary" />
                 Settings
               </Dropdown.Item>
-              <Dropdown.Item key="logout" variant="danger">
+              <Dropdown.Item id="logout" textValue="Sign Out" variant="danger">
                 <Icon icon="solar:logout-2-bold-duotone" width={18} />
                 Sign Out
               </Dropdown.Item>
