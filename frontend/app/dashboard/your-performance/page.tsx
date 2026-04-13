@@ -66,45 +66,13 @@ function KpiCard({
   );
 }
 
-
-function AlertRow({ alert }: { alert: AlertLog }) {
-  const isFailed = alert.status === "failed";
-  const postCount = alert.viral_post_ids.length;
-
-  return (
-    <div className="flex items-center gap-3 py-3 border-b border-border-base last:border-b-0">
-      <Chip size="sm" color={isFailed ? "danger" : "success"}>
-        {alert.status}
-      </Chip>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-text-primary truncate">{alert.subject}</p>
-        <p className="text-xs text-text-tertiary">
-          {postCount} viral post{postCount !== 1 ? "s" : ""} &middot;{" "}
-          {new Date(alert.sent_at).toLocaleDateString()}
-        </p>
-      </div>
-      <Icon
-        icon="solar:letter-bold-duotone"
-        width={18}
-        className="text-text-tertiary flex-shrink-0"
-      />
-    </div>
-  );
-}
-
 export default function ExecutiveDashboardPage() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
   const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<PlatformOption>("all");
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
-    null,
-  );
-  const [myDashboardStats, setMyDashboardStats] =
-    useState<DashboardStats | null>(null);
   const [allPosts, setAllPosts] = useState<PostWithMeta[]>([]);
-  const [alertLogs, setAlertLogs] = useState<AlertLog[]>([]);
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [totalAccountCount, setTotalAccountCount] = useState(0);
@@ -132,9 +100,6 @@ export default function ExecutiveDashboardPage() {
         adPostingAPI.getAccountStats(selectedTeam.id),
       ]);
 
-      setDashboardStats(stats);
-      setMyDashboardStats(myStats);
-      setAlertLogs(alerts);
       setManagedAccounts(managedData.accounts);
       setManagedStats(managedData.stats);
       setCompetitors(
@@ -353,12 +318,6 @@ export default function ExecutiveDashboardPage() {
     return allPosts.filter((p) => p.accountPlatform === platformFilter);
   }, [allPosts, platformFilter]);
 
-  const totalReach = useMemo(() => {
-    const compViews = dashboardStats?.totalViews || 0;
-    const myViews = myDashboardStats?.totalViews || 0;
-    return compViews + myViews;
-  }, [dashboardStats, myDashboardStats]);
-
   const totalImpressions = useMemo(() => {
     return filteredPosts.reduce((s, p) => s + (p.video_play_count || 0), 0);
   }, [filteredPosts]);
@@ -446,13 +405,7 @@ export default function ExecutiveDashboardPage() {
 
       <div className="space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <KpiCard
-            label="Total Reach"
-            value={formatNumber(totalReach)}
-            icon="solar:eye-bold-duotone"
-            color="bg-blue-500"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
           <KpiCard
             label="Total Impressions"
             value={formatNumber(totalImpressions)}
