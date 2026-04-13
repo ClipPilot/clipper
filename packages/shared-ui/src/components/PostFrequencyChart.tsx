@@ -32,8 +32,8 @@ export function PostFrequencyChart({ posts, startDate, endDate }: PostFrequencyC
   const hasData = data.some((d) => d.count > 0);
 
   return (
-    <Card className="bg-surface-base border border-border-base">
-      <section className="flex flex-col flex-nowrap">
+    <Card className="bg-surface-base border border-border-base h-full">
+      <section className="flex flex-col flex-nowrap h-full">
         <div className="flex flex-col gap-y-2 p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <dt className="text-base text-text-primary font-medium">

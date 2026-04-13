@@ -66,7 +66,7 @@ interface ViralCompetitorGroup {
  * Detect viral posts for a given account based on the team's viral alert settings.
  */
 function detectViralPostsForAccount(
-  posts: (typeof schema.viralityPosts.$inferSelect)[],
+  posts: (typeof schema.competitorPosts.$inferSelect)[],
   settings: typeof schema.viralitySettings.$inferSelect,
   accountUsername: string,
   accountPlatform: string,
@@ -591,12 +591,12 @@ export async function checkAndSendViralAlertsForTeam(
   // 3. Fetch all alert-enabled accounts for this team
   const alertAccounts = await db
     .select()
-    .from(schema.viralityAccounts)
+    .from(schema.competitorAccounts)
     .where(
       and(
-        eq(schema.viralityAccounts.team_id, teamId),
-        eq(schema.viralityAccounts.alert_enabled, true),
-        eq(schema.viralityAccounts.is_active, true)
+        eq(schema.competitorAccounts.team_id, teamId),
+        eq(schema.competitorAccounts.alert_enabled, true),
+        eq(schema.competitorAccounts.is_active, true)
       )
     );
 
@@ -608,8 +608,8 @@ export async function checkAndSendViralAlertsForTeam(
   const accountIds = alertAccounts.map((a) => a.id);
   const allPosts = await db
     .select()
-    .from(schema.viralityPosts)
-    .where(inArray(schema.viralityPosts.account_id, accountIds));
+    .from(schema.competitorPosts)
+    .where(inArray(schema.competitorPosts.account_id, accountIds));
 
   const postsByAccountId = new Map<number, (typeof allPosts)[number][]>();
   for (const post of allPosts) {
@@ -677,15 +677,15 @@ export async function checkAndSendViralAlertsForTeam(
   // Build a map of accountId → competitor_id from the alertAccounts we already fetched
   const accountCompetitorMap = new Map<number, number | null>();
   for (const acc of alertAccounts) {
-    accountCompetitorMap.set(acc.id, acc.competitor_id);
+    accountCompetitorMap.set(acc.id, acc.group_id);
   }
 
   // Fetch competitor names — just get all competitors for this team (cheap single query)
   const competitorNameMap = new Map<number, string>();
   const allCompetitors = await db
-    .select({ id: schema.viralityCompetitors.id, name: schema.viralityCompetitors.name })
-    .from(schema.viralityCompetitors)
-    .where(eq(schema.viralityCompetitors.team_id, teamId));
+    .select({ id: schema.viralityGroups.id, name: schema.viralityGroups.name })
+    .from(schema.viralityGroups)
+    .where(eq(schema.viralityGroups.team_id, teamId));
   for (const c of allCompetitors) {
     competitorNameMap.set(c.id, c.name);
   }

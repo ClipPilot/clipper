@@ -1,6 +1,6 @@
 import { db } from "../../db";
-import { userAccounts, userPosts, viralityGroups } from "@clipper/shared-db/src/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { userAccounts, userPosts, viralityGroups, posts } from "@clipper/shared-db/src/schema";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
 import {
   USER_ACCOUNT_INITIAL_SYNCS,
@@ -95,6 +95,70 @@ class UserPerformanceService extends AccountTrackingService {
       .returning({ id: userAccounts.id });
 
     return { id: inserted.id, created: true };
+  }
+
+  async getAccountsByTeamFiltered(teamId: number, source?: string) {
+    const accounts = await this.getAccountsByTeam(teamId);
+    if (!source) return accounts;
+    return accounts.filter((a: any) => a.source === source);
+  }
+
+  async backfillManagedAccounts(teamId: number): Promise<{ created: number; skipped: number }> {
+    const rows = await db
+      .select({
+        id: posts.id,
+        platform: posts.platform,
+        accountHandle: posts.accountHandle,
+        post_url: posts.post_url,
+        content: posts.content,
+        posted_time: posts.posted_time,
+      })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.team_id, teamId),
+          eq(posts.status, "posted"),
+          isNotNull(posts.accountHandle),
+        )
+      );
+
+    const TRACKABLE = new Set(["instagram", "tiktok", "x"]);
+    const buildProfileUrl = (platform: string, username: string) => {
+      if (platform === "instagram") return "https://www.instagram.com/" + username + "/";
+      if (platform === "tiktok") return "https://www.tiktok.com/@" + username;
+      return "https://x.com/" + username;
+    };
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const row of rows) {
+      if (!row.accountHandle || !TRACKABLE.has(row.platform)) {
+        skipped++;
+        continue;
+      }
+
+      const platform = row.platform as "instagram" | "tiktok" | "x";
+
+      const { id: accountId, created: wasCreated } = await this.findOrCreateMassPostingAccount(
+        teamId, platform, row.accountHandle, (u: string) => buildProfileUrl(platform, u)
+      );
+
+      if (wasCreated) created++;
+
+      if (row.post_url) {
+        await this.createMassPostUserPost(
+          accountId,
+          row.id,
+          row.post_url,
+          platform,
+          row.content,
+          row.posted_time ? new Date(row.posted_time) : null,
+        );
+      }
+    }
+
+    return { created, skipped };
   }
 }
 

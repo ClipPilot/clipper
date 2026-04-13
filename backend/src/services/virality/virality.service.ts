@@ -364,16 +364,16 @@ class ViralityService extends AccountTrackingService {
 
   async pauseAllAccountsForTeam(teamId: number) {
     await db
-      .update(viralityAccounts)
+      .update(competitorAccounts)
       .set({ is_active: false })
-      .where(eq(viralityAccounts.team_id, teamId));
+      .where(eq(competitorAccounts.team_id, teamId));
   }
 
   async unpauseAllAccountsForTeam(teamId: number) {
     await db
-      .update(viralityAccounts)
+      .update(competitorAccounts)
       .set({ is_active: true })
-      .where(eq(viralityAccounts.team_id, teamId));
+      .where(eq(competitorAccounts.team_id, teamId));
   }
 }
 

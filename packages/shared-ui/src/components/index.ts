@@ -19,3 +19,4 @@ export { AnalyticsChart } from "./AnalyticsChart";
 export { PaginationControl } from "./PaginationControl";
 export { PostsTable } from "./PostsTable";
 export { AnalyticsPricing, type AnalyticsTier, type AnalyticsPricingProps } from "./AnalyticsPricing";
+export { ManagedAccountsCard, type ManagedAccount, type ManagedAccountsStats } from "./ManagedAccountsCard";

@@ -63,7 +63,7 @@ export function PaidPlanView({
   const isCreator = currentPlan === "creator";
   const canChangePlan = isOwner && (isCreator || isStudio || isScale) && !isEnterprise;
 
-  type UpgradeTarget = "creator" | "studio" | "scale" | "enterprise";
+  type UpgradeTarget = "creator" | "studio" | "scale" | "enterprise" | "analytics_starter" | "analytics_pro" | "analytics_business";
   const availableUpgrades: UpgradeTarget[] = isCreator
     ? ["studio", "scale"]
     : isStudio
@@ -138,6 +138,24 @@ export function PaidPlanView({
       iconBg: "bg-emerald-500/20", iconText: "text-emerald-500",
       selectedBg: "bg-emerald-500/5", selectedBorder: "border-emerald-500/30", selectedText: "text-emerald-500",
       btnBg: "bg-emerald-500",
+    },
+    analytics_starter: {
+      name: "Analytics Starter", credits: "Virality tracking", extras: ["Basic analytics", "5 tracked accounts"],
+      iconBg: "bg-cyan-500/20", iconText: "text-cyan-500",
+      selectedBg: "bg-cyan-500/5", selectedBorder: "border-cyan-500/30", selectedText: "text-cyan-500",
+      btnBg: "bg-cyan-500",
+    },
+    analytics_pro: {
+      name: "Analytics Pro", credits: "Advanced analytics", extras: ["25 tracked accounts", "Viral alerts"],
+      iconBg: "bg-blue-500/20", iconText: "text-blue-500",
+      selectedBg: "bg-blue-500/5", selectedBorder: "border-blue-500/30", selectedText: "text-blue-500",
+      btnBg: "bg-blue-500",
+    },
+    analytics_business: {
+      name: "Analytics Business", credits: "Full analytics suite", extras: ["Unlimited accounts", "Priority support"],
+      iconBg: "bg-indigo-500/20", iconText: "text-indigo-500",
+      selectedBg: "bg-indigo-500/5", selectedBorder: "border-indigo-500/30", selectedText: "text-indigo-500",
+      btnBg: "bg-indigo-500",
     },
   };
 

@@ -12,8 +12,9 @@ export type { ViralityAccount as UserAccount, ViralityPost as UserPost };
 class UserPerformanceAPI {
   // ── Accounts ──
 
-  async getAccounts(teamId: number): Promise<ViralityAccount[]> {
-    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/accounts`, {
+  async getAccounts(teamId: number, source?: string): Promise<ViralityAccount[]> {
+    const qs = source ? `?source=${source}` : "";
+    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/accounts${qs}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -26,6 +27,21 @@ class UserPerformanceAPI {
 
     const data = await response.json();
     return data.accounts;
+  }
+
+  async backfillManaged(teamId: number): Promise<{ created: number; skipped: number }> {
+    const response = await apiFetch(`${API_URL}/user-performance/${teamId}/backfill-managed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to backfill managed accounts");
+    }
+
+    return response.json();
   }
 
   async addAccount(

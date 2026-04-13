@@ -22887,7 +22887,7 @@
         }
       },
       "post": {
-        "summary": "Add a new competitor account to track (optionally assign to a group)",
+        "summary": "Add a new account to track (competitor or user) within a group",
         "tags": [
           "Virality"
         ],
@@ -22914,7 +22914,9 @@
                 "type": "object",
                 "required": [
                   "platform",
-                  "profileUrl"
+                  "profileUrl",
+                  "groupId",
+                  "competitor"
                 ],
                 "properties": {
                   "platform": {
@@ -22937,8 +22939,13 @@
                     ],
                     "default": "profile"
                   },
-                  "competitorId": {
-                    "type": "integer"
+                  "groupId": {
+                    "type": "integer",
+                    "description": "ID of the group to assign this account to"
+                  },
+                  "competitor": {
+                    "type": "boolean",
+                    "description": "If true, writes to competitor_accounts; if false, writes to user_accounts"
                   }
                 }
               }
@@ -23153,6 +23160,53 @@
           },
           "404": {
             "description": "Account not found"
+          }
+        }
+      }
+    },
+    "/virality/{teamId}/accounts/unpause-all": {
+      "post": {
+        "summary": "Unpause all virality accounts for a team",
+        "description": "Reactivates all paused virality accounts. Requires Studio plan or higher.",
+        "tags": [
+          "Virality"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All accounts unpaused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan upgrade required"
           }
         }
       }
@@ -23486,6 +23540,11 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "competitor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether this is a competitor group (true) or a user performance group (false)"
                   }
                 }
               }
@@ -23494,7 +23553,7 @@
         },
         "responses": {
           "201": {
-            "description": "Competitor group created",
+            "description": "Group created",
             "content": {
               "application/json": {
                 "schema": {

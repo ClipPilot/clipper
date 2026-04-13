@@ -32,6 +32,18 @@ vi.mock("../../services/virality/virality.service", () => ({
   viralityService: mockViralityService,
 }));
 
+vi.mock("../../services/virality/userPerformance.service", () => ({
+  userPerformanceService: { syncAccount: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock("../../utils/controllerHelpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/controllerHelpers")>();
+  return {
+    ...actual,
+    verifyTeamAccessOrFail: vi.fn().mockResolvedValue({ id: 1 }),
+  };
+});
+
 import { viralityController } from "../virality.controller";
 
 function createReq(overrides: Partial<Request> = {}): Request {

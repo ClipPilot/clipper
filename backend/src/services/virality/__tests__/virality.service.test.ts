@@ -29,6 +29,7 @@ const makeCompetitor = (id: number, teamId: number) => ({
   team_id: teamId,
   name: `Competitor ${id}`,
   description: null,
+  competitor: true,
   created_at: new Date(),
   updated_at: new Date(),
 });
@@ -60,7 +61,8 @@ describe("ViralityService.getAllGroupsWithAccounts", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([comp1, comp2]))
-      .mockReturnValueOnce(createDrizzleChain([acc1, acc2, acc3]));
+      .mockReturnValueOnce(createDrizzleChain([acc1, acc2, acc3]))
+      .mockReturnValueOnce(createDrizzleChain([]));
 
     const result = await viralityService.getAllGroupsWithAccounts(10);
 
@@ -79,6 +81,7 @@ describe("ViralityService.getAllGroupsWithAccounts", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([comp1]))
+      .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]));
 
     const result = await viralityService.getAllGroupsWithAccounts(10);
@@ -89,6 +92,7 @@ describe("ViralityService.getAllGroupsWithAccounts", () => {
 
   it("returns empty array when no competitors exist", async () => {
     mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]));
 
@@ -104,7 +108,8 @@ describe("ViralityService.getAllGroupsWithAccounts", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([comp1]))
-      .mockReturnValueOnce(createDrizzleChain([accLinked, accOrphan]));
+      .mockReturnValueOnce(createDrizzleChain([accLinked, accOrphan]))
+      .mockReturnValueOnce(createDrizzleChain([]));
 
     const result = await viralityService.getAllGroupsWithAccounts(10);
 
@@ -114,6 +119,7 @@ describe("ViralityService.getAllGroupsWithAccounts", () => {
 
   it("does not call cleanupStaleSyncs on the read path", async () => {
     mockDb.select
+      .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]))
       .mockReturnValueOnce(createDrizzleChain([]));
     mockDb.update.mockReturnValueOnce(createDrizzleChain([]));

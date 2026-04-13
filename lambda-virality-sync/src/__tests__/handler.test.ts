@@ -75,8 +75,8 @@ vi.mock("apify-client", () => ({
 }));
 
 vi.mock("@clipper/shared-db", () => ({
-  viralityAccounts: { id: "va.id", team_id: "va.team_id", username: "va.username", platform: "va.platform", is_active: "va.is_active", syncs_remaining: "va.sr", sync_status: "va.ss", sync_error: "va.se", account_type: "va.at" },
-  viralityPosts: { id: "vp.id", account_id: "vp.account_id", platform_post_id: "vp.ppid", metrics_history: "vp.mh", like_count: "vp.lc", comment_count: "vp.cc", video_play_count: "vp.vpc", thumbnail_url: "vp.thu" },
+  competitorAccounts: { id: "va.id", team_id: "va.team_id", username: "va.username", platform: "va.platform", is_active: "va.is_active", syncs_remaining: "va.sr", sync_status: "va.ss", sync_error: "va.se", account_type: "va.at" },
+  competitorPosts: { id: "vp.id", account_id: "vp.account_id", platform_post_id: "vp.ppid", metrics_history: "vp.mh", like_count: "vp.lc", comment_count: "vp.cc", video_play_count: "vp.vpc", thumbnail_url: "vp.thu" },
   userAccounts: { id: "ua.id", team_id: "ua.team_id", username: "ua.username", platform: "ua.platform", is_active: "ua.is_active", syncs_remaining: "ua.sr", source: "ua.source", sync_status: "ua.ss", sync_error: "ua.se", last_synced_at: "ua.lsa", account_type: "ua.at" },
   userPosts: { id: "up.id", account_id: "up.account_id", platform_post_id: "up.ppid", mass_post_id: "up.mpid", syncs_remaining: "up.sr", metrics_history: "up.mh", like_count: "up.lc", comment_count: "up.cc", video_play_count: "up.vpc", thumbnail_url: "up.thu", post_url: "up.post_url" },
   posts: { id: "p.id", campaign_id: "p.campaign_id" },

@@ -31,12 +31,12 @@ export function BestPerformingAccounts({
 
   if (ranked.length === 0) {
     return (
-      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
-        <div className="p-5">
+      <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden h-full">
+        <div className="p-5 h-full flex flex-col">
           <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
             BEST PERFORMING ACCOUNTS
           </p>
-          <div className="flex flex-col items-center justify-center h-[250px] gap-3">
+          <div className="flex flex-col items-center justify-center flex-1 gap-3">
             <Icon
               icon="solar:users-group-rounded-linear"
               width={40}
@@ -52,12 +52,12 @@ export function BestPerformingAccounts({
   }
 
   return (
-    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden">
-      <div className="p-5">
+    <div className="rounded-xl border border-border-base bg-surface-base overflow-hidden h-full">
+      <div className="p-5 h-full flex flex-col">
         <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
           BEST PERFORMING ACCOUNTS
         </p>
-        <div className="space-y-3 max-h-[350px] overflow-y-auto">
+        <div className="space-y-3 flex-1 overflow-y-auto">
           {ranked.map(({ account, totalViews }, index) => (
             <div
               key={account.id}

@@ -677,7 +677,7 @@ export default function CompetitorDetailPage() {
           {!selectedAccountIds ||
           selectedAccountIds.length === 0 ||
           selectedAccountIds.length > 1 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
               <PostFrequencyChart
                 posts={activePosts}
                 startDate={dateRange.startDate}

@@ -137,7 +137,6 @@ export interface AccountChartDay {
   [key: string]: string | number;
 }
 
-/** Build chart data with a separate series per account for the given metric (hourly granularity) */
 export function buildChartDataByAccount(
   postsByAccount: Record<number, ViralityPost[]>,
   accountIds: number[],
@@ -145,49 +144,49 @@ export function buildChartDataByAccount(
   startDate?: string,
   endDate?: string,
 ): AccountChartDay[] {
-  const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
-  const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
+  const startStr = startDate ? new Date(startDate).toISOString().slice(0, 10) : undefined;
+  const endStr = endDate ? new Date(endDate).toISOString().slice(0, 10) : undefined;
 
-  const allHours = new Set<string>();
-  const byAccountHour = new Map<number, Map<string, number>>();
+  const allDays = new Set<string>();
+  const byAccountDay = new Map<number, Map<string, number>>();
 
   for (const accountId of accountIds) {
     const posts = postsByAccount[accountId] || [];
-    const hourMap = new Map<string, number>();
+    const dayMap = new Map<string, number>();
 
     for (const post of posts) {
       if (!post.metrics_history?.length) continue;
-      const postHourMax = new Map<string, number>();
+      const postDayMax = new Map<string, number>();
       for (const entry of post.metrics_history) {
-        const hour = entry.recorded_at.slice(0, 13);
+        const day = entry.recorded_at.slice(0, 10);
         const val = metric === "views" ? (entry.views ?? 0) : (entry[metric] ?? 0);
-        const prev = postHourMax.get(hour);
-        if (prev === undefined || val > prev) postHourMax.set(hour, val);
+        const prev = postDayMax.get(day);
+        if (prev === undefined || val > prev) postDayMax.set(day, val);
       }
-      const sortedHours = Array.from(postHourMax.keys()).sort();
+      const sortedDays = Array.from(postDayMax.keys()).sort();
       let prevVal = 0;
-      for (const hour of sortedHours) {
-        const val = postHourMax.get(hour)!;
+      for (const day of sortedDays) {
+        const val = postDayMax.get(day)!;
         const delta = Math.max(val - prevVal, 0);
         prevVal = val;
-        if (startStr && hour < startStr) continue;
-        if (endStr && hour > endStr) continue;
-        allHours.add(hour);
-        hourMap.set(hour, (hourMap.get(hour) || 0) + delta);
+        if (startStr && day < startStr) continue;
+        if (endStr && day > endStr) continue;
+        allDays.add(day);
+        dayMap.set(day, (dayMap.get(day) || 0) + delta);
       }
     }
 
-    byAccountHour.set(accountId, hourMap);
+    byAccountDay.set(accountId, dayMap);
   }
 
-  const sorted = Array.from(allHours).sort();
+  const sorted = Array.from(allDays).sort();
 
   const lastKnown = new Map<number, number>();
-  return sorted.map((hour) => {
-    const point: AccountChartDay = { hourKey: hour };
+  return sorted.map((day) => {
+    const point: AccountChartDay = { hourKey: day };
     for (const accountId of accountIds) {
-      const hourMap = byAccountHour.get(accountId);
-      const val = hourMap?.get(hour);
+      const dayMap = byAccountDay.get(accountId);
+      const val = dayMap?.get(day);
       if (val !== undefined) {
         point[`account_${accountId}`] = val;
       } else {

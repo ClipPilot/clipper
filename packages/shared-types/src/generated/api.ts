@@ -16898,7 +16898,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Add a new competitor account to track (optionally assign to a group) */
+        /** Add a new account to track (competitor or user) within a group */
         post: {
             parameters: {
                 query?: never;
@@ -16919,7 +16919,10 @@ export interface paths {
                          * @enum {string}
                          */
                         accountType?: "profile" | "hashtag" | "keyword";
-                        competitorId?: number;
+                        /** @description ID of the group to assign this account to */
+                        groupId: number;
+                        /** @description If true, writes to competitor_accounts; if false, writes to user_accounts */
+                        competitor: boolean;
                     };
                 };
             };
@@ -17103,6 +17106,56 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/virality/{teamId}/accounts/unpause-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unpause all virality accounts for a team
+         * @description Reactivates all paused virality accounts. Requires Studio plan or higher.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    teamId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description All accounts unpaused */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description Plan upgrade required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/virality/{teamId}/accounts/{accountId}/sync": {
@@ -17373,11 +17426,16 @@ export interface paths {
                     "application/json": {
                         name: string;
                         description?: string;
+                        /**
+                         * @description Whether this is a competitor group (true) or a user performance group (false)
+                         * @default true
+                         */
+                        competitor?: boolean;
                     };
                 };
             };
             responses: {
-                /** @description Competitor group created */
+                /** @description Group created */
                 201: {
                     headers: {
                         [name: string]: unknown;

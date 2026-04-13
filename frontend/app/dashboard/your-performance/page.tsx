@@ -14,7 +14,7 @@ import {
   DateRangeFilter,
   PlatformFilter,
 } from "@/components/virality";
-import { CompetitorCard, ViralityUpgradeWall, type FeedPost } from "@clipper/shared-ui";
+import { CompetitorCard, ManagedAccountsCard, ViralityUpgradeWall, type FeedPost, type ManagedAccount, type ManagedAccountsStats } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
@@ -26,6 +26,7 @@ import {
   type CompetitorWithAccounts,
 } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
+import { adPostingAPI } from "@/api/adPosting";
 import { canAccessViralityTracker, getViralityAccountLimit } from "@/lib/plans";
 import { pct } from "@/app/dashboard/virality/[competitorId]/utils";
 import type { PlatformOption } from "@clipper/shared-ui";
@@ -107,6 +108,8 @@ export default function ExecutiveDashboardPage() {
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [totalAccountCount, setTotalAccountCount] = useState(0);
+  const [managedAccounts, setManagedAccounts] = useState<ManagedAccount[]>([]);
+  const [managedStats, setManagedStats] = useState<ManagedAccountsStats>({ totalAccounts: 0, totalReposts: 0, avgPostsPerAccount: 0 });
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const fetchData = useCallback(async () => {
@@ -117,7 +120,7 @@ export default function ExecutiveDashboardPage() {
 
       const myAccts = await userPerformanceAPI.getAccounts(selectedTeam.id);
 
-      const [withAccounts, stats, myStats, alerts] = await Promise.all([
+      const [withAccounts, stats, myStats, alerts, managedData] = await Promise.all([
         viralityAPI.getGroupsWithAccounts(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         userPerformanceAPI.getDashboardStats(
@@ -126,11 +129,14 @@ export default function ExecutiveDashboardPage() {
           endDate,
         ),
         viralityAPI.getAlertLogs(selectedTeam.id, 5),
+        adPostingAPI.getAccountStats(selectedTeam.id),
       ]);
 
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
       setAlertLogs(alerts);
+      setManagedAccounts(managedData.accounts);
+      setManagedStats(managedData.stats);
       setCompetitors(
         withAccounts.filter((g: any) => g.competitor === false),
       );
@@ -461,8 +467,13 @@ export default function ExecutiveDashboardPage() {
           />
         </div>
 
-        {/* Competitor Group Cards */}
+        {/* Account Group Cards */}
         <div className="flex flex-wrap gap-4 [&>*]:flex-1 [&>*]:min-w-[250px]">
+          <ManagedAccountsCard
+            accounts={managedAccounts}
+            stats={managedStats}
+            onView={() => router.push("/dashboard/your-performance/managed")}
+          />
           {competitorCards.map((card, idx) => (
             <CompetitorCard
               key={card.competitor.id}

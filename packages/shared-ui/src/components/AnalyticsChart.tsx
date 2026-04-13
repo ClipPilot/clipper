@@ -23,49 +23,11 @@ import { buildChartDataByAccount } from "../lib/viralityUtils";
 
 type ChartMetricKey = "likes" | "comments" | "views";
 
-const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const TOTAL_COLOR = "#8b5cf6";
 
-function formatHourKey(hourKey: string) {
-  const d = new Date(hourKey + ":00:00Z");
-  return {
-    date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    time: d.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
-  };
-}
-
-/** Custom XAxis tick: shows date on line 1, time on line 2. Only shows date when the day changes. */
-function SyncTick({ x, y, payload, index, chartData }: any) {
-  if (!payload?.value) return null;
-  const hourKey = payload.value;
-  const { date, time } = formatHourKey(hourKey);
-
-  const prevHourKey = index > 0 ? chartData[index - 1]?.hourKey : null;
-  const prevDate = prevHourKey ? formatHourKey(prevHourKey).date : null;
-  const showDate = date !== prevDate;
-
-  return (
-    <g transform={`translate(${x},${y})`}>
-      {showDate && (
-        <text
-          x={0} y={0} dy={12}
-          textAnchor="middle"
-          fontSize="11px"
-          fill="var(--text-tertiary)"
-        >
-          {date}
-        </text>
-      )}
-      <text
-        x={0} y={0} dy={showDate ? 24 : 12}
-        textAnchor="middle"
-        fontSize="11px"
-        fill="var(--text-tertiary)"
-      >
-        {time}
-      </text>
-    </g>
-  );
+function formatDayKey(dayKey: string) {
+  const d = new Date(dayKey + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 interface AnalyticsChartProps {
@@ -138,40 +100,40 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
   const totalsAccounts = hasSelection ? accounts : axisAccounts;
   const totalsPostsByAccount = hasSelection ? postsByAccount : axisPostsByAccount;
 
-  const tooltipByHour = useMemo(() => {
+  const tooltipByDay = useMemo(() => {
     const map: Record<string, { views: number; likes: number; comments: number }> = {};
-    const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
-    const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
+    const startStr = startDate ? new Date(startDate).toISOString().slice(0, 10) : undefined;
+    const endStr = endDate ? new Date(endDate).toISOString().slice(0, 10) : undefined;
 
     for (const account of totalsAccounts) {
       const posts = totalsPostsByAccount[account.id] || [];
       for (const post of posts) {
         if (!post.metrics_history?.length) continue;
-        const postHourMax = new Map<string, { views: number; likes: number; comments: number }>();
+        const postDayMax = new Map<string, { views: number; likes: number; comments: number }>();
         for (const entry of post.metrics_history) {
-          const hour = entry.recorded_at.slice(0, 13);
+          const day = entry.recorded_at.slice(0, 10);
           const views = entry.views ?? 0;
-          const existing = postHourMax.get(hour);
+          const existing = postDayMax.get(day);
           if (!existing || views > existing.views) {
-            postHourMax.set(hour, { views, likes: entry.likes ?? 0, comments: entry.comments ?? 0 });
+            postDayMax.set(day, { views, likes: entry.likes ?? 0, comments: entry.comments ?? 0 });
           }
         }
-        const sortedHours = Array.from(postHourMax.keys()).sort();
+        const sortedDays = Array.from(postDayMax.keys()).sort();
         let prev = { views: 0, likes: 0, comments: 0 };
-        for (const hour of sortedHours) {
-          const vals = postHourMax.get(hour)!;
+        for (const day of sortedDays) {
+          const vals = postDayMax.get(day)!;
           const delta = {
             views: Math.max(vals.views - prev.views, 0),
             likes: Math.max(vals.likes - prev.likes, 0),
             comments: Math.max(vals.comments - prev.comments, 0),
           };
           prev = vals;
-          if (startStr && hour < startStr) continue;
-          if (endStr && hour > endStr) continue;
-          if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
-          map[hour].views += delta.views;
-          map[hour].likes += delta.likes;
-          map[hour].comments += delta.comments;
+          if (startStr && day < startStr) continue;
+          if (endStr && day > endStr) continue;
+          if (!map[day]) map[day] = { views: 0, likes: 0, comments: 0 };
+          map[day].views += delta.views;
+          map[day].likes += delta.likes;
+          map[day].comments += delta.comments;
         }
       }
     }
@@ -194,39 +156,30 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
   }, [totalsAccounts, totalsPostsByAccount]);
 
   const dailyChange = useMemo(() => {
-    const dayTotals = new Map<string, { views: number; likes: number; comments: number }>();
-    for (const [hour, vals] of Object.entries(tooltipByHour)) {
-      const day = hour.slice(0, 10);
-      const existing = dayTotals.get(day) || { views: 0, likes: 0, comments: 0 };
-      existing.views += vals.views;
-      existing.likes += vals.likes;
-      existing.comments += vals.comments;
-      dayTotals.set(day, existing);
-    }
-    const days = Array.from(dayTotals.keys()).sort();
+    const days = Object.keys(tooltipByDay).sort();
     if (days.length < 2) return { views: null, likes: null, comments: null };
-    const today = dayTotals.get(days[days.length - 1])!;
-    const yesterday = dayTotals.get(days[days.length - 2])!;
+    const today = tooltipByDay[days[days.length - 1]];
+    const yesterday = tooltipByDay[days[days.length - 2]];
     const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : null;
     return {
       views: pct(today.views, yesterday.views),
       likes: pct(today.likes, yesterday.likes),
       comments: pct(today.comments, yesterday.comments),
     };
-  }, [tooltipByHour]);
+  }, [tooltipByDay]);
 
-  const tooltipChangeByHour = useMemo(() => {
-    const sorted = Object.keys(tooltipByHour).sort();
+  const tooltipChangeByDay = useMemo(() => {
+    const sorted = Object.keys(tooltipByDay).sort();
     const changeMap: Record<string, { views: number | null; likes: number | null; comments: number | null }> = {};
     const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : null;
     for (let i = 0; i < sorted.length; i++) {
-      const hour = sorted[i];
+      const day = sorted[i];
       if (i === 0) {
-        changeMap[hour] = { views: null, likes: null, comments: null };
+        changeMap[day] = { views: null, likes: null, comments: null };
       } else {
-        const prev = tooltipByHour[sorted[i - 1]];
-        const cur = tooltipByHour[hour];
-        changeMap[hour] = {
+        const prev = tooltipByDay[sorted[i - 1]];
+        const cur = tooltipByDay[day];
+        changeMap[day] = {
           views: pct(cur.views, prev.views),
           likes: pct(cur.likes, prev.likes),
           comments: pct(cur.comments, prev.comments),
@@ -234,7 +187,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       }
     }
     return changeMap;
-  }, [tooltipByHour]);
+  }, [tooltipByDay]);
 
   const metrics: {
     key: ChartMetricKey;
@@ -260,20 +213,8 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
         <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
-              <dt className="text-base text-text-primary font-medium inline-flex items-center gap-1.5">
+              <dt className="text-base text-text-primary font-medium">
                 Analytics
-                <HTooltip>
-                  <HTooltip.Trigger>
-                    <span className="inline-flex cursor-help" tabIndex={0}>
-                      <Icon
-                        icon="solar:clock-circle-linear"
-                        width={14}
-                        className="text-text-tertiary"
-                      />
-                    </span>
-                  </HTooltip.Trigger>
-                  <HTooltip.Content placement="top">{`Times shown in ${TIMEZONE}`}</HTooltip.Content>
-                </HTooltip>
               </dt>
               <div className="flex items-center gap-3 flex-wrap">
                 {accounts.length === 0 && (
@@ -412,9 +353,9 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                   axisLine={false}
                   dataKey="hourKey"
                   tickLine={false}
-                  tick={(props: any) => <SyncTick {...props} chartData={chartData} />}
-                  interval={Math.max(0, Math.floor(chartData.length / 7) - 1)}
-                  height={40}
+                  style={{ fontSize: "11px" }}
+                  tickFormatter={formatDayKey}
+                  interval={chartData.length <= 7 ? 0 : Math.max(0, Math.floor(chartData.length / 7) - 1)}
                 />
                 <YAxis
                   axisLine={false}
@@ -426,11 +367,11 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 />
                 <Tooltip
  content={({ payload }) => {
- const hourKey = payload?.[0]?.payload?.hourKey;
- if (!hourKey) return null;
- const label = formatHourKey(hourKey);
- const tipData = tooltipByHour[hourKey];
- const tipChange = tooltipChangeByHour[hourKey];
+ const dayKey = payload?.[0]?.payload?.hourKey;
+ if (!dayKey) return null;
+ const label = formatDayKey(dayKey);
+ const tipData = tooltipByDay[dayKey];
+ const tipChange = tooltipChangeByDay[dayKey];
  const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
 
  const renderChange = (change: number | null | undefined) => {
@@ -457,7 +398,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
  <div className="rounded-xl bg-surface-base border border-border-base shadow-xl min-w-[200px] overflow-hidden">
  <div className="px-3 py-2 border-b border-border-base">
  <span className="text-xs text-text-tertiary font-medium">
- {label.date} &middot; {label.time}
+ {label}
  </span>
  </div>
 
