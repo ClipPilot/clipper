@@ -42,7 +42,13 @@ import {
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
-  static resend = new Resend(process.env.RESEND_API_KEY!);
+  private static _resend: Resend;
+  static get resend(): Resend {
+    if (!this._resend) {
+      this._resend = new Resend(process.env.RESEND_API_KEY!);
+    }
+    return this._resend;
+  }
   private fromEmail = "Cuttr <no-reply@mail.cuttr.com>";
 
   async sendEmailNotification(to: string, subject: string, body: string) {

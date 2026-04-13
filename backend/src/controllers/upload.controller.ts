@@ -8,7 +8,7 @@ import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { PLAN_LIMITS, getMaxUploadSizeForPlan } from "../config/stripe.config";
 import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
-import { handleControllerError, requireUser } from "../utils/controllerHelpers";
+import { handleControllerError, requireUser, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 
@@ -179,6 +179,8 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response<Pres
     if (!teamId || !fileName || !contentType) {
       return res.status(400).json({ error: "Missing required fields: teamId, fileName, contentType" });
     }
+
+    if (!(await verifyTeamAccessOrFail(req, parseInt(teamId), res))) return;
 
     const team = await teamService.getTeamById(parseInt(teamId));
     const plan = team.plan || "free";

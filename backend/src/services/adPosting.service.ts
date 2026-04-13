@@ -470,6 +470,7 @@ class AdPostingService {
       page?: number;
       pageSize?: number;
       campaignId?: number;
+      groupByVideo?: boolean;
     } = {}
   ) {
     const {
@@ -482,6 +483,7 @@ class AdPostingService {
       page = 1,
       pageSize = 20,
       campaignId,
+      groupByVideo = false,
     } = options;
 
     const conditions = [eq(posts.team_id, teamId)];
@@ -565,8 +567,40 @@ class AdPostingService {
         .orderBy(orderFn(orderCol))
         .limit(pageSize)
         .offset((page - 1) * pageSize);
+    } else if (groupByVideo) {
+      const [countResult] = await db
+        .select({
+          videos: sql<number>`COUNT(DISTINCT ${posts.clip_id})::int`,
+          posts: sql<number>`count(*)::int`,
+        })
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where);
+
+      totalVideos = countResult.videos;
+      totalPosts = countResult.posts;
+
+      const videoPage = await db
+        .select({ clipId: posts.clip_id })
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where)
+        .groupBy(posts.clip_id)
+        .orderBy(orderFn(sql`MAX(${orderCol})`))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      const clipIds = videoPage.map((v) => v.clipId).filter((id): id is number => id !== null);
+
+      rows = clipIds.length > 0
+        ? await db
+            .select(selectFields)
+            .from(posts)
+            .leftJoin(clips, eq(posts.clip_id, clips.id))
+            .where(and(where, inArray(posts.clip_id, clipIds)))
+            .orderBy(orderFn(orderCol))
+        : [];
     } else {
-      // Published tab: paginate by individual post
       const [{ count }] = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(posts)
@@ -602,13 +636,15 @@ class AdPostingService {
       })
     );
 
+    const paginationBase = groupByVideo ? totalVideos : totalPosts;
+
     return {
       posts: postsWithUrls,
       pagination: {
         page,
         pageSize,
         total: totalVideos,
-        totalPages: Math.ceil(totalPosts / pageSize),
+        totalPages: Math.ceil(paginationBase / pageSize),
         totalPosts,
       },
     };

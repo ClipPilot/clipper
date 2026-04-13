@@ -123,7 +123,7 @@ router.get("/download-fixed", requireAuth, faceSwapController.downloadFixed);
  *               type: string
  *               format: binary
  */
-router.get("/download-fixed-public", faceSwapController.downloadFixedPublic);
+router.get("/download-fixed-public", requireAuth, faceSwapController.downloadFixedPublic);
 
 /**
  * @openapi

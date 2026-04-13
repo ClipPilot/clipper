@@ -491,7 +491,7 @@ export class SceneBuilderController {
 
       const charactersConfig = script?.characters_config as Array<{ characterId: number; voiceId?: string }> | null;
 
-      const jobIds: string[] = [];
+      const jobIdsByIndex = new Map<number, string>();
       const BATCH_SIZE = 2;
       const DELAY_BETWEEN_BATCHES_MS = 1000;
 
@@ -652,7 +652,7 @@ export class SceneBuilderController {
         const firstIdx = arollMultiIndices[0];
         const firstJobId = await dispatchScene(firstIdx);
         if (firstJobId) {
-          jobIds.push(firstJobId);
+          jobIdsByIndex.set(firstIdx, firstJobId);
 
           console.log(
             `[SCENE_BUILDER] A-roll-multi anchor scene ${scenes[firstIdx].sceneNumber}: Waiting for completion to establish setting...`,
@@ -688,8 +688,9 @@ export class SceneBuilderController {
               dispatchScene(idx, { settingAnchorKeys }),
             ),
           );
-          for (const jid of remainingJobs) {
-            if (jid) jobIds.push(jid);
+          for (let ri = 0; ri < remainingJobs.length; ri++) {
+            const jid = remainingJobs[ri];
+            if (jid) jobIdsByIndex.set(arollMultiIndices[ri + 1], jid);
           }
           console.log(
             `[SCENE_BUILDER] Dispatched ${remainingJobs.filter(Boolean).length} remaining a-roll-multi scenes in parallel`,
@@ -718,7 +719,7 @@ export class SceneBuilderController {
         })());
 
         if (!jobId) continue;
-        jobIds.push(jobId);
+        jobIdsByIndex.set(idx, jobId);
 
         // Check if next non-multi scene needs this one to complete first
         const nextLocalIdx = localIdx + 1;
@@ -741,6 +742,10 @@ export class SceneBuilderController {
           await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
         }
       }
+
+      const jobIds = scenes
+        .map((_, i) => jobIdsByIndex.get(i))
+        .filter((id): id is string => !!id);
 
       return res.status(202).json({
         success: true,

@@ -144,19 +144,31 @@ export const convertToGamingVertical = async (
   const overlapsY = gpY < fcY + fcH && gpY + gpH > fcY;
 
   if (overlapsX && overlapsY) {
-    const fcOnLeft = fcX + fcW / 2 < width / 2;
-    const fcOnTop = fcY + fcH / 2 < height / 2;
-    const shiftX = fcOnLeft ? (fcX + fcW) - gpX : (gpX + gpW) - fcX;
-    const shiftY = fcOnTop ? (fcY + fcH) - gpY : (gpY + gpH) - fcY;
+    const origX = gpX;
+    const origY = gpY;
+    const candidates: { x: number; y: number }[] = [];
 
-    if (shiftX <= shiftY) {
-      gpX = fcOnLeft ? fcX + fcW : fcX - gpW;
-    } else {
-      gpY = fcOnTop ? fcY + fcH : fcY - gpH;
+    const rightX = fcX + fcW;
+    if (rightX + gpW <= width) candidates.push({ x: rightX, y: origY });
+
+    const leftX = fcX - gpW;
+    if (leftX >= 0) candidates.push({ x: leftX, y: origY });
+
+    const downY = fcY + fcH;
+    if (downY + gpH <= height) candidates.push({ x: origX, y: downY });
+
+    const upY = fcY - gpH;
+    if (upY >= 0) candidates.push({ x: origX, y: upY });
+
+    if (candidates.length > 0) {
+      const best = candidates.reduce((a, b) => {
+        const distA = (a.x - origX) ** 2 + (a.y - origY) ** 2;
+        const distB = (b.x - origX) ** 2 + (b.y - origY) ** 2;
+        return distA < distB ? a : b;
+      });
+      gpX = best.x;
+      gpY = best.y;
     }
-
-    gpX = Math.max(0, Math.min(gpX, width - gpW));
-    gpY = Math.max(0, Math.min(gpY, height - gpH));
   }
 
   console.log(

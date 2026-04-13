@@ -227,6 +227,39 @@ router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => v
 
 /**
  * @openapi
+ * /virality/{teamId}/accounts/unpause-all:
+ *   post:
+ *     summary: Unpause all virality accounts for a team
+ *     description: Reactivates all paused virality accounts. Requires Studio plan or higher.
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: All accounts unpaused
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - success
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.post("/:teamId/accounts/unpause-all", requireAuth, (req, res) => viralityController.unpauseAllAccounts(req, res));
+
+/**
+ * @openapi
  * /virality/{teamId}/accounts/{accountId}/sync:
  *   post:
  *     summary: Trigger a sync for a competitor account

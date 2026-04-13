@@ -502,3 +502,29 @@ Use conventional commits for automatic versioning and changelogs:
 2. Merge `staging` to `main` via PR (runs tests + terraform only, NO service deploys)
 3. `release-please` creates/updates a Release PR on main with bumped version + changelog
 4. Merge the Release PR -> creates git tag `v1.2.0` -> triggers production deploy of all services
+
+## Frontend Aesthetics
+
+<frontend_aesthetics>
+You tend to converge toward generic, "on distribution" outputs. In frontend design, this creates what users call the "AI slop" aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight. The default design language for this project is **glassmorphic liquid glass** — translucent layers, refractive blur, fluid motion, and luminous depth. Focus on:
+
+**Typography**: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics. Favor elegant, modern typefaces that complement the glass aesthetic — thin weights, geometric forms, and high-contrast pairings work well against translucent surfaces.
+
+**Color & Theme**: Commit to a cohesive glassmorphic aesthetic. Use CSS variables for consistency. Build palettes around translucent whites, frosted tints, and vibrant accent colors that glow through glass layers. Dominant colors with sharp luminous accents outperform timid, evenly-distributed palettes. Draw from iOS liquid glass, frosted UI patterns, and ambient light aesthetics for inspiration.
+
+**Glass Effects**: Layer `backdrop-filter: blur()` and `saturate()` to create depth. Use semi-transparent backgrounds (`rgba`/`hsla` with low opacity), subtle borders (`1px solid rgba(255,255,255,0.18)`), and soft box-shadows to simulate refractive glass panels. Stack multiple glass layers at varying opacities to create parallax depth. Add inner highlights and edge lighting to sell the material illusion.
+
+**Motion**: Use animations for fluid, liquid-feeling transitions and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions. Favor smooth, spring-based easing curves that feel organic and liquid. Elements should feel like they float, settle, and ripple.
+
+**Backgrounds**: Create atmosphere and depth with gradient meshes, soft radial glows, and layered noise textures behind glass panels. Use ambient color blobs or aurora-style gradients that shift subtly. The background should feel alive and luminous, giving glass layers something beautiful to refract.
+
+**Avoid generic AI-generated aesthetics**:
+- Overused font families (Inter, Roboto, Arial, Space Grotesk, system fonts)
+- Clichéd color schemes (particularly purple gradients on white backgrounds)
+- Predictable layouts and component patterns
+- Cookie-cutter design that lacks context-specific character
+- Flat, opaque cards when glass panels would create more depth
+- Heavy drop shadows when soft, diffused glows are more appropriate
+
+Interpret creatively and make unexpected choices that feel genuinely designed for the context. Vary between light and dark glass themes, different fonts, different accent palettes. Every surface should feel like it has material quality — weight, translucency, and light response.
+</frontend_aesthetics>

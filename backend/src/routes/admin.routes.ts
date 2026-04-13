@@ -145,7 +145,7 @@ router.post("/verify-2fa", adminAuthLimiter, verify2FA);
  *       401:
  *         description: Invalid credentials
  */
-router.post("/resend-2fa", resend2FA);
+router.post("/resend-2fa", adminAuthLimiter, resend2FA);
 
 /**
  * @openapi

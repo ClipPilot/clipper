@@ -39,6 +39,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     videoAttachment,
     setVideoAttachment,
     adCloneProjectId,
+    scriptGenFailed,
     sendMessage,
     acceptStructure,
     retryStructure,
@@ -123,7 +124,12 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
     });
   }, []);
 
+  const urlSyncReady = useRef(false);
   useEffect(() => {
+    if (!urlSyncReady.current) {
+      urlSyncReady.current = true;
+      return;
+    }
     if (videoState.scriptId && videoState.scriptId !== resumeScriptId) {
       router.replace(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${videoState.scriptId}`, { scroll: false });
     }
@@ -412,6 +418,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
               onGenerateImages={regenerateAllImages}
               onContinue={handleContinueToGenerate}
               isContinueLoading={isStartingGeneration}
+              scriptGenFailed={scriptGenFailed}
             />
           </motion.div>
         )}

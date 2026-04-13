@@ -6,6 +6,7 @@ import { MOBILE_VIDEO_SETTINGS } from "../../config/ffmpegSettings";
 import { getVideoMetadata } from "./videoEditor.utils";
 import { FONT_CONFIG, EMOJI_FONT } from "../../config/fonts.config";
 import type { FontConfig } from "../../config/fonts.config";
+import { isValidHexColor } from "../../utils/urlValidator";
 
 const MAC_RENDERER_URL = process.env.MAC_RENDERER_URL || "";
 
@@ -75,6 +76,14 @@ function buildFontFaceCSS(fontConfig: FontConfig): string {
   return `@font-face { font-family: '${familyName}'; src: url(data:font/${ext};base64,${base64}) format('${ext}'); font-weight: 900; }`;
 }
 
+function validateColorParams(...colors: string[]): void {
+  for (const color of colors) {
+    if (!isValidHexColor(color)) {
+      throw new Error(`Invalid color value: '${color}'. Only hex colors (e.g. #FF0000) are allowed.`);
+    }
+  }
+}
+
 export const generateTextImage = async (
   text: string,
   outputPath: string,
@@ -84,6 +93,7 @@ export const generateTextImage = async (
   style: "stroke" | "instagram" = "stroke",
   headingBgColor: string = "#000000",
 ): Promise<void> => {
+  validateColorParams(fillColor, strokeColor, headingBgColor);
   const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
   const fontFaceCSS = buildFontFaceCSS(fontConfig);
   const googleFontLink = fontConfig.url
@@ -169,6 +179,7 @@ export const addTextOverlayAtPosition = async (
   style: "stroke" | "instagram" = "stroke",
   headingBgColor: string = "#000000",
 ): Promise<string> => {
+  validateColorParams(fillColor, strokeColor, headingBgColor);
   const textImagePath = path.join(
     path.dirname(outputPath),
     `text_pos_${Date.now()}.png`,

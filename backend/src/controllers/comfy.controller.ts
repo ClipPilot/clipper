@@ -29,7 +29,7 @@ import path from "path";
 import fs from "fs";
 import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { UGC_CREDIT_COST } from "../constants/credits";
 import { INSUFFICIENT_CREDITS } from "../constants/errorCodes";
@@ -374,7 +374,7 @@ export class ComfyController {
     }
   }
 
-  async getJobStatus(req: Request, res: Response<{ job: Record<string, any> } | ErrorResponse>) {
+  async getJobStatus(req: AuthRequest, res: Response<{ job: Record<string, any> } | ErrorResponse>) {
     try {
       const { jobId } = req.params;
 
@@ -385,6 +385,7 @@ export class ComfyController {
       const [job] = await db
         .select({
           id: comfyJobs.id,
+          teamId: comfyJobs.teamId,
           status: comfyJobs.status,
           progress: comfyJobs.progress,
           progressMessage: comfyJobs.progressMessage,
@@ -406,6 +407,8 @@ export class ComfyController {
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, job.teamId, res))) return;
 
       let outputUrl: string | null = null;
       if (job.outputFile) {
@@ -452,7 +455,7 @@ export class ComfyController {
     }
   }
 
-  async getTeamJobs(req: Request, res: Response<{ jobs: Record<string, any>[]; total: number; limit: number; offset: number } | ErrorResponse>) {
+  async getTeamJobs(req: AuthRequest, res: Response<{ jobs: Record<string, any>[]; total: number; limit: number; offset: number } | ErrorResponse>) {
     try {
       const { teamId } = req.params;
       const limit = Math.min(parseInt(req.query.limit as string) || 6, 50);
@@ -461,6 +464,8 @@ export class ComfyController {
       if (!teamId) {
         return res.status(400).json({ error: "Team ID required" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, parseInt(teamId), res))) return;
 
       const [countResult] = await db
         .select({ count: sql<number>`count(*)` })
@@ -537,7 +542,7 @@ export class ComfyController {
     }
   }
 
-  async deleteJob(req: Request, res: Response) {
+  async deleteJob(req: AuthRequest, res: Response) {
     try {
       const { jobId } = req.params;
 
@@ -557,6 +562,8 @@ export class ComfyController {
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, job.teamId, res))) return;
 
       if (job.outputFile) {
         try {
@@ -878,6 +885,8 @@ export class ComfyController {
         return res.status(400).json({ error: "Team ID required" });
       }
 
+      if (!(await verifyTeamAccessOrFail(req, parseInt(teamId), res))) return;
+
       const faces = await db
         .select()
         .from(savedFaces)
@@ -961,6 +970,8 @@ export class ComfyController {
       if (!face) {
         return res.status(404).json({ error: "Face not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, face.team_id, res))) return;
 
       try {
         await s3Service.deleteObject(face.image_key);

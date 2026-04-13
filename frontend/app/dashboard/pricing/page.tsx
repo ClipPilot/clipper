@@ -144,7 +144,7 @@ function PricingContent() {
   };
 
   const isButtonDisabled = (tier: Tier) => {
-    return tier.key === TiersEnum.Free || tier.key === currentPlan;
+    return tier.key === TiersEnum.Free || tier.key === currentPlan || !isOwner;
   };
 
   const handleApplyReferral = async () => {
@@ -370,6 +370,22 @@ function PricingContent() {
       </motion.div>
 
       <div className="h-6" />
+
+      {!isOwner && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="relative z-10 w-full max-w-6xl mx-auto mb-4"
+        >
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <Icon icon="solar:shield-warning-bold-duotone" className="text-amber-500 flex-shrink-0" width={20} />
+            <p className="text-sm text-amber-500">
+              Only workspace owners can manage billing and upgrade plans.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

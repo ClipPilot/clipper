@@ -12,7 +12,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
-import { handleControllerError } from "../utils/controllerHelpers";
+import { handleControllerError, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 export class AdCloneController {
@@ -226,6 +226,8 @@ export class AdCloneController {
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
+
+      if (!(await verifyTeamAccessOrFail(req, project.teamId, res))) return;
 
       // Check if video job has completed and update ad clone project accordingly
       if (project.videoJobId && project.status === "generating_video") {

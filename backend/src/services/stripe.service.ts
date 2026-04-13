@@ -23,6 +23,7 @@ import { referralService } from "./referral.service";
 import { apiBillingService } from "./apiBilling.service";
 import { isAnalyticsPlan, isMainPlatformPlan, getViralityAccountLimit } from "../utils/plans";
 import { viralityService } from "./virality/virality.service";
+import { userPerformanceService } from "./virality/userPerformance.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -659,6 +660,9 @@ class StripeService {
         })
         .where(eq(usageStats.team_id, existingSub.team_id));
     }
+
+    await viralityService.pauseAllAccountsForTeam(existingSub.team_id);
+    await userPerformanceService.pauseAllAccountsForTeam(existingSub.team_id);
 
     const [teamForEmail] = await db
       .select()

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { s3Service } from "./s3.service";
 import { getApifyService } from "./virality/apify.service";
+import { validateUserUrlSync } from "../utils/urlValidator";
 
 export interface VideoInfo {
   title: string;
@@ -58,7 +59,15 @@ function isYouTubeUrl(url: string): boolean {
 
 
 class VideoDownloadService {
+  private assertSafeUrl(url: string): void {
+    const result = validateUserUrlSync(url);
+    if (!result.valid) {
+      throw new Error(`Blocked URL: ${result.error}`);
+    }
+  }
+
   async getVideoInfo(url: string): Promise<VideoInfo> {
+    this.assertSafeUrl(url);
     if (isInstagramUrl(url)) {
       const reel = await getApifyService().scrapeInstagramReel(url);
       return {
@@ -129,6 +138,8 @@ class VideoDownloadService {
     teamId: number,
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
+    this.assertSafeUrl(url);
+
     if (isInstagramUrl(url)) {
       return this.downloadViaApifyToS3(url, "instagram", teamId, onProgress);
     }
@@ -269,6 +280,8 @@ class VideoDownloadService {
   }
 
   async downloadToPath(url: string, outputPath: string): Promise<void> {
+    this.assertSafeUrl(url);
+
     if (isInstagramUrl(url)) {
       const reel = await getApifyService().scrapeInstagramReel(url);
       const dir = path.dirname(outputPath);

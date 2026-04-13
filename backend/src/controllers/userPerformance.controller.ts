@@ -2,7 +2,7 @@ import { Response } from "express";
 import type { ViralityAccount, ViralityPost, ViralityDashboard, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
-import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
+import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase, verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
   return requirePlanAccessBase(teamId, res, (id) => userPerformanceService.checkTeamPlanAccess(id), "Performance tracking requires a Studio plan or higher");
@@ -15,6 +15,7 @@ class UserPerformanceController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const accounts = await userPerformanceService.getAccountsByTeam(teamId);
@@ -28,6 +29,7 @@ class UserPerformanceController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const { platform, profileUrl, accountType } = req.body;
@@ -67,6 +69,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const account = await userPerformanceService.getAccountById(accountId);
@@ -85,6 +88,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       await userPerformanceService.deleteAccount(accountId, teamId);
@@ -117,6 +121,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       // Fire-and-forget: respond immediately, sync runs in background.
@@ -136,6 +141,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const limit = parseInt(req.query.limit as string) || 20;
@@ -162,6 +168,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const postId = parseId(req.params.postId);
       if (!teamId || !postId) return res.status(400).json({ error: "Invalid team or post ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       await userPerformanceService.deletePost(postId, teamId);
@@ -175,6 +182,7 @@ class UserPerformanceController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const accounts = await userPerformanceService.getAccountsByTeam(teamId) as any[];
@@ -214,6 +222,7 @@ class UserPerformanceController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const startDate = parseDateQuery(req.query.startDate);
@@ -230,6 +239,7 @@ class UserPerformanceController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
       const startDate = parseDateQuery(req.query.startDate);

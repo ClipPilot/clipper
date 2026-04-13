@@ -2,8 +2,6 @@ import { Response } from "express";
 import type { ClipPostsResponse, ErrorResponse } from "../types/api.types";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { adPostingService, AdPostingError, PlatformQuantities } from "../services/adPosting.service";
-import { canAccessMassPosting } from "../utils/plans";
-import { teamService } from "../services/team.service";
 import { handleControllerError } from "../utils/controllerHelpers";
 
 export async function postClipToPlatforms(req: AuthRequest, res: Response<{ message: string } | ErrorResponse>) {
@@ -16,11 +14,6 @@ export async function postClipToPlatforms(req: AuthRequest, res: Response<{ mess
     const userId = req.user?.dbUserId;
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    const team = await teamService.getTeamById(teamId);
-    if (!canAccessMassPosting(team.plan)) {
-      return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
     const { clipId, platforms, platformQuantities: rawPQ } = req.body;
@@ -69,11 +62,6 @@ export async function uploadCustomVideo(req: AuthRequest, res: Response) {
     const userId = req.user?.dbUserId;
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    const team = await teamService.getTeamById(teamId);
-    if (!canAccessMassPosting(team.plan)) {
-      return res.status(403).json({ error: "Requires Studio plan or higher" });
     }
 
     const { fileName, contentType } = req.body;
@@ -146,6 +134,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       page,
       pageSize,
       campaignId,
+      groupByVideo,
     } = req.query;
 
     const result = await adPostingService.getPostsForTeam(teamId, {
@@ -158,6 +147,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       page: page ? parseInt(page as string) : undefined,
       pageSize: pageSize ? Math.min(parseInt(pageSize as string), 100) : undefined,
       campaignId: campaignId ? parseInt(campaignId as string) : undefined,
+      groupByVideo: groupByVideo === "true",
     });
 
     return res.status(200).json(result);

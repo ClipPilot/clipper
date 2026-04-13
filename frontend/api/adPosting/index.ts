@@ -15,6 +15,7 @@ export interface GetTeamPostsParams {
   page?: number;
   pageSize?: number;
   campaignId?: number;
+  groupByVideo?: boolean;
 }
 
 class AdPostingAPI {
@@ -75,6 +76,7 @@ class AdPostingAPI {
     if (params.page) searchParams.set("page", params.page.toString());
     if (params.pageSize) searchParams.set("pageSize", params.pageSize.toString());
     if (params.campaignId) searchParams.set("campaignId", params.campaignId.toString());
+    if (params.groupByVideo) searchParams.set("groupByVideo", "true");
 
     const qs = searchParams.toString();
     const response = await apiFetch(

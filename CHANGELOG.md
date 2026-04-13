@@ -1,11 +1,37 @@
 # Changelog
 
+## [1.4.0](https://github.com/ClipPilot/clipper/compare/v1.3.2...v1.4.0) (2026-04-08)
+
+
+### Features
+
+* Agentic/podcast ([#162](https://github.com/ClipPilot/clipper/issues/162)) ([10f6125](https://github.com/ClipPilot/clipper/commit/10f61250b2cdf2f3e9d323a79be63f05f98258af))
+
+
+### Bug Fixes
+
+* Add team owner authorization checks for billing and virality features ([#168](https://github.com/ClipPilot/clipper/issues/168)) ([e754547](https://github.com/ClipPilot/clipper/commit/e7545473967965de75a7f0fb369827535b742e22))
+* corpping ([#166](https://github.com/ClipPilot/clipper/issues/166)) ([746d739](https://github.com/ClipPilot/clipper/commit/746d739259934d12990d20f072d9fe2368dbbe27))
+* correct typo 'supdated' → 'updated' in CHANGELOG.md ([#170](https://github.com/ClipPilot/clipper/issues/170)) ([5faa64c](https://github.com/ClipPilot/clipper/commit/5faa64cec3cf6a61cd3f325be7bec9123b181f3d))
+* fix build issues with types ([6803c9b](https://github.com/ClipPilot/clipper/commit/6803c9b5641787bc44af81b6026989da38274f9f))
+* scene image job order mismatch for podcast scripts          ([#165](https://github.com/ClipPilot/clipper/issues/165)) ([5862a19](https://github.com/ClipPilot/clipper/commit/5862a19c7a82d9e6ccce5778d9a7fd65298674a9))
+* security fixes ([#169](https://github.com/ClipPilot/clipper/issues/169)) ([40207ca](https://github.com/ClipPilot/clipper/commit/40207ca5bff7588d8937088dcd7f8432b70975c7))
+* URL bug ([4d63410](https://github.com/ClipPilot/clipper/commit/4d634103819430f4aa97b659de85be02013c8420))
+
+## [1.3.2](https://github.com/ClipPilot/clipper/compare/v1.3.1...v1.3.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* Amplify yml fixes ([e421a5b](https://github.com/ClipPilot/clipper/commit/e421a5b4736ae5f3052763cd2e6454a651c4358e))
+* regenerate va-tools package-lock.json with full dependency tree ([ac8f2c6](https://github.com/ClipPilot/clipper/commit/ac8f2c6e23dca2d805cd746a9f3a052aae53b42d))
+
 ## [1.3.1](https://github.com/ClipPilot/clipper/compare/v1.3.0...v1.3.1) (2026-04-02)
 
 
 ### Bug Fixes
 
-* Docker file supdated for shared types ([e48c38b](https://github.com/ClipPilot/clipper/commit/e48c38ba927aebe0561e6eb6679a718aaa9397b2))
+* Docker file updated for shared types ([e48c38b](https://github.com/ClipPilot/clipper/commit/e48c38ba927aebe0561e6eb6679a718aaa9397b2))
 * Notification fixes ([0838341](https://github.com/ClipPilot/clipper/commit/08383411c26532ff50b36ca908985e02c9c263cb))
 
 ## [1.3.0](https://github.com/ClipPilot/clipper/compare/v1.2.5...v1.3.0) (2026-04-01)

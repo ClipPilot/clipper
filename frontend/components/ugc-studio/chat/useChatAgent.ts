@@ -123,6 +123,8 @@ export function useChatAgent() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
+  const [scriptGenFailed, setScriptGenFailed] = useState(false);
+  const scriptGenAttemptsRef = useRef(0);
 
   const [videoAttachment, setVideoAttachment] = useState<VideoAttachment | null>(null);
   const [adCloneProjectId, setAdCloneProjectId] = useState<string | null>(null);
@@ -712,6 +714,9 @@ export function useChatAgent() {
 
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
+      scriptGenAttemptsRef.current = 0;
+      setScriptGenFailed(false);
+
       const customPattern = result.structure.map((scene) => ({
         type: scene.description,
         shot: scene.sceneType,
@@ -741,7 +746,9 @@ export function useChatAgent() {
   const generateScript = useCallback(async () => {
     const blueprint = videoState.structureBlueprint;
     if (!blueprint || !teamIdRef.current) return;
+    if (scriptGenAttemptsRef.current >= 3) return;
 
+    scriptGenAttemptsRef.current += 1;
     setVideoState((prev) => ({ ...prev, isGeneratingScript: true }));
 
     try {
@@ -771,6 +778,7 @@ export function useChatAgent() {
           videoType: blueprint.videoType,
         });
 
+        scriptGenAttemptsRef.current = 0;
         setVideoState((prev) => ({
           ...prev,
           scriptId: result.scriptId,
@@ -836,6 +844,7 @@ export function useChatAgent() {
 
         const script = result.script as UGCScript;
 
+        scriptGenAttemptsRef.current = 0;
         setVideoState((prev) => ({
           ...prev,
           scriptId: result.scriptId,
@@ -849,6 +858,18 @@ export function useChatAgent() {
       }
     } catch (error) {
       console.error("[useChatAgent] Script generation failed:", error);
+      if (scriptGenAttemptsRef.current >= 3) {
+        setScriptGenFailed(true);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "assistant",
+            content: "Script generation failed after multiple attempts. Please try again later or adjust your inputs.",
+            timestamp: new Date(),
+          },
+        ]);
+      }
       setVideoState((prev) => ({ ...prev, isGeneratingScript: false }));
     }
   }, [videoState, messages, adCloneProjectId, triggerImageGeneration, setVideoState]);
@@ -933,6 +954,7 @@ export function useChatAgent() {
     videoAttachment,
     setVideoAttachment,
     adCloneProjectId,
+    scriptGenFailed,
     sendMessage,
     acceptStructure,
     retryStructure,

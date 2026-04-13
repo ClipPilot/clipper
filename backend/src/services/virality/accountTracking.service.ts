@@ -1063,4 +1063,18 @@ export class AccountTrackingService {
 
     return canAccessViralityTracker(team.plan);
   }
+
+  async pauseAllAccountsForTeam(teamId: number) {
+    await db
+      .update(this.accountsTable)
+      .set({ is_active: false })
+      .where(eq(this.accountsTable.team_id, teamId));
+  }
+
+  async unpauseAllAccountsForTeam(teamId: number) {
+    await db
+      .update(this.accountsTable)
+      .set({ is_active: true })
+      .where(eq(this.accountsTable.team_id, teamId));
+  }
 }

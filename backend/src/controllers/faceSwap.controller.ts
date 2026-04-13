@@ -11,6 +11,7 @@ import path from "path";
 import os from "os";
 import ffmpeg from "fluent-ffmpeg";
 import { handleControllerError, requireUser } from "../utils/controllerHelpers";
+import { validateUserUrl } from "../utils/urlValidator";
 
 // Mobile-compatible H.264 encoding settings for downloads
 const MOBILE_DOWNLOAD_SETTINGS = [
@@ -113,14 +114,15 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
     }
 
+    const urlCheck = await validateUserUrl(url);
+    if (!urlCheck.valid) {
+      return res.status(400).json({ error: urlCheck.error });
+    }
+
     const rawFilename = typeof filename === "string" ? filename : "video.mp4";
     const outputFilename = rawFilename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
 
-    // Mode: "direct" = stream from S3 directly (fastest)
-    //       "remux" = copy streams without re-encoding (fast, fixes metadata)
-    //       undefined = full re-encode (slowest but most compatible)
     if (mode === "direct") {
-      // Direct proxy from S3 - no processing, fastest option
       console.log(`[DOWNLOAD] Direct proxy: ${url.substring(0, 100)}...`);
 
       const response = await fetch(url);
@@ -239,7 +241,7 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const downloadFixedPublic = async (req: Request, res: Response) => {
+export const downloadFixedPublic = async (req: AuthRequest, res: Response) => {
   const tempInputPath = path.join(os.tmpdir(), `dl_input_${Date.now()}.mp4`);
   const tempOutputPath = path.join(os.tmpdir(), `dl_output_${Date.now()}.mp4`);
 
@@ -248,6 +250,11 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
 
     if (!url || typeof url !== "string") {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
+    }
+
+    const urlCheck = await validateUserUrl(url);
+    if (!urlCheck.valid) {
+      return res.status(400).json({ error: urlCheck.error });
     }
 
     const rawFilename = typeof filename === "string" ? filename : "video.mp4";
