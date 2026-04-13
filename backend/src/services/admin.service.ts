@@ -11,7 +11,7 @@ import {
   teamMembers,
   users,
 } from "@clipper/shared-db/src/schema";
-import { eq, count, and, sql, desc } from "drizzle-orm";
+import { eq, count, and, sql, desc, inArray } from "drizzle-orm";
 import { stripe, ENTERPRISE_PRODUCT } from "../config/stripe.config";
 import { emailNotiService } from "./emailNoti.service";
 
@@ -197,54 +197,31 @@ class AdminService {
       };
     }
 
-    const [subsMap, usageMap, memberCountMap, ownerMap] = await Promise.all([
-      db
-        .select()
-        .from(subscriptions)
-        .where(sql`${subscriptions.team_id} = ANY(${teamIds})`)
-        .then((rows) => new Map(rows.map((r) => [r.team_id, r]))),
+    const subsRows = await db.select().from(subscriptions).where(inArray(subscriptions.team_id, teamIds));
+    const subsMap = new Map(subsRows.map((r) => [r.team_id, r]));
 
-      db
-        .select({
-          team_id: usageStats.team_id,
-          clips_created: usageStats.clips_created,
-          limit: usageStats.limit,
-        })
-        .from(usageStats)
-        .where(sql`${usageStats.team_id} = ANY(${teamIds})`)
-        .then((rows) => {
-          const map = new Map<number, { clips_created: number; limit: number }>();
-          for (const r of rows) {
-            if (!map.has(r.team_id)) map.set(r.team_id, r);
-          }
-          return map;
-        }),
+    const usageRows = await db
+      .select({ team_id: usageStats.team_id, clips_created: usageStats.clips_created, limit: usageStats.limit })
+      .from(usageStats)
+      .where(inArray(usageStats.team_id, teamIds));
+    const usageMap = new Map<number, { clips_created: number; limit: number }>();
+    for (const r of usageRows) {
+      if (!usageMap.has(r.team_id)) usageMap.set(r.team_id, r);
+    }
 
-      db
-        .select({
-          team_id: teamMembers.team_id,
-          count: count(),
-        })
-        .from(teamMembers)
-        .where(sql`${teamMembers.team_id} = ANY(${teamIds})`)
-        .groupBy(teamMembers.team_id)
-        .then((rows) => new Map(rows.map((r) => [r.team_id, Number(r.count)]))),
+    const memberRows = await db
+      .select({ team_id: teamMembers.team_id, count: count() })
+      .from(teamMembers)
+      .where(inArray(teamMembers.team_id, teamIds))
+      .groupBy(teamMembers.team_id);
+    const memberCountMap = new Map(memberRows.map((r) => [r.team_id, Number(r.count)]));
 
-      db
-        .select({
-          team_id: teamMembers.team_id,
-          email: users.email,
-        })
-        .from(teamMembers)
-        .innerJoin(users, eq(teamMembers.user_id, users.id))
-        .where(
-          and(
-            sql`${teamMembers.team_id} = ANY(${teamIds})`,
-            eq(teamMembers.role, "owner")
-          )
-        )
-        .then((rows) => new Map(rows.map((r) => [r.team_id, r.email]))),
-    ]);
+    const ownerRows = await db
+      .select({ team_id: teamMembers.team_id, email: users.email })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.user_id, users.id))
+      .where(and(inArray(teamMembers.team_id, teamIds), eq(teamMembers.role, "owner")));
+    const ownerMap = new Map(ownerRows.map((r) => [r.team_id, r.email]));
 
     const teamsWithDetails = allTeams.map((team) => ({
       ...team,

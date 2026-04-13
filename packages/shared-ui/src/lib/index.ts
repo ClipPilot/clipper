@@ -38,4 +38,6 @@ export {
   buildStatCards,
   getNextSyncCountdown,
   toFeedPosts,
+  computeGroupCardData,
+  type GroupCardData,
 } from "./viralityUtils";

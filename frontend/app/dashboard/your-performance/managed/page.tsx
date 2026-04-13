@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button, toast, Spinner } from "@heroui/react";
+import { Button, toast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useTeams } from "@/hooks/useTeams";
@@ -31,7 +31,6 @@ import {
   getComparisonDate,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
-import { useViralitySync } from "@/hooks/useViralitySyncSocket";
 
 export default function ManagedAccountsDetailPage() {
   const router = useRouter();
@@ -47,8 +46,6 @@ export default function ManagedAccountsDetailPage() {
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
   const [backfillDone, setBackfillDone] = useState(false);
 
-  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
-
   const fetchData = useCallback(async (silent = false) => {
     if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current && !silent) setIsRecalculating(true);
@@ -60,7 +57,6 @@ export default function ManagedAccountsDetailPage() {
 
       const accts = await userPerformanceAPI.getAccounts(selectedTeam.id, "mass_posting");
       setAccounts(accts);
-      reconcileSync(accts);
 
       const { startDate, endDate } = dateRange;
       const postsMap: Record<number, ViralityPost[]> = {};
@@ -83,30 +79,6 @@ export default function ManagedAccountsDetailPage() {
   }, [selectedTeam?.id, selectedTeam?.plan, dateRange, backfillDone]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  const allAccountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
-  const isSyncing = isAnySyncing(allAccountIds);
-  const syncingAccountIds = getSyncingIds(allAccountIds);
-
-  const prevSyncingRef = useRef<number[]>([]);
-  useEffect(() => {
-    const prev = prevSyncingRef.current;
-    const justFinished = prev.filter((id) => !syncingAccountIds.includes(id));
-    if (justFinished.length > 0) fetchData(true);
-    prevSyncingRef.current = syncingAccountIds;
-  }, [syncingAccountIds, fetchData]);
-
-  const handleSyncAll = async () => {
-    if (!selectedTeam?.id || accounts.length === 0) return;
-    const ids = accounts.map((a) => a.id);
-    startSync(ids);
-    try {
-      await Promise.all(ids.map((id) => userPerformanceAPI.syncAccount(selectedTeam.id, id)));
-      toast("Sync started for all managed accounts");
-    } catch (err: any) {
-      toast.danger("Failed to start sync", { description: err.message });
-    }
-  };
 
   const handleDeletePost = useCallback(async (postId: number) => {
     if (!selectedTeam?.id) return;
@@ -253,24 +225,11 @@ export default function ManagedAccountsDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
-            <Button className="bg-cyan-500 text-white" isDisabled={isSyncing || accounts.length === 0} onPress={handleSyncAll}>
-              {isSyncing ? <Spinner size="sm" color="current" /> : <Icon icon="solar:refresh-bold" width={18} />}
-              {isSyncing ? "Syncing..." : "Sync All"}
-            </Button>
           </div>
         </div>
 
         {accounts.length > 0 && (
           <AccountFilterPopover accounts={accounts} selectedAccountIds={selectedAccountIds} onChange={setSelectedAccountIds} />
-        )}
-
-        {syncingAccountIds.length > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-4 py-3">
-            <Spinner size="sm" />
-            <p className="text-sm text-text-secondary">
-              Syncing managed accounts&hellip; Metrics will appear once complete.
-            </p>
-          </div>
         )}
 
         <StatCards items={statCards} />

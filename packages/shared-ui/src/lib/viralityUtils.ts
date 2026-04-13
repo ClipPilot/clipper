@@ -26,6 +26,79 @@ export function computePostsPerWeek(posts: ViralityPost[]): number {
   return +(dates.length / weeks).toFixed(1);
 }
 
+function pctChange(latest: number, prev: number): number | null {
+  return prev > 0 ? ((latest - prev) / prev) * 100 : null;
+}
+
+export interface GroupCardData {
+  accountCount: number;
+  followers: number;
+  totalViews: number;
+  engRate: number;
+  avgViews: number;
+  platforms: string[];
+  followersChange: number | null;
+  viewsChange: number | null;
+  engRateChange: number | null;
+  contentVelocity: number;
+}
+
+export function computeGroupCardData(
+  accounts: ViralityAccount[],
+  postsByAccount: Record<number, ViralityPost[]>,
+): GroupCardData {
+  const posts = accounts.flatMap((a) => postsByAccount[a.id] || []);
+  const followers = accounts.reduce((s, a) => s + (a.follower_count || 0), 0);
+  const totalViews = posts.reduce((s, p) => s + (p.video_play_count || 0), 0);
+  const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
+  const totalComments = posts.reduce((s, p) => s + (p.comment_count || 0), 0);
+  const engRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
+  const avgViews = posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
+
+  let prevLikes = 0, prevComments = 0, prevViews = 0;
+  let latestLikes = 0, latestComments = 0, latestViews = 0;
+  let prevFollowers = 0, latestFollowers = 0;
+  let hasHistory = false, hasFollowerHistory = false;
+
+  for (const post of posts) {
+    const h = post.metrics_history;
+    if (!h || h.length < 2) continue;
+    hasHistory = true;
+    const prev = h[h.length - 2]!;
+    const latest = h[h.length - 1]!;
+    prevLikes += prev.likes ?? 0;
+    prevComments += prev.comments ?? 0;
+    prevViews += prev.views ?? 0;
+    latestLikes += latest.likes ?? 0;
+    latestComments += latest.comments ?? 0;
+    latestViews += latest.views ?? 0;
+  }
+
+  for (const a of accounts) {
+    const fh = a.follower_history;
+    if (!fh || fh.length < 2) continue;
+    hasFollowerHistory = true;
+    prevFollowers += (fh[fh.length - 2] as any)?.followers ?? 0;
+    latestFollowers += (fh[fh.length - 1] as any)?.followers ?? 0;
+  }
+
+  const prevEngRate = prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
+  const latestEngRate = latestViews > 0 ? ((latestLikes + latestComments) / latestViews) * 100 : 0;
+
+  return {
+    accountCount: accounts.length,
+    followers,
+    totalViews,
+    engRate,
+    avgViews,
+    platforms: Array.from(new Set(accounts.map((a) => a.platform))),
+    followersChange: hasFollowerHistory ? pctChange(latestFollowers, prevFollowers) : null,
+    viewsChange: hasHistory ? pctChange(latestViews, prevViews) : null,
+    engRateChange: hasHistory ? latestEngRate - prevEngRate : null,
+    contentVelocity: computePostsPerWeek(posts),
+  };
+}
+
 /** Find the history entry closest to a target date */
 export function findClosestEntry<T extends { recorded_at: string }>(
   history: T[],
@@ -137,6 +210,11 @@ export interface AccountChartDay {
   [key: string]: string | number;
 }
 
+function toLocalDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export function buildChartDataByAccount(
   postsByAccount: Record<number, ViralityPost[]>,
   accountIds: number[],
@@ -144,8 +222,8 @@ export function buildChartDataByAccount(
   startDate?: string,
   endDate?: string,
 ): AccountChartDay[] {
-  const startStr = startDate ? new Date(startDate).toISOString().slice(0, 10) : undefined;
-  const endStr = endDate ? new Date(endDate).toISOString().slice(0, 10) : undefined;
+  const startStr = startDate ? toLocalDay(startDate) : undefined;
+  const endStr = endDate ? toLocalDay(endDate) : undefined;
 
   const allDays = new Set<string>();
   const byAccountDay = new Map<number, Map<string, number>>();
@@ -158,7 +236,7 @@ export function buildChartDataByAccount(
       if (!post.metrics_history?.length) continue;
       const postDayMax = new Map<string, number>();
       for (const entry of post.metrics_history) {
-        const day = entry.recorded_at.slice(0, 10);
+        const day = toLocalDay(entry.recorded_at);
         const val = metric === "views" ? (entry.views ?? 0) : (entry[metric] ?? 0);
         const prev = postDayMax.get(day);
         if (prev === undefined || val > prev) postDayMax.set(day, val);

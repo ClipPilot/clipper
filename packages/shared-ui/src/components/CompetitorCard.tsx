@@ -17,7 +17,7 @@ export const AVATAR_COLORS = [
 ];
 
 export interface CompetitorCardData {
-  id: number;
+  id: number | string;
   name: string;
   accountCount: number;
   followers: number;
@@ -29,24 +29,33 @@ export interface CompetitorCardData {
   viewsChange: number | null;
   engRateChange: number | null;
   isMyPerformance?: boolean;
+  contentVelocity?: number;
+}
+
+export interface CardMetric {
+  label: string;
+  value: string;
+  change: number | null;
+  absoluteChange?: boolean;
 }
 
 interface CompetitorCardProps {
   data: CompetitorCardData;
   index: number;
   isExpanded?: boolean;
-  onView?: (id: number) => void;
+  onView?: (id: number | string) => void;
   nameOverride?: ReactNode;
   actions?: ReactNode;
+  metricsOverride?: CardMetric[];
 }
 
-export function CompetitorCard({ data, index, onView, nameOverride, actions }: CompetitorCardProps) {
+export function CompetitorCard({ data, index, onView, nameOverride, actions, metricsOverride }: CompetitorCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const metrics: { label: string; value: string; change: number | null; absoluteChange?: boolean }[] = [
+  const metrics: CardMetric[] = metricsOverride ?? [
     { label: "Total Views", value: formatNumber(data.totalViews), change: data.viewsChange },
     { label: "Avg. Views", value: formatNumber(data.avgViews), change: null },
-    { label: "Followers", value: formatNumber(data.followers), change: data.followersChange },
+    { label: "Posts/Week", value: data.contentVelocity != null ? String(data.contentVelocity) : formatNumber(data.followers), change: data.contentVelocity != null ? null : data.followersChange },
     { label: "Eng. Rate", value: data.engRate.toFixed(2) + "%", change: data.engRateChange, absoluteChange: true },
   ];
 

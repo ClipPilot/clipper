@@ -25,6 +25,11 @@ type ChartMetricKey = "likes" | "comments" | "views";
 
 const TOTAL_COLOR = "#8b5cf6";
 
+function toLocalDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function formatDayKey(dayKey: string) {
   const d = new Date(dayKey + "T00:00:00");
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -102,8 +107,8 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const tooltipByDay = useMemo(() => {
     const map: Record<string, { views: number; likes: number; comments: number }> = {};
-    const startStr = startDate ? new Date(startDate).toISOString().slice(0, 10) : undefined;
-    const endStr = endDate ? new Date(endDate).toISOString().slice(0, 10) : undefined;
+    const startStr = startDate ? toLocalDay(startDate) : undefined;
+    const endStr = endDate ? toLocalDay(endDate) : undefined;
 
     for (const account of totalsAccounts) {
       const posts = totalsPostsByAccount[account.id] || [];
@@ -111,7 +116,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
         if (!post.metrics_history?.length) continue;
         const postDayMax = new Map<string, { views: number; likes: number; comments: number }>();
         for (const entry of post.metrics_history) {
-          const day = entry.recorded_at.slice(0, 10);
+          const day = toLocalDay(entry.recorded_at);
           const views = entry.views ?? 0;
           const existing = postDayMax.get(day);
           if (!existing || views > existing.views) {

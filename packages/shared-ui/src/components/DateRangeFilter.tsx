@@ -4,7 +4,17 @@ import { useState } from "react";
 import { Button, Dropdown, DateField, DateRangePicker, RangeCalendar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CalendarDate } from "@internationalized/date";
-import { today, getLocalTimeZone, parseDate, startOfMonth } from "@internationalized/date";
+import { today, getLocalTimeZone, parseDate, startOfMonth, toZoned, toCalendarDateTime } from "@internationalized/date";
+
+function localStartOfDay(date: CalendarDate): string {
+  const zoned = toZoned(toCalendarDateTime(date, { hour: 0, minute: 0, second: 0, millisecond: 0 } as any), getLocalTimeZone());
+  return new Date(zoned.toAbsoluteString()).toISOString();
+}
+
+function localEndOfDay(date: CalendarDate): string {
+  const zoned = toZoned(toCalendarDateTime(date, { hour: 23, minute: 59, second: 59, millisecond: 999 } as any), getLocalTimeZone());
+  return new Date(zoned.toAbsoluteString()).toISOString();
+}
 
 export interface DateRangeValue {
   startDate?: string;
@@ -28,8 +38,8 @@ export function getMonthToDateRange(): DateRangeValue {
   const now = today(tz);
   const monthStart = startOfMonth(now);
   return {
-    startDate: monthStart.toString() + "T00:00:00.000Z",
-    endDate: now.toString() + "T23:59:59.999Z",
+    startDate: localStartOfDay(monthStart),
+    endDate: localEndOfDay(now),
   };
 }
 
@@ -38,8 +48,8 @@ function subtractMonths(months: number): DateRangeValue {
   const now = today(tz);
   const start = now.subtract({ months });
   return {
-    startDate: start.toString() + "T00:00:00.000Z",
-    endDate: now.toString() + "T23:59:59.999Z",
+    startDate: localStartOfDay(start),
+    endDate: localEndOfDay(now),
   };
 }
 
@@ -58,8 +68,8 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
   const handlePickerChange = (range: { start: CalendarDate; end: CalendarDate } | null) => {
     if (!range) return;
     onChange({
-      startDate: range.start.toString() + "T00:00:00.000Z",
-      endDate: range.end.toString() + "T23:59:59.999Z",
+      startDate: localStartOfDay(range.start),
+      endDate: localEndOfDay(range.end),
     });
   };
 

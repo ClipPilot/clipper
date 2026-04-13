@@ -3,7 +3,7 @@ export { StatCards, type StatCardItem } from "./StatCards";
 export { HeadToHeadTable, type CompetitorMetrics } from "./HeadToHeadTable";
 export { PlatformFilter, type PlatformOption } from "./PlatformFilter";
 export { ActivityFeed, type FeedPost } from "./ActivityFeed";
-export { CompetitorCard, AVATAR_COLORS, type CompetitorCardData } from "./CompetitorCard";
+export { CompetitorCard, AVATAR_COLORS, type CompetitorCardData, type CardMetric } from "./CompetitorCard";
 export { AccountsTable, type AccountRow } from "./AccountsTable";
 export { ViralitySyncListener } from "./ViralitySyncListener";
 export { DateRangeFilter, type DateRangeValue, getMonthToDateRange } from "./DateRangeFilter";

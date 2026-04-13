@@ -14,7 +14,7 @@ import {
   DateRangeFilter,
   PlatformFilter,
 } from "@/components/virality";
-import { CompetitorCard, ManagedAccountsCard, ViralityUpgradeWall, type FeedPost, type ManagedAccount, type ManagedAccountsStats } from "@clipper/shared-ui";
+import { CompetitorCard, ViralityUpgradeWall, type FeedPost, computeGroupCardData } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
@@ -26,7 +26,6 @@ import {
   type CompetitorWithAccounts,
 } from "@/api/virality";
 import { userPerformanceAPI } from "@/api/userPerformance";
-import { adPostingAPI } from "@/api/adPosting";
 import { canAccessViralityTracker, getViralityAccountLimit } from "@/lib/plans";
 import { pct } from "@/app/dashboard/virality/[competitorId]/utils";
 import type { PlatformOption } from "@clipper/shared-ui";
@@ -35,6 +34,7 @@ type PostWithMeta = ViralityPost & {
   accountUsername: string;
   accountPlatform: string;
 };
+
 
 function formatNumber(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -108,8 +108,7 @@ export default function ExecutiveDashboardPage() {
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [totalAccountCount, setTotalAccountCount] = useState(0);
-  const [managedAccounts, setManagedAccounts] = useState<ManagedAccount[]>([]);
-  const [managedStats, setManagedStats] = useState<ManagedAccountsStats>({ totalAccounts: 0, totalReposts: 0, avgPostsPerAccount: 0 });
+  const [myAccounts, setMyAccounts] = useState<ViralityAccount[]>([]);
   const { isOpen, open: onOpen, close: onClose } = useOverlayState();
 
   const fetchData = useCallback(async () => {
@@ -119,24 +118,18 @@ export default function ExecutiveDashboardPage() {
       const { startDate, endDate } = dateRange;
 
       const myAccts = await userPerformanceAPI.getAccounts(selectedTeam.id);
+      setMyAccounts(myAccts);
 
-      const [withAccounts, stats, myStats, alerts, managedData] = await Promise.all([
+      const [withAccounts, stats, myStats, alerts] = await Promise.all([
         viralityAPI.getGroupsWithAccounts(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
-        userPerformanceAPI.getDashboardStats(
-          selectedTeam.id,
-          startDate,
-          endDate,
-        ),
+        userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
         viralityAPI.getAlertLogs(selectedTeam.id, 5),
-        adPostingAPI.getAccountStats(selectedTeam.id),
       ]);
 
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
       setAlertLogs(alerts);
-      setManagedAccounts(managedData.accounts);
-      setManagedStats(managedData.stats);
       setCompetitors(
         withAccounts.filter((g: any) => g.competitor === false),
       );
@@ -242,84 +235,20 @@ export default function ExecutiveDashboardPage() {
     await fetchData();
   };
 
+  const managedAccts = useMemo(() => myAccounts.filter((a: any) => a.source === "mass_posting"), [myAccounts]);
+
+  const managedCardData = useMemo(() => {
+    if (managedAccts.length === 0) return null;
+    return { id: "managed" as const, name: "Cuttr Managed", ...computeGroupCardData(managedAccts, postsByAccount) };
+  }, [managedAccts, postsByAccount]);
+
   const competitorCards = useMemo(() => {
-    return competitors.map((comp) => {
-      const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
-      const followers = comp.accounts.reduce(
-        (s, a) => s + (a.follower_count || 0),
-        0,
-      );
-      const totalViews = posts.reduce(
-        (s, p) => s + (p.video_play_count || 0),
-        0,
-      );
-      const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
-      const totalComments = posts.reduce(
-        (s, p) => s + (p.comment_count || 0),
-        0,
-      );
-      const engRate =
-        totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
-      const avgViews =
-        posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
-
-      let prevLikes = 0, prevComments = 0, prevViews = 0;
-      let latestLikes = 0, latestComments = 0, latestViews = 0;
-      let prevFollowers = 0, latestFollowers = 0;
-      let hasHistory = false, hasFollowerHistory = false;
-
-      for (const post of posts) {
-        const h = post.metrics_history;
-        if (!h || h.length < 2) continue;
-        hasHistory = true;
-        const prev = h[h.length - 2];
-        const latest = h[h.length - 1];
-        prevLikes += prev.likes;
-        prevComments += prev.comments;
-        prevViews += prev.views ?? 0;
-        latestLikes += latest.likes;
-        latestComments += latest.comments;
-        latestViews += latest.views ?? 0;
-      }
-
-      for (const a of comp.accounts) {
-        const fh = a.follower_history;
-        if (!fh || fh.length < 2) continue;
-        hasFollowerHistory = true;
-        prevFollowers += fh[fh.length - 2].followers;
-        latestFollowers += fh[fh.length - 1].followers;
-      }
-
-      const followersChange = hasFollowerHistory
-        ? pct(latestFollowers, prevFollowers)
-        : null;
-      const viewsChange = hasHistory ? pct(latestViews, prevViews) : null;
-
-      const prevEngRate =
-        prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
-      const latestEngRate =
-        latestViews > 0
-          ? ((latestLikes + latestComments) / latestViews) * 100
-          : 0;
-      const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
-
-      const platforms: string[] = Array.from(
-        new Set(comp.accounts.map((a: ViralityAccount) => a.platform)),
-      );
-
-      return {
-        competitor: comp,
-        followers,
-        totalViews,
-        engRate,
-        avgViews,
-        platforms,
-        followersChange,
-        viewsChange,
-        engRateChange,
-        isMyPerformance: false,
-      };
-    });
+    return competitors.map((comp) => ({
+      id: comp.id,
+      name: comp.name,
+      accounts: comp.accounts,
+      ...computeGroupCardData(comp.accounts, postsByAccount),
+    }));
   }, [competitors, postsByAccount]);
 
   const accountRows = useMemo(() => {
@@ -469,29 +398,26 @@ export default function ExecutiveDashboardPage() {
 
         {/* Account Group Cards */}
         <div className="flex flex-wrap gap-4 [&>*]:flex-1 [&>*]:min-w-[250px]">
-          <ManagedAccountsCard
-            accounts={managedAccounts}
-            stats={managedStats}
-            onView={() => router.push("/dashboard/your-performance/managed")}
-          />
+          {managedCardData && (
+            <CompetitorCard
+              data={managedCardData as any}
+              index={0}
+              onView={() => router.push("/dashboard/your-performance/managed")}
+              nameOverride={
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Cuttr Managed</p>
+                  <span className="text-[10px] text-text-tertiary">
+                    {managedCardData.accountCount} account{managedCardData.accountCount !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              }
+            />
+          )}
           {competitorCards.map((card, idx) => (
             <CompetitorCard
-              key={card.competitor.id}
-              data={{
-                id: card.competitor.id,
-                name: card.competitor.name,
-                accountCount: card.competitor.accounts.length,
-                followers: card.followers,
-                totalViews: card.totalViews,
-                engRate: card.engRate,
-                avgViews: card.avgViews,
-                platforms: card.platforms,
-                followersChange: card.followersChange,
-                viewsChange: card.viewsChange,
-                engRateChange: card.engRateChange,
-                isMyPerformance: card.isMyPerformance,
-              }}
-              index={idx}
+              key={card.id}
+              data={card}
+              index={idx + (managedCardData ? 1 : 0)}
               onView={(id) => router.push(`/dashboard/virality/${id}`)}
             />
           ))}

@@ -14,7 +14,7 @@ import {
   HeadToHeadTable,
   PlatformFilter,
 } from "@/components/virality";
-import { CompetitorCard, ViralityUpgradeWall, type FeedPost } from "@clipper/shared-ui";
+import { CompetitorCard, ViralityUpgradeWall, type FeedPost, computeGroupCardData } from "@clipper/shared-ui";
 import { useTeams } from "@/hooks/useTeams";
 import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
@@ -197,84 +197,10 @@ export default function YourCompetitorsPage() {
   };
 
   const competitorCards = useMemo(() => {
-    return competitorGroups.map((comp) => {
-      const posts = comp.accounts.flatMap((a) => compPostsByAccount[a.id] || []);
-      const followers = comp.accounts.reduce(
-        (s, a) => s + (a.follower_count || 0),
-        0,
-      );
-      const totalViews = posts.reduce(
-        (s, p) => s + (p.video_play_count || 0),
-        0,
-      );
-      const totalLikes = posts.reduce((s, p) => s + (p.like_count || 0), 0);
-      const totalComments = posts.reduce(
-        (s, p) => s + (p.comment_count || 0),
-        0,
-      );
-      const engRate =
-        totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
-      const avgViews =
-        posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
-      const postsPerWeek = computePostsPerWeek(posts);
-
-      let prevLikes = 0, prevComments = 0, prevViews = 0;
-      let latestLikes = 0, latestComments = 0, latestViews = 0;
-      let prevFollowers = 0, latestFollowers = 0;
-      let hasHistory = false, hasFollowerHistory = false;
-
-      for (const post of posts) {
-        const h = post.metrics_history;
-        if (!h || h.length < 2) continue;
-        hasHistory = true;
-        const prev = h[h.length - 2];
-        const latest = h[h.length - 1];
-        prevLikes += prev.likes;
-        prevComments += prev.comments;
-        prevViews += prev.views ?? 0;
-        latestLikes += latest.likes;
-        latestComments += latest.comments;
-        latestViews += latest.views ?? 0;
-      }
-
-      for (const a of comp.accounts) {
-        const fh = a.follower_history;
-        if (!fh || fh.length < 2) continue;
-        hasFollowerHistory = true;
-        prevFollowers += fh[fh.length - 2].followers;
-        latestFollowers += fh[fh.length - 1].followers;
-      }
-
-      const followersChange = hasFollowerHistory
-        ? pct(latestFollowers, prevFollowers)
-        : null;
-      const viewsChange = hasHistory ? pct(latestViews, prevViews) : null;
-
-      const prevEngRate =
-        prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
-      const latestEngRate =
-        latestViews > 0
-          ? ((latestLikes + latestComments) / latestViews) * 100
-          : 0;
-      const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
-
-      const platforms: string[] = Array.from(
-        new Set(comp.accounts.map((a: ViralityAccount) => a.platform)),
-      );
-
-      return {
-        competitor: comp,
-        followers,
-        totalViews,
-        engRate,
-        avgViews,
-        postsPerWeek,
-        platforms,
-        followersChange,
-        viewsChange,
-        engRateChange,
-      };
-    });
+    return competitorGroups.map((comp) => ({
+      competitor: comp,
+      ...computeGroupCardData(comp.accounts, compPostsByAccount),
+    }));
   }, [competitorGroups, compPostsByAccount]);
 
   const headToHeadData = useMemo(() => {
@@ -303,7 +229,7 @@ export default function YourCompetitorsPage() {
       totalViews: card.totalViews,
       totalPosts: card.competitor.accounts.flatMap((a) => compPostsByAccount[a.id] || []).length,
       engRate: card.engRate,
-      postsPerWeek: card.postsPerWeek,
+      postsPerWeek: card.contentVelocity,
       avgViews: card.avgViews,
     }));
 
@@ -400,7 +326,7 @@ export default function YourCompetitorsPage() {
               data={{
                 id: card.competitor.id,
                 name: card.competitor.name,
-                accountCount: card.competitor.accounts.length,
+                accountCount: card.accountCount,
                 followers: card.followers,
                 totalViews: card.totalViews,
                 engRate: card.engRate,
@@ -409,6 +335,7 @@ export default function YourCompetitorsPage() {
                 followersChange: card.followersChange,
                 viewsChange: card.viewsChange,
                 engRateChange: card.engRateChange,
+                contentVelocity: card.contentVelocity,
               }}
               index={idx}
               onView={(id) => router.push(`/dashboard/virality/${id}`)}
