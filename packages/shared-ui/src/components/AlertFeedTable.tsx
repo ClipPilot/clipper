@@ -201,17 +201,6 @@ export function AlertFeedTable({
               </div>
 
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                {first?.thumbnailUrl ? (
-                  <img
-                    src={first.thumbnailUrl}
-                    alt=""
-                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-border-base"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold text-text-tertiary shrink-0 bg-surface-elevated border border-border-base">
-                    {first ? (PLATFORM_ABBR[first.platform.toLowerCase()] ?? "??") : "\u2014"}
-                  </div>
-                )}
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-text-primary truncate max-w-xs">
                     {first?.caption ?? alert.subject}
