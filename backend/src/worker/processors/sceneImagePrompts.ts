@@ -303,10 +303,12 @@ The first reference image shows the PREVIOUS FRAME - match its environment EXACT
   if (isPodcastScene) {
     sections.push(`**PODCAST SCENE - STRICT RULES**
 - EXACTLY ONE person in frame. NEVER show two people, silhouettes, reflections, or shadows of a second person.
+- MEDIUM CLOSE-UP framing: chest/shoulders up. Camera is TIGHT on this one character. NEVER use a wide shot showing the full desk or studio. The other side of the desk, the other chair, and the other microphone must be completely out of frame.
 - Character sits at a podcast desk speaking into a microphone. They face the microphone or the other host — NEVER the camera. No eye contact with the camera.
 - Character wears the EXACT same outfit shown in the character reference image. Do not change, add, or remove any clothing or accessories.
-- The setting is a podcast studio: desk, microphone, headphones, soft studio lighting. This setting MUST be IDENTICAL across all shots in this scene.
-- Each character has their OWN camera side and general angle. Character A and Character B are viewed from DIFFERENT sides. Between shots of the SAME character, introduce natural micro-variations in pose — slightly different head tilt, lean, or hand placement — like real podcast footage. Outfit, setting, and camera side remain consistent.`);
+- The setting is a podcast studio: desk, microphone, soft studio lighting. This setting MUST be IDENTICAL across all shots in this scene.
+- Each character has their OWN camera side and general angle. Character A and Character B are viewed from DIFFERENT sides. Between shots of the SAME character, introduce natural micro-variations in pose — slightly different head tilt, lean, or hand placement — like real podcast footage. Outfit, setting, and camera side remain consistent.
+- NEVER show an empty chair, second microphone, or the opposite side of the desk. Frame as if each character has their own dedicated camera that only sees them.`);
   }
 
   if (hasVideoFrameReference) {

@@ -89,6 +89,7 @@ export const initAgentSchema = z.object({
   isSilent: z.boolean().describe("Whether the video is silent. Set to false for conversation responses."),
   character: z.boolean().describe("Whether the video has a character. Set to true for conversation responses."),
   characterCount: z.number().min(0).max(2).describe("Number of characters needed. 0 = no character, 1 = standard single-actor (default), 2 = podcast/conversation. Set to 1 for conversation responses."),
+  characterRoles: z.array(z.string()).max(2).describe("Short role label for each character, parallel to characterCount. E.g. ['Republican debater', 'Democrat debater'], ['Host', 'Guest'], ['Interviewer', 'CEO of TechCorp']. Must have exactly characterCount entries when characterCount >= 2. Set to empty array [] when characterCount <= 1 or for conversation responses."),
   structure: structureSchema.describe("The scene structure array. Set to an empty array [] for conversation responses."),
   videoType: videoTypeEnum.describe("The video type. Set to 'ugc' for conversation responses."),
   targetAudience: z.string().describe(

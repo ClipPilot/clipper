@@ -132,6 +132,7 @@ When videoType is "podcast" and 2+ characters are provided (characterCount >= 2)
 - Use sceneType "a-roll-multi" for ALL conversation scenes
 - Do NOT use regular "a-roll" for podcast conversation scenes
 - "a-roll-multi" scenes use the arollShots array (2-6 shots per scene)
+- When character roles are provided in the character summary (e.g. "Role: Republican debater"), each character's dialogue MUST reflect their assigned role, perspective, vocabulary, and speaking style. The role defines who they are in the conversation — characterIndex 0's dialogue should embody their role, and characterIndex 1's dialogue should embody theirs.
 
 **a-roll-multi scene rules:**
 - scene-level dialogue = "" (empty string — dialogue lives in each shot)

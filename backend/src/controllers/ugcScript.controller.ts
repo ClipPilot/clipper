@@ -237,6 +237,7 @@ export class UGCScriptController {
         userDirection,
         isSilent,
         videoType,
+        characterRoles,
       } = req.body;
 
       if (!teamId || !structure) {
@@ -266,6 +267,7 @@ export class UGCScriptController {
         userDirection,
         isSilent: !!isSilent,
         videoType: videoType || "ugc",
+        characterRoles,
       });
 
       return res.status(200).json({
@@ -478,6 +480,7 @@ export class UGCScriptController {
           charactersConfig: Array<{
             characterId: number;
             voiceId: string | null;
+            role?: string | null;
           }> | null;
           characterCount: number;
           videoType: string;

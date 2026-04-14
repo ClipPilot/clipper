@@ -82,6 +82,10 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
           }))
         : [];
 
+      const restoredRoles = response.charactersConfig
+        ? response.charactersConfig.map((c) => (c as any).role || "")
+        : [];
+
       setVideoState({
         scriptId: resumeScriptId,
         teamId: teamId,
@@ -89,6 +93,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
         character: null,
         characters: restoredCharacters,
         characterCount: response.characterCount ?? (response.hasCharacter ? 1 : 0),
+        characterRoles: restoredRoles,
         voice: null,
         videoType: response.videoType,
         isSilent: response.isSilent,
@@ -235,6 +240,7 @@ export function ChatInterface({ resumeScriptId }: { resumeScriptId?: string | nu
           character: null,
           characters: [],
           characterCount: 1,
+          characterRoles: [],
           voice: null,
           videoType: response.videoType,
           isSilent: response.isSilent,

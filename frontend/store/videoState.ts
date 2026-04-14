@@ -19,6 +19,7 @@ export interface VideoState {
   character: Character | null;
   characters: CharacterWithVoice[];
   characterCount: number;
+  characterRoles: string[];
   voice: Voice | null;
   videoType: string;
   isSilent: boolean;
@@ -40,6 +41,7 @@ export const DEFAULT_VIDEO_STATE: VideoState = {
   character: null,
   characters: [],
   characterCount: 1,
+  characterRoles: [],
   voice: null,
   videoType: "ugc",
   isSilent: false,

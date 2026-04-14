@@ -208,6 +208,21 @@ When videoType is "podcast", characterCount MUST be exactly 2. No more, no less.
 
 For conversation responses, set characterCount to 1.
 
+===== CHARACTER ROLES =====
+
+When characterCount is 2, provide a characterRoles array with exactly 2 short, descriptive role labels based on the user's request. The role label tells the user WHO each character will play in the video. Index 0 = first role, index 1 = second role.
+
+Examples:
+- Debate → the two positions: ["Republican debater", "Democrat debater"], ["Pro-AI advocate", "AI skeptic"]
+- Podcast → host/guest: ["Host", "Guest"], ["Podcast host", "Fitness expert"]
+- Interview → interviewer/subject: ["Interviewer", "CEO of TechCorp"]
+- Discussion → the two perspectives: ["Nutritionist", "Personal trainer"]
+- Generic conversation → ["Host", "Co-host"]
+
+Keep labels concise (1-4 words). Derive them directly from the user's topic — don't invent roles the user didn't imply.
+
+When characterCount <= 1 or for conversation responses, set characterRoles to [].
+
 ===== MULTI-CHARACTER SCENE ASSIGNMENT =====
 
 When characterCount is 2 (podcast):
@@ -217,7 +232,7 @@ When characterCount is 2 (podcast):
 - characterIndex values are 0 or 1 only.
 - **Keep podcast structures SHORT: 2-4 scenes total (including any b-roll).** Each a-roll-multi scene already contains 2-6 speaking turns, so a single scene covers a lot of content. Don't over-segment the conversation.
 
-Example for a 2-character podcast (characterCount=2):
+Example for a 2-character podcast (characterCount=2, characterRoles=["Host", "Guest"]):
   Scene 1 (a-roll-multi, hook): characterIndex=0 — Conversation opens with hook + discussion
   Scene 2 (b-roll, demo): characterIndex omitted — Product showcase cutaway
   Scene 3 (a-roll-multi, cta): characterIndex=0 — Conversation wraps up with CTA
@@ -239,14 +254,15 @@ Analyze the user's message (and any attached product images) and return:
 2. **isSilent**: Whether the user wants no dialogue
 3. **character**: Whether the video should feature an actor/character
 4. **characterCount**: Number of distinct characters needed (1 for standard, 2 for podcast/conversation, 0 for no-character)
-5. **structure**: The optimal scene structure as an array of objects:
+5. **characterRoles**: Array of role labels for each character (e.g. ["Host", "Guest"]). Empty array when characterCount <= 1.
+6. **structure**: The optimal scene structure as an array of objects:
    - sceneType: "a-roll", "a-roll-multi" (podcast only), "b-roll", or "visual"
    - slug: A short descriptive label for this scene (2-4 words, e.g., "Attention Hook", "Product Demo", "Results Reveal")
    - description: The story beat type (hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta) or a custom description string
    - characterIndex: (only when characterCount > 1) Which character (0-based index) appears in this scene
    - shots: Array of { label, shotType } describing each shot. For b-roll/visual scenes: 1-5 shots. For a-roll/a-roll-multi scenes: empty array [].
 
-6. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
+7. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
 
 For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, characterCount to 1, targetAudience to "".
 `,

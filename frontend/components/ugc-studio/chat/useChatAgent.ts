@@ -299,6 +299,7 @@ export function useChatAgent() {
             isSilent: result.isSilent,
             character: result.character,
             characterCount: (result as any).characterCount,
+            characterRoles: (result as any).characterRoles || [],
             targetAudience: result.targetAudience,
             structure: result.scenes.map((s: any) => ({
               sceneType: s.sceneType,
@@ -641,6 +642,7 @@ export function useChatAgent() {
               isSilent: result.isSilent,
               character: result.character,
               characterCount: (result as any).characterCount,
+              characterRoles: (result as any).characterRoles || [],
               targetAudience: result.targetAudience,
               structure: result.scenes.map((s: any) => ({
                 sceneType: s.sceneType,
@@ -683,6 +685,7 @@ export function useChatAgent() {
                     isSilent: result.isSilent!,
                     character: result.character!,
                     characterCount: (result as any).characterCount,
+                    characterRoles: (result as any).characterRoles || [],
                     targetAudience: (result as any).targetAudience || "",
                     structure: result.structure,
                   }
@@ -729,6 +732,7 @@ export function useChatAgent() {
         videoType: result.videoType,
         hasCharacter: result.character,
         characterCount: result.characterCount ?? (result.character ? 1 : 0),
+        characterRoles: result.characterRoles || [],
         targetAudience: result.targetAudience || "",
         productImageKeys: imageKeys,
         customPattern,
@@ -840,6 +844,7 @@ export function useChatAgent() {
           userDirection,
           isSilent: blueprint.isSilent,
           videoType: blueprint.videoType,
+          characterRoles: videoState.characterRoles,
         });
 
         const script = result.script as UGCScript;
