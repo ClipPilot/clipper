@@ -15,6 +15,7 @@ export interface InitAgentResult {
   isSilent: boolean;
   character: boolean;
   characterCount?: number;
+  characterRoles?: string[];
   targetAudience: string;
   structure: Array<{
     sceneType: string;

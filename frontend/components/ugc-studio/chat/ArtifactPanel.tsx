@@ -121,7 +121,9 @@ export function ArtifactPanel({
             {videoState.characterCount > 1 && (
               <div className="text-center mb-4">
                 <span className="text-sm text-text-secondary font-medium">
-                  Actor {charIndex + 1} of {videoState.characterCount}
+                  {videoState.characterRoles?.[charIndex]
+                    ? `Pick actor for: ${videoState.characterRoles[charIndex]}`
+                    : `Actor ${charIndex + 1} of ${videoState.characterCount}`}
                 </span>
               </div>
             )}
@@ -146,6 +148,9 @@ export function ArtifactPanel({
               <div className="text-center mb-4">
                 <span className="text-sm text-text-secondary font-medium">
                   Voice for {videoState.characters[charIndex]?.character?.name || `Actor ${charIndex + 1}`}
+                  {videoState.characterRoles?.[charIndex] && (
+                    <span className="text-text-muted"> ({videoState.characterRoles[charIndex]})</span>
+                  )}
                 </span>
               </div>
             )}

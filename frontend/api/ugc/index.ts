@@ -102,6 +102,7 @@ class UGCScriptAPI {
     userDirection?: string;
     isSilent: boolean;
     videoType: string;
+    characterRoles?: string[];
   }): Promise<{ success: boolean; scriptId: string; script: any }> {
     const response = await apiFetch(`${API_URL}/ugc/generate-script-agent`, {
       method: "POST",

@@ -50,10 +50,19 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry, theme 
           </Chip>
         )}
         {result.character ? (
-          <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
-            <Icon icon="solar:user-bold" width={12} />
-            Character
-          </Chip>
+          result.characterRoles && result.characterRoles.length > 0 ? (
+            result.characterRoles.map((role, i) => (
+              <Chip key={i} size="sm" variant="tertiary" color="default" className="text-[11px]">
+                <Icon icon="solar:user-bold" width={12} />
+                {role}
+              </Chip>
+            ))
+          ) : (
+            <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
+              <Icon icon="solar:user-bold" width={12} />
+              Character
+            </Chip>
+          )
         ) : (
           <Chip size="sm" variant="tertiary" color="default" className="text-[11px]">
             <Icon icon="solar:video-frame-bold" width={12} />

@@ -422,7 +422,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
     isSilent: boolean;
     hasCharacter: boolean;
     videoType: string;
-    charactersConfig: Array<{ characterId: number; voiceId: string | null }> | null;
+    charactersConfig: Array<{ characterId: number; voiceId: string | null; role?: string | null }> | null;
     characterCount: number;
   } | null> {
     const [script] = await db
@@ -433,7 +433,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
 
     if (!script) return null;
 
-    const charactersConfig = script.characters_config as Array<{ characterId: number; voiceId: string | null }> | null;
+    const charactersConfig = script.characters_config as Array<{ characterId: number; voiceId: string | null; role?: string | null }> | null;
     const characterCount = charactersConfig?.length || (script.has_character ? 1 : 0);
 
     return {
@@ -778,6 +778,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       isSilent: boolean;
       character: boolean;
       videoType: string;
+      characterRoles?: string[];
       structure: Array<{ sceneType: string; slug: string; description: string }>;
     };
 
@@ -801,6 +802,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     userDirection?: string;
     isSilent: boolean;
     videoType: string;
+    characterRoles?: string[];
   }): Promise<{ scriptId: string; script: any }> {
     const {
       teamId,
@@ -814,6 +816,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       userDirection,
       isSilent,
       videoType,
+      characterRoles,
     } = params;
 
     // Build multimodal content parts for product images
@@ -842,7 +845,10 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     let characterSummary: string;
     if (characters && characters.length > 1) {
       characterSummary = `Characters (${characters.length}):\n` + characters
-        .map((c, i) => `  [${i}] ${c.character.name}, ${c.character.gender || "unspecified"}, ${c.character.age_range || "25-35"}, ${this.formatAppearanceConfig(c.character.appearance_config)}`)
+        .map((c, i) => {
+          const roleLabel = characterRoles?.[i] ? ` (Role: ${characterRoles[i]})` : "";
+          return `  [${i}] ${c.character.name}${roleLabel}, ${c.character.gender || "unspecified"}, ${c.character.age_range || "25-35"}, ${this.formatAppearanceConfig(c.character.appearance_config)}`;
+        })
         .join("\n");
     } else if (character) {
       characterSummary = `Character: ${character.name}, ${character.gender || "unspecified"}, ${character.age_range || "25-35"}, ${this.formatAppearanceConfig(character.appearance_config)}`;
@@ -988,9 +994,10 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       insertValues.character_id = effectiveCharacterId;
     }
     if (characters && characters.length > 1) {
-      insertValues.characters_config = characters.map((c) => ({
+      insertValues.characters_config = characters.map((c, i) => ({
         characterId: c.characterId,
         voiceId: c.voiceId || null,
+        role: characterRoles?.[i] || null,
       }));
     }
     const [inserted] = await db

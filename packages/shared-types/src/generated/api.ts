@@ -10053,110 +10053,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/face-swap/trim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Trim a video to specified time range */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /** Format: binary */
-                        video: string;
-                        startTime: number;
-                        endTime: number;
-                        teamId: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Trimmed video uploaded to S3 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success?: boolean;
-                            trimmedVideoKey?: string;
-                            trimmedVideoUrl?: string;
-                            duration?: number;
-                        };
-                    };
-                };
-                /** @description Missing fields, invalid time range, or no video uploaded */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/face-swap/download-fixed": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download video with timestamp normalization (authenticated)
-         * @description Re-encodes video to fix playback on strict players (VLC, QuickTime, mobile)
-         */
-        get: {
-            parameters: {
-                query: {
-                    /** @description Video URL to download and normalize */
-                    url: string;
-                    /** @description Output filename */
-                    filename?: string;
-                    /** @description Download mode. direct = stream from S3 (fastest), remux = copy streams without re-encoding (fast), omit = full re-encode (slowest but most compatible) */
-                    mode?: "direct" | "remux";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Normalized video file */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "video/mp4": string;
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/face-swap/download-fixed-public": {
         parameters: {
             query?: never;
@@ -10257,131 +10153,6 @@ export interface paths {
                     };
                 };
                 /** @description No video uploaded or video too long */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Face detection failed */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/face-swap/detect-faces/upload-url": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Get presigned URL for uploading video for face detection
-         * @description Returns a presigned S3 URL for direct video upload
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        fileName: string;
-                        teamId: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Presigned URL generated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success?: boolean;
-                            uploadUrl?: string;
-                            s3Key?: string;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/face-swap/detect-faces/from-s3": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Detect faces from video already uploaded to S3
-         * @description Runs face detection on a video that was uploaded via presigned URL
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        s3Key: string;
-                        videoDuration: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Face segments detected */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success?: boolean;
-                            segments?: {
-                                start?: number;
-                                end?: number;
-                            }[];
-                            videoDuration?: number;
-                            segmentCount?: number;
-                        };
-                    };
-                };
-                /** @description Missing fields or video too long */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -12191,45 +11962,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get referral code for a team
-         * @description Returns the team's referral code if one exists
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Team ID */
-                    teamId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Referral code retrieved */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            code?: {
-                                id?: number;
-                                code?: string;
-                            } | null;
-                        };
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        get?: never;
         put?: never;
         /**
          * Generate a referral code for a team
@@ -12459,51 +12192,6 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/referrals/validate/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Validate a referral code
-         * @description Checks if a referral code exists and is valid
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Referral code to validate */
-                    code: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Validation result */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            valid?: boolean;
-                            code?: string;
-                        };
-                    };
                 };
             };
         };
@@ -16356,39 +16044,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a specific user performance account */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    teamId: number;
-                    accountId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Account details */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            account?: Record<string, never>;
-                        };
-                    };
-                };
-                /** @description Account not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        get?: never;
         put?: never;
         post?: never;
         /** Remove a user performance account */
@@ -17144,39 +16800,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get a specific competitor account */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    teamId: number;
-                    accountId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Account details */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            account: components["schemas"]["ViralityAccount"];
-                        };
-                    };
-                };
-                /** @description Account not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        get?: never;
         put?: never;
         post?: never;
         /** Remove a tracked competitor account */
