@@ -6,10 +6,13 @@ import {
   viralityGroups,
   viralitySettings,
   viralityAlertLogs,
+  teamMembers,
+  users,
 } from "@clipper/shared-db/src/schema";
-import { eq, desc, count, and, inArray, gte, lte } from "drizzle-orm";
+import { eq, desc, count, and, inArray, gte, lte, sql } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
 import { userPerformanceService } from "./userPerformance.service";
+import { EmailNotiService } from "../emailNoti.service";
 
 // ── Virality-specific service (adds competitor methods + overrides) ──────────
 
@@ -300,6 +303,14 @@ class ViralityService extends AccountTrackingService {
       timeFrameHours: settings?.time_frame_hours ?? 24,
       enabledAccountIds: enabledAccounts.map((a) => a.id),
       additionalEmails: (settings?.additional_emails as string[]) ?? [],
+      ownedPercentThreshold: settings?.owned_percent_threshold ?? 200,
+      ownedAbsoluteThreshold: settings?.owned_absolute_threshold ?? 10000,
+      ownedThresholdMode: settings?.owned_threshold_mode ?? "and",
+      ownedAlertsEnabled: settings?.owned_alerts_enabled ?? true,
+      competitorPercentThreshold: settings?.competitor_percent_threshold ?? 150,
+      competitorAbsoluteThreshold: settings?.competitor_absolute_threshold ?? 50000,
+      competitorThresholdMode: settings?.competitor_threshold_mode ?? "or",
+      competitorAlertsEnabled: settings?.competitor_alerts_enabled ?? true,
     };
   }
 
@@ -310,19 +321,37 @@ class ViralityService extends AccountTrackingService {
       absoluteThreshold: number | null;
       thresholdMode: "and" | "or";
       timeFrameHours: number;
-      enabledAccountIds: number[];
+      enabledAccountIds?: number[];
       additionalEmails: string[];
+      ownedPercentThreshold?: number;
+      ownedAbsoluteThreshold?: number;
+      ownedThresholdMode?: "and" | "or";
+      ownedAlertsEnabled?: boolean;
+      competitorPercentThreshold?: number;
+      competitorAbsoluteThreshold?: number;
+      competitorThresholdMode?: "and" | "or";
+      competitorAlertsEnabled?: boolean;
     }
   ) {
     const percentThreshold = data.percentThreshold ?? 100;
     const absoluteThreshold = data.absoluteThreshold ?? 100000;
 
-    // Upsert viralitySettings
     const [existing] = await db
       .select({ id: viralitySettings.id })
       .from(viralitySettings)
       .where(eq(viralitySettings.team_id, teamId))
       .limit(1);
+
+    const extraFields = {
+      ...(data.ownedPercentThreshold !== undefined && { owned_percent_threshold: data.ownedPercentThreshold }),
+      ...(data.ownedAbsoluteThreshold !== undefined && { owned_absolute_threshold: data.ownedAbsoluteThreshold }),
+      ...(data.ownedThresholdMode !== undefined && { owned_threshold_mode: data.ownedThresholdMode }),
+      ...(data.ownedAlertsEnabled !== undefined && { owned_alerts_enabled: data.ownedAlertsEnabled }),
+      ...(data.competitorPercentThreshold !== undefined && { competitor_percent_threshold: data.competitorPercentThreshold }),
+      ...(data.competitorAbsoluteThreshold !== undefined && { competitor_absolute_threshold: data.competitorAbsoluteThreshold }),
+      ...(data.competitorThresholdMode !== undefined && { competitor_threshold_mode: data.competitorThresholdMode }),
+      ...(data.competitorAlertsEnabled !== undefined && { competitor_alerts_enabled: data.competitorAlertsEnabled }),
+    };
 
     if (existing) {
       await db
@@ -333,6 +362,7 @@ class ViralityService extends AccountTrackingService {
           threshold_mode: data.thresholdMode,
           time_frame_hours: data.timeFrameHours,
           additional_emails: data.additionalEmails,
+          ...extraFields,
           updated_at: new Date(),
         })
         .where(eq(viralitySettings.id, existing.id));
@@ -344,25 +374,34 @@ class ViralityService extends AccountTrackingService {
         threshold_mode: data.thresholdMode,
         time_frame_hours: data.timeFrameHours,
         additional_emails: data.additionalEmails,
+        owned_percent_threshold: data.ownedPercentThreshold ?? 200,
+        owned_absolute_threshold: data.ownedAbsoluteThreshold ?? 10000,
+        owned_threshold_mode: data.ownedThresholdMode ?? "and",
+        owned_alerts_enabled: data.ownedAlertsEnabled ?? true,
+        competitor_percent_threshold: data.competitorPercentThreshold ?? 150,
+        competitor_absolute_threshold: data.competitorAbsoluteThreshold ?? 50000,
+        competitor_threshold_mode: data.competitorThresholdMode ?? "or",
+        competitor_alerts_enabled: data.competitorAlertsEnabled ?? true,
       });
     }
 
-    // Bulk-update alert_enabled on all team accounts
-    await db
-      .update(competitorAccounts)
-      .set({ alert_enabled: false })
-      .where(eq(competitorAccounts.team_id, teamId));
-
-    if (data.enabledAccountIds.length > 0) {
+    if (data.enabledAccountIds !== undefined) {
       await db
         .update(competitorAccounts)
-        .set({ alert_enabled: true })
-        .where(
-          and(
-            eq(competitorAccounts.team_id, teamId),
-            inArray(competitorAccounts.id, data.enabledAccountIds)
-          )
-        );
+        .set({ alert_enabled: false })
+        .where(eq(competitorAccounts.team_id, teamId));
+
+      if (data.enabledAccountIds.length > 0) {
+        await db
+          .update(competitorAccounts)
+          .set({ alert_enabled: true })
+          .where(
+            and(
+              eq(competitorAccounts.team_id, teamId),
+              inArray(competitorAccounts.id, data.enabledAccountIds)
+            )
+          );
+      }
     }
 
     return this.getSettings(teamId);
@@ -393,6 +432,48 @@ class ViralityService extends AccountTrackingService {
       .orderBy(desc(viralityAlertLogs.created_at))
       .limit(limit)
       .offset(offset);
+  }
+
+  async getAlertLogsCount(teamId: number) {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(viralityAlertLogs)
+      .where(eq(viralityAlertLogs.team_id, teamId));
+    return result?.count ?? 0;
+  }
+
+  async notifyAlert(teamId: number, alertId: number): Promise<void> {
+    const [alert] = await db
+      .select()
+      .from(viralityAlertLogs)
+      .where(and(eq(viralityAlertLogs.id, alertId), eq(viralityAlertLogs.team_id, teamId)))
+      .limit(1);
+
+    if (!alert) throw new Error("Alert not found");
+
+    const members = await db
+      .select({ email: users.email })
+      .from(teamMembers)
+      .innerJoin(users, eq(users.id, teamMembers.user_id))
+      .where(eq(teamMembers.team_id, teamId));
+
+    if (members.length === 0) throw new Error("No team members found to notify");
+
+    const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
+    const link = `${frontendUrl}/dashboard/alerts`;
+    const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = `<p><strong>${escHtml(alert.subject)}</strong></p><p><a href="${link}">View alert in dashboard</a></p>`;
+
+    await Promise.all(
+      members.map((m) =>
+        EmailNotiService.resend.emails.send({
+          from: "Cuttr <no-reply@mail.cuttr.com>",
+          to: [m.email],
+          subject: `[Cuttr] ${alert.subject}`,
+          html,
+        }),
+      ),
+    );
   }
 
   async pauseAllAccountsForTeam(teamId: number) {

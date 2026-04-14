@@ -1354,6 +1354,133 @@
               "type": "string",
               "format": "email"
             }
+          },
+          "ownedPercentThreshold": {
+            "type": "integer"
+          },
+          "ownedAbsoluteThreshold": {
+            "type": "integer"
+          },
+          "ownedThresholdMode": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "ownedAlertsEnabled": {
+            "type": "boolean"
+          },
+          "competitorPercentThreshold": {
+            "type": "integer"
+          },
+          "competitorAbsoluteThreshold": {
+            "type": "integer"
+          },
+          "competitorThresholdMode": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "competitorAlertsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ViralAlertLog": {
+        "type": "object",
+        "required": [
+          "id",
+          "team_id",
+          "email",
+          "subject",
+          "email_body",
+          "viral_post_ids",
+          "status",
+          "sent_at",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "team_id": {
+            "type": "integer"
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "email_body": {
+            "type": "string"
+          },
+          "viral_post_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "alert_posts_snapshot": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "sent",
+              "failed"
+            ]
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AlertLogsResponse": {
+        "type": "object",
+        "required": [
+          "logs",
+          "total"
+        ],
+        "properties": {
+          "logs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ViralAlertLog"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "NotifyAlertResponse": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
           }
         }
       },
@@ -14970,137 +15097,6 @@
         }
       }
     },
-    "/face-swap/trim": {
-      "post": {
-        "summary": "Trim a video to specified time range",
-        "tags": [
-          "Face Swap"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "video",
-                  "startTime",
-                  "endTime",
-                  "teamId"
-                ],
-                "properties": {
-                  "video": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "startTime": {
-                    "type": "number"
-                  },
-                  "endTime": {
-                    "type": "number"
-                  },
-                  "teamId": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Trimmed video uploaded to S3",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "trimmedVideoKey": {
-                      "type": "string"
-                    },
-                    "trimmedVideoUrl": {
-                      "type": "string"
-                    },
-                    "duration": {
-                      "type": "number"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing fields, invalid time range, or no video uploaded"
-          }
-        }
-      }
-    },
-    "/face-swap/download-fixed": {
-      "get": {
-        "summary": "Download video with timestamp normalization (authenticated)",
-        "description": "Re-encodes video to fix playback on strict players (VLC, QuickTime, mobile)",
-        "tags": [
-          "Face Swap"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "url",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Video URL to download and normalize"
-          },
-          {
-            "in": "query",
-            "name": "filename",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Output filename"
-          },
-          {
-            "in": "query",
-            "name": "mode",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "direct",
-                "remux"
-              ]
-            },
-            "description": "Download mode. direct = stream from S3 (fastest), remux = copy streams without re-encoding (fast), omit = full re-encode (slowest but most compatible)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Normalized video file",
-            "content": {
-              "video/mp4": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/face-swap/download-fixed-public": {
       "get": {
         "summary": "Download video with timestamp normalization (public for shared links)",
@@ -15226,147 +15222,6 @@
           },
           "400": {
             "description": "No video uploaded or video too long"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Face detection failed"
-          }
-        }
-      }
-    },
-    "/face-swap/detect-faces/upload-url": {
-      "post": {
-        "summary": "Get presigned URL for uploading video for face detection",
-        "description": "Returns a presigned S3 URL for direct video upload",
-        "tags": [
-          "Face Swap"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "fileName",
-                  "teamId"
-                ],
-                "properties": {
-                  "fileName": {
-                    "type": "string"
-                  },
-                  "teamId": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Presigned URL generated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "uploadUrl": {
-                      "type": "string"
-                    },
-                    "s3Key": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/face-swap/detect-faces/from-s3": {
-      "post": {
-        "summary": "Detect faces from video already uploaded to S3",
-        "description": "Runs face detection on a video that was uploaded via presigned URL",
-        "tags": [
-          "Face Swap"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "s3Key",
-                  "videoDuration"
-                ],
-                "properties": {
-                  "s3Key": {
-                    "type": "string"
-                  },
-                  "videoDuration": {
-                    "type": "number"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Face segments detected",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "segments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "start": {
-                            "type": "number"
-                          },
-                          "end": {
-                            "type": "number"
-                          }
-                        }
-                      }
-                    },
-                    "videoDuration": {
-                      "type": "number"
-                    },
-                    "segmentCount": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing fields or video too long"
           },
           "401": {
             "description": "Unauthorized"
@@ -17642,58 +17497,6 @@
             "description": "Unauthorized"
           }
         }
-      },
-      "get": {
-        "summary": "Get referral code for a team",
-        "description": "Returns the team's referral code if one exists",
-        "tags": [
-          "Referrals"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "teamId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Team ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Referral code retrieved",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "code": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "code": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
       }
     },
     "/referrals/{teamId}/apply": {
@@ -17906,46 +17709,6 @@
           },
           "401": {
             "description": "Unauthorized"
-          }
-        }
-      }
-    },
-    "/referrals/validate/{code}": {
-      "get": {
-        "summary": "Validate a referral code",
-        "description": "Checks if a referral code exists and is valid",
-        "tags": [
-          "Referrals"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "code",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Referral code to validate"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Validation result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "valid": {
-                      "type": "boolean"
-                    },
-                    "code": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -22439,55 +22202,6 @@
       }
     },
     "/user-performance/{teamId}/accounts/{accountId}": {
-      "get": {
-        "summary": "Get a specific user performance account",
-        "tags": [
-          "User Performance"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "teamId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "accountId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Account details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "account": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Account not found"
-          }
-        }
-      },
       "delete": {
         "summary": "Remove a user performance account",
         "tags": [
@@ -23367,58 +23081,6 @@
       }
     },
     "/virality/{teamId}/accounts/{accountId}": {
-      "get": {
-        "summary": "Get a specific competitor account",
-        "tags": [
-          "Virality"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "teamId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "accountId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Account details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "account"
-                  ],
-                  "properties": {
-                    "account": {
-                      "$ref": "#/components/schemas/ViralityAccount"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Account not found"
-          }
-        }
-      },
       "delete": {
         "summary": "Remove a tracked competitor account",
         "tags": [
@@ -24635,79 +24297,53 @@
         ],
         "responses": {
           "200": {
-            "description": "List of alert logs",
+            "description": "List of alert logs with total count",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "required": [
-                    "logs"
-                  ],
-                  "properties": {
-                    "logs": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": [
-                          "id",
-                          "team_id",
-                          "email",
-                          "subject",
-                          "email_body",
-                          "viral_post_ids",
-                          "status",
-                          "sent_at",
-                          "created_at"
-                        ],
-                        "properties": {
-                          "id": {
-                            "type": "integer"
-                          },
-                          "team_id": {
-                            "type": "integer"
-                          },
-                          "user_id": {
-                            "type": "integer",
-                            "nullable": true
-                          },
-                          "email": {
-                            "type": "string"
-                          },
-                          "subject": {
-                            "type": "string"
-                          },
-                          "email_body": {
-                            "type": "string"
-                          },
-                          "viral_post_ids": {
-                            "type": "array",
-                            "items": {
-                              "type": "integer"
-                            }
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "sent",
-                              "failed"
-                            ]
-                          },
-                          "error_message": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "sent_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time"
-                          }
-                        }
-                      }
-                    }
-                  }
+                  "$ref": "#/components/schemas/AlertLogsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/virality/{teamId}/alerts/{alertId}/notify": {
+      "post": {
+        "tags": [
+          "Virality"
+        ],
+        "summary": "Notify team about a specific alert",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "teamId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "alertId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotifyAlertResponse"
                 }
               }
             }

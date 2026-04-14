@@ -91,7 +91,7 @@ export default function YourCompetitorsPage() {
         viralityAPI.getAlertLogs(selectedTeam.id, 5),
       ]);
 
-      setAlertLogs(alerts);
+      setAlertLogs(alerts.logs);
       setMyAccounts(myAccts);
       setCompetitorGroups(
         withAccounts.filter((g: any) => g.competitor === true),

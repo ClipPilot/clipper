@@ -64,7 +64,7 @@ function FaqAccordionItem({ item, index }: { item: FaqItem; index: number }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.05 * index }}
-      className="rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-2xl overflow-hidden shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]"
+      className="glass-panel rounded-xl overflow-hidden"
     >
       <button
         className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
@@ -93,7 +93,7 @@ function FaqAccordionItem({ item, index }: { item: FaqItem; index: number }) {
             className="overflow-hidden"
           >
             <div className="px-5 pb-5">
-              <div className="h-px w-full bg-white/[0.06] mb-4" />
+              <div className="h-px w-full glass-divider mb-4" />
               <p className="text-sm text-text-secondary leading-relaxed">
                 {item.answer}
               </p>
@@ -243,13 +243,12 @@ export function AnalyticsPricing({
               }
               className={cn(
                 "rounded-2xl border overflow-hidden flex flex-col",
-                "bg-white/[0.04] backdrop-blur-2xl",
-                "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)]",
+                "glass-panel",
                 {
                   "border-accent-400/40 shadow-lg shadow-accent-400/10":
                     tier.mostPopular && !isCurrent,
                   "border-accent-400 shadow-lg shadow-accent-400/20": isCurrent,
-                  "border-white/[0.08]": !tier.mostPopular && !isCurrent,
+                  "": !tier.mostPopular && !isCurrent,
                 }
               )}
             >
@@ -275,7 +274,7 @@ export function AnalyticsPricing({
                 <p className="text-sm text-text-secondary">{tier.description}</p>
               </div>
 
-              <div className="mx-5 h-px bg-white/[0.06]" />
+              <div className="mx-5 h-px glass-divider" />
 
               <div className="p-5 space-y-5 flex-1">
                 <div>
@@ -291,7 +290,7 @@ export function AnalyticsPricing({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+                <div className="glass-inner flex flex-col gap-2 rounded-xl p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-tertiary">
                       Account Limit
