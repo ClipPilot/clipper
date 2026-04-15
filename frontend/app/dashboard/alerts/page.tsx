@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "@/lib/toast";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -17,6 +18,7 @@ import type { ViralSettings } from "@clipper/shared-types";
 const PAGE_SIZE = 20;
 
 export default function AlertsPage() {
+  const router = useRouter();
   const { selectedTeam } = useTeams();
   const [settings, setSettings] = useState<ViralSettings | null>(null);
   const [alerts, setAlerts] = useState<AlertLogWithSnapshot[]>([]);
@@ -80,6 +82,16 @@ export default function AlertsPage() {
     }
   }
 
+  const handleShare = useCallback((postUrl: string) => {
+    navigator.clipboard.writeText(postUrl)
+      .then(() => toast({ title: "Post URL copied to clipboard", color: "success" }))
+      .catch(() => toast({ title: "Failed to copy URL", color: "danger" }));
+  }, []);
+
+  const handleClone = useCallback((postUrl: string) => {
+    router.push(`/dashboard/ad-clone?postUrl=${encodeURIComponent(postUrl)}`);
+  }, [router]);
+
   if (isLoading || !settings) return <PageLoader />;
 
   const settingsForPanel = {
@@ -108,21 +120,33 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+    <div className="relative max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-full w-full overflow-hidden blur-3xl"
+      >
+        <div
+          className="mx-auto aspect-[1155/678] w-[72rem] bg-gradient-to-tr from-accent-400/30 to-purple-500/20 opacity-30"
+          style={{
+            clipPath: "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+          }}
+        />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
+        className="relative z-10"
       >
-        <p className="text-xl font-semibold text-white/90">Alerts</p>
-        <p className="text-xs text-white/30 mt-0.5">Alert history and notification configuration</p>
+        <p className="text-xl font-semibold text-text-primary">Alerts</p>
+        <p className="text-xs text-text-tertiary mt-0.5">Alert history and notification configuration</p>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }} className="relative z-10">
         <AlertConfigPanel settings={settingsForPanel} onSave={handleSave} />
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }}>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }} className="relative z-10">
         <AlertFeedTable
           alerts={alerts}
           total={total}
@@ -132,6 +156,8 @@ export default function AlertsPage() {
           onAlertClick={setSelectedAlert}
           settings={settingsForSeverity}
           onNotify={handleNotify}
+          onShare={handleShare}
+          onClone={handleClone}
         />
       </motion.div>
 
@@ -140,6 +166,8 @@ export default function AlertsPage() {
         onClose={() => setSelectedAlert(null)}
         settings={settingsForModal}
         onNotify={handleNotify}
+        onShare={handleShare}
+        onClone={handleClone}
       />
     </div>
   );

@@ -69,7 +69,7 @@ function ThresholdCard({
   onChange: (field: CardField, value: number | boolean | "and" | "or") => void;
 }) {
   return (
-    <div className="glass-inner rounded-xl p-4">
+    <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
       <div className="flex items-center justify-between mb-1">
         <p className="text-[10px] font-bold tracking-widest uppercase text-accent-400">{label}</p>
         <Switch isSelected={enabled} onChange={(v: boolean) => onChange("enabled", v)} size="sm">

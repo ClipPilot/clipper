@@ -242,7 +242,7 @@ export function AnalyticsPricing({
                   : {}
               }
               className={cn(
-                "rounded-2xl border overflow-hidden flex flex-col",
+                "rounded-2xl overflow-hidden flex flex-col",
                 "glass-panel",
                 {
                   "border-accent-400/40 shadow-lg shadow-accent-400/10":
@@ -290,7 +290,7 @@ export function AnalyticsPricing({
                   </div>
                 </div>
 
-                <div className="glass-inner flex flex-col gap-2 rounded-xl p-3">
+                <div className="bg-surface-elevated border border-border-base flex flex-col gap-2 rounded-xl p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-tertiary">
                       Account Limit
