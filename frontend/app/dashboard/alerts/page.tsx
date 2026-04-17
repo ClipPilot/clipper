@@ -120,26 +120,21 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="relative max-w-5xl mx-auto px-6 py-8 space-y-6">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-full w-full overflow-hidden blur-3xl"
-      >
-        <div
-          className="mx-auto aspect-[1155/678] w-[72rem] bg-gradient-to-tr from-accent-400/30 to-purple-500/20 opacity-30"
-          style={{
-            clipPath: "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
-          }}
-        />
+    <div className="relative max-w-5xl mx-auto px-6 py-8 space-y-5">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-amber-400/25 blur-[140px]" />
+        <div className="absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-rose-500/20 blur-[140px]" />
+        <div className="absolute bottom-0 left-1/4 h-[28rem] w-[28rem] rounded-full bg-accent-400/25 blur-[140px]" />
+        <div className="absolute top-10 right-1/4 h-64 w-64 rounded-full bg-violet-500/15 blur-[120px]" />
       </div>
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ duration: 0.4 }}
         className="relative z-10"
       >
-        <p className="text-xl font-semibold text-text-primary">Alerts</p>
-        <p className="text-xs text-text-tertiary mt-0.5">Alert history and notification configuration</p>
+        <p className="text-[28px] font-semibold tracking-tight text-text-primary">Alerts</p>
+        <p className="text-[13px] text-text-tertiary mt-1">Alert history and notification configuration</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }} className="relative z-10">

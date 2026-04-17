@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Chip, Tooltip } from "@heroui/react";
+import { Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PaginationControl } from "./PaginationControl";
 import { deriveSnapshotSeverity, type AlertSeverity, type ViralPostSnapshot } from "../utils/alertSeverity";
@@ -31,18 +31,22 @@ interface AlertSettingsForSeverity {
   competitor_absolute_threshold: number;
 }
 
-const PLATFORM_ABBR: Record<string, string> = {
-  tiktok: "TK",
-  instagram: "IG",
-  youtube: "YT",
-  twitter: "TW",
-  x: "TW",
-};
-
-const SEV_CHIP: Record<AlertSeverity, { color: "danger" | "warning" | "success"; bg: string }> = {
-  high: { color: "danger", bg: "bg-red-500/15" },
-  medium: { color: "warning", bg: "bg-orange-500/15" },
-  low: { color: "success", bg: "bg-green-500/15" },
+const SEV_STYLE: Record<AlertSeverity, { label: string; dot: string; chip: string }> = {
+  high: {
+    label: "High",
+    dot: "bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.6)]",
+    chip: "bg-rose-500/15 text-rose-300 border-rose-400/30",
+  },
+  medium: {
+    label: "Medium",
+    dot: "bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.55)]",
+    chip: "bg-amber-500/15 text-amber-300 border-amber-400/30",
+  },
+  low: {
+    label: "Low",
+    dot: "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]",
+    chip: "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  },
 };
 
 function formatRelativeTime(dateStr: string) {
@@ -87,7 +91,7 @@ export function AlertFeedTable({
   settings,
   onNotify,
   onShare,
-  onClone,
+  onClone: _onClone,
 }: AlertFeedTableProps) {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
 
@@ -104,112 +108,128 @@ export function AlertFeedTable({
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="glass-panel rounded-2xl p-5">
-      <div className="flex items-start justify-between mb-5">
+    <div className="space-y-4">
+      <div className="flex items-end justify-between px-1.5">
         <div>
-          <p className="text-sm font-semibold text-text-primary">Alert Feed</p>
-          <p className="text-xs text-text-tertiary mt-0.5">Click any row to view full alert details</p>
+          <p className="text-[15px] font-semibold text-text-primary">Alert Feed</p>
+          <p className="text-[12px] text-text-tertiary mt-0.5">Click any row to view full alert details</p>
         </div>
-        <div className="flex items-center gap-1 flex-wrap justify-end">
-          <span className="text-[10px] text-text-tertiary mr-1">Severity</span>
+        <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] p-0.5 backdrop-blur-xl">
           {(["all", "high", "medium", "low"] as const).map((s) => (
-            <Button
+            <button
               key={s}
-              size="sm"
-              variant={severityFilter === s ? "secondary" : "outline"}
-              className={`text-[11px] h-6 min-w-0 px-2.5 rounded-full ${
+              type="button"
+              onClick={() => setSeverityFilter(s)}
+              className={`text-[11px] font-semibold px-3 py-1 rounded-full transition-all ${
                 severityFilter === s
-                  ? "bg-accent-400/15 text-accent-400 border-accent-400/30"
-                  : "text-text-tertiary border-border-base"
+                  ? "bg-white/[0.12] text-text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)]"
+                  : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onPress={() => setSeverityFilter(s)}
             >
               {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
 
-      <div className="flex items-center gap-4 px-4 pb-2.5 mb-1 border-b border-border-base">
-        <div style={{ width: 80 }} className="flex items-center gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Severity</span>
-          <Tooltip><Tooltip.Trigger><span className="cursor-help"><Icon icon="solar:info-circle-linear" width={11} className="text-text-tertiary" /></span></Tooltip.Trigger><Tooltip.Content>Auto-categorized based on how far growth exceeds your thresholds. High = 3x+, Medium = 1.5x+, Low = below.</Tooltip.Content></Tooltip>
-        </div>
-        <div className="flex-1 flex items-center gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Trigger</span>
-          <Tooltip><Tooltip.Trigger><span className="cursor-help"><Icon icon="solar:info-circle-linear" width={11} className="text-text-tertiary" /></span></Tooltip.Trigger><Tooltip.Content>The viral post that triggered this alert, with view growth stats</Tooltip.Content></Tooltip>
-        </div>
-        <div style={{ width: 100 }} className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Time</div>
-        <div style={{ width: 160 }} className="flex items-center gap-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Actions</span>
-          <Tooltip><Tooltip.Trigger><span className="cursor-help"><Icon icon="solar:info-circle-linear" width={11} className="text-text-tertiary" /></span></Tooltip.Trigger><Tooltip.Content>Share copies the post URL. Clone opens the ad cloner. Notify re-sends the alert email to your team.</Tooltip.Content></Tooltip>
-        </div>
-      </div>
-
-      <div className="space-y-0.5">
-        {filtered.map(({ alert, sev }) => {
+      <div className="glass-panel rounded-2xl overflow-hidden">
+        {filtered.map(({ alert, sev }, idx) => {
           const first = alert.alert_posts_snapshot[0];
           const hasPost = !!first;
+          const sevStyle = SEV_STYLE[sev];
           return (
             <div
               key={alert.id}
               onClick={() => onAlertClick(alert)}
-              className="flex items-center gap-4 px-4 py-3 rounded-xl cursor-pointer transition-colors hover:bg-surface-hover"
+              className={`group relative flex items-center gap-4 px-4 py-3.5 cursor-pointer transition-colors hover:bg-white/[0.04] ${
+                idx !== filtered.length - 1 ? "border-b border-white/[0.06]" : ""
+              }`}
             >
-              <div style={{ width: 80 }} className="shrink-0">
-                <Chip size="sm" color={SEV_CHIP[sev].color} className={`text-[10px] font-bold ${SEV_CHIP[sev].bg}`}>{sev.toUpperCase()}</Chip>
-              </div>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${sevStyle.dot}`} aria-label={sevStyle.label} />
 
               <div className="flex-1 flex items-center gap-3 min-w-0">
-                {first?.thumbnailUrl && (
+                {first?.thumbnailUrl ? (
                   <img
                     src={first.thumbnailUrl}
                     alt=""
-                    className="w-9 h-9 rounded-lg object-cover shrink-0 border border-border-base"
+                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/[0.08] shadow-sm"
                   />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl shrink-0 bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                    <Icon icon="solar:bell-bing-linear" width={16} className="text-text-tertiary" />
+                  </div>
                 )}
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-text-primary truncate max-w-xs">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-medium text-text-primary truncate">
                     {first?.caption ?? alert.subject}
                   </p>
                   {first && (
-                    <p className="text-[11px] text-text-tertiary mt-0.5 truncate">
-                      <span className="text-accent-400 font-semibold">+{formatNumber(first.viewsIncrease)} views</span>
-                      {" \u00b7 "}+{Math.round(first.percentIncrease)}%{" \u00b7 "}
-                      {first.platform}{" \u00b7 "}@{first.accountHandle}
+                    <p className="text-[11px] text-text-tertiary mt-0.5 truncate flex items-center gap-1.5">
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold ${sevStyle.chip}`}>
+                        +{formatNumber(first.viewsIncrease)} views
+                      </span>
+                      <span className="text-text-tertiary">+{Math.round(first.percentIncrease)}%</span>
+                      <span className="text-white/30">·</span>
+                      <span className="capitalize">{first.platform}</span>
+                      <span className="text-white/30">·</span>
+                      <span>@{first.accountHandle}</span>
                     </p>
                   )}
                 </div>
               </div>
 
-              <div style={{ width: 100 }} className="shrink-0">
-                <p className="text-xs text-text-secondary font-medium">{formatRelativeTime(alert.sent_at)}</p>
+              <div className="shrink-0 text-right">
+                <p className="text-[12px] text-text-secondary font-medium tabular-nums">{formatRelativeTime(alert.sent_at)}</p>
                 <p className="text-[10px] text-text-tertiary mt-0.5">
                   {new Date(alert.sent_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </p>
               </div>
 
               <div
-                style={{ width: 160 }}
-                className="flex items-center gap-1 shrink-0"
+                className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Button size="sm" className="bg-green-500 text-white text-[11px] h-7 min-w-0 px-3" isDisabled={!hasPost} onPress={() => onShare(first!.postUrl)}>Share</Button>
-                <Tooltip><Tooltip.Trigger><span><Button size="sm" className="text-[11px] h-7 min-w-0 px-3" isDisabled>Clone</Button></span></Tooltip.Trigger><Tooltip.Content>Coming soon</Tooltip.Content></Tooltip>
-                <Button size="sm" className="bg-orange-500 text-white text-[11px] h-7 min-w-0 px-3" onPress={() => onNotify(alert.id)}>Notify</Button>
+                <Tooltip>
+                  <Tooltip.Trigger>
+                    <button
+                      type="button"
+                      disabled={!hasPost}
+                      onClick={() => hasPost && onShare(first!.postUrl)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.06] border border-white/[0.08] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] transition disabled:opacity-40"
+                    >
+                      <Icon icon="solar:copy-linear" width={14} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>Copy post URL</Tooltip.Content>
+                </Tooltip>
+                <Tooltip>
+                  <Tooltip.Trigger>
+                    <button
+                      type="button"
+                      onClick={() => onNotify(alert.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-accent-400/15 border border-accent-400/30 text-accent-400 hover:bg-accent-400/25 transition"
+                    >
+                      <Icon icon="solar:bell-bing-linear" width={14} />
+                    </button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Content>Re-notify team</Tooltip.Content>
+                </Tooltip>
               </div>
             </div>
           );
         })}
 
         {filtered.length === 0 && (
-          <div className="py-12 text-center text-sm text-text-tertiary">
-            No alerts match the current filters
+          <div className="py-16 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] mb-3">
+              <Icon icon="solar:bell-off-linear" width={20} className="text-text-tertiary" />
+            </div>
+            <p className="text-[13px] text-text-tertiary">No alerts match the current filters</p>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-4 mt-3 border-t border-border-base">
+      <div className="flex items-center justify-between px-1.5">
         <span className="text-[11px] text-text-tertiary">
           Showing {filtered.length} of {total} alerts
         </span>

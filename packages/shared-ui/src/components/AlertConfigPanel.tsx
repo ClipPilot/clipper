@@ -55,7 +55,58 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-function ThresholdCard({
+function GroupRow({
+  label,
+  tip,
+  children,
+  isLast,
+}: {
+  label: string;
+  tip?: string;
+  children: React.ReactNode;
+  isLast?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between px-4 py-3 ${isLast ? "" : "border-b border-white/[0.06] dark:border-white/[0.06]"}`}
+    >
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-[13px] text-text-secondary">{label}</span>
+        {tip && <InfoTip text={tip} />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Segmented({
+  value,
+  onChange,
+}: {
+  value: "and" | "or";
+  onChange: (v: "and" | "or") => void;
+}) {
+  return (
+    <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] p-0.5 backdrop-blur-xl">
+      {(["and", "or"] as const).map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => onChange(mode)}
+          className={`text-[11px] font-semibold px-3 py-1 rounded-full transition-all ${
+            value === mode
+              ? "bg-white/[0.12] text-text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)]"
+              : "text-text-tertiary hover:text-text-secondary"
+          }`}
+        >
+          {mode.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ThresholdGroup({
   label,
   description,
   percentThreshold,
@@ -69,57 +120,50 @@ function ThresholdCard({
   onChange: (field: CardField, value: number | boolean | "and" | "or") => void;
 }) {
   return (
-    <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-accent-400">{label}</p>
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between px-1.5">
+        <div>
+          <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-text-primary">{label}</p>
+          <p className="text-[11px] text-text-tertiary mt-0.5">{description}</p>
+        </div>
         <Switch isSelected={enabled} onChange={(v: boolean) => onChange("enabled", v)} size="sm">
           <SwitchControl><SwitchThumb /></SwitchControl>
         </Switch>
       </div>
-      <p className="text-[10px] text-text-tertiary mb-3">{description}</p>
 
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-text-secondary">Growth threshold</span>
-            <InfoTip text="Minimum percentage increase in views to trigger an alert. Higher = fewer, more significant alerts." />
-          </div>
+      <div className="glass-panel rounded-2xl overflow-hidden">
+        <GroupRow
+          label="Growth threshold"
+          tip="Minimum percentage increase in views to trigger an alert."
+        >
           <div className="flex items-center gap-1.5">
             <input
               type="number"
               value={percentThreshold}
               onChange={(e) => onChange("percentThreshold", Number(e.target.value))}
-              className="w-20 text-right rounded-lg px-2.5 py-1 text-xs text-text-primary tabular-nums bg-surface-base border border-border-base"
+              className="w-20 text-right rounded-lg px-2.5 py-1 text-[13px] text-text-primary tabular-nums bg-white/[0.06] border border-white/[0.08] focus:outline-none focus:border-accent-400/40 transition"
             />
-            <span className="text-xs text-text-tertiary">%</span>
+            <span className="text-[12px] text-text-tertiary">%</span>
           </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-text-secondary">Min views gained</span>
-            <InfoTip text="Minimum absolute view increase to trigger an alert. Prevents alerts on small accounts with high % but low total views." />
-          </div>
+        </GroupRow>
+        <GroupRow
+          label="Min views gained"
+          tip="Minimum absolute view increase to trigger an alert."
+        >
           <input
             type="number"
             value={absoluteThreshold}
             onChange={(e) => onChange("absoluteThreshold", Number(e.target.value))}
-            className="w-24 text-right rounded-lg px-2.5 py-1 text-xs text-text-primary tabular-nums bg-surface-base border border-border-base"
+            className="w-24 text-right rounded-lg px-2.5 py-1 text-[13px] text-text-primary tabular-nums bg-white/[0.06] border border-white/[0.08] focus:outline-none focus:border-accent-400/40 transition"
           />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-text-secondary">Mode</span>
-            <InfoTip text="AND = both conditions must be met. OR = either condition triggers an alert." />
-          </div>
-          <select
-            value={thresholdMode}
-            onChange={(e) => onChange("thresholdMode", e.target.value as "and" | "or")}
-            className="rounded-lg px-2.5 py-1 text-xs text-text-primary bg-surface-base border border-border-base"
-          >
-            <option value="and">AND</option>
-            <option value="or">OR</option>
-          </select>
-        </div>
+        </GroupRow>
+        <GroupRow
+          label="Mode"
+          tip="AND = both conditions must be met. OR = either condition triggers."
+          isLast
+        >
+          <Segmented value={thresholdMode} onChange={(v) => onChange("thresholdMode", v)} />
+        </GroupRow>
       </div>
     </div>
   );
@@ -167,18 +211,18 @@ export function AlertConfigPanel({ settings, onSave }: AlertConfigPanelProps) {
   }
 
   return (
-    <div className="glass-panel rounded-2xl p-5">
-      <div className="flex items-start justify-between mb-4">
+    <div className="space-y-5">
+      <div className="flex items-end justify-between px-1.5">
         <div>
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-semibold text-text-primary">Alert Configuration</p>
-            <InfoTip text="Configure thresholds for viral post detection. Separate thresholds for your own accounts vs competitors." />
+            <p className="text-[15px] font-semibold text-text-primary">Alert Configuration</p>
+            <InfoTip text="Configure thresholds for viral post detection." />
           </div>
-          <p className="text-xs text-text-tertiary mt-0.5">Thresholds apply to the next sync cycle</p>
+          <p className="text-[12px] text-text-tertiary mt-0.5">Thresholds apply to the next sync cycle</p>
         </div>
         <Button
           size="sm"
-          className="bg-accent-400 text-white"
+          className="bg-accent-400/90 hover:bg-accent-400 text-white rounded-full shadow-lg shadow-accent-400/20 backdrop-blur-xl border border-white/[0.12]"
           isPending={saving}
           onPress={handleSave}
         >
@@ -186,8 +230,8 @@ export function AlertConfigPanel({ settings, onSave }: AlertConfigPanelProps) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <ThresholdCard
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <ThresholdGroup
           label="Your Accounts"
           description="Alert when your own posts go viral"
           percentThreshold={owned.percentThreshold}
@@ -196,7 +240,7 @@ export function AlertConfigPanel({ settings, onSave }: AlertConfigPanelProps) {
           enabled={owned.enabled}
           onChange={patchOwned}
         />
-        <ThresholdCard
+        <ThresholdGroup
           label="Competitors"
           description="Alert when competitor posts go viral"
           percentThreshold={competitor.percentThreshold}
@@ -207,21 +251,16 @@ export function AlertConfigPanel({ settings, onSave }: AlertConfigPanelProps) {
         />
       </div>
 
-      <div className="flex items-center gap-6 pt-4 border-t border-border-base">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-text-tertiary">Detection window</span>
-          <InfoTip text="Time period for measuring view growth. Shorter = faster detection, longer = fewer false positives." />
-          <span className="text-xs font-semibold text-accent-400">{settings.time_frame_hours}h</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-text-tertiary">Additional recipients</span>
-          <InfoTip text="Extra email addresses that receive alert notifications beyond your team members." />
-          <span className="text-xs font-semibold text-accent-400">{settings.additional_emails.length} emails</span>
-        </div>
-        <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[10px] text-text-tertiary">Debounce: 12h</span>
-          <InfoTip text="Same post will not re-trigger an alert within 12 hours, preventing duplicate notifications." />
-        </div>
+      <div className="glass-panel rounded-2xl overflow-hidden">
+        <GroupRow label="Detection window" tip="Time period for measuring view growth.">
+          <span className="text-[13px] font-semibold text-accent-400 tabular-nums">{settings.time_frame_hours}h</span>
+        </GroupRow>
+        <GroupRow label="Additional recipients" tip="Extra email addresses that receive alert notifications.">
+          <span className="text-[13px] font-semibold text-accent-400 tabular-nums">{settings.additional_emails.length} emails</span>
+        </GroupRow>
+        <GroupRow label="Debounce" tip="Same post will not re-trigger an alert within this window." isLast>
+          <span className="text-[13px] font-semibold text-text-secondary tabular-nums">12h</span>
+        </GroupRow>
       </div>
     </div>
   );
