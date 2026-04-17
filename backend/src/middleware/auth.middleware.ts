@@ -8,11 +8,23 @@ import {
   APIKeys,
   apiBillingAccounts,
 } from "@clipper/shared-db/src/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { teamService } from "../services/team.service";
-import { getRedisClient } from "../services/redis.service";
+import {
+  getRedisClient,
+  cacheGet,
+  cacheSet,
+  cacheDel,
+} from "../services/redis.service";
 
 const API_RATE_LIMIT = 60;
+
+const USER_CACHE_PREFIX = "auth:user:v1:";
+const USER_CACHE_TTL = 300;
+
+const APIKEY_CACHE_PREFIX = "auth:apikey:v1:";
+const APIKEY_CACHE_TTL = 60;
+const APIKEY_PENDING_USAGE_KEY = "auth:apikey:pending:v1";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -32,27 +44,194 @@ export interface ApiKeyRequest extends Request {
   };
 }
 
+type CachedUser = { dbUserId: number };
+
+type CachedApiKeyContext = {
+  apiKey: {
+    id: number;
+    team_id: number;
+    user_id: number;
+    name: string;
+    expires_at: string | null;
+  };
+  billing: { active: boolean; balance_cents: number };
+};
+
+async function resolveUserBySupabaseUid(
+  supabaseUid: string,
+): Promise<CachedUser | null> {
+  const cacheKey = `${USER_CACHE_PREFIX}${supabaseUid}`;
+
+  const cached = await cacheGet<CachedUser>(cacheKey);
+  if (cached) return cached;
+
+  const [dbUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.supabase_uid, supabaseUid))
+    .limit(1);
+
+  if (!dbUser) return null;
+
+  const result: CachedUser = { dbUserId: dbUser.id };
+  await cacheSet(cacheKey, result, USER_CACHE_TTL);
+  return result;
+}
+
+export async function invalidateUserCache(supabaseUid: string): Promise<void> {
+  await cacheDel(`${USER_CACHE_PREFIX}${supabaseUid}`);
+}
+
+async function resolveApiKeyContext(
+  keyHash: string,
+): Promise<CachedApiKeyContext | null> {
+  const cacheKey = `${APIKEY_CACHE_PREFIX}${keyHash}`;
+
+  const cached = await cacheGet<CachedApiKeyContext>(cacheKey);
+  if (cached) return cached;
+
+  const [apiKey] = await db
+    .select()
+    .from(APIKeys)
+    .where(and(eq(APIKeys.key_hash, keyHash), eq(APIKeys.revoked, false)))
+    .limit(1);
+
+  if (!apiKey) return null;
+
+  const [billing] = await db
+    .select()
+    .from(apiBillingAccounts)
+    .where(eq(apiBillingAccounts.team_id, apiKey.team_id))
+    .limit(1);
+
+  const ctx: CachedApiKeyContext = {
+    apiKey: {
+      id: apiKey.id,
+      team_id: apiKey.team_id,
+      user_id: apiKey.user_id,
+      name: apiKey.name,
+      expires_at: apiKey.expires_at
+        ? new Date(apiKey.expires_at).toISOString()
+        : null,
+    },
+    billing: billing
+      ? { active: !!billing.active, balance_cents: billing.balance_cents }
+      : { active: false, balance_cents: 0 },
+  };
+
+  await cacheSet(cacheKey, ctx, APIKEY_CACHE_TTL);
+  return ctx;
+}
+
+export async function invalidateApiKeyCache(keyHash: string): Promise<void> {
+  await cacheDel(`${APIKEY_CACHE_PREFIX}${keyHash}`);
+}
+
+async function markApiKeyUsed(apiKeyId: number): Promise<void> {
+  const client = getRedisClient();
+  if (!client) {
+    if (Math.random() < 0.1) {
+      db.update(APIKeys)
+        .set({ last_used_at: new Date() })
+        .where(eq(APIKeys.id, apiKeyId))
+        .catch(() => {});
+    }
+    return;
+  }
+  try {
+    await client.sadd(APIKEY_PENDING_USAGE_KEY, String(apiKeyId));
+  } catch {
+    /* best-effort */
+  }
+}
+
+export async function flushPendingApiKeyUsage(): Promise<number> {
+  const client = getRedisClient();
+  if (!client) return 0;
+
+  const stagingKey = `${APIKEY_PENDING_USAGE_KEY}:staging:${process.pid}:${Date.now()}`;
+
+  try {
+    await client.rename(APIKEY_PENDING_USAGE_KEY, stagingKey);
+  } catch (err) {
+    const msg = (err as Error)?.message || "";
+    if (msg.includes("no such key")) return 0;
+    console.error("[apikey-usage-flush] rename failed:", msg);
+    return 0;
+  }
+
+  const raw = await client.smembers(stagingKey);
+  const ids = raw.map(Number).filter((n) => Number.isFinite(n) && n > 0);
+
+  if (ids.length === 0) {
+    await client.del(stagingKey).catch(() => {});
+    return 0;
+  }
+
+  try {
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const batch = ids.slice(i, i + CHUNK);
+      await db
+        .update(APIKeys)
+        .set({ last_used_at: new Date() })
+        .where(inArray(APIKeys.id, batch));
+    }
+    await client.del(stagingKey).catch(() => {});
+    return ids.length;
+  } catch (err) {
+    console.error(
+      "[apikey-usage-flush] batch update failed, re-queueing:",
+      (err as Error).message,
+    );
+    try {
+      await client.sunionstore(
+        APIKEY_PENDING_USAGE_KEY,
+        APIKEY_PENDING_USAGE_KEY,
+        stagingKey,
+      );
+    } catch (mergeErr) {
+      console.error(
+        "[apikey-usage-flush] re-queue failed, IDs retained in staging:",
+        (mergeErr as Error).message,
+      );
+      return 0;
+    }
+    await client.del(stagingKey).catch(() => {});
+    return 0;
+  }
+}
+
 export async function requireAuth(
   req: AuthRequest,
   res: Response,
   next: NextFunction,
 ) {
   try {
-    // Allow internal service-to-service calls (agent-service → backend)
-    // Scoped to specific route prefixes only
     const internalKey = req.headers["x-internal-api-key"];
     const expectedKey = process.env.INTERNAL_API_KEY;
-    if (internalKey && expectedKey && typeof internalKey === "string" &&
-        internalKey.length === expectedKey.length &&
-        crypto.timingSafeEqual(Buffer.from(internalKey), Buffer.from(expectedKey))) {
+    if (
+      internalKey &&
+      expectedKey &&
+      typeof internalKey === "string" &&
+      internalKey.length === expectedKey.length &&
+      crypto.timingSafeEqual(
+        Buffer.from(internalKey),
+        Buffer.from(expectedKey),
+      )
+    ) {
       const allowedPrefixes = [
         "/api/scene-builder",
         "/api/ugc",
         "/api/ad-clone",
       ];
-      const isAllowedRoute = allowedPrefixes.some((p) => req.originalUrl.startsWith(p));
+      const isAllowedRoute = allowedPrefixes.some((p) =>
+        req.originalUrl.startsWith(p),
+      );
       if (!isAllowedRoute) {
-        return res.status(403).json({ error: "Internal key not authorized for this route" });
+        return res
+          .status(403)
+          .json({ error: "Internal key not authorized for this route" });
       }
       (req as AuthRequest).user = {
         id: "internal-service",
@@ -80,14 +259,9 @@ export async function requireAuth(
       });
     }
 
-    // Get database user ID
-    const [dbUser] = await db
-      .select({ id: users.id, email: users.email })
-      .from(users)
-      .where(eq(users.supabase_uid, user.id))
-      .limit(1);
+    const cachedUser = await resolveUserBySupabaseUid(user.id);
 
-    if (!dbUser) {
+    if (!cachedUser) {
       return res.status(401).json({
         error: "User not found in database",
       });
@@ -96,7 +270,7 @@ export async function requireAuth(
     req.user = {
       id: user.id,
       email: user.email!,
-      dbUserId: dbUser.id,
+      dbUserId: cachedUser.dbUserId,
     };
 
     next();
@@ -125,13 +299,6 @@ export async function requireAuth(
   }
 }
 
-/**
- * Middleware to check if user can perform actions based on seat limits.
- * When a team is over their seat limit (e.g., downgraded from Scale to Free),
- * only the owner can perform actions.
- *
- * This middleware should be used after requireAuth and expects teamId in params.
- */
 export async function requireSeatAccess(
   req: AuthRequest,
   res: Response,
@@ -209,54 +376,40 @@ export async function validateAPIKey(
     }
 
     const keyHash = hashApiKey(header);
+    const ctx = await resolveApiKeyContext(keyHash);
 
-    const [apiKey] = await db
-      .select()
-      .from(APIKeys)
-      .where(and(eq(APIKeys.key_hash, keyHash), eq(APIKeys.revoked, false)))
-      .limit(1);
-
-    if (!apiKey) {
+    if (!ctx) {
       return res.status(401).json({ error: "Invalid API key" });
     }
 
-    if (apiKey.expires_at && apiKey.expires_at < new Date()) {
+    if (ctx.apiKey.expires_at && new Date(ctx.apiKey.expires_at) < new Date()) {
+      await invalidateApiKeyCache(keyHash);
       return res.status(401).json({ error: "API key expired" });
     }
 
-    const [billing] = await db
-      .select()
-      .from(apiBillingAccounts)
-      .where(eq(apiBillingAccounts.team_id, apiKey.team_id))
-      .limit(1);
-
-    if (!billing || !billing.active) {
+    if (!ctx.billing.active) {
       return res
         .status(403)
         .json({ error: "API billing not active for this team" });
     }
 
-    if (billing.balance_cents <= 0) {
+    if (ctx.billing.balance_cents <= 0) {
       return res.status(402).json({ error: "Insufficient balance" });
     }
 
-    const { limited, retryAfter } = await checkRateLimit(apiKey.id);
+    const { limited, retryAfter } = await checkRateLimit(ctx.apiKey.id);
     if (limited) {
       res.set("Retry-After", String(retryAfter));
       return res.status(429).json({ error: "Rate limit exceeded" });
     }
 
-    db.update(APIKeys)
-      .set({ last_used_at: new Date() })
-      .where(eq(APIKeys.id, apiKey.id))
-      .then(() => {})
-      .catch(() => {});
+    void markApiKeyUsed(ctx.apiKey.id);
 
     req.apiKey = {
-      id: apiKey.id,
-      teamId: apiKey.team_id,
-      userId: apiKey.user_id,
-      name: apiKey.name,
+      id: ctx.apiKey.id,
+      teamId: ctx.apiKey.team_id,
+      userId: ctx.apiKey.user_id,
+      name: ctx.apiKey.name,
     };
 
     next();
@@ -266,3 +419,6 @@ export async function validateAPIKey(
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+// Re-exported so a batch writer can reuse the import chain without pulling schema in directly.
+export const _apiKeyUsageInternals = { APIKeys, inArray, eq };
