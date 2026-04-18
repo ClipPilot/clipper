@@ -35,6 +35,8 @@
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "jotai": "^2.16.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "next": "^16.2.1",
     "next-themes": "0.4.6",
     "pnpm": "^10.33.0",

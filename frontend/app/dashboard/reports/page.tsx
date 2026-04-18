@@ -36,7 +36,6 @@ import {
   rowsToCsv,
   type ReportRow,
 } from "./aggregations";
-import "./reports.print.css";
 
 type Scope = "own" | "competitors";
 type ReportTab = "platform" | "content" | "geographic";
@@ -181,8 +180,150 @@ export default function ReportsPage() {
     downloadCsv(`reports-${scope}-${tab}-${today}.csv`, csv);
   };
 
-  const handleExportPdf = () => {
-    window.print();
+  const handleExportPdf = async () => {
+    if (tab === "geographic" || currentRows.length === 0) {
+      toast({ title: "Nothing to export", color: "warning" });
+      return;
+    }
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const scopeTitle =
+        scope === "own" ? "Your Performance" : "Your Competitors";
+      const tabTitle =
+        tab === "platform" ? "Platform Breakdown" : "Content Type";
+
+      const fmtDate = (iso?: string) =>
+        iso ? new Date(iso).toLocaleDateString() : "—";
+      const dateLabel = `${fmtDate(dateRange.startDate)} to ${fmtDate(dateRange.endDate)}`;
+
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 40;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text(`Report — ${tabTitle}`, margin, 56);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text(scopeTitle, margin, 74);
+
+      doc.setFontSize(9);
+      doc.setTextColor(90);
+      doc.text(`Date range: ${dateLabel}`, margin, 92);
+      doc.text(
+        `Generated: ${new Date().toLocaleString()}`,
+        pageWidth - margin,
+        92,
+        { align: "right" },
+      );
+      doc.setTextColor(0);
+
+      autoTable(doc, {
+        startY: 108,
+        head: [["Metric", "Value"]],
+        body: [
+          ["Posts", totals.postCount.toLocaleString()],
+          ["Views", totals.views.toLocaleString()],
+          ["Likes", totals.likes.toLocaleString()],
+          ["Comments", totals.comments.toLocaleString()],
+          ["Engagement rate", `${totals.engRate.toFixed(2)}%`],
+        ],
+        theme: "grid",
+        styles: {
+          font: "helvetica",
+          fontSize: 10,
+          textColor: 0,
+          lineColor: 0,
+          lineWidth: 0.5,
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        columnStyles: { 1: { halign: "right" } },
+        margin: { left: margin, right: margin },
+      });
+
+      const lastTable = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable;
+      const afterSummaryY = (lastTable?.finalY ?? 108) + 24;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(`Breakdown by ${dimensionLabel}`, margin, afterSummaryY);
+
+      autoTable(doc, {
+        startY: afterSummaryY + 8,
+        head: [
+          [
+            dimensionLabel,
+            "Posts",
+            "Views",
+            "Likes",
+            "Comments",
+            "Eng. rate",
+          ],
+        ],
+        body: currentRows.map((r) => [
+          r.label,
+          r.postCount.toLocaleString(),
+          r.views.toLocaleString(),
+          r.likes.toLocaleString(),
+          r.comments.toLocaleString(),
+          `${r.engRate.toFixed(2)}%`,
+        ]),
+        foot: [
+          [
+            "Total",
+            totals.postCount.toLocaleString(),
+            totals.views.toLocaleString(),
+            totals.likes.toLocaleString(),
+            totals.comments.toLocaleString(),
+            `${totals.engRate.toFixed(2)}%`,
+          ],
+        ],
+        theme: "grid",
+        styles: {
+          font: "helvetica",
+          fontSize: 10,
+          textColor: 0,
+          lineColor: 0,
+          lineWidth: 0.5,
+        },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        footStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+        },
+        columnStyles: {
+          1: { halign: "right" },
+          2: { halign: "right" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+        },
+        margin: { left: margin, right: margin },
+      });
+
+      const today = new Date().toISOString().slice(0, 10);
+      doc.save(`reports-${scope}-${tab}-${today}.pdf`);
+    } catch (err: any) {
+      toast({
+        title: "Failed to export PDF",
+        description: err?.message ?? "Unknown error",
+        color: "danger",
+      });
+    }
   };
 
   const handleGroupSelection = (keys: Set<string>) => {
