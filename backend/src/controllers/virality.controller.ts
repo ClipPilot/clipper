@@ -402,12 +402,27 @@ class ViralityController {
       if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds, additionalEmails } = req.body;
+      const {
+        percentThreshold,
+        absoluteThreshold,
+        thresholdMode,
+        timeFrameHours,
+        enabledAccountIds,
+        additionalEmails,
+        ownedPercentThreshold,
+        ownedAbsoluteThreshold,
+        ownedThresholdMode,
+        ownedAlertsEnabled,
+        competitorPercentThreshold,
+        competitorAbsoluteThreshold,
+        competitorThresholdMode,
+        competitorAlertsEnabled,
+      } = req.body;
 
       if (!["and", "or"].includes(thresholdMode)) {
         return res.status(400).json({ error: "thresholdMode must be 'and' or 'or'" });
       }
-      if (!Array.isArray(enabledAccountIds)) {
+      if (enabledAccountIds !== undefined && !Array.isArray(enabledAccountIds)) {
         return res.status(400).json({ error: "enabledAccountIds must be an array" });
       }
       if (![12, 24, 48].includes(timeFrameHours)) {
@@ -418,6 +433,30 @@ class ViralityController {
       }
       if (absoluteThreshold != null && (typeof absoluteThreshold !== "number" || absoluteThreshold <= 0)) {
         return res.status(400).json({ error: "absoluteThreshold must be a positive number" });
+      }
+      if (ownedThresholdMode !== undefined && !["and", "or"].includes(ownedThresholdMode)) {
+        return res.status(400).json({ error: "ownedThresholdMode must be 'and' or 'or'" });
+      }
+      if (competitorThresholdMode !== undefined && !["and", "or"].includes(competitorThresholdMode)) {
+        return res.status(400).json({ error: "competitorThresholdMode must be 'and' or 'or'" });
+      }
+      if (ownedAlertsEnabled !== undefined && typeof ownedAlertsEnabled !== "boolean") {
+        return res.status(400).json({ error: "ownedAlertsEnabled must be a boolean" });
+      }
+      if (competitorAlertsEnabled !== undefined && typeof competitorAlertsEnabled !== "boolean") {
+        return res.status(400).json({ error: "competitorAlertsEnabled must be a boolean" });
+      }
+      if (ownedPercentThreshold !== undefined && (typeof ownedPercentThreshold !== "number" || ownedPercentThreshold <= 0)) {
+        return res.status(400).json({ error: "ownedPercentThreshold must be a positive number" });
+      }
+      if (ownedAbsoluteThreshold !== undefined && (typeof ownedAbsoluteThreshold !== "number" || ownedAbsoluteThreshold <= 0)) {
+        return res.status(400).json({ error: "ownedAbsoluteThreshold must be a positive number" });
+      }
+      if (competitorPercentThreshold !== undefined && (typeof competitorPercentThreshold !== "number" || competitorPercentThreshold <= 0)) {
+        return res.status(400).json({ error: "competitorPercentThreshold must be a positive number" });
+      }
+      if (competitorAbsoluteThreshold !== undefined && (typeof competitorAbsoluteThreshold !== "number" || competitorAbsoluteThreshold <= 0)) {
+        return res.status(400).json({ error: "competitorAbsoluteThreshold must be a positive number" });
       }
       if (additionalEmails !== undefined) {
         if (!Array.isArray(additionalEmails)) {
@@ -441,6 +480,14 @@ class ViralityController {
         timeFrameHours: timeFrameHours ?? 24,
         enabledAccountIds,
         additionalEmails: additionalEmails ?? [],
+        ownedPercentThreshold,
+        ownedAbsoluteThreshold,
+        ownedThresholdMode,
+        ownedAlertsEnabled,
+        competitorPercentThreshold,
+        competitorAbsoluteThreshold,
+        competitorThresholdMode,
+        competitorAlertsEnabled,
       });
 
       return res.json({ settings });
@@ -462,7 +509,7 @@ class ViralityController {
     }
   }
 
-  async getAlertLogs(req: AuthRequest, res: Response<{ logs: any[] } | ErrorResponse>) {
+  async getAlertLogs(req: AuthRequest, res: Response<{ logs: any[]; total: number } | ErrorResponse>) {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
@@ -472,10 +519,27 @@ class ViralityController {
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const logs = await viralityService.getAlertLogs(teamId, limit, offset);
-      return res.json({ logs });
+      const [logs, total] = await Promise.all([
+        viralityService.getAlertLogs(teamId, limit, offset),
+        viralityService.getAlertLogsCount(teamId),
+      ]);
+      return res.json({ logs, total });
     } catch (error) {
       return handleError(res, "Get alert logs error", error, "Failed to get alert logs");
+    }
+  }
+
+  async notifyAlert(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const alertId = parseId(req.params.alertId);
+      if (!teamId || !alertId) return res.status(400).json({ error: "Invalid ID" });
+      if (!(await verifyTeamAccessOrFail(req, teamId, res))) return;
+      if (!(await requirePlanAccess(teamId, res))) return;
+      await viralityService.notifyAlert(teamId, alertId);
+      return res.json({ success: true });
+    } catch (error) {
+      return handleError(res, "Notify alert error", error, "Failed to notify team");
     }
   }
 }

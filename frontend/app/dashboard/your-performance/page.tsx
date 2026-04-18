@@ -131,7 +131,7 @@ export default function ExecutiveDashboardPage() {
 
       setDashboardStats(stats);
       setMyDashboardStats(myStats);
-      setAlertLogs(alerts);
+      setAlertLogs(alerts.logs);
       setCompetitors(
         withAccounts.filter((g: any) => g.competitor === false),
       );

@@ -233,3 +233,103 @@ describe("ViralityController.bulkMoveAccounts", () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+describe("ViralityController.saveSettings — per-type threshold fields", () => {
+  const validBase = {
+    thresholdMode: "or",
+    timeFrameHours: 24,
+    enabledAccountIds: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockViralityService.saveSettings.mockResolvedValue({ percentThreshold: null, absoluteThreshold: null, thresholdMode: "or", timeFrameHours: 24, enabledAccountIds: [], additionalEmails: [] });
+  });
+
+  it("returns 400 for invalid teamId", async () => {
+    const req = createReq({ params: { teamId: "abc" }, body: validBase });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when ownedAlertsEnabled is not boolean", async () => {
+    const req = createReq({
+      params: { teamId: "1" },
+      body: { ...validBase, ownedAlertsEnabled: "yes" },
+    });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when ownedPercentThreshold is zero or negative", async () => {
+    const req = createReq({
+      params: { teamId: "1" },
+      body: { ...validBase, ownedPercentThreshold: -10 },
+    });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when ownedThresholdMode is invalid", async () => {
+    const req = createReq({
+      params: { teamId: "1" },
+      body: { ...validBase, ownedThresholdMode: "both" },
+    });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 when competitorThresholdMode is invalid", async () => {
+    const req = createReq({
+      params: { teamId: "1" },
+      body: { ...validBase, competitorThresholdMode: "none" },
+    });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("passes all 8 new fields through to service", async () => {
+    const req = createReq({
+      params: { teamId: "1" },
+      body: {
+        ...validBase,
+        ownedPercentThreshold: 60,
+        ownedAbsoluteThreshold: 5000,
+        ownedThresholdMode: "and",
+        ownedAlertsEnabled: true,
+        competitorPercentThreshold: 80,
+        competitorAbsoluteThreshold: 15000,
+        competitorThresholdMode: "or",
+        competitorAlertsEnabled: false,
+      },
+    });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(mockViralityService.saveSettings).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        ownedPercentThreshold: 60,
+        ownedAbsoluteThreshold: 5000,
+        ownedThresholdMode: "and",
+        ownedAlertsEnabled: true,
+        competitorPercentThreshold: 80,
+        competitorAbsoluteThreshold: 15000,
+        competitorThresholdMode: "or",
+        competitorAlertsEnabled: false,
+      })
+    );
+  });
+
+  it("succeeds when new fields are omitted (backwards compat)", async () => {
+    const req = createReq({ params: { teamId: "1" }, body: validBase });
+    const res = createMockResponse();
+    await viralityController.saveSettings(req, res);
+    expect(res.status).not.toHaveBeenCalledWith(400);
+    expect(mockViralityService.saveSettings).toHaveBeenCalled();
+  });
+});

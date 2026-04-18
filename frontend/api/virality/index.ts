@@ -1,6 +1,7 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import { filterExcludedPostTypes } from "@/lib/viralityConstants";
+import type { ViralPostSnapshot } from "@clipper/shared-ui";
 export type {
   ViralityAccount,
   ViralityPost,
@@ -9,6 +10,7 @@ export type {
   CompetitorWithAccounts,
   ViralityPostsByAccount,
 } from "@clipper/shared-types";
+export type { ViralPostSnapshot } from "@clipper/shared-ui";
 import type {
   ViralityAccount,
   ViralityPost,
@@ -40,6 +42,10 @@ export type AlertLog = {
   error_message: string | null;
   sent_at: string;
   created_at: string;
+};
+
+export type AlertLogWithSnapshot = AlertLog & {
+  alert_posts_snapshot: ViralPostSnapshot[];
 };
 
 class ViralityAPI {
@@ -413,7 +419,7 @@ class ViralityAPI {
     teamId: number,
     limit: number = 5,
     offset: number = 0
-  ): Promise<AlertLog[]> {
+  ): Promise<{ logs: AlertLogWithSnapshot[]; total: number }> {
     const params = new URLSearchParams({
       limit: String(limit),
       offset: String(offset),
@@ -434,7 +440,7 @@ class ViralityAPI {
     }
 
     const data = await response.json();
-    return data.logs;
+    return { logs: data.logs, total: data.total };
   }
 
   async getGroupsWithAccounts(teamId: number): Promise<CompetitorWithAccounts[]> {
@@ -510,3 +516,19 @@ class ViralityAPI {
 }
 
 export const viralityAPI = new ViralityAPI();
+
+export async function notifyAlert(teamId: number, alertId: number): Promise<void> {
+  const response = await apiFetch(
+    `${API_URL}/virality/${teamId}/alerts/${alertId}/notify`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to notify team");
+  }
+}

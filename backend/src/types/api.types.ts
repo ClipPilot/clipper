@@ -42,6 +42,9 @@ import type {
   BulkMoveAccountsRequest as SharedBulkMoveAccountsRequest,
   BulkMoveAccountsResponse as SharedBulkMoveAccountsResponse,
   ViralSettings as SharedViralSettings,
+  ViralAlertLog as SharedViralAlertLog,
+  AlertLogsResponse as SharedAlertLogsResponse,
+  NotifyAlertResponse as SharedNotifyAlertResponse,
   Campaign as SharedCampaign,
   CampaignVideo as SharedCampaignVideo,
   CampaignPaymentMethod as SharedCampaignPaymentMethod,
@@ -129,6 +132,9 @@ export type BackfillManagedResponse = DbCompatible<SharedBackfillManagedResponse
 export type BulkMoveAccountsRequest = DbCompatible<SharedBulkMoveAccountsRequest>;
 export type BulkMoveAccountsResponse = DbCompatible<SharedBulkMoveAccountsResponse>;
 export type ViralSettings = DbCompatible<SharedViralSettings>;
+export type ViralAlertLog = DbCompatible<SharedViralAlertLog>;
+export type AlertLogsResponse = DbCompatible<SharedAlertLogsResponse>;
+export type NotifyAlertResponse = DbCompatible<SharedNotifyAlertResponse>;
 export type Campaign = DbCompatible<SharedCampaign>;
 export type CampaignVideo = DbCompatible<SharedCampaignVideo>;
 export type CampaignPaymentMethod = DbCompatible<SharedCampaignPaymentMethod>;

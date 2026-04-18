@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 import { viralityController } from "../controllers/virality.controller";
 
 const router = Router();
@@ -931,59 +931,41 @@ router.put("/:teamId/settings", requireAuth, (req, res) => viralityController.sa
  *           default: 0
  *     responses:
  *       200:
- *         description: List of alert logs
+ *         description: List of alert logs with total count
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               required:
- *                 - logs
- *               properties:
- *                 logs:
- *                   type: array
- *                   items:
- *                     type: object
- *                     required:
- *                       - id
- *                       - team_id
- *                       - email
- *                       - subject
- *                       - email_body
- *                       - viral_post_ids
- *                       - status
- *                       - sent_at
- *                       - created_at
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       user_id:
- *                         type: integer
- *                         nullable: true
- *                       email:
- *                         type: string
- *                       subject:
- *                         type: string
- *                       email_body:
- *                         type: string
- *                       viral_post_ids:
- *                         type: array
- *                         items:
- *                           type: integer
- *                       status:
- *                         type: string
- *                         enum: [sent, failed]
- *                       error_message:
- *                         type: string
- *                         nullable: true
- *                       sent_at:
- *                         type: string
- *                         format: date-time
- *                       created_at:
- *                         type: string
- *                         format: date-time
+ *               $ref: '#/components/schemas/AlertLogsResponse'
  */
 router.get("/:teamId/alert-logs", requireAuth, (req, res) => viralityController.getAlertLogs(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/alerts/{alertId}/notify:
+ *   post:
+ *     tags:
+ *       - Virality
+ *     summary: Notify team about a specific alert
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: alertId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/NotifyAlertResponse'
+ */
+router.post("/:teamId/alerts/:alertId/notify", requireAuth, requireSeatAccess, (req, res) => viralityController.notifyAlert(req, res));
 
 export default router;

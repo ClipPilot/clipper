@@ -48,6 +48,23 @@ interface ViralPost {
   commentCount: number;
 }
 
+interface ViralPostSnapshot {
+  postId: number;
+  postUrl: string;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  platform: string;
+  accountHandle: string;
+  groupName: string;
+  isCompetitor: boolean;
+  currentViews: number;
+  previousViews: number;
+  viewsIncrease: number;
+  percentIncrease: number;
+  likeCount: number;
+  commentCount: number;
+}
+
 interface ViralAccountResult {
   accountId: number;
   username: string;
@@ -59,7 +76,31 @@ interface ViralAccountResult {
 interface ViralCompetitorGroup {
   competitorId: number | null;
   competitorName: string;
+  isCompetitor: boolean;
   accounts: ViralAccountResult[];
+}
+
+function buildPostsSnapshot(groups: ViralCompetitorGroup[]): ViralPostSnapshot[] {
+  return groups.flatMap((group) =>
+    group.accounts.flatMap((account) =>
+      account.viralPosts.map((post) => ({
+        postId: post.postId,
+        postUrl: post.postUrl,
+        thumbnailUrl: post.thumbnailUrl,
+        caption: post.caption,
+        platform: post.platform,
+        accountHandle: account.username,
+        groupName: group.competitorName,
+        isCompetitor: group.isCompetitor,
+        currentViews: post.currentViews,
+        previousViews: post.previousViews,
+        viewsIncrease: post.viewsIncrease,
+        percentIncrease: post.percentIncrease,
+        likeCount: post.likeCount,
+        commentCount: post.commentCount,
+      })),
+    ),
+  );
 }
 
 /**
@@ -680,14 +721,15 @@ export async function checkAndSendViralAlertsForTeam(
     accountCompetitorMap.set(acc.id, acc.group_id);
   }
 
-  // Fetch competitor names — just get all competitors for this team (cheap single query)
   const competitorNameMap = new Map<number, string>();
+  const competitorIsCompetitorMap = new Map<number, boolean>();
   const allCompetitors = await db
-    .select({ id: schema.viralityGroups.id, name: schema.viralityGroups.name })
+    .select({ id: schema.viralityGroups.id, name: schema.viralityGroups.name, competitor: schema.viralityGroups.competitor })
     .from(schema.viralityGroups)
     .where(eq(schema.viralityGroups.team_id, teamId));
   for (const c of allCompetitors) {
     competitorNameMap.set(c.id, c.name);
+    competitorIsCompetitorMap.set(c.id, c.competitor ?? true);
   }
 
   // Group viral results by competitor
@@ -703,6 +745,7 @@ export async function checkAndSendViralAlertsForTeam(
     competitorGroups.push({
       competitorId: compId,
       competitorName: compId != null ? (competitorNameMap.get(compId) || "Unknown Competitor") : "Ungrouped",
+      isCompetitor: compId != null ? (competitorIsCompetitorMap.get(compId) ?? true) : true,
       accounts,
     });
   }
@@ -753,6 +796,7 @@ export async function checkAndSendViralAlertsForTeam(
         subject,
         email_body: logSummary,
         viral_post_ids: allViralPostIds,
+        alert_posts_snapshot: buildPostsSnapshot(competitorGroups),
         status: "sent",
         sent_at: new Date(),
       });
@@ -768,6 +812,7 @@ export async function checkAndSendViralAlertsForTeam(
         subject,
         email_body: logSummary,
         viral_post_ids: allViralPostIds,
+        alert_posts_snapshot: buildPostsSnapshot(competitorGroups),
         status: "failed",
         error_message: err.message || "Unknown error",
         sent_at: new Date(),
@@ -799,6 +844,7 @@ export async function checkAndSendViralAlertsForTeam(
         subject,
         email_body: logSummary,
         viral_post_ids: allViralPostIds,
+        alert_posts_snapshot: buildPostsSnapshot(competitorGroups),
         status: "sent",
         sent_at: new Date(),
       });
@@ -814,6 +860,7 @@ export async function checkAndSendViralAlertsForTeam(
         subject,
         email_body: logSummary,
         viral_post_ids: allViralPostIds,
+        alert_posts_snapshot: buildPostsSnapshot(competitorGroups),
         status: "failed",
         error_message: err.message || "Unknown error",
         sent_at: new Date(),

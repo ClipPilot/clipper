@@ -25,3 +25,5 @@ infra/.terraform.lock.hcl
 .flaskenv*
 !.env.project
 !.env.vault
+/.superpowers
+/docs

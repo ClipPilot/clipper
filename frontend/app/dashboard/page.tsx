@@ -1,40 +1,18 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useAtom, useAtomValue } from "jotai";
 import { motion } from "framer-motion";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { Button, Card } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { authAPI } from "@/api/auth";
 import { DashboardGrid } from "@/components/dashboard";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useAtom(userAtom);
+  const [user] = useAtom(userAtom);
   const selectedTeam = useAtomValue(selectedTeamAtom);
-
-  useEffect(() => {
-    if (!user) {
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("access_token")
-          : null;
-      if (!accessToken) {
-        router.push("/auth");
-        return;
-      }
-      authAPI
-        .getMe()
-        .then((userData) => {
-          setUser(userData);
-        })
-        .catch(() => {
-          router.push("/auth");
-        });
-    }
-  }, [user, router, setUser]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();

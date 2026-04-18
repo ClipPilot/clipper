@@ -10,16 +10,31 @@ class TokenManager {
   private tokenVersion: number = 0;
 
   constructor() {
-    if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
-      this.broadcastChannel = new BroadcastChannel(TOKEN_UPDATE_CHANNEL);
-      this.broadcastChannel.onmessage = (event) => {
-        if (event.data.type === "tokens_updated") {
-          this.tokenVersion = event.data.version;
-        } else if (event.data.type === "tokens_cleared") {
-          this.clearTokens(false);
-        }
-      };
-      this.tokenVersion = Date.now();
+    if (typeof window !== "undefined") {
+      this.syncCookie();
+
+      if (typeof BroadcastChannel !== "undefined") {
+        this.broadcastChannel = new BroadcastChannel(TOKEN_UPDATE_CHANNEL);
+        this.broadcastChannel.onmessage = (event) => {
+          if (event.data.type === "tokens_updated") {
+            this.tokenVersion = event.data.version;
+          } else if (event.data.type === "tokens_cleared") {
+            this.clearTokens(false);
+          }
+        };
+        this.tokenVersion = Date.now();
+      }
+    }
+  }
+
+  private syncCookie(): void {
+    const token = localStorage.getItem("access_token");
+    const expiry = localStorage.getItem("token_expiry");
+    if (token && expiry) {
+      const remainingSeconds = Math.max(0, Math.floor((parseInt(expiry) - Date.now()) / 1000));
+      if (remainingSeconds > 0) {
+        document.cookie = `cuttr-session=1; path=/; max-age=${remainingSeconds}; SameSite=Lax`;
+      }
     }
   }
 
@@ -47,6 +62,7 @@ class TokenManager {
       const expiryTime = Date.now() + expiresIn * 1000;
       localStorage.setItem("token_expiry", expiryTime.toString());
       localStorage.setItem("token_version", this.tokenVersion.toString());
+      document.cookie = `cuttr-session=1; path=/; max-age=${expiresIn}; SameSite=Lax`;
 
       if (broadcast && this.broadcastChannel) {
         this.broadcastChannel.postMessage({
@@ -65,6 +81,7 @@ class TokenManager {
       localStorage.removeItem("remember_me");
       localStorage.removeItem("token_version");
       localStorage.removeItem(REFRESH_LOCK_KEY);
+      document.cookie = "cuttr-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
 
       if (broadcast && this.broadcastChannel) {
         this.broadcastChannel.postMessage({ type: "tokens_cleared" });
