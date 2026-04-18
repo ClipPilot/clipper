@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Switch, SwitchControl, SwitchThumb, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { SegmentedControl } from "./SegmentedControl";
 
 interface ViralSettingsData {
   owned_percent_threshold: number;
@@ -79,33 +80,6 @@ function GroupRow({
   );
 }
 
-function Segmented({
-  value,
-  onChange,
-}: {
-  value: "and" | "or";
-  onChange: (v: "and" | "or") => void;
-}) {
-  return (
-    <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] p-0.5 backdrop-blur-xl">
-      {(["and", "or"] as const).map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => onChange(mode)}
-          className={`text-[11px] font-semibold px-3 py-1 rounded-full transition-all ${
-            value === mode
-              ? "bg-white/[0.12] text-text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)]"
-              : "text-text-tertiary hover:text-text-secondary"
-          }`}
-        >
-          {mode.toUpperCase()}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function ThresholdGroup({
   label,
   description,
@@ -131,7 +105,7 @@ function ThresholdGroup({
         </Switch>
       </div>
 
-      <div className="glass-panel rounded-2xl overflow-hidden">
+      <div className="liquid-glass rounded-2xl overflow-hidden">
         <GroupRow
           label="Growth threshold"
           tip="Minimum percentage increase in views to trigger an alert."
@@ -162,7 +136,14 @@ function ThresholdGroup({
           tip="AND = both conditions must be met. OR = either condition triggers."
           isLast
         >
-          <Segmented value={thresholdMode} onChange={(v) => onChange("thresholdMode", v)} />
+          <SegmentedControl<"and" | "or">
+            value={thresholdMode}
+            onChange={(v) => onChange("thresholdMode", v)}
+            options={[
+              { value: "and", label: "AND" },
+              { value: "or", label: "OR" },
+            ]}
+          />
         </GroupRow>
       </div>
     </div>
@@ -251,7 +232,7 @@ export function AlertConfigPanel({ settings, onSave }: AlertConfigPanelProps) {
         />
       </div>
 
-      <div className="glass-panel rounded-2xl overflow-hidden">
+      <div className="liquid-glass rounded-2xl overflow-hidden">
         <GroupRow label="Detection window" tip="Time period for measuring view growth.">
           <span className="text-[13px] font-semibold text-accent-400 tabular-nums">{settings.time_frame_hours}h</span>
         </GroupRow>

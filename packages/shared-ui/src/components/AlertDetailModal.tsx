@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal, Button, Chip, Tooltip } from "@heroui/react";
+import { Modal, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   deriveSnapshotSeverity,
@@ -10,17 +10,29 @@ import {
 import type { AlertLogWithSnapshot } from "./AlertFeedTable";
 
 const PLATFORM_ICON: Record<string, { icon: string; color: string }> = {
-  tiktok: { icon: "ri:tiktok-fill", color: "text-cyan-500" },
-  instagram: { icon: "ri:instagram-fill", color: "text-pink-500" },
-  youtube: { icon: "ri:youtube-fill", color: "text-red-500" },
+  tiktok: { icon: "ri:tiktok-fill", color: "text-cyan-400" },
+  instagram: { icon: "ri:instagram-fill", color: "text-pink-400" },
+  youtube: { icon: "ri:youtube-fill", color: "text-red-400" },
   twitter: { icon: "ri:twitter-x-fill", color: "text-text-primary" },
   x: { icon: "ri:twitter-x-fill", color: "text-text-primary" },
 };
 
-const SEV_CHIP: Record<AlertSeverity, { color: "danger" | "warning" | "success"; bg: string }> = {
-  high: { color: "danger", bg: "bg-red-500/15" },
-  medium: { color: "warning", bg: "bg-orange-500/15" },
-  low: { color: "success", bg: "bg-green-500/15" },
+const SEV_STYLE: Record<AlertSeverity, { label: string; dot: string; chip: string }> = {
+  high: {
+    label: "High",
+    dot: "bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,0.6)]",
+    chip: "bg-rose-500/15 text-rose-300 border-rose-400/30",
+  },
+  medium: {
+    label: "Medium",
+    dot: "bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.55)]",
+    chip: "bg-amber-500/15 text-amber-300 border-amber-400/30",
+  },
+  low: {
+    label: "Low",
+    dot: "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]",
+    chip: "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  },
 };
 
 function formatNumber(n: number | undefined | null) {
@@ -66,22 +78,41 @@ export function AlertDetailModal({ alert, onClose, settings, onNotify, onShare, 
 
   const snapshot = alert.alert_posts_snapshot;
   const sev = snapshot.length ? deriveSnapshotSeverity(snapshot, settings) : ("low" as AlertSeverity);
+  const sevStyle = SEV_STYLE[sev];
   const groups = groupByAccount(snapshot);
 
   return (
     <Modal>
-      <Modal.Backdrop isOpen={!!alert} onOpenChange={handleOpenChange}>
+      <Modal.Backdrop isOpen={!!alert} onOpenChange={handleOpenChange} className="!bg-black/40">
         <Modal.Container>
-          <Modal.Dialog className="glass-panel sm:max-w-2xl !rounded-2xl overflow-hidden">
+          <Modal.Dialog
+            className="sm:max-w-2xl !rounded-3xl overflow-hidden !border !border-white/15 !shadow-[0_20px_70px_-10px_rgba(0,0,0,0.5)]"
+            style={{
+              background: "linear-gradient(180deg, rgba(40,40,60,0.55) 0%, rgba(18,18,32,0.7) 100%)",
+              backdropFilter: "blur(40px) saturate(180%)",
+              WebkitBackdropFilter: "blur(40px) saturate(180%)",
+            }}
+          >
             <Modal.Body className="p-0 max-h-[85vh] overflow-hidden flex flex-col !bg-transparent">
 
-              <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border-base">
+              <div className="px-6 pt-6 pb-5 shrink-0 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2 mb-3">
-                  <Chip size="sm" color={SEV_CHIP[sev].color} className={SEV_CHIP[sev].bg}>{sev.toUpperCase()}</Chip>
-                  <Chip size="sm" color={alert.status === "sent" ? "success" : "danger"}>{alert.status}</Chip>
-                  <Chip size="sm" variant="soft">{settings.time_frame_hours}h window</Chip>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${sevStyle.chip}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${sevStyle.dot}`} />
+                    {sevStyle.label}
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${
+                    alert.status === "sent"
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                      : "bg-rose-500/15 text-rose-300 border-rose-400/30"
+                  }`}>
+                    {alert.status}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[10px] font-semibold text-text-secondary tracking-wide">
+                    {settings.time_frame_hours}h window
+                  </span>
                 </div>
-                <p className="text-lg font-semibold text-text-primary leading-snug mb-1.5">{alert.subject}</p>
+                <p className="text-[17px] font-semibold text-text-primary leading-snug tracking-tight mb-1.5">{alert.subject}</p>
                 <p className="text-[11px] text-text-tertiary">{new Date(alert.sent_at).toLocaleString()}</p>
               </div>
 
@@ -98,7 +129,7 @@ export function AlertDetailModal({ alert, onClose, settings, onNotify, onShare, 
                           <span className="text-[10px] text-text-tertiary">{group.groupName}</span>
                         </>
                       )}
-                      <div className="flex-1 h-px bg-border-base" />
+                      <div className="flex-1 h-px bg-white/[0.08]" />
                     </div>
                     <div className="space-y-3">
                       {group.posts.map((post) => (
@@ -120,7 +151,7 @@ export function AlertDetailModal({ alert, onClose, settings, onNotify, onShare, 
                 )}
               </div>
 
-              <div className="px-6 py-3.5 shrink-0 flex items-center justify-between border-t border-border-base">
+              <div className="px-6 py-3.5 shrink-0 flex items-center justify-between border-t border-white/[0.08]">
                 <p className="text-[11px] text-text-tertiary">
                   Sent to <span className="text-text-secondary font-medium">{alert.email}</span>
                 </p>
@@ -140,7 +171,7 @@ function PostCard({
   alertId,
   onNotify,
   onShare,
-  onClone,
+  onClone: _onClone,
 }: {
   post: ViralPostSnapshot;
   settings: AlertSettingsData;
@@ -150,35 +181,33 @@ function PostCard({
   onClone: (postUrl: string) => void;
 }) {
   const sev = deriveSnapshotSeverity([post], settings);
+  const sevStyle = SEV_STYLE[sev];
+  const platform = PLATFORM_ICON[post.platform.toLowerCase()] ?? { icon: "ri:global-line", color: "text-text-tertiary" };
 
   return (
-    <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
+    <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center bg-surface-elevated border border-border-base">
-          <Icon
-            icon={PLATFORM_ICON[post.platform.toLowerCase()]?.icon ?? "ri:global-line"}
-            width={24}
-            className={PLATFORM_ICON[post.platform.toLowerCase()]?.color ?? "text-text-tertiary"}
-          />
+        <div className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center bg-white/[0.05] border border-white/[0.08]">
+          <Icon icon={platform.icon} width={22} className={platform.color} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-accent-400">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-accent-400">
               {post.platform}
             </span>
-            <Chip size="sm" color={SEV_CHIP[sev].color} className={`text-[10px] ${SEV_CHIP[sev].bg}`}>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-semibold ${sevStyle.chip}`}>
               +{Math.round(post.percentIncrease ?? 0)}% in {settings.time_frame_hours}h
-            </Chip>
+            </span>
           </div>
 
-          <p className="text-sm font-medium text-text-primary leading-snug line-clamp-2 mb-2.5">
+          <p className="text-[13px] font-medium text-text-primary leading-snug line-clamp-2">
             {post.caption ?? "No caption"}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-border-base">
+      <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/[0.08]">
         {[
           { val: `+${formatNumber(post.viewsIncrease)}`, lbl: "Views gained" },
           { val: formatNumber(post.currentViews), lbl: "Total views" },
@@ -186,17 +215,45 @@ function PostCard({
           { val: formatNumber(post.commentCount), lbl: "Comments" },
         ].map(({ val, lbl }) => (
           <div key={lbl} className="text-center">
-            <p className="text-sm font-bold text-accent-400 tabular-nums">{val}</p>
+            <p className="text-[14px] font-bold text-accent-400 tabular-nums">{val}</p>
             <p className="text-[10px] text-text-tertiary mt-0.5">{lbl}</p>
           </div>
         ))}
       </div>
 
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-base">
-        <Button size="sm" className="bg-green-500 text-white text-[11px] h-7 min-w-0 px-3" onPress={() => onShare(post.postUrl)}>Share</Button>
-        <Tooltip><Tooltip.Trigger><span><Button size="sm" className="text-[11px] h-7 min-w-0 px-3" isDisabled>Clone</Button></span></Tooltip.Trigger><Tooltip.Content>Coming soon</Tooltip.Content></Tooltip>
-        <Button size="sm" className="bg-orange-500 text-white text-[11px] h-7 min-w-0 px-3" onPress={() => onNotify(alertId)}>Notify</Button>
-        <Button size="sm" variant="outline" className="text-[11px] h-7 min-w-0 px-3 ml-auto" onPress={() => window.open(post.postUrl, "_blank")}>View post</Button>
+      <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-white/[0.08]">
+        <Tooltip>
+          <Tooltip.Trigger>
+            <button
+              type="button"
+              onClick={() => onShare(post.postUrl)}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.06] border border-white/[0.08] text-text-secondary hover:text-text-primary hover:bg-white/[0.1] transition"
+            >
+              <Icon icon="solar:copy-linear" width={14} />
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Content>Copy post URL</Tooltip.Content>
+        </Tooltip>
+        <Tooltip>
+          <Tooltip.Trigger>
+            <button
+              type="button"
+              onClick={() => onNotify(alertId)}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-accent-400/15 border border-accent-400/30 text-accent-400 hover:bg-accent-400/25 transition"
+            >
+              <Icon icon="solar:bell-bing-linear" width={14} />
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Content>Re-notify team</Tooltip.Content>
+        </Tooltip>
+        <button
+          type="button"
+          onClick={() => window.open(post.postUrl, "_blank")}
+          className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 h-8 rounded-full bg-white/[0.06] border border-white/[0.08] text-text-primary hover:bg-white/[0.1] transition"
+        >
+          View post
+          <Icon icon="solar:arrow-right-up-linear" width={12} />
+        </button>
       </div>
     </div>
   );

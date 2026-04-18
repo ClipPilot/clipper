@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { PaginationControl } from "./PaginationControl";
+import { SegmentedControl } from "./SegmentedControl";
 import { deriveSnapshotSeverity, type AlertSeverity, type ViralPostSnapshot } from "../utils/alertSeverity";
 
 interface AlertLog {
@@ -114,25 +115,19 @@ export function AlertFeedTable({
           <p className="text-[15px] font-semibold text-text-primary">Alert Feed</p>
           <p className="text-[12px] text-text-tertiary mt-0.5">Click any row to view full alert details</p>
         </div>
-        <div className="flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] p-0.5 backdrop-blur-xl">
-          {(["all", "high", "medium", "low"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSeverityFilter(s)}
-              className={`text-[11px] font-semibold px-3 py-1 rounded-full transition-all ${
-                severityFilter === s
-                  ? "bg-white/[0.12] text-text-primary shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15)]"
-                  : "text-text-tertiary hover:text-text-secondary"
-              }`}
-            >
-              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<SeverityFilter>
+          value={severityFilter}
+          onChange={setSeverityFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "high", label: "High" },
+            { value: "medium", label: "Medium" },
+            { value: "low", label: "Low" },
+          ]}
+        />
       </div>
 
-      <div className="glass-panel rounded-2xl overflow-hidden">
+      <div className="liquid-glass rounded-2xl overflow-hidden">
         {filtered.map(({ alert, sev }, idx) => {
           const first = alert.alert_posts_snapshot[0];
           const hasPost = !!first;
@@ -141,30 +136,19 @@ export function AlertFeedTable({
             <div
               key={alert.id}
               onClick={() => onAlertClick(alert)}
-              className={`group relative flex items-center gap-4 px-4 py-3.5 cursor-pointer transition-colors hover:bg-white/[0.04] ${
-                idx !== filtered.length - 1 ? "border-b border-white/[0.06]" : ""
+              className={`group relative flex items-center gap-5 px-5 py-4 cursor-pointer transition-colors hover:bg-white/[0.04] ${
+                idx !== filtered.length - 1 ? "border-b border-white/[0.08]" : ""
               }`}
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${sevStyle.dot}`} aria-label={sevStyle.label} />
 
-              <div className="flex-1 flex items-center gap-3 min-w-0">
-                {first?.thumbnailUrl ? (
-                  <img
-                    src={first.thumbnailUrl}
-                    alt=""
-                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/[0.08] shadow-sm"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-xl shrink-0 bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
-                    <Icon icon="solar:bell-bing-linear" width={16} className="text-text-tertiary" />
-                  </div>
-                )}
+              <div className="flex-1 flex items-center gap-4 min-w-0">
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium text-text-primary truncate">
                     {first?.caption ?? alert.subject}
                   </p>
                   {first && (
-                    <p className="text-[11px] text-text-tertiary mt-0.5 truncate flex items-center gap-1.5">
+                    <p className="text-[11px] text-text-tertiary mt-1 truncate flex items-center gap-1.5">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-semibold ${sevStyle.chip}`}>
                         +{formatNumber(first.viewsIncrease)} views
                       </span>

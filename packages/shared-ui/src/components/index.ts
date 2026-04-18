@@ -20,6 +20,7 @@ export { PaginationControl } from "./PaginationControl";
 export { PostsTable } from "./PostsTable";
 export { AnalyticsPricing, type AnalyticsTier, type AnalyticsPricingProps } from "./AnalyticsPricing";
 export { ManagedAccountsCard, type ManagedAccount, type ManagedAccountsStats } from "./ManagedAccountsCard";
+export { SegmentedControl, type SegmentedControlProps, type SegmentedOption } from "./SegmentedControl";
 export { AlertConfigPanel, type AlertConfigPanelProps } from "./AlertConfigPanel";
 export { AlertFeedTable } from "./AlertFeedTable";
 export type { AlertFeedTableProps, AlertLogWithSnapshot } from "./AlertFeedTable";
