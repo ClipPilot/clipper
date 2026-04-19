@@ -82,6 +82,13 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
         href: "/dashboard/alerts",
         requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
       },
+      {
+        key: "reports",
+        title: "Reports",
+        icon: "solar:chart-square-bold-duotone",
+        href: "/dashboard/reports",
+        requiredPlans: ["studio", "scale", "enterprise", "analytics_starter", "analytics_pro", "analytics_business"],
+      },
     ],
   },
 ];

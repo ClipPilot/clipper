@@ -10,7 +10,7 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { useRouter } from "next/navigation";
 import { getPlanName, getPlanColor, isPaidPlan, isAnalyticsPlan } from "@/lib/plans";
 
-interface WorkspaceSelectorProps extends CardProps {
+interface WorkspaceSelectorProps extends Partial<CardProps> {
   onCreateTeam?: () => void;
   onManageTeam?: () => void;
   onClose?: () => void;

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Icon } from "@iconify/react";
-import { Button, Chip, Separator, Tooltip, cn } from "@heroui/react";
+import { Button, Separator, Tooltip, cn } from "@heroui/react";
 import { Tier, TiersEnum } from "./pricing-types";
 import { PricingFeatures } from "./pricing-comparison-types";
 
@@ -39,7 +39,7 @@ export function PricingTable({
                 }%`,
               }}
             >
-              <div className="w-full rounded-xl border border-accent-400/30 bg-accent-400/5 backdrop-blur-md" />
+              <div className="w-full rounded-2xl border border-accent-400/40 bg-gradient-to-b from-accent-400/12 via-accent-400/6 to-accent-400/0 backdrop-blur-md shadow-[0_0_40px_-8px_rgba(79,71,230,0.4)] ring-1 ring-inset ring-white/5" />
             </div>
           </div>
         )}
@@ -61,11 +61,14 @@ export function PricingTable({
                   scope="col"
                 >
                   {tier.mostPopular && (
-                    <Chip
- size="sm"
- >
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/10 bg-gradient-to-r from-accent-400 to-purple-500 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white shadow-[0_6px_20px_-4px_rgba(79,71,230,0.55)]">
+                      <Icon
+                        icon="solar:star-bold"
+                        width={12}
+                        className="text-yellow-200"
+                      />
                       Most Popular
-                    </Chip>
+                    </span>
                   )}
                   <div className="text-xl font-semibold text-text-primary">
                     {tier.title}

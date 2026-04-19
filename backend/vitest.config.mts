@@ -33,6 +33,10 @@ export default defineConfig({
         __dirname,
         "../packages/shared-db/src/index.ts"
       ),
+      "@clipper/shared-ui/utils/alertSeverity": path.resolve(
+        __dirname,
+        "../packages/shared-ui/src/utils/alertSeverity.ts"
+      ),
       "@clipper/shared-ui": path.resolve(
         __dirname,
         "../packages/shared-ui/src/index.ts"

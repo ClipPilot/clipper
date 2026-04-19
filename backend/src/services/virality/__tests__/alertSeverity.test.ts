@@ -4,7 +4,7 @@ import {
   deriveSnapshotSeverity,
   deriveSnapshotType,
   type ViralPostSnapshot,
-} from "@clipper/shared-ui";
+} from "@clipper/shared-ui/utils/alertSeverity";
 
 const BASE_SETTINGS = {
   owned_percent_threshold: 50,
