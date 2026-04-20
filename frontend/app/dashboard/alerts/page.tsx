@@ -122,7 +122,7 @@ export default function AlertsPage() {
   return (
     <div className="relative max-w-5xl mx-auto px-6 py-8 space-y-5">
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-amber-400/25 blur-[140px]" />
+        <div className="absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-amber-400/12 blur-[140px]" />
         <div className="absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-rose-500/20 blur-[140px]" />
         <div className="absolute bottom-0 left-1/4 h-[28rem] w-[28rem] rounded-full bg-accent-400/25 blur-[140px]" />
         <div className="absolute top-10 right-1/4 h-64 w-64 rounded-full bg-violet-500/15 blur-[120px]" />
