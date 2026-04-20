@@ -30,6 +30,7 @@ import NotificationBellButton from "@/components/announcements/NotificationBellB
 import AnnouncementInboxModal from "@/components/announcements/AnnouncementInboxModal";
 import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { useHasAurora } from "@clipper/shared-ui";
 
 export default function DashboardLayoutClient({
   children,
@@ -43,6 +44,7 @@ export default function DashboardLayoutClient({
   const { fetchTeams, selectTeam } = useTeams();
   const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useAtom(sidebarCollapsedAtom);
+  const hasAurora = useHasAurora();
   const [contentCollapsed, setContentCollapsed] = useState(isCollapsed);
   const expandTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -129,7 +131,10 @@ export default function DashboardLayoutClient({
       <div className="flex h-screen bg-surface-dark">
         <aside
           className={cn(
-            "relative bg-surface-base border-r border-border-base flex-shrink-0 flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden",
+            "relative z-10 flex-shrink-0 flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden",
+            hasAurora
+              ? "bg-white/[0.04] backdrop-blur-2xl border-r border-white/[0.08] shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.05)]"
+              : "bg-surface-base border-r border-border-base",
             isCollapsed ? "w-[72px]" : "w-[256px]",
           )}
         >

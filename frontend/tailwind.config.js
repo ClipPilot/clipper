@@ -3,6 +3,7 @@ const config = {
   content: [
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    '../packages/shared-ui/src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {

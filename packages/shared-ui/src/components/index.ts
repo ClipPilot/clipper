@@ -26,3 +26,4 @@ export { AlertFeedTable } from "./AlertFeedTable";
 export type { AlertFeedTableProps, AlertLogWithSnapshot } from "./AlertFeedTable";
 export { AlertDetailModal } from "./AlertDetailModal";
 export type { AlertDetailModalProps } from "./AlertDetailModal";
+export { AuroraBackground, useHasAurora } from "./AuroraBackground";
