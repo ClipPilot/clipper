@@ -64,7 +64,7 @@ function FaqAccordionItem({ item, index }: { item: FaqItem; index: number }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.05 * index }}
-      className="rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] overflow-hidden"
+      className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] overflow-hidden"
     >
       <button
         className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
@@ -161,10 +161,10 @@ export function AnalyticsPricing({
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
-        <div className="absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-accent-400/25 blur-[140px]" />
-        <div className="absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-sky-500/20 blur-[140px]" />
-        <div className="absolute bottom-0 left-1/4 h-[28rem] w-[28rem] rounded-full bg-violet-500/20 blur-[140px]" />
-        <div className="absolute top-10 right-1/4 h-64 w-64 rounded-full bg-emerald-500/15 blur-[120px]" />
+        <div className="absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-amber-400/12 blur-[140px]" />
+        <div className="absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-rose-500/20 blur-[140px]" />
+        <div className="absolute bottom-0 left-1/4 h-[28rem] w-[28rem] rounded-full bg-accent-400/25 blur-[140px]" />
+        <div className="absolute top-10 right-1/4 h-64 w-64 rounded-full bg-violet-500/15 blur-[120px]" />
       </div>
 
       <motion.div
@@ -239,12 +239,13 @@ export function AnalyticsPricing({
                   : {}
               }
               className={cn(
-                "rounded-2xl overflow-hidden flex flex-col border bg-white/[0.04] backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)]",
+                "rounded-2xl overflow-hidden flex flex-col border bg-white/70 dark:bg-white/[0.04] backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)]",
                 {
                   "border-accent-400/40 shadow-lg shadow-accent-400/10":
                     tier.mostPopular && !isCurrent,
                   "border-accent-400 shadow-lg shadow-accent-400/20": isCurrent,
-                  "border-white/[0.08]": !tier.mostPopular && !isCurrent,
+                  "border-black/[0.08] dark:border-white/[0.08]":
+                    !tier.mostPopular && !isCurrent,
                 }
               )}
             >
@@ -270,7 +271,7 @@ export function AnalyticsPricing({
                 <p className="text-sm text-text-secondary">{tier.description}</p>
               </div>
 
-              <div className="mx-5 h-px bg-white/[0.06]" />
+              <div className="mx-5 h-px bg-black/[0.08] dark:bg-white/[0.06]" />
 
               <div className="p-5 space-y-5 flex-1">
                 <div>
@@ -286,7 +287,7 @@ export function AnalyticsPricing({
                   </div>
                 </div>
 
-                <div className="bg-white/[0.04] border border-white/[0.06] flex flex-col gap-2 rounded-xl p-3">
+                <div className="bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.06] flex flex-col gap-2 rounded-xl p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-tertiary">
                       Account Limit
