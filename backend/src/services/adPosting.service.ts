@@ -528,6 +528,7 @@ class AdPostingService {
       );
     } else {
       conditions.push(eq(posts.status, "posted"));
+      conditions.push(isNotNull(posts.clip_id));
     }
 
     // Platform filter
@@ -592,24 +593,42 @@ class AdPostingService {
         .limit(pageSize)
         .offset((page - 1) * pageSize);
     } else {
-      // Published tab: paginate by individual post
-      const [{ count }] = await db
-        .select({ count: sql<number>`count(*)::int` })
+      const [countResult] = await db
+        .select({
+          videos: sql<number>`COUNT(DISTINCT ${posts.clip_id})::int`,
+          posts: sql<number>`count(*)::int`,
+        })
         .from(posts)
         .leftJoin(clips, eq(posts.clip_id, clips.id))
         .where(where);
 
-      totalVideos = count;
-      totalPosts = count;
+      totalVideos = countResult.videos;
+      totalPosts = countResult.posts;
 
-      rows = await db
-        .select(selectFields)
+      const clipIdRows = await db
+        .select({ clip_id: posts.clip_id })
         .from(posts)
         .leftJoin(clips, eq(posts.clip_id, clips.id))
         .where(where)
-        .orderBy(orderFn(orderCol))
+        .groupBy(posts.clip_id)
+        .orderBy(orderFn(sql`MAX(${orderCol})`))
         .limit(pageSize)
         .offset((page - 1) * pageSize);
+
+      const pageClipIds = clipIdRows
+        .map((r) => r.clip_id)
+        .filter((id): id is number => id != null);
+
+      if (pageClipIds.length === 0) {
+        rows = [];
+      } else {
+        rows = await db
+          .select(selectFields)
+          .from(posts)
+          .leftJoin(clips, eq(posts.clip_id, clips.id))
+          .where(and(where, inArray(posts.clip_id, pageClipIds)))
+          .orderBy(orderFn(orderCol));
+      }
     }
 
     // Generate presigned URLs for clip thumbnails
