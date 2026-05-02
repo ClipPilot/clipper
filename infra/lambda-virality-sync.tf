@@ -382,11 +382,11 @@ resource "aws_sfn_state_machine" "virality_sync" {
         Next       = "HasMoreBatches"
       }
       HasMoreBatches = {
-        Type    = "Choice"
+        Type = "Choice"
         Choices = [{
-          Variable  = "$.batch.nextCursor"
-          IsNull    = false
-          Next      = "PrepareCursor"
+          Variable = "$.batch.nextCursor"
+          IsNull   = false
+          Next     = "PrepareCursor"
         }]
         Default = "ClearState"
       }

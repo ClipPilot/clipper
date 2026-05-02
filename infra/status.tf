@@ -73,8 +73,8 @@ resource "aws_lambda_function" "status_cron" {
 
   environment {
     variables = {
-      STATUS_URL    = "https://${var.status_domain}/api/cron"
-      CRON_SECRET   = var.status_cron_secret
+      STATUS_URL  = "https://${var.status_domain}/api/cron"
+      CRON_SECRET = var.status_cron_secret
     }
   }
 

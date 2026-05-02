@@ -148,10 +148,10 @@ resource "aws_lambda_function_url" "face_detect" {
   authorization_type = "AWS_IAM"
 
   cors {
-    allow_origins     = ["*"]
-    allow_methods     = ["POST"]
-    allow_headers     = ["*"]
-    max_age           = 86400
+    allow_origins = ["*"]
+    allow_methods = ["POST"]
+    allow_headers = ["*"]
+    max_age       = 86400
   }
 }
 

@@ -96,7 +96,7 @@ resource "aws_lambda_function" "sscd_similarity" {
   role          = aws_iam_role.sscd_similarity_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.sscd_similarity_lambda.repository_url}:latest"
-  timeout       = 180  # 3 minutes - perturbation mode needs more time for PGD iterations
+  timeout       = 180   # 3 minutes - perturbation mode needs more time for PGD iterations
   memory_size   = 10240 # 10GB - PGD autograd stores computation graphs across backward passes
 
   environment {

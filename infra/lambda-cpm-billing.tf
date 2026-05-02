@@ -82,10 +82,10 @@ resource "aws_lambda_function" "cpm_billing" {
 
   environment {
     variables = {
-      DATABASE_URL       = var.database_url
-      STRIPE_SECRET_KEY  = var.stripe_secret_key
-      RESEND_API_KEY     = var.resend_api_key
-      FRONTEND_URL       = var.environment == "prod" ? "https://platform.cuttr.com" : "https://staging.platform.cuttr.com"
+      DATABASE_URL      = var.database_url
+      STRIPE_SECRET_KEY = var.stripe_secret_key
+      RESEND_API_KEY    = var.resend_api_key
+      FRONTEND_URL      = var.environment == "prod" ? "https://platform.cuttr.com" : "https://staging.platform.cuttr.com"
     }
   }
 

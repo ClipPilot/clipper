@@ -188,8 +188,8 @@ resource "aws_ecs_task_definition" "worker" {
       }
     }
 
-    essential    = true
-    stopTimeout  = 120
+    essential   = true
+    stopTimeout = 120
   }])
 
   tags = {
