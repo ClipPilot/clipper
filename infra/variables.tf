@@ -32,38 +32,38 @@ variable "backend_container_port" {
 variable "backend_cpu" {
   description = "CPU units for backend container (1024 = 1 vCPU)"
   type        = number
-  default     = 2048 # 2 vCPU - needed for video processing
+  default     = 512
 }
 
 variable "backend_memory" {
   description = "Memory for backend container in MB"
   type        = number
-  default     = 4096 # 4 GB - needed for ffmpeg + puppeteer
+  default     = 1024
 }
 
 variable "backend_desired_count" {
   description = "Desired number of backend tasks"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 # Agent Service Configuration
 variable "agent_service_cpu" {
   description = "CPU units for agent service container (1024 = 1 vCPU)"
   type        = number
-  default     = 2048 # 2 vCPU
+  default     = 512
 }
 
 variable "agent_service_memory" {
   description = "Memory for agent service container in MB"
   type        = number
-  default     = 4096 # 4 GB
+  default     = 1024
 }
 
 variable "agent_service_desired_count" {
   description = "Desired number of agent service tasks"
   type        = number
-  default     = 3
+  default     = 1
 }
 
 # Environment Variables
@@ -118,25 +118,25 @@ variable "amplify_branch" {
 variable "worker_cpu" {
   description = "CPU units for worker container (1024 = 1 vCPU)"
   type        = number
-  default     = 4096 # 4 vCPU
+  default     = 512
 }
 
 variable "worker_memory" {
   description = "Memory for worker container in MB"
   type        = number
-  default     = 8192 # 8 GB - required minimum for 4 vCPU
+  default     = 1024
 }
 
 variable "worker_min_capacity" {
   description = "Minimum number of worker tasks"
   type        = number
-  default     = 2
+  default     = 1
 }
 
 variable "worker_max_capacity" {
   description = "Maximum number of worker tasks"
   type        = number
-  default     = 25
+  default     = 1
 }
 
 variable "worker_messages_per_task" {
