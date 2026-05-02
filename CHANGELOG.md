@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2](https://github.com/ClipPilot/clipper/compare/v1.4.1...v1.4.2) (2026-05-02)
+
+
+### Bug Fixes
+
+* paginate posts by videos, admint eam 500 ([a511a45](https://github.com/ClipPilot/clipper/commit/a511a459fc17c633d5d966ab9037fe106a04d27d))
+* scale down ecs ([a20ea93](https://github.com/ClipPilot/clipper/commit/a20ea93419e99a22fcc53cdfc5506be9ba8528f6))
+
 ## [1.4.1](https://github.com/ClipPilot/clipper/compare/v1.4.0...v1.4.1) (2026-04-10)
 
 
