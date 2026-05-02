@@ -245,8 +245,8 @@ jobs:
         run: |
           if [[ "$ENV_SUFFIX" == "prod" ]]; then
             NODE_ENV="production"
-            BACKEND_CPU=2048; BACKEND_MEMORY=4096; BACKEND_COUNT=2
-            WORKER_CPU=4096; WORKER_MEMORY=8192
+            BACKEND_CPU=512; BACKEND_MEMORY=1024; BACKEND_COUNT=1
+            WORKER_CPU=512; WORKER_MEMORY=1024
             DB_URL="${{ secrets.DATABASE_URL }}"
             SUPA_URL="${{ secrets.SUPABASE_URL }}"
             SUPA_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
@@ -258,8 +258,8 @@ jobs:
             STATUS_DOMAIN="status.cuttr.com"
           else
             NODE_ENV="staging"
-            BACKEND_CPU=1024; BACKEND_MEMORY=2048; BACKEND_COUNT=1
-            WORKER_CPU=2048; WORKER_MEMORY=4096
+            BACKEND_CPU=512; BACKEND_MEMORY=1024; BACKEND_COUNT=1
+            WORKER_CPU=512; WORKER_MEMORY=1024
             DB_URL="${{ secrets.STAGING_DATABASE_URL }}"
             SUPA_URL="${{ secrets.STAGING_SUPABASE_URL }}"
             SUPA_KEY="${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
@@ -424,8 +424,8 @@ jobs:
         run: |
           if [[ "$ENV_SUFFIX" == "prod" ]]; then
             NODE_ENV="production"
-            BACKEND_CPU=2048; BACKEND_MEMORY=4096; BACKEND_COUNT=2
-            WORKER_CPU=4096; WORKER_MEMORY=8192
+            BACKEND_CPU=512; BACKEND_MEMORY=1024; BACKEND_COUNT=1
+            WORKER_CPU=512; WORKER_MEMORY=1024
             DB_URL="${{ secrets.DATABASE_URL }}"
             SUPA_URL="${{ secrets.SUPABASE_URL }}"
             SUPA_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
@@ -437,8 +437,8 @@ jobs:
             STATUS_DOMAIN="status.cuttr.com"
           else
             NODE_ENV="staging"
-            BACKEND_CPU=1024; BACKEND_MEMORY=2048; BACKEND_COUNT=1
-            WORKER_CPU=2048; WORKER_MEMORY=4096
+            BACKEND_CPU=512; BACKEND_MEMORY=1024; BACKEND_COUNT=1
+            WORKER_CPU=512; WORKER_MEMORY=1024
             DB_URL="${{ secrets.STAGING_DATABASE_URL }}"
             SUPA_URL="${{ secrets.STAGING_SUPABASE_URL }}"
             SUPA_KEY="${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
