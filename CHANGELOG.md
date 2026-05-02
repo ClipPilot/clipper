@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.4.3](https://github.com/ClipPilot/clipper/compare/v1.4.2...v1.4.3) (2026-05-02)
+
+
+### Bug Fixes
+
+* aws ([e7e6da8](https://github.com/ClipPilot/clipper/commit/e7e6da8b5ccad7b2380a20a431d72dea2c91871e))
+* more scale down ([07234e8](https://github.com/ClipPilot/clipper/commit/07234e80ce16f603ecbbe680489cdf01f8c5a74e))
+* tf version ([2503e77](https://github.com/ClipPilot/clipper/commit/2503e77cc05683f967606b567135c8c231a86f95))
+
 ## [1.4.2](https://github.com/ClipPilot/clipper/compare/v1.4.1...v1.4.2) (2026-05-02)
 
 
